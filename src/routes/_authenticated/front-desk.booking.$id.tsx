@@ -30,6 +30,8 @@ import {
   nightsBetween,
 } from "@/lib/front-desk";
 import { fireTrigger } from "@/lib/whatsapp";
+import { verifyManagerPassword } from "@/lib/manager-verify";
+import { recomputeFolio } from "@/lib/billing";
 import {
   LogIn,
   LogOut,
@@ -37,6 +39,8 @@ import {
   CalendarClock,
   Ban,
   Receipt,
+  ShieldAlert,
+  Check,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/front-desk/booking/$id")({
@@ -45,7 +49,13 @@ export const Route = createFileRoute("/_authenticated/front-desk/booking/$id")({
 });
 
 interface Guest { id: string; name: string; mobile: string | null; email: string | null; address: string | null; id_proof_type: string | null; id_proof_number: string | null; }
-interface Room { id: string; room_number: string; category_id: string | null; status: string; }
+interface Room {
+  id: string;
+  room_number: string;
+  category_id: string | null;
+  status: string;
+  room_categories?: { name: string; base_rate: number } | null;
+}
 interface BookingRoomRow {
   id: string;
   room_id: string | null;
@@ -97,6 +107,16 @@ function BookingDetailPage() {
   const [shiftBrId, setShiftBrId] = useState<string>("");
   const [shiftToRoom, setShiftToRoom] = useState<string>("");
   const [shiftReason, setShiftReason] = useState("");
+  const [shiftStep, setShiftStep] = useState<1 | 2 | 3 | 4>(1);
+  const [tariffChoice, setTariffChoice] = useState<"keep" | "new_standard" | "custom">("keep");
+  const [customRate, setCustomRate] = useState("");
+  const [transferKots, setTransferKots] = useState(true);
+  const [pendingKots, setPendingKots] = useState<{ id: string; kot_number: string; status: string; total_amount: number }[]>([]);
+  const [mgrEmail, setMgrEmail] = useState("");
+  const [mgrPass, setMgrPass] = useState("");
+  const [mgrBusy, setMgrBusy] = useState(false);
+  const [mgrApproved, setMgrApproved] = useState(false);
+  const [shiftBusy, setShiftBusy] = useState(false);
 
   const [dateOpen, setDateOpen] = useState(false);
   const [newCheckOut, setNewCheckOut] = useState("");
@@ -125,7 +145,7 @@ function BookingDetailPage() {
       setNewCheckOut(detail.check_out);
       const { data: rs } = await supabase
         .from("rooms")
-        .select("id,room_number,category_id,status")
+        .select("id,room_number,category_id,status,room_categories(name,base_rate)")
         .eq("property_id", detail.property_id)
         .order("room_number");
       setRooms((rs ?? []) as Room[]);
@@ -209,24 +229,91 @@ function BookingDetailPage() {
     setShiftBrId(brId);
     setShiftToRoom("");
     setShiftReason("");
+    setShiftStep(1);
+    setTariffChoice("keep");
+    setCustomRate("");
+    setTransferKots(true);
+    setPendingKots([]);
+    setMgrEmail(""); setMgrPass(""); setMgrApproved(false);
     setShiftOpen(true);
+  }
+
+  async function loadPendingKotsFor(brId: string) {
+    if (!b) return;
+    const br = b.booking_rooms.find((x) => x.id === brId);
+    if (!br) { setPendingKots([]); return; }
+    const { data } = await supabase
+      .from("kot_orders")
+      .select("id,kot_number,status,total_amount")
+      .eq("booking_id", b.id)
+      .in("status", ["open", "printed", "served"]);
+    setPendingKots(((data ?? []) as any));
+  }
+
+  async function verifyMgrForCustom() {
+    if (!mgrEmail || !mgrPass) return toast.error("Manager email & password required");
+    setMgrBusy(true);
+    const res = await verifyManagerPassword(mgrEmail.trim(), mgrPass);
+    setMgrBusy(false);
+    if (!res.ok) return toast.error(res.reason ?? "Incorrect manager password");
+    setMgrApproved(true);
+    toast.success("Custom rate authorised");
+  }
+
+  function resolveNewRate(br: BookingRoomRow, target: Room | undefined): number {
+    if (tariffChoice === "custom") return Number(customRate) || Number(br.rate);
+    if (tariffChoice === "new_standard") return Number(target?.room_categories?.base_rate ?? br.rate);
+    return Number(br.rate);
   }
 
   async function doShift() {
     if (!b || !shiftBrId || !shiftToRoom) return toast.error("Pick a target room");
     const br = b.booking_rooms.find((x) => x.id === shiftBrId);
     if (!br) return;
+    if (!shiftReason.trim()) return toast.error("Reason is required");
+    if (tariffChoice === "custom" && !mgrApproved) return toast.error("Manager authorisation required for custom rate");
+    const target = rooms.find((r) => r.id === shiftToRoom);
+    const oldRate = Number(br.rate);
+    const newRate = resolveNewRate(br, target);
     const fromRoomId = br.room_id;
+    setShiftBusy(true);
 
-    const { error: e1 } = await supabase.from("booking_rooms").update({ room_id: shiftToRoom }).eq("id", br.id);
-    if (e1) return toast.error(e1.message);
+    const { error: e1 } = await supabase.from("booking_rooms")
+      .update({ room_id: shiftToRoom, rate: newRate, category_id: target?.category_id ?? br.category_id }).eq("id", br.id);
+    if (e1) { setShiftBusy(false); return toast.error(e1.message); }
+
+    // Update folio room charges (if any) for this booking_room to reflect new rate
+    try {
+      const { data: folioId } = await supabase.rpc("get_or_create_folio", { _booking_id: b.id });
+      const fId = folioId as unknown as string;
+      const { data: roomCharges } = await supabase.from("folio_charges").select("*")
+        .eq("folio_id", fId).eq("source_table", "booking_rooms").eq("source_id", br.id);
+      for (const rc of (roomCharges ?? []) as any[]) {
+        const qty = Number(rc.qty) || 1;
+        const amount = qty * newRate;
+        const gstAmt = Math.round(amount * Number(rc.gst_rate || 0)) / 100;
+        await supabase.from("folio_charges")
+          .update({ rate: newRate, amount, gst_amount: gstAmt }).eq("id", rc.id);
+      }
+      const { data: allCharges } = await supabase.from("folio_charges").select("*").eq("folio_id", fId);
+      const { data: folio } = await supabase.from("folios").select("gst_mode,paid_amount").eq("id", fId).single();
+      const mode = ((folio as any)?.gst_mode ?? "cash") as "cash" | "gst";
+      const t = recomputeFolio((allCharges ?? []) as any, mode);
+      const paid = Number((folio as any)?.paid_amount ?? 0);
+      await supabase.from("folios").update({
+        ...t, balance_amount: Math.max(0, t.total_amount - paid),
+      }).eq("id", fId);
+    } catch (e) { console.warn("folio rate update failed", e); }
 
     await supabase.from("room_shifts").insert({
       property_id: b.property_id,
       booking_room_id: br.id,
       from_room_id: fromRoomId,
       to_room_id: shiftToRoom,
-      reason: shiftReason || null,
+      reason: shiftReason,
+      old_rate: oldRate,
+      new_rate: newRate,
+      tariff_choice: tariffChoice,
       shifted_by: user?.id ?? null,
     } as any);
 
@@ -241,7 +328,7 @@ function BookingDetailPage() {
     }
 
     // === Transfer open/printed KOTs to new room and log ===
-    try {
+    if (transferKots) try {
       if (!fromRoomId) throw new Error("no from room");
       const fromId: string = fromRoomId;
       const { data: openKots } = await supabase
@@ -271,6 +358,22 @@ function BookingDetailPage() {
       console.warn("KOT transfer failed", e);
     }
 
+    // WhatsApp notify guest
+    try {
+      if (b.guests?.mobile) {
+        const fromName = b.booking_rooms.find((x) => x.id === br.id)?.rooms?.room_number ?? "";
+        const toName = target?.room_number ?? "";
+        fireTrigger("room_shift" as any, {
+          property_id: b.property_id,
+          booking_id: b.id,
+          guest_id: b.guests?.id ?? null,
+          phone: b.guests.mobile,
+          extra: { from_room: fromName, to_room: toName, new_rate: newRate },
+        } as any);
+      }
+    } catch { /* ignore */ }
+
+    setShiftBusy(false);
     toast.success("Room shifted");
     setShiftOpen(false);
     load();
@@ -417,30 +520,173 @@ function BookingDetailPage() {
 
         {/* SHIFT DIALOG */}
         <Dialog open={shiftOpen} onOpenChange={setShiftOpen}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Shift room</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Move to vacant room</Label>
-                <Select value={shiftToRoom} onValueChange={setShiftToRoom}>
-                  <SelectTrigger><SelectValue placeholder="Pick a room" /></SelectTrigger>
-                  <SelectContent>
-                    {rooms
-                      .filter((r) => r.status === "vacant" && !b.booking_rooms.some((br) => br.room_id === r.id))
-                      .map((r) => (
-                        <SelectItem key={r.id} value={r.id}>{r.room_number}</SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Shift room — Step {shiftStep} of 4</DialogTitle>
+            </DialogHeader>
+            {(() => {
+              const br = b.booking_rooms.find((x) => x.id === shiftBrId);
+              const target = rooms.find((r) => r.id === shiftToRoom);
+              const fromRate = Number(br?.rate ?? 0);
+              const newStdRate = Number(target?.room_categories?.base_rate ?? 0);
+              const newRate = br ? resolveNewRate(br, target) : 0;
+              return (
+                <div className="space-y-4">
+                  {/* Step 1: pick new room */}
+                  {shiftStep === 1 && (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Move to vacant room *</Label>
+                        <Select value={shiftToRoom} onValueChange={setShiftToRoom}>
+                          <SelectTrigger><SelectValue placeholder="Pick a room" /></SelectTrigger>
+                          <SelectContent>
+                            {rooms
+                              .filter((r) => r.status === "vacant" && !b.booking_rooms.some((bx) => bx.room_id === r.id))
+                              .map((r) => (
+                                <SelectItem key={r.id} value={r.id}>
+                                  {r.room_number}{r.room_categories?.name ? ` · ${r.room_categories.name}` : ""}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Current: Room {br?.rooms?.room_number ?? "—"} ({br?.room_categories?.name ?? "—"}) @ ₹{fromRate}/night
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 2: tariff decision */}
+                  {shiftStep === 2 && br && target && (
+                    <div className="space-y-3">
+                      <div className="text-xs font-medium text-muted-foreground">Tariff for new room</div>
+                      <TariffOption
+                        active={tariffChoice === "keep"} onClick={() => setTariffChoice("keep")}
+                        title="Keep existing rate"
+                        line1={`₹${fromRate}/night`}
+                        line2="Guest continues paying the original rate" />
+                      <TariffOption
+                        active={tariffChoice === "new_standard"} onClick={() => setTariffChoice("new_standard")}
+                        title="Apply new room's standard rate"
+                        line1={newStdRate > 0 ? `₹${newStdRate}/night` : "No base rate set on category"}
+                        line2={`Based on ${target.room_categories?.name ?? "new"} category tariff`}
+                        disabled={newStdRate <= 0} />
+                      <div
+                        className={`rounded-md border p-3 cursor-pointer ${tariffChoice === "custom" ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
+                        onClick={() => setTariffChoice("custom")}>
+                        <div className="flex items-center gap-2 font-medium text-sm">
+                          <span className={`h-3 w-3 rounded-full border ${tariffChoice === "custom" ? "bg-primary border-primary" : "border-muted-foreground"}`} />
+                          Custom rate
+                          {mgrApproved && tariffChoice === "custom" && (
+                            <Badge variant="outline" className="ml-2 text-[10px] border-emerald-400 text-emerald-700">
+                              <Check className="h-3 w-3 mr-0.5" /> Authorised
+                            </Badge>
+                          )}
+                        </div>
+                        {tariffChoice === "custom" && (
+                          <div className="mt-2 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">₹</span>
+                              <Input type="number" value={customRate}
+                                onChange={(e) => setCustomRate(e.target.value)}
+                                placeholder="0" className="h-8 w-32" />
+                              <span className="text-xs text-muted-foreground">/night</span>
+                            </div>
+                            {!mgrApproved && (
+                              <div className="rounded border border-amber-300 bg-amber-50 p-2 space-y-2">
+                                <div className="flex items-center gap-1 text-xs text-amber-800">
+                                  <ShieldAlert className="h-3.5 w-3.5" /> Manager authorisation required
+                                </div>
+                                <Input type="email" placeholder="Manager email" value={mgrEmail}
+                                  onChange={(e) => setMgrEmail(e.target.value)} className="h-8" />
+                                <Input type="password" placeholder="Manager password" value={mgrPass}
+                                  onChange={(e) => setMgrPass(e.target.value)} className="h-8" />
+                                <Button size="sm" onClick={verifyMgrForCustom} disabled={mgrBusy}>
+                                  {mgrBusy ? "Verifying…" : "Authorise custom rate"}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 3: food orders transfer */}
+                  {shiftStep === 3 && (
+                    <div className="space-y-3">
+                      {pendingKots.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No pending food orders.</p>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <input id="ktr" type="checkbox" checked={transferKots}
+                              onChange={(e) => setTransferKots(e.target.checked)} />
+                            <Label htmlFor="ktr" className="text-sm">
+                              Transfer {pendingKots.length} pending order(s) to new room
+                            </Label>
+                          </div>
+                          <div className="space-y-1 text-sm">
+                            {pendingKots.map((k) => (
+                              <div key={k.id} className="flex justify-between border-b last:border-0 pb-1">
+                                <span>{k.kot_number} <span className="uppercase text-xs text-muted-foreground ml-1">({k.status})</span></span>
+                                <span>₹{Number(k.total_amount || 0).toFixed(2)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Step 4: confirm */}
+                  {shiftStep === 4 && br && target && (
+                    <div className="space-y-3 text-sm">
+                      <div className="rounded-md border p-3 bg-muted/30 space-y-1">
+                        <div><span className="text-muted-foreground">From:</span> Room {br.rooms?.room_number} ({br.room_categories?.name}) @ ₹{fromRate}/night</div>
+                        <div><span className="text-muted-foreground">To:</span> Room {target.room_number} ({target.room_categories?.name ?? "—"}) @ ₹{newRate}/night
+                          {tariffChoice === "custom" && <Badge variant="outline" className="ml-2 text-[10px] border-amber-400 text-amber-700">Custom</Badge>}
+                          {tariffChoice === "keep" && <Badge variant="outline" className="ml-2 text-[10px]">Same rate</Badge>}
+                          {tariffChoice === "new_standard" && <Badge variant="outline" className="ml-2 text-[10px]">New standard</Badge>}
+                        </div>
+                        <div><span className="text-muted-foreground">Pending orders transferred:</span> {transferKots ? pendingKots.length : 0}</div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Reason *</Label>
+                        <Textarea rows={2} value={shiftReason}
+                          onChange={(e) => setShiftReason(e.target.value)}
+                          placeholder="e.g. Plumbing issue, guest upgrade request" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            <DialogFooter className="flex justify-between gap-2">
+              <Button variant="outline" onClick={() => setShiftOpen(false)} disabled={shiftBusy}>Cancel</Button>
+              <div className="flex gap-2">
+                {shiftStep > 1 && (
+                  <Button variant="outline" onClick={() => setShiftStep((s) => (s - 1) as 1 | 2 | 3 | 4)} disabled={shiftBusy}>Back</Button>
+                )}
+                {shiftStep < 4 && (
+                  <Button
+                    onClick={async () => {
+                      if (shiftStep === 1 && !shiftToRoom) return toast.error("Pick a target room");
+                      if (shiftStep === 2) {
+                        if (tariffChoice === "custom" && (!customRate || Number(customRate) <= 0)) return toast.error("Enter a custom rate");
+                        if (tariffChoice === "custom" && !mgrApproved) return toast.error("Manager must authorise the custom rate");
+                      }
+                      if (shiftStep === 2) await loadPendingKotsFor(shiftBrId);
+                      setShiftStep((s) => (s + 1) as 1 | 2 | 3 | 4);
+                    }}
+                  >Next</Button>
+                )}
+                {shiftStep === 4 && (
+                  <Button onClick={doShift} disabled={shiftBusy || !shiftReason.trim()}>
+                    {shiftBusy ? "Shifting…" : "Confirm Shift"}
+                  </Button>
+                )}
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Reason</Label>
-                <Textarea rows={2} value={shiftReason} onChange={(e) => setShiftReason(e.target.value)} />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShiftOpen(false)}>Cancel</Button>
-              <Button onClick={doShift}>Confirm shift</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -492,6 +738,26 @@ function Row({ k, v, highlight }: { k: string; v: React.ReactNode; highlight?: b
     <div className="flex gap-2">
       <div className="w-28 text-xs text-muted-foreground">{k}</div>
       <div className={`flex-1 ${highlight ? "font-semibold text-amber-700 dark:text-amber-300" : ""}`}>{v}</div>
+    </div>
+  );
+}
+
+function TariffOption({
+  active, onClick, title, line1, line2, disabled,
+}: { active: boolean; onClick: () => void; title: string; line1: string; line2: string; disabled?: boolean }) {
+  return (
+    <div
+      onClick={() => { if (!disabled) onClick(); }}
+      className={`rounded-md border p-3 ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${
+        active ? "border-primary bg-primary/5" : "hover:bg-muted/40"
+      }`}
+    >
+      <div className="flex items-center gap-2 font-medium text-sm">
+        <span className={`h-3 w-3 rounded-full border ${active ? "bg-primary border-primary" : "border-muted-foreground"}`} />
+        {title}
+      </div>
+      <div className="text-sm mt-1">{line1}</div>
+      <div className="text-xs text-muted-foreground">{line2}</div>
     </div>
   );
 }

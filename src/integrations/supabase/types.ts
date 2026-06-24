@@ -2496,30 +2496,39 @@ export type Database = {
           booking_room_id: string
           from_room_id: string | null
           id: string
+          new_rate: number | null
+          old_rate: number | null
           property_id: string
           reason: string | null
           shifted_at: string
           shifted_by: string | null
+          tariff_choice: string | null
           to_room_id: string | null
         }
         Insert: {
           booking_room_id: string
           from_room_id?: string | null
           id?: string
+          new_rate?: number | null
+          old_rate?: number | null
           property_id: string
           reason?: string | null
           shifted_at?: string
           shifted_by?: string | null
+          tariff_choice?: string | null
           to_room_id?: string | null
         }
         Update: {
           booking_room_id?: string
           from_room_id?: string | null
           id?: string
+          new_rate?: number | null
+          old_rate?: number | null
           property_id?: string
           reason?: string | null
           shifted_at?: string
           shifted_by?: string | null
+          tariff_choice?: string | null
           to_room_id?: string | null
         }
         Relationships: [
