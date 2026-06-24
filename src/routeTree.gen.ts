@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedSuperadminDashboardRouteImport } from './routes/_authenticated/superadmin.dashboard'
+import { Route as AuthenticatedMastersTariffRouteImport } from './routes/_authenticated/masters.tariff'
 import { Route as AuthenticatedMastersRoomsRouteImport } from './routes/_authenticated/masters.rooms'
 
 const LoginRoute = LoginRouteImport.update({
@@ -47,6 +48,12 @@ const AuthenticatedSuperadminDashboardRoute =
     path: '/superadmin/dashboard',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMastersTariffRoute =
+  AuthenticatedMastersTariffRouteImport.update({
+    id: '/masters/tariff',
+    path: '/masters/tariff',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMastersRoomsRoute =
   AuthenticatedMastersRoomsRouteImport.update({
     id: '/masters/rooms',
@@ -60,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
+  '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
 }
 export interface FileRoutesByTo {
@@ -68,6 +76,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
+  '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
 }
 export interface FileRoutesById {
@@ -78,6 +87,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
   '/_authenticated/masters/rooms': typeof AuthenticatedMastersRoomsRoute
+  '/_authenticated/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/_authenticated/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
 }
 export interface FileRouteTypes {
@@ -88,6 +98,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/properties'
     | '/masters/rooms'
+    | '/masters/tariff'
     | '/superadmin/dashboard'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -96,6 +107,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/properties'
     | '/masters/rooms'
+    | '/masters/tariff'
     | '/superadmin/dashboard'
   id:
     | '__root__'
@@ -105,6 +117,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/properties'
     | '/_authenticated/masters/rooms'
+    | '/_authenticated/masters/tariff'
     | '/_authenticated/superadmin/dashboard'
   fileRoutesById: FileRoutesById
 }
@@ -158,6 +171,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSuperadminDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/masters/tariff': {
+      id: '/_authenticated/masters/tariff'
+      path: '/masters/tariff'
+      fullPath: '/masters/tariff'
+      preLoaderRoute: typeof AuthenticatedMastersTariffRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/masters/rooms': {
       id: '/_authenticated/masters/rooms'
       path: '/masters/rooms'
@@ -172,6 +192,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPropertiesRoute: typeof AuthenticatedPropertiesRoute
   AuthenticatedMastersRoomsRoute: typeof AuthenticatedMastersRoomsRoute
+  AuthenticatedMastersTariffRoute: typeof AuthenticatedMastersTariffRoute
   AuthenticatedSuperadminDashboardRoute: typeof AuthenticatedSuperadminDashboardRoute
 }
 
@@ -179,6 +200,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPropertiesRoute: AuthenticatedPropertiesRoute,
   AuthenticatedMastersRoomsRoute: AuthenticatedMastersRoomsRoute,
+  AuthenticatedMastersTariffRoute: AuthenticatedMastersTariffRoute,
   AuthenticatedSuperadminDashboardRoute: AuthenticatedSuperadminDashboardRoute,
 }
 
