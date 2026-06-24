@@ -263,6 +263,17 @@ function FolioPage() {
     const nextP = ((data ?? []) as unknown as Payment[]);
     await persistTotals(charges, nextP);
     toast.success("Payment recorded");
+    // WhatsApp payment receipt (best-effort)
+    try {
+      if (booking.guests?.mobile) {
+        const { fireTrigger } = await import("@/lib/whatsapp");
+        fireTrigger("payment_receipt", {
+          property_id: booking.property_id,
+          booking_id: booking.id,
+          phone: booking.guests.mobile,
+        });
+      }
+    } catch { /* ignore */ }
     load();
   }
 
