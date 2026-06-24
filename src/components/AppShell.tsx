@@ -39,6 +39,8 @@ import {
   Banknote,
   TrendingUp,
   Star,
+  MessageSquare,
+  MessagesSquare,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -111,6 +113,8 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/guests/new", label: "New Guest", icon: PlusCircle },
       { to: "/feedback", label: "Feedback", icon: Star },
       { to: "/feedback/new", label: "New Feedback", icon: PlusCircle },
+      { to: "/comms", label: "Communications", icon: MessagesSquare },
+      { to: "/comms/new", label: "New Message", icon: MessageSquare },
     ],
   },
   {
@@ -155,6 +159,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/masters/staff", label: "Staff", icon: Users },
       { to: "/masters/printers", label: "Printers", icon: Printer },
       { to: "/masters/expense-categories", label: "Expense Categories", icon: Tags },
+      { to: "/masters/message-templates", label: "Message Templates", icon: MessageSquare },
     ],
   },
   {

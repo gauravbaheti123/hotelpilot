@@ -17,6 +17,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedGuestsIndexRouteImport } from './routes/_authenticated/guests.index'
 import { Route as AuthenticatedFeedbackIndexRouteImport } from './routes/_authenticated/feedback.index'
 import { Route as AuthenticatedExpensesIndexRouteImport } from './routes/_authenticated/expenses.index'
+import { Route as AuthenticatedCommsIndexRouteImport } from './routes/_authenticated/comms.index'
 import { Route as AuthenticatedSuperadminDashboardRouteImport } from './routes/_authenticated/superadmin.dashboard'
 import { Route as AuthenticatedStaffPayrollRouteImport } from './routes/_authenticated/staff.payroll'
 import { Route as AuthenticatedStaffAttendanceHistoryRouteImport } from './routes/_authenticated/staff.attendance-history'
@@ -104,6 +105,11 @@ const AuthenticatedExpensesIndexRoute =
     path: '/expenses/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCommsIndexRoute = AuthenticatedCommsIndexRouteImport.update({
+  id: '/comms/',
+  path: '/comms/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSuperadminDashboardRoute =
   AuthenticatedSuperadminDashboardRouteImport.update({
     id: '/superadmin/dashboard',
@@ -406,6 +412,7 @@ export interface FileRoutesByFullPath {
   '/staff/attendance-history': typeof AuthenticatedStaffAttendanceHistoryRoute
   '/staff/payroll': typeof AuthenticatedStaffPayrollRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/comms/': typeof AuthenticatedCommsIndexRoute
   '/expenses/': typeof AuthenticatedExpensesIndexRoute
   '/feedback/': typeof AuthenticatedFeedbackIndexRoute
   '/guests/': typeof AuthenticatedGuestsIndexRoute
@@ -459,6 +466,7 @@ export interface FileRoutesByTo {
   '/staff/attendance-history': typeof AuthenticatedStaffAttendanceHistoryRoute
   '/staff/payroll': typeof AuthenticatedStaffPayrollRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/comms': typeof AuthenticatedCommsIndexRoute
   '/expenses': typeof AuthenticatedExpensesIndexRoute
   '/feedback': typeof AuthenticatedFeedbackIndexRoute
   '/guests': typeof AuthenticatedGuestsIndexRoute
@@ -514,6 +522,7 @@ export interface FileRoutesById {
   '/_authenticated/staff/attendance-history': typeof AuthenticatedStaffAttendanceHistoryRoute
   '/_authenticated/staff/payroll': typeof AuthenticatedStaffPayrollRoute
   '/_authenticated/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/_authenticated/comms/': typeof AuthenticatedCommsIndexRoute
   '/_authenticated/expenses/': typeof AuthenticatedExpensesIndexRoute
   '/_authenticated/feedback/': typeof AuthenticatedFeedbackIndexRoute
   '/_authenticated/guests/': typeof AuthenticatedGuestsIndexRoute
@@ -569,6 +578,7 @@ export interface FileRouteTypes {
     | '/staff/attendance-history'
     | '/staff/payroll'
     | '/superadmin/dashboard'
+    | '/comms/'
     | '/expenses/'
     | '/feedback/'
     | '/guests/'
@@ -622,6 +632,7 @@ export interface FileRouteTypes {
     | '/staff/attendance-history'
     | '/staff/payroll'
     | '/superadmin/dashboard'
+    | '/comms'
     | '/expenses'
     | '/feedback'
     | '/guests'
@@ -676,6 +687,7 @@ export interface FileRouteTypes {
     | '/_authenticated/staff/attendance-history'
     | '/_authenticated/staff/payroll'
     | '/_authenticated/superadmin/dashboard'
+    | '/_authenticated/comms/'
     | '/_authenticated/expenses/'
     | '/_authenticated/feedback/'
     | '/_authenticated/guests/'
@@ -747,6 +759,13 @@ declare module '@tanstack/react-router' {
       path: '/expenses'
       fullPath: '/expenses/'
       preLoaderRoute: typeof AuthenticatedExpensesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/comms/': {
+      id: '/_authenticated/comms/'
+      path: '/comms'
+      fullPath: '/comms/'
+      preLoaderRoute: typeof AuthenticatedCommsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/superadmin/dashboard': {
@@ -1103,6 +1122,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedStaffAttendanceHistoryRoute: typeof AuthenticatedStaffAttendanceHistoryRoute
   AuthenticatedStaffPayrollRoute: typeof AuthenticatedStaffPayrollRoute
   AuthenticatedSuperadminDashboardRoute: typeof AuthenticatedSuperadminDashboardRoute
+  AuthenticatedCommsIndexRoute: typeof AuthenticatedCommsIndexRoute
   AuthenticatedExpensesIndexRoute: typeof AuthenticatedExpensesIndexRoute
   AuthenticatedFeedbackIndexRoute: typeof AuthenticatedFeedbackIndexRoute
   AuthenticatedGuestsIndexRoute: typeof AuthenticatedGuestsIndexRoute
@@ -1159,6 +1179,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedStaffAttendanceHistoryRoute,
   AuthenticatedStaffPayrollRoute: AuthenticatedStaffPayrollRoute,
   AuthenticatedSuperadminDashboardRoute: AuthenticatedSuperadminDashboardRoute,
+  AuthenticatedCommsIndexRoute: AuthenticatedCommsIndexRoute,
   AuthenticatedExpensesIndexRoute: AuthenticatedExpensesIndexRoute,
   AuthenticatedFeedbackIndexRoute: AuthenticatedFeedbackIndexRoute,
   AuthenticatedGuestsIndexRoute: AuthenticatedGuestsIndexRoute,
