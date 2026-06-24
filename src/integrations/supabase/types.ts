@@ -1467,6 +1467,7 @@ export type Database = {
       }
       message_templates: {
         Row: {
+          aisensy_campaign_name: string | null
           body: string
           channel: string
           created_at: string
@@ -1475,9 +1476,11 @@ export type Database = {
           name: string
           property_id: string
           subject: string | null
+          trigger_event: string | null
           updated_at: string
         }
         Insert: {
+          aisensy_campaign_name?: string | null
           body: string
           channel?: string
           created_at?: string
@@ -1486,9 +1489,11 @@ export type Database = {
           name: string
           property_id: string
           subject?: string | null
+          trigger_event?: string | null
           updated_at?: string
         }
         Update: {
+          aisensy_campaign_name?: string | null
           body?: string
           channel?: string
           created_at?: string
@@ -1497,6 +1502,7 @@ export type Database = {
           name?: string
           property_id?: string
           subject?: string | null
+          trigger_event?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1915,6 +1921,7 @@ export type Database = {
       properties: {
         Row: {
           address: string | null
+          aisensy_api_key: string | null
           checkin_time: string | null
           checkout_time: string | null
           city: string | null
@@ -1935,9 +1942,12 @@ export type Database = {
           pincode: string | null
           state: string | null
           updated_at: string
+          wa_number: string | null
+          wifi_password: string | null
         }
         Insert: {
           address?: string | null
+          aisensy_api_key?: string | null
           checkin_time?: string | null
           checkout_time?: string | null
           city?: string | null
@@ -1958,9 +1968,12 @@ export type Database = {
           pincode?: string | null
           state?: string | null
           updated_at?: string
+          wa_number?: string | null
+          wifi_password?: string | null
         }
         Update: {
           address?: string | null
+          aisensy_api_key?: string | null
           checkin_time?: string | null
           checkout_time?: string | null
           city?: string | null
@@ -1981,6 +1994,8 @@ export type Database = {
           pincode?: string | null
           state?: string | null
           updated_at?: string
+          wa_number?: string | null
+          wifi_password?: string | null
         }
         Relationships: []
       }
@@ -2537,6 +2552,97 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "vendors_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_messages: {
+        Row: {
+          booking_id: string | null
+          campaign_name: string | null
+          category: string | null
+          content: string | null
+          created_at: string
+          created_by: string | null
+          delivered_at: string | null
+          direction: string
+          error_message: string | null
+          external_id: string | null
+          guest_id: string | null
+          id: string
+          media_url: string | null
+          property_id: string
+          read_at: string | null
+          sent_at: string | null
+          status: string
+          template_name: string | null
+          updated_at: string
+          wa_number: string
+        }
+        Insert: {
+          booking_id?: string | null
+          campaign_name?: string | null
+          category?: string | null
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          direction: string
+          error_message?: string | null
+          external_id?: string | null
+          guest_id?: string | null
+          id?: string
+          media_url?: string | null
+          property_id: string
+          read_at?: string | null
+          sent_at?: string | null
+          status?: string
+          template_name?: string | null
+          updated_at?: string
+          wa_number: string
+        }
+        Update: {
+          booking_id?: string | null
+          campaign_name?: string | null
+          category?: string | null
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          direction?: string
+          error_message?: string | null
+          external_id?: string | null
+          guest_id?: string | null
+          id?: string
+          media_url?: string | null
+          property_id?: string
+          read_at?: string | null
+          sent_at?: string | null
+          status?: string
+          template_name?: string | null
+          updated_at?: string
+          wa_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
