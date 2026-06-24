@@ -42,6 +42,7 @@ import {
   MessageSquare,
   MessagesSquare,
   ShoppingCart,
+  Cloud,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -164,6 +165,13 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/masters/expense-categories", label: "Expense Categories", icon: Tags },
       { to: "/masters/message-templates", label: "Message Templates", icon: MessageSquare },
       { to: "/masters/sundry-items", label: "Sundry Items", icon: ShoppingCart },
+      { to: "/masters/channels", label: "OTA Channels", icon: Cloud },
+    ],
+  },
+  {
+    label: "Channel Manager",
+    items: [
+      { to: "/channels", label: "Distribution", icon: Cloud },
     ],
   },
   {
