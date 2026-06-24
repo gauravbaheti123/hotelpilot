@@ -7,14 +7,12 @@ import {
   LayoutDashboard,
   Building2,
   Users,
-  Settings,
   LogOut,
   ShieldCheck,
   BedDouble,
   IndianRupee,
   UtensilsCrossed,
   Printer,
-  Database,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
