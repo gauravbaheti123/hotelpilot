@@ -753,6 +753,100 @@ export type Database = {
           },
         ]
       }
+      guest_feedback: {
+        Row: {
+          booking_id: string | null
+          cleanliness_rating: number | null
+          comments: string | null
+          created_at: string
+          created_by: string | null
+          feedback_date: string
+          food_rating: number | null
+          guest_id: string | null
+          guest_name: string | null
+          id: string
+          overall_rating: number
+          property_id: string
+          responded_at: string | null
+          responded_by: string | null
+          response_text: string | null
+          service_rating: number | null
+          source: string
+          status: string
+          updated_at: string
+          value_rating: number | null
+          would_recommend: boolean | null
+        }
+        Insert: {
+          booking_id?: string | null
+          cleanliness_rating?: number | null
+          comments?: string | null
+          created_at?: string
+          created_by?: string | null
+          feedback_date?: string
+          food_rating?: number | null
+          guest_id?: string | null
+          guest_name?: string | null
+          id?: string
+          overall_rating: number
+          property_id: string
+          responded_at?: string | null
+          responded_by?: string | null
+          response_text?: string | null
+          service_rating?: number | null
+          source?: string
+          status?: string
+          updated_at?: string
+          value_rating?: number | null
+          would_recommend?: boolean | null
+        }
+        Update: {
+          booking_id?: string | null
+          cleanliness_rating?: number | null
+          comments?: string | null
+          created_at?: string
+          created_by?: string | null
+          feedback_date?: string
+          food_rating?: number | null
+          guest_id?: string | null
+          guest_name?: string | null
+          id?: string
+          overall_rating?: number
+          property_id?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          response_text?: string | null
+          service_rating?: number | null
+          source?: string
+          status?: string
+          updated_at?: string
+          value_rating?: number | null
+          would_recommend?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_feedback_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_feedback_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_feedback_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guests: {
         Row: {
           address: string | null
