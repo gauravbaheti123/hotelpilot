@@ -26,6 +26,7 @@ export const Route = createFileRoute("/_authenticated/food/new")({
 interface MenuItem {
   id: string; name: string; price: number; gst_rate: number;
   kot_station: string; is_available: boolean; category_id: string | null;
+  kitchen_type?: string;
 }
 interface MenuCategory { id: string; name: string }
 interface InHouseRow {
@@ -41,6 +42,7 @@ interface CartLine {
   rate: number;
   gst_rate: number;
   kot_station: string;
+  kitchen_type: string;
   notes?: string;
 }
 
@@ -65,7 +67,7 @@ function NewKotPage() {
     if (!propertyId) return;
     (async () => {
       const [mi, mc, ih] = await Promise.all([
-        supabase.from("menu_items").select("id,name,price,gst_rate,kot_station,is_available,category_id")
+        supabase.from("menu_items").select("id,name,price,gst_rate,kot_station,is_available,category_id,kitchen_type")
           .eq("property_id", propertyId).eq("is_available", true).order("name"),
         supabase.from("menu_categories").select("id,name").eq("property_id", propertyId).order("name"),
         supabase.from("booking_rooms")
@@ -97,6 +99,7 @@ function NewKotPage() {
         menu_item_id: it.id, item_name: it.name, qty: 1,
         rate: Number(it.price), gst_rate: Number(it.gst_rate ?? 5),
         kot_station: it.kot_station || "kitchen",
+        kitchen_type: it.kitchen_type ?? "hotel",
       }];
     });
   }
@@ -150,6 +153,51 @@ function NewKotPage() {
       }));
       const { error: e2 } = await supabase.from("kot_items").insert(lines as any);
       if (e2) throw e2;
+
+      // === Dual KOT: auto-generate restaurant copy if any restaurant items present ===
+      const restaurantItems = cart.filter((c) => c.kitchen_type === "restaurant");
+      if (restaurantItems.length > 0) {
+        const { data: parent } = await supabase
+          .from("kot_orders")
+          .select("kot_number,total_amount,gst_amount,sub_total")
+          .eq("id", kot!.id).single();
+        const rTotals = restaurantItems.reduce((a, c) => {
+          const amt = c.qty * c.rate;
+          const gst = (amt * c.gst_rate) / 100;
+          return { sub: a.sub + amt, gst: a.gst + gst, total: a.total + amt + gst };
+        }, { sub: 0, gst: 0, total: 0 });
+        const roomNo = kotType === "room" ? (br?.rooms?.room_number ?? "") : "";
+        const gName = kotType === "room" ? (br?.bookings?.guests?.name ?? "") : "";
+        const headerNote = `HOTEL ORDER | Room ${roomNo} | ${gName}`;
+        const copyPayload: any = {
+          ...insertPayload,
+          kot_copy: "restaurant_copy",
+          parent_kot_id: kot!.id,
+          kot_number: parent?.kot_number ?? null,
+          sub_total: rTotals.sub,
+          gst_amount: rTotals.gst,
+          total_amount: rTotals.total,
+          notes: [headerNote, notes].filter(Boolean).join(" — "),
+        };
+        const { data: copyKot, error: cErr } = await supabase
+          .from("kot_orders").insert(copyPayload).select("id").single();
+        if (!cErr && copyKot) {
+          const copyLines = restaurantItems.map((c) => ({
+            kot_id: copyKot.id,
+            menu_item_id: c.menu_item_id,
+            item_name: c.item_name,
+            qty: c.qty,
+            rate: c.rate,
+            amount: c.qty * c.rate,
+            gst_rate: c.gst_rate,
+            kot_station: c.kot_station,
+            notes: c.notes ?? null,
+          }));
+          await supabase.from("kot_items").insert(copyLines as any);
+          toast.success(`Restaurant copy routed (${restaurantItems.length} items)`);
+        }
+      }
+
       toast.success(printNow ? "KOT printed" : "KOT saved");
       // Notify guest via WhatsApp for room orders (best-effort)
       if (kotType === "room" && bookingId) {
