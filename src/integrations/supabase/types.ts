@@ -367,6 +367,74 @@ export type Database = {
           },
         ]
       }
+      day_closures: {
+        Row: {
+          bank_total: number
+          business_date: string
+          card_total: number
+          cash_total: number
+          closed_at: string
+          closed_by: string | null
+          created_at: string
+          gst_amount: number
+          id: string
+          notes: string | null
+          other_total: number
+          property_id: string
+          rooms_available: number
+          rooms_occupied: number
+          sub_total: number
+          total_amount: number
+          upi_total: number
+        }
+        Insert: {
+          bank_total?: number
+          business_date: string
+          card_total?: number
+          cash_total?: number
+          closed_at?: string
+          closed_by?: string | null
+          created_at?: string
+          gst_amount?: number
+          id?: string
+          notes?: string | null
+          other_total?: number
+          property_id: string
+          rooms_available?: number
+          rooms_occupied?: number
+          sub_total?: number
+          total_amount?: number
+          upi_total?: number
+        }
+        Update: {
+          bank_total?: number
+          business_date?: string
+          card_total?: number
+          cash_total?: number
+          closed_at?: string
+          closed_by?: string | null
+          created_at?: string
+          gst_amount?: number
+          id?: string
+          notes?: string | null
+          other_total?: number
+          property_id?: string
+          rooms_available?: number
+          rooms_occupied?: number
+          sub_total?: number
+          total_amount?: number
+          upi_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "day_closures_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       folio_charges: {
         Row: {
           amount: number

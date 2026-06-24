@@ -22,6 +22,9 @@ import {
   FileText,
   PartyPopper,
   CalendarRange,
+  BarChart3,
+  Moon,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -66,6 +69,15 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Billing",
     items: [
       { to: "/billing/invoices", label: "Invoices", icon: Receipt },
+    ],
+  },
+  {
+    label: "Reports",
+    items: [
+      { to: "/reports/daily", label: "Daily Report", icon: BarChart3 },
+      { to: "/reports/sales", label: "Sales", icon: FileSpreadsheet },
+      { to: "/reports/gst", label: "GST", icon: FileText },
+      { to: "/reports/night-audit", label: "Night Audit", icon: Moon },
     ],
   },
   {
