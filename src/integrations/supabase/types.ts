@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance: {
+        Row: {
+          attendance_date: string
+          check_in: string | null
+          check_out: string | null
+          created_at: string
+          hours_worked: number
+          id: string
+          marked_by: string | null
+          notes: string | null
+          property_id: string
+          staff_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attendance_date?: string
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          hours_worked?: number
+          id?: string
+          marked_by?: string | null
+          notes?: string | null
+          property_id: string
+          staff_id: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          attendance_date?: string
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          hours_worked?: number
+          id?: string
+          marked_by?: string | null
+          notes?: string | null
+          property_id?: string
+          staff_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       banquet_bookings: {
         Row: {
           advance_amount: number
@@ -1273,6 +1333,87 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_runs: {
+        Row: {
+          absent_days: number
+          advance: number
+          bonus: number
+          created_at: string
+          created_by: string | null
+          deductions: number
+          gross_salary: number
+          id: string
+          net_pay: number
+          notes: string | null
+          paid_at: string | null
+          paid_via: string | null
+          period_month: string
+          present_days: number
+          property_id: string
+          staff_id: string
+          status: string
+          total_days: number
+          updated_at: string
+        }
+        Insert: {
+          absent_days?: number
+          advance?: number
+          bonus?: number
+          created_at?: string
+          created_by?: string | null
+          deductions?: number
+          gross_salary?: number
+          id?: string
+          net_pay?: number
+          notes?: string | null
+          paid_at?: string | null
+          paid_via?: string | null
+          period_month: string
+          present_days?: number
+          property_id: string
+          staff_id: string
+          status?: string
+          total_days?: number
+          updated_at?: string
+        }
+        Update: {
+          absent_days?: number
+          advance?: number
+          bonus?: number
+          created_at?: string
+          created_by?: string | null
+          deductions?: number
+          gross_salary?: number
+          id?: string
+          net_pay?: number
+          notes?: string | null
+          paid_at?: string | null
+          paid_via?: string | null
+          period_month?: string
+          present_days?: number
+          property_id?: string
+          staff_id?: string
+          status?: string
+          total_days?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_runs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_runs_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
             referencedColumns: ["id"]
           },
         ]
