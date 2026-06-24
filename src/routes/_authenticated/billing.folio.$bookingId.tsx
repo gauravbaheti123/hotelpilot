@@ -584,13 +584,33 @@ function FolioPage() {
 
           <div className="space-y-4">
             <Card>
-              <CardHeader><CardTitle className="text-base">Mode</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">Bill Type</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant={folio.gst_mode === "cash" ? "default" : "outline"} size="sm"
-                    disabled={!isOpen} onClick={() => toggleMode("cash")}>Cash bill</Button>
-                  <Button variant={folio.gst_mode === "gst" ? "default" : "outline"} size="sm"
-                    disabled={!isOpen} onClick={() => toggleMode("gst")}>GST invoice</Button>
+                <div className="grid grid-cols-2 gap-2 rounded-md border p-1 bg-muted/30">
+                  <button type="button" disabled={!isOpen} onClick={() => toggleMode("gst")}
+                    className={`flex flex-col items-start rounded px-3 py-2 text-left text-sm transition ${
+                      folio.gst_mode === "gst" ? "bg-primary text-primary-foreground shadow" : "hover:bg-background"
+                    }`}>
+                    <span className="flex items-center gap-2 font-semibold">
+                      <span className={`h-3 w-3 rounded-full border ${folio.gst_mode === "gst" ? "bg-primary-foreground border-primary-foreground" : "border-muted-foreground"}`} />
+                      GST Invoice
+                    </span>
+                    <span className={`text-[10px] mt-0.5 ${folio.gst_mode === "gst" ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                      Tax invoice · HSN · CGST+SGST
+                    </span>
+                  </button>
+                  <button type="button" disabled={!isOpen} onClick={() => toggleMode("cash")}
+                    className={`flex flex-col items-start rounded px-3 py-2 text-left text-sm transition ${
+                      folio.gst_mode === "cash" ? "bg-primary text-primary-foreground shadow" : "hover:bg-background"
+                    }`}>
+                    <span className="flex items-center gap-2 font-semibold">
+                      <span className={`h-3 w-3 rounded-full border ${folio.gst_mode === "cash" ? "bg-primary-foreground border-primary-foreground" : "border-muted-foreground"}`} />
+                      Cash Bill
+                    </span>
+                    <span className={`text-[10px] mt-0.5 ${folio.gst_mode === "cash" ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                      Receipt · taxes included
+                    </span>
+                  </button>
                 </div>
                 {folio.gst_mode === "gst" && (
                   <div className="space-y-2">
