@@ -520,30 +520,173 @@ function BookingDetailPage() {
 
         {/* SHIFT DIALOG */}
         <Dialog open={shiftOpen} onOpenChange={setShiftOpen}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Shift room</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Move to vacant room</Label>
-                <Select value={shiftToRoom} onValueChange={setShiftToRoom}>
-                  <SelectTrigger><SelectValue placeholder="Pick a room" /></SelectTrigger>
-                  <SelectContent>
-                    {rooms
-                      .filter((r) => r.status === "vacant" && !b.booking_rooms.some((br) => br.room_id === r.id))
-                      .map((r) => (
-                        <SelectItem key={r.id} value={r.id}>{r.room_number}</SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Shift room — Step {shiftStep} of 4</DialogTitle>
+            </DialogHeader>
+            {(() => {
+              const br = b.booking_rooms.find((x) => x.id === shiftBrId);
+              const target = rooms.find((r) => r.id === shiftToRoom);
+              const fromRate = Number(br?.rate ?? 0);
+              const newStdRate = Number(target?.room_categories?.base_rate ?? 0);
+              const newRate = br ? resolveNewRate(br, target) : 0;
+              return (
+                <div className="space-y-4">
+                  {/* Step 1: pick new room */}
+                  {shiftStep === 1 && (
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Move to vacant room *</Label>
+                        <Select value={shiftToRoom} onValueChange={setShiftToRoom}>
+                          <SelectTrigger><SelectValue placeholder="Pick a room" /></SelectTrigger>
+                          <SelectContent>
+                            {rooms
+                              .filter((r) => r.status === "vacant" && !b.booking_rooms.some((bx) => bx.room_id === r.id))
+                              .map((r) => (
+                                <SelectItem key={r.id} value={r.id}>
+                                  {r.room_number}{r.room_categories?.name ? ` · ${r.room_categories.name}` : ""}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Current: Room {br?.rooms?.room_number ?? "—"} ({br?.room_categories?.name ?? "—"}) @ ₹{fromRate}/night
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 2: tariff decision */}
+                  {shiftStep === 2 && br && target && (
+                    <div className="space-y-3">
+                      <div className="text-xs font-medium text-muted-foreground">Tariff for new room</div>
+                      <TariffOption
+                        active={tariffChoice === "keep"} onClick={() => setTariffChoice("keep")}
+                        title="Keep existing rate"
+                        line1={`₹${fromRate}/night`}
+                        line2="Guest continues paying the original rate" />
+                      <TariffOption
+                        active={tariffChoice === "new_standard"} onClick={() => setTariffChoice("new_standard")}
+                        title="Apply new room's standard rate"
+                        line1={newStdRate > 0 ? `₹${newStdRate}/night` : "No base rate set on category"}
+                        line2={`Based on ${target.room_categories?.name ?? "new"} category tariff`}
+                        disabled={newStdRate <= 0} />
+                      <div
+                        className={`rounded-md border p-3 cursor-pointer ${tariffChoice === "custom" ? "border-primary bg-primary/5" : "hover:bg-muted/40"}`}
+                        onClick={() => setTariffChoice("custom")}>
+                        <div className="flex items-center gap-2 font-medium text-sm">
+                          <span className={`h-3 w-3 rounded-full border ${tariffChoice === "custom" ? "bg-primary border-primary" : "border-muted-foreground"}`} />
+                          Custom rate
+                          {mgrApproved && tariffChoice === "custom" && (
+                            <Badge variant="outline" className="ml-2 text-[10px] border-emerald-400 text-emerald-700">
+                              <Check className="h-3 w-3 mr-0.5" /> Authorised
+                            </Badge>
+                          )}
+                        </div>
+                        {tariffChoice === "custom" && (
+                          <div className="mt-2 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">₹</span>
+                              <Input type="number" value={customRate}
+                                onChange={(e) => setCustomRate(e.target.value)}
+                                placeholder="0" className="h-8 w-32" />
+                              <span className="text-xs text-muted-foreground">/night</span>
+                            </div>
+                            {!mgrApproved && (
+                              <div className="rounded border border-amber-300 bg-amber-50 p-2 space-y-2">
+                                <div className="flex items-center gap-1 text-xs text-amber-800">
+                                  <ShieldAlert className="h-3.5 w-3.5" /> Manager authorisation required
+                                </div>
+                                <Input type="email" placeholder="Manager email" value={mgrEmail}
+                                  onChange={(e) => setMgrEmail(e.target.value)} className="h-8" />
+                                <Input type="password" placeholder="Manager password" value={mgrPass}
+                                  onChange={(e) => setMgrPass(e.target.value)} className="h-8" />
+                                <Button size="sm" onClick={verifyMgrForCustom} disabled={mgrBusy}>
+                                  {mgrBusy ? "Verifying…" : "Authorise custom rate"}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 3: food orders transfer */}
+                  {shiftStep === 3 && (
+                    <div className="space-y-3">
+                      {pendingKots.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No pending food orders.</p>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <input id="ktr" type="checkbox" checked={transferKots}
+                              onChange={(e) => setTransferKots(e.target.checked)} />
+                            <Label htmlFor="ktr" className="text-sm">
+                              Transfer {pendingKots.length} pending order(s) to new room
+                            </Label>
+                          </div>
+                          <div className="space-y-1 text-sm">
+                            {pendingKots.map((k) => (
+                              <div key={k.id} className="flex justify-between border-b last:border-0 pb-1">
+                                <span>{k.kot_number} <span className="uppercase text-xs text-muted-foreground ml-1">({k.status})</span></span>
+                                <span>₹{Number(k.total_amount || 0).toFixed(2)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Step 4: confirm */}
+                  {shiftStep === 4 && br && target && (
+                    <div className="space-y-3 text-sm">
+                      <div className="rounded-md border p-3 bg-muted/30 space-y-1">
+                        <div><span className="text-muted-foreground">From:</span> Room {br.rooms?.room_number} ({br.room_categories?.name}) @ ₹{fromRate}/night</div>
+                        <div><span className="text-muted-foreground">To:</span> Room {target.room_number} ({target.room_categories?.name ?? "—"}) @ ₹{newRate}/night
+                          {tariffChoice === "custom" && <Badge variant="outline" className="ml-2 text-[10px] border-amber-400 text-amber-700">Custom</Badge>}
+                          {tariffChoice === "keep" && <Badge variant="outline" className="ml-2 text-[10px]">Same rate</Badge>}
+                          {tariffChoice === "new_standard" && <Badge variant="outline" className="ml-2 text-[10px]">New standard</Badge>}
+                        </div>
+                        <div><span className="text-muted-foreground">Pending orders transferred:</span> {transferKots ? pendingKots.length : 0}</div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Reason *</Label>
+                        <Textarea rows={2} value={shiftReason}
+                          onChange={(e) => setShiftReason(e.target.value)}
+                          placeholder="e.g. Plumbing issue, guest upgrade request" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            <DialogFooter className="flex justify-between gap-2">
+              <Button variant="outline" onClick={() => setShiftOpen(false)} disabled={shiftBusy}>Cancel</Button>
+              <div className="flex gap-2">
+                {shiftStep > 1 && (
+                  <Button variant="outline" onClick={() => setShiftStep((s) => (s - 1) as 1 | 2 | 3 | 4)} disabled={shiftBusy}>Back</Button>
+                )}
+                {shiftStep < 4 && (
+                  <Button
+                    onClick={async () => {
+                      if (shiftStep === 1 && !shiftToRoom) return toast.error("Pick a target room");
+                      if (shiftStep === 2) {
+                        if (tariffChoice === "custom" && (!customRate || Number(customRate) <= 0)) return toast.error("Enter a custom rate");
+                        if (tariffChoice === "custom" && !mgrApproved) return toast.error("Manager must authorise the custom rate");
+                      }
+                      if (shiftStep === 2) await loadPendingKotsFor(shiftBrId);
+                      setShiftStep((s) => (s + 1) as 1 | 2 | 3 | 4);
+                    }}
+                  >Next</Button>
+                )}
+                {shiftStep === 4 && (
+                  <Button onClick={doShift} disabled={shiftBusy || !shiftReason.trim()}>
+                    {shiftBusy ? "Shifting…" : "Confirm Shift"}
+                  </Button>
+                )}
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Reason</Label>
-                <Textarea rows={2} value={shiftReason} onChange={(e) => setShiftReason(e.target.value)} />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShiftOpen(false)}>Cancel</Button>
-              <Button onClick={doShift}>Confirm shift</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
