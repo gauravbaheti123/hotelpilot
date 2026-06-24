@@ -58,11 +58,15 @@ function TasksPage() {
     r.task_type.includes(q.toLowerCase())), [rows, q]);
 
   async function setStatusOf(id: string, next: TaskStatus) {
-    const patch: Record<string, unknown> = { status: next };
+    const patch: {
+      status: TaskStatus;
+      completed_at?: string | null;
+      completed_by?: string | null;
+    } = { status: next };
     if (next === "done") {
       patch.completed_at = new Date().toISOString();
       const { data } = await supabase.auth.getUser();
-      patch.completed_by = data.user?.id;
+      patch.completed_by = data.user?.id ?? null;
     }
     const { error } = await supabase.from("housekeeping_tasks").update(patch).eq("id", id);
     if (error) toast.error(error.message); else { toast.success("Updated"); load(); }
