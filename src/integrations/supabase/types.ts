@@ -353,12 +353,15 @@ export type Database = {
           created_by: string | null
           guest_id: string | null
           id: string
+          is_wiped: boolean
           notes: string | null
           property_id: string
           source: string | null
           status: Database["public"]["Enums"]["booking_status"]
           total_amount: number
           updated_at: string
+          wipe_log_id: string | null
+          wiped_at: string | null
         }
         Insert: {
           adults?: number
@@ -378,12 +381,15 @@ export type Database = {
           created_by?: string | null
           guest_id?: string | null
           id?: string
+          is_wiped?: boolean
           notes?: string | null
           property_id: string
           source?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
           total_amount?: number
           updated_at?: string
+          wipe_log_id?: string | null
+          wiped_at?: string | null
         }
         Update: {
           adults?: number
@@ -403,12 +409,15 @@ export type Database = {
           created_by?: string | null
           guest_id?: string | null
           id?: string
+          is_wiped?: boolean
           notes?: string | null
           property_id?: string
           source?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
           total_amount?: number
           updated_at?: string
+          wipe_log_id?: string | null
+          wiped_at?: string | null
         }
         Relationships: [
           {
@@ -423,6 +432,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_wipe_log_id_fkey"
+            columns: ["wipe_log_id"]
+            isOneToOne: false
+            referencedRelation: "wipe_logs"
             referencedColumns: ["id"]
           },
         ]
@@ -637,12 +653,15 @@ export type Database = {
           description: string | null
           expense_date: string
           id: string
+          is_wiped: boolean
           paid_to_staff_id: string | null
           payment_mode: string
           property_id: string
           reference: string | null
           updated_at: string
           vendor_id: string | null
+          wipe_log_id: string | null
+          wiped_at: string | null
         }
         Insert: {
           amount: number
@@ -652,12 +671,15 @@ export type Database = {
           description?: string | null
           expense_date?: string
           id?: string
+          is_wiped?: boolean
           paid_to_staff_id?: string | null
           payment_mode?: string
           property_id: string
           reference?: string | null
           updated_at?: string
           vendor_id?: string | null
+          wipe_log_id?: string | null
+          wiped_at?: string | null
         }
         Update: {
           amount?: number
@@ -667,12 +689,15 @@ export type Database = {
           description?: string | null
           expense_date?: string
           id?: string
+          is_wiped?: boolean
           paid_to_staff_id?: string | null
           payment_mode?: string
           property_id?: string
           reference?: string | null
           updated_at?: string
           vendor_id?: string | null
+          wipe_log_id?: string | null
+          wiped_at?: string | null
         }
         Relationships: [
           {
@@ -703,6 +728,13 @@ export type Database = {
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "expenses_wipe_log_id_fkey"
+            columns: ["wipe_log_id"]
+            isOneToOne: false
+            referencedRelation: "wipe_logs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       folio_charges: {
@@ -717,10 +749,13 @@ export type Database = {
           gst_amount: number
           gst_rate: number
           id: string
+          is_wiped: boolean
           qty: number
           rate: number
           source_id: string | null
           source_table: string | null
+          wipe_log_id: string | null
+          wiped_at: string | null
         }
         Insert: {
           amount?: number
@@ -733,10 +768,13 @@ export type Database = {
           gst_amount?: number
           gst_rate?: number
           id?: string
+          is_wiped?: boolean
           qty?: number
           rate?: number
           source_id?: string | null
           source_table?: string | null
+          wipe_log_id?: string | null
+          wiped_at?: string | null
         }
         Update: {
           amount?: number
@@ -749,10 +787,13 @@ export type Database = {
           gst_amount?: number
           gst_rate?: number
           id?: string
+          is_wiped?: boolean
           qty?: number
           rate?: number
           source_id?: string | null
           source_table?: string | null
+          wipe_log_id?: string | null
+          wiped_at?: string | null
         }
         Relationships: [
           {
@@ -760,6 +801,13 @@ export type Database = {
             columns: ["folio_id"]
             isOneToOne: false
             referencedRelation: "folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folio_charges_wipe_log_id_fkey"
+            columns: ["wipe_log_id"]
+            isOneToOne: false
+            referencedRelation: "wipe_logs"
             referencedColumns: ["id"]
           },
         ]
@@ -960,6 +1008,7 @@ export type Database = {
           id_proof_number: string | null
           id_proof_type: string | null
           is_blacklisted: boolean
+          is_wiped: boolean
           mobile: string | null
           name: string
           nationality: string | null
@@ -970,6 +1019,8 @@ export type Database = {
           state: string | null
           tags: string[]
           updated_at: string
+          wipe_log_id: string | null
+          wiped_at: string | null
         }
         Insert: {
           address?: string | null
@@ -985,6 +1036,7 @@ export type Database = {
           id_proof_number?: string | null
           id_proof_type?: string | null
           is_blacklisted?: boolean
+          is_wiped?: boolean
           mobile?: string | null
           name: string
           nationality?: string | null
@@ -995,6 +1047,8 @@ export type Database = {
           state?: string | null
           tags?: string[]
           updated_at?: string
+          wipe_log_id?: string | null
+          wiped_at?: string | null
         }
         Update: {
           address?: string | null
@@ -1010,6 +1064,7 @@ export type Database = {
           id_proof_number?: string | null
           id_proof_type?: string | null
           is_blacklisted?: boolean
+          is_wiped?: boolean
           mobile?: string | null
           name?: string
           nationality?: string | null
@@ -1020,6 +1075,8 @@ export type Database = {
           state?: string | null
           tags?: string[]
           updated_at?: string
+          wipe_log_id?: string | null
+          wiped_at?: string | null
         }
         Relationships: [
           {
@@ -1027,6 +1084,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guests_wipe_log_id_fkey"
+            columns: ["wipe_log_id"]
+            isOneToOne: false
+            referencedRelation: "wipe_logs"
             referencedColumns: ["id"]
           },
         ]
@@ -1214,6 +1278,7 @@ export type Database = {
           gst_rate: number
           id: string
           is_void: boolean
+          is_wiped: boolean
           item_name: string
           kot_id: string
           kot_station: string
@@ -1221,6 +1286,8 @@ export type Database = {
           notes: string | null
           qty: number
           rate: number
+          wipe_log_id: string | null
+          wiped_at: string | null
         }
         Insert: {
           amount?: number
@@ -1228,6 +1295,7 @@ export type Database = {
           gst_rate?: number
           id?: string
           is_void?: boolean
+          is_wiped?: boolean
           item_name: string
           kot_id: string
           kot_station?: string
@@ -1235,6 +1303,8 @@ export type Database = {
           notes?: string | null
           qty?: number
           rate?: number
+          wipe_log_id?: string | null
+          wiped_at?: string | null
         }
         Update: {
           amount?: number
@@ -1242,6 +1312,7 @@ export type Database = {
           gst_rate?: number
           id?: string
           is_void?: boolean
+          is_wiped?: boolean
           item_name?: string
           kot_id?: string
           kot_station?: string
@@ -1249,6 +1320,8 @@ export type Database = {
           notes?: string | null
           qty?: number
           rate?: number
+          wipe_log_id?: string | null
+          wiped_at?: string | null
         }
         Relationships: [
           {
@@ -1265,6 +1338,13 @@ export type Database = {
             referencedRelation: "menu_items"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "kot_items_wipe_log_id_fkey"
+            columns: ["wipe_log_id"]
+            isOneToOne: false
+            referencedRelation: "wipe_logs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       kot_orders: {
@@ -1276,6 +1356,7 @@ export type Database = {
           gst_amount: number
           guest_name: string | null
           id: string
+          is_wiped: boolean
           kot_number: string
           kot_type: string
           notes: string | null
@@ -1290,6 +1371,8 @@ export type Database = {
           updated_at: string
           void_reason: string | null
           voided_at: string | null
+          wipe_log_id: string | null
+          wiped_at: string | null
         }
         Insert: {
           billed_at?: string | null
@@ -1299,6 +1382,7 @@ export type Database = {
           gst_amount?: number
           guest_name?: string | null
           id?: string
+          is_wiped?: boolean
           kot_number?: string
           kot_type?: string
           notes?: string | null
@@ -1313,6 +1397,8 @@ export type Database = {
           updated_at?: string
           void_reason?: string | null
           voided_at?: string | null
+          wipe_log_id?: string | null
+          wiped_at?: string | null
         }
         Update: {
           billed_at?: string | null
@@ -1322,6 +1408,7 @@ export type Database = {
           gst_amount?: number
           guest_name?: string | null
           id?: string
+          is_wiped?: boolean
           kot_number?: string
           kot_type?: string
           notes?: string | null
@@ -1336,6 +1423,8 @@ export type Database = {
           updated_at?: string
           void_reason?: string | null
           voided_at?: string | null
+          wipe_log_id?: string | null
+          wiped_at?: string | null
         }
         Relationships: [
           {
@@ -1357,6 +1446,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kot_orders_wipe_log_id_fkey"
+            columns: ["wipe_log_id"]
+            isOneToOne: false
+            referencedRelation: "wipe_logs"
             referencedColumns: ["id"]
           },
         ]
@@ -1698,11 +1794,14 @@ export type Database = {
           created_by: string | null
           folio_id: string
           id: string
+          is_wiped: boolean
           mode: string
           notes: string | null
           paid_at: string
           property_id: string
           reference_no: string | null
+          wipe_log_id: string | null
+          wiped_at: string | null
         }
         Insert: {
           amount: number
@@ -1711,11 +1810,14 @@ export type Database = {
           created_by?: string | null
           folio_id: string
           id?: string
+          is_wiped?: boolean
           mode: string
           notes?: string | null
           paid_at?: string
           property_id: string
           reference_no?: string | null
+          wipe_log_id?: string | null
+          wiped_at?: string | null
         }
         Update: {
           amount?: number
@@ -1724,11 +1826,14 @@ export type Database = {
           created_by?: string | null
           folio_id?: string
           id?: string
+          is_wiped?: boolean
           mode?: string
           notes?: string | null
           paid_at?: string
           property_id?: string
           reference_no?: string | null
+          wipe_log_id?: string | null
+          wiped_at?: string | null
         }
         Relationships: [
           {
@@ -1750,6 +1855,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_wipe_log_id_fkey"
+            columns: ["wipe_log_id"]
+            isOneToOne: false
+            referencedRelation: "wipe_logs"
             referencedColumns: ["id"]
           },
         ]
@@ -2650,6 +2762,97 @@ export type Database = {
           },
         ]
       }
+      wipe_logs: {
+        Row: {
+          created_at: string
+          date_from: string
+          date_to: string
+          id: string
+          initiated_by: string | null
+          is_restored: boolean
+          percentage: number
+          property_id: string | null
+          record_count: number
+          restored_at: string | null
+          restored_by: string | null
+          tables_selected: string[]
+          wiped_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_from: string
+          date_to: string
+          id?: string
+          initiated_by?: string | null
+          is_restored?: boolean
+          percentage?: number
+          property_id?: string | null
+          record_count?: number
+          restored_at?: string | null
+          restored_by?: string | null
+          tables_selected?: string[]
+          wiped_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_from?: string
+          date_to?: string
+          id?: string
+          initiated_by?: string | null
+          is_restored?: boolean
+          percentage?: number
+          property_id?: string | null
+          record_count?: number
+          restored_at?: string | null
+          restored_by?: string | null
+          tables_selected?: string[]
+          wiped_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wipe_logs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wiped_data_archive: {
+        Row: {
+          id: string
+          original_data: Json
+          record_id: string
+          table_name: string
+          wipe_log_id: string
+          wiped_at: string
+        }
+        Insert: {
+          id?: string
+          original_data: Json
+          record_id: string
+          table_name: string
+          wipe_log_id: string
+          wiped_at?: string
+        }
+        Update: {
+          id?: string
+          original_data?: Json
+          record_id?: string
+          table_name?: string
+          wipe_log_id?: string
+          wiped_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wiped_data_archive_wipe_log_id_fkey"
+            columns: ["wipe_log_id"]
+            isOneToOne: false
+            referencedRelation: "wipe_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -2669,6 +2872,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_owner_or_super: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role:
