@@ -87,7 +87,7 @@ export async function fetchOccupancy(propertyId: string, date: string): Promise<
       .eq("bookings.property_id", propertyId)
       .lte("bookings.check_in", date)
       .gt("bookings.check_out", date)
-      .in("bookings.status", ["checked_in", "reserved", "confirmed"]),
+      .in("bookings.status", ["checked_in", "reserved"]),
   ]);
   const occupied = br?.length ?? 0;
   const total = roomsTotal ?? 0;
