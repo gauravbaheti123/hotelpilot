@@ -14,6 +14,170 @@ export type Database = {
   }
   public: {
     Tables: {
+      banquet_bookings: {
+        Row: {
+          advance_amount: number
+          balance_amount: number
+          banquet_number: string
+          cancelled_at: string | null
+          cancelled_reason: string | null
+          created_at: string
+          created_by: string | null
+          discount_amount: number
+          end_time: string
+          event_date: string
+          extra_charge: number
+          fb_charge: number
+          function_type: string
+          guest_id: string | null
+          hall_charge: number
+          hall_id: string
+          id: string
+          notes: string | null
+          package_rate: number
+          pax: number
+          property_id: string
+          start_time: string
+          status: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          advance_amount?: number
+          balance_amount?: number
+          banquet_number?: string
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number
+          end_time: string
+          event_date: string
+          extra_charge?: number
+          fb_charge?: number
+          function_type?: string
+          guest_id?: string | null
+          hall_charge?: number
+          hall_id: string
+          id?: string
+          notes?: string | null
+          package_rate?: number
+          pax?: number
+          property_id: string
+          start_time: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          advance_amount?: number
+          balance_amount?: number
+          banquet_number?: string
+          cancelled_at?: string | null
+          cancelled_reason?: string | null
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number
+          end_time?: string
+          event_date?: string
+          extra_charge?: number
+          fb_charge?: number
+          function_type?: string
+          guest_id?: string | null
+          hall_charge?: number
+          hall_id?: string
+          id?: string
+          notes?: string | null
+          package_rate?: number
+          pax?: number
+          property_id?: string
+          start_time?: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banquet_bookings_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banquet_bookings_hall_id_fkey"
+            columns: ["hall_id"]
+            isOneToOne: false
+            referencedRelation: "halls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banquet_bookings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      banquet_bulk_rooms: {
+        Row: {
+          banquet_id: string
+          category_id: string | null
+          check_in: string
+          check_out: string
+          created_at: string
+          id: string
+          nights: number
+          rate: number
+          room_id: string | null
+        }
+        Insert: {
+          banquet_id: string
+          category_id?: string | null
+          check_in: string
+          check_out: string
+          created_at?: string
+          id?: string
+          nights?: number
+          rate?: number
+          room_id?: string | null
+        }
+        Update: {
+          banquet_id?: string
+          category_id?: string | null
+          check_in?: string
+          check_out?: string
+          created_at?: string
+          id?: string
+          nights?: number
+          rate?: number
+          room_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banquet_bulk_rooms_banquet_id_fkey"
+            columns: ["banquet_id"]
+            isOneToOne: false
+            referencedRelation: "banquet_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banquet_bulk_rooms_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "room_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banquet_bulk_rooms_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_rooms: {
         Row: {
           actual_check_in: string | null
@@ -425,6 +589,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "guests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      halls: {
+        Row: {
+          capacity: number
+          created_at: string
+          day_rate: number
+          hourly_rate: number
+          id: string
+          is_active: boolean
+          location: string | null
+          name: string
+          notes: string | null
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          day_rate?: number
+          hourly_rate?: number
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          name: string
+          notes?: string | null
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          day_rate?: number
+          hourly_rate?: number
+          id?: string
+          is_active?: boolean
+          location?: string | null
+          name?: string
+          notes?: string | null
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "halls_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
