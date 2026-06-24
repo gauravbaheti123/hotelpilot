@@ -131,7 +131,7 @@ function RoomsMasterPage() {
 
   async function saveRoom() {
     if (!editingRoom?.room_number || !current) return toast.error("Room number required");
-    const payload = {
+    const payload: any = {
       property_id: current.id,
       room_number: editingRoom.room_number,
       floor: editingRoom.floor ?? null,
