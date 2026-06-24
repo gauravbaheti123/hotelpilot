@@ -23,6 +23,7 @@ import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenti
 import { Route as AuthenticatedFrontDeskNewRouteImport } from './routes/_authenticated/front-desk.new'
 import { Route as AuthenticatedFrontDeskInHouseRouteImport } from './routes/_authenticated/front-desk.in-house'
 import { Route as AuthenticatedFrontDeskBookingsRouteImport } from './routes/_authenticated/front-desk.bookings'
+import { Route as AuthenticatedFrontDeskBookingIdRouteImport } from './routes/_authenticated/front-desk.booking.$id'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -102,6 +103,12 @@ const AuthenticatedFrontDeskBookingsRoute =
     path: '/front-desk/bookings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFrontDeskBookingIdRoute =
+  AuthenticatedFrontDeskBookingIdRouteImport.update({
+    id: '/front-desk/booking/$id',
+    path: '/front-desk/booking/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -132,6 +140,7 @@ export interface FileRoutesByTo {
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -149,6 +158,7 @@ export interface FileRoutesById {
   '/_authenticated/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/_authenticated/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/_authenticated/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/_authenticated/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/masters/staff'
     | '/masters/tariff'
     | '/superadmin/dashboard'
+    | '/front-desk/booking/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/masters/staff'
     | '/masters/tariff'
     | '/superadmin/dashboard'
+    | '/front-desk/booking/$id'
   id:
     | '__root__'
     | '/'
@@ -197,6 +209,7 @@ export interface FileRouteTypes {
     | '/_authenticated/masters/staff'
     | '/_authenticated/masters/tariff'
     | '/_authenticated/superadmin/dashboard'
+    | '/_authenticated/front-desk/booking/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -305,6 +318,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrontDeskBookingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/front-desk/booking/$id': {
+      id: '/_authenticated/front-desk/booking/$id'
+      path: '/front-desk/booking/$id'
+      fullPath: '/front-desk/booking/$id'
+      preLoaderRoute: typeof AuthenticatedFrontDeskBookingIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -320,6 +340,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMastersStaffRoute: typeof AuthenticatedMastersStaffRoute
   AuthenticatedMastersTariffRoute: typeof AuthenticatedMastersTariffRoute
   AuthenticatedSuperadminDashboardRoute: typeof AuthenticatedSuperadminDashboardRoute
+  AuthenticatedFrontDeskBookingIdRoute: typeof AuthenticatedFrontDeskBookingIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -334,6 +355,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMastersStaffRoute: AuthenticatedMastersStaffRoute,
   AuthenticatedMastersTariffRoute: AuthenticatedMastersTariffRoute,
   AuthenticatedSuperadminDashboardRoute: AuthenticatedSuperadminDashboardRoute,
+  AuthenticatedFrontDeskBookingIdRoute: AuthenticatedFrontDeskBookingIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
