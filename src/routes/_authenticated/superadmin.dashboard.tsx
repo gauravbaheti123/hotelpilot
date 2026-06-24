@@ -66,17 +66,7 @@ function SuperadminPage() {
             <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Users</CardTitle></CardHeader>
             <CardContent><div className="text-2xl font-semibold">{counts.users}</div></CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Modules enabled</CardTitle></CardHeader>
-            <CardContent><div className="text-2xl font-semibold">Phase 1</div></CardContent>
-          </Card>
         </div>
-        <Card>
-          <CardHeader><CardTitle>Next up</CardTitle></CardHeader>
-          <CardContent className="text-sm text-muted-foreground space-y-2">
-            <p>Tenant provisioning, module toggles, subscription management and platform-wide analytics arrive with later phases.</p>
-          </CardContent>
-        </Card>
       </div>
     </AppShell>
   );
