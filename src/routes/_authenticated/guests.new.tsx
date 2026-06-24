@@ -42,10 +42,12 @@ function NewGuestPage() {
     }
     setBusy(true);
     try {
-      const payload = emptyToNull(parsed.data);
+      const { name, ...rest } = parsed.data;
+      const payload = emptyToNull(rest);
       const tags = tagsInput.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 10);
       const { data, error } = await supabase.from("guests").insert({
         property_id: propertyId,
+        name,
         ...payload,
         tags,
       }).select("id").single();
