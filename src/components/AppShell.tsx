@@ -43,6 +43,7 @@ import {
   MessagesSquare,
   ShoppingCart,
   Cloud,
+  Settings,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -119,6 +120,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/feedback/new", label: "New Feedback", icon: PlusCircle },
       { to: "/comms", label: "Communications", icon: MessagesSquare },
       { to: "/comms/new", label: "New Message", icon: MessageSquare },
+      { to: "/whatsapp", label: "WhatsApp Inbox", icon: MessageCircle },
     ],
   },
   {
@@ -172,6 +174,12 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Channel Manager",
     items: [
       { to: "/channels", label: "Distribution", icon: Cloud },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [
+      { to: "/settings/whatsapp", label: "WhatsApp / AiSensy", icon: Settings },
     ],
   },
   {
