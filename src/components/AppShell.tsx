@@ -32,6 +32,8 @@ import {
   Boxes,
   Truck,
   ArrowLeftRight,
+  Wallet,
+  Tags,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -112,6 +114,13 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: "Expenses",
+    items: [
+      { to: "/expenses", label: "Expenses", icon: Wallet },
+      { to: "/expenses/new", label: "New Expense", icon: PlusCircle },
+    ],
+  },
+  {
     label: "Banquet",
     items: [
       { to: "/banquet/bookings", label: "Events", icon: CalendarRange },
@@ -127,6 +136,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/masters/halls", label: "Halls", icon: PartyPopper },
       { to: "/masters/staff", label: "Staff", icon: Users },
       { to: "/masters/printers", label: "Printers", icon: Printer },
+      { to: "/masters/expense-categories", label: "Expense Categories", icon: Tags },
     ],
   },
   {
