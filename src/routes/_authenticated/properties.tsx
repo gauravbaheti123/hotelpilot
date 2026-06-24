@@ -46,7 +46,7 @@ interface PropertyRow {
   address: string | null;
   pincode: string | null;
   is_active: boolean;
-  created_at?: string | null;
+  created_at?: string;
 }
 
 const blank: Partial<PropertyRow> = {
