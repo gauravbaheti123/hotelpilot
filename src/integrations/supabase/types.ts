@@ -443,6 +443,70 @@ export type Database = {
           },
         ]
       }
+      checkout_overrides: {
+        Row: {
+          approved_by: string | null
+          approver_email: string | null
+          booking_id: string
+          created_at: string
+          folio_id: string | null
+          id: string
+          pending_amount: number | null
+          pending_kot_ids: string[] | null
+          property_id: string
+          reason: string
+          requested_by: string | null
+        }
+        Insert: {
+          approved_by?: string | null
+          approver_email?: string | null
+          booking_id: string
+          created_at?: string
+          folio_id?: string | null
+          id?: string
+          pending_amount?: number | null
+          pending_kot_ids?: string[] | null
+          property_id: string
+          reason: string
+          requested_by?: string | null
+        }
+        Update: {
+          approved_by?: string | null
+          approver_email?: string | null
+          booking_id?: string
+          created_at?: string
+          folio_id?: string | null
+          id?: string
+          pending_amount?: number | null
+          pending_kot_ids?: string[] | null
+          property_id?: string
+          reason?: string
+          requested_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkout_overrides_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkout_overrides_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkout_overrides_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communications: {
         Row: {
           body: string
@@ -748,6 +812,7 @@ export type Database = {
           folio_id: string
           gst_amount: number
           gst_rate: number
+          hsn_code: string | null
           id: string
           is_wiped: boolean
           qty: number
@@ -767,6 +832,7 @@ export type Database = {
           folio_id: string
           gst_amount?: number
           gst_rate?: number
+          hsn_code?: string | null
           id?: string
           is_wiped?: boolean
           qty?: number
@@ -786,6 +852,7 @@ export type Database = {
           folio_id?: string
           gst_amount?: number
           gst_rate?: number
+          hsn_code?: string | null
           id?: string
           is_wiped?: boolean
           qty?: number
@@ -815,6 +882,7 @@ export type Database = {
       folios: {
         Row: {
           balance_amount: number
+          bill_type: string | null
           booking_id: string
           created_at: string
           created_by: string | null
@@ -838,6 +906,7 @@ export type Database = {
         }
         Insert: {
           balance_amount?: number
+          bill_type?: string | null
           booking_id: string
           created_at?: string
           created_by?: string | null
@@ -861,6 +930,7 @@ export type Database = {
         }
         Update: {
           balance_amount?: number
+          bill_type?: string | null
           booking_id?: string
           created_at?: string
           created_by?: string | null
@@ -2375,6 +2445,7 @@ export type Database = {
           created_at: string
           description: string | null
           extra_bed_rate: number
+          hsn_code: string | null
           id: string
           is_active: boolean
           max_occupancy: number
@@ -2388,6 +2459,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           extra_bed_rate?: number
+          hsn_code?: string | null
           id?: string
           is_active?: boolean
           max_occupancy?: number
@@ -2401,6 +2473,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           extra_bed_rate?: number
+          hsn_code?: string | null
           id?: string
           is_active?: boolean
           max_occupancy?: number

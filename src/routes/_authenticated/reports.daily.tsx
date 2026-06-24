@@ -77,6 +77,27 @@ function DailyReportPage() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="mt-4">
+        <Card>
+          <CardHeader><CardTitle className="text-base">Collection Report — Bill Type Split</CardTitle></CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2 text-sm">
+            <div className="rounded-md border p-3">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">GST Invoice Total</div>
+              <div className="text-xl font-semibold mt-1">{inr(sum?.gst_invoice_total ?? 0)}</div>
+              <div className="text-xs text-muted-foreground">{sum?.gst_invoice_count ?? 0} invoice(s)</div>
+            </div>
+            <div className="rounded-md border p-3">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">Cash Bill Total</div>
+              <div className="text-xl font-semibold mt-1">{inr(sum?.cash_bill_total ?? 0)}</div>
+              <div className="text-xs text-muted-foreground">{sum?.cash_bill_count ?? 0} receipt(s)</div>
+            </div>
+            <p className="text-[11px] text-muted-foreground sm:col-span-2">
+              GST and Cash totals are reported separately and are never combined.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </AppShell>
   );
 }
