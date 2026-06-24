@@ -155,6 +155,19 @@ function BookingDetailPage() {
 
   async function checkOut() {
     if (!b) return;
+    // Phase 4: checkout lock — block while any KOT is open/printed/served
+    const { data: openKots, error: kErr } = await supabase
+      .from("kot_orders")
+      .select("id,kot_number,status")
+      .eq("booking_id", b.id)
+      .in("status", ["open", "printed", "served"]);
+    if (kErr) return toast.error(kErr.message);
+    if (openKots && openKots.length > 0) {
+      toast.error(
+        `Cannot check out — ${openKots.length} KOT pending (${openKots.map((k: any) => k.kot_number).join(", ")}). Mark them billed or void first.`,
+      );
+      return;
+    }
     if (b.balance_amount > 0) {
       if (!confirm(`Balance of ₹${b.balance_amount} is pending. Check out anyway?`)) return;
     }

@@ -27,6 +27,7 @@ import { Route as AuthenticatedFoodNewRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedFoodKotsRouteImport } from './routes/_authenticated/food.kots'
 import { Route as AuthenticatedFoodDashboardRouteImport } from './routes/_authenticated/food.dashboard'
 import { Route as AuthenticatedFrontDeskBookingIdRouteImport } from './routes/_authenticated/front-desk.booking.$id'
+import { Route as AuthenticatedFoodKotIdRouteImport } from './routes/_authenticated/food.kot.$id'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -128,6 +129,11 @@ const AuthenticatedFrontDeskBookingIdRoute =
     path: '/front-desk/booking/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFoodKotIdRoute = AuthenticatedFoodKotIdRouteImport.update({
+  id: '/food/kot/$id',
+  path: '/food/kot/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -146,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
   '/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRoute
 }
 export interface FileRoutesByTo {
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
   '/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRoute
 }
 export interface FileRoutesById {
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   '/_authenticated/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/_authenticated/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/_authenticated/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/_authenticated/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
   '/_authenticated/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRoute
 }
 export interface FileRouteTypes {
@@ -207,6 +216,7 @@ export interface FileRouteTypes {
     | '/masters/staff'
     | '/masters/tariff'
     | '/superadmin/dashboard'
+    | '/food/kot/$id'
     | '/front-desk/booking/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -226,6 +236,7 @@ export interface FileRouteTypes {
     | '/masters/staff'
     | '/masters/tariff'
     | '/superadmin/dashboard'
+    | '/food/kot/$id'
     | '/front-desk/booking/$id'
   id:
     | '__root__'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/_authenticated/masters/staff'
     | '/_authenticated/masters/tariff'
     | '/_authenticated/superadmin/dashboard'
+    | '/_authenticated/food/kot/$id'
     | '/_authenticated/front-desk/booking/$id'
   fileRoutesById: FileRoutesById
 }
@@ -383,6 +395,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrontDeskBookingIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/food/kot/$id': {
+      id: '/_authenticated/food/kot/$id'
+      path: '/food/kot/$id'
+      fullPath: '/food/kot/$id'
+      preLoaderRoute: typeof AuthenticatedFoodKotIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -401,6 +420,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMastersStaffRoute: typeof AuthenticatedMastersStaffRoute
   AuthenticatedMastersTariffRoute: typeof AuthenticatedMastersTariffRoute
   AuthenticatedSuperadminDashboardRoute: typeof AuthenticatedSuperadminDashboardRoute
+  AuthenticatedFoodKotIdRoute: typeof AuthenticatedFoodKotIdRoute
   AuthenticatedFrontDeskBookingIdRoute: typeof AuthenticatedFrontDeskBookingIdRoute
 }
 
@@ -419,6 +439,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMastersStaffRoute: AuthenticatedMastersStaffRoute,
   AuthenticatedMastersTariffRoute: AuthenticatedMastersTariffRoute,
   AuthenticatedSuperadminDashboardRoute: AuthenticatedSuperadminDashboardRoute,
+  AuthenticatedFoodKotIdRoute: AuthenticatedFoodKotIdRoute,
   AuthenticatedFrontDeskBookingIdRoute: AuthenticatedFrontDeskBookingIdRoute,
 }
 
