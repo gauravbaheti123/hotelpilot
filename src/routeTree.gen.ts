@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedGuestsIndexRouteImport } from './routes/_authenticated/guests.index'
 import { Route as AuthenticatedSuperadminDashboardRouteImport } from './routes/_authenticated/superadmin.dashboard'
 import { Route as AuthenticatedReportsSalesRouteImport } from './routes/_authenticated/reports.sales'
 import { Route as AuthenticatedReportsNightAuditRouteImport } from './routes/_authenticated/reports.night-audit'
@@ -28,6 +29,8 @@ import { Route as AuthenticatedMastersHallsRouteImport } from './routes/_authent
 import { Route as AuthenticatedHousekeepingTasksRouteImport } from './routes/_authenticated/housekeeping.tasks'
 import { Route as AuthenticatedHousekeepingNewRouteImport } from './routes/_authenticated/housekeeping.new'
 import { Route as AuthenticatedHousekeepingBoardRouteImport } from './routes/_authenticated/housekeeping.board'
+import { Route as AuthenticatedGuestsNewRouteImport } from './routes/_authenticated/guests.new'
+import { Route as AuthenticatedGuestsIdRouteImport } from './routes/_authenticated/guests.$id'
 import { Route as AuthenticatedFrontDeskNewRouteImport } from './routes/_authenticated/front-desk.new'
 import { Route as AuthenticatedFrontDeskInHouseRouteImport } from './routes/_authenticated/front-desk.in-house'
 import { Route as AuthenticatedFrontDeskBookingsRouteImport } from './routes/_authenticated/front-desk.bookings'
@@ -66,6 +69,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedGuestsIndexRoute =
+  AuthenticatedGuestsIndexRouteImport.update({
+    id: '/guests/',
+    path: '/guests/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSuperadminDashboardRoute =
   AuthenticatedSuperadminDashboardRouteImport.update({
     id: '/superadmin/dashboard',
@@ -149,6 +158,16 @@ const AuthenticatedHousekeepingBoardRoute =
     path: '/housekeeping/board',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedGuestsNewRoute = AuthenticatedGuestsNewRouteImport.update({
+  id: '/guests/new',
+  path: '/guests/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedGuestsIdRoute = AuthenticatedGuestsIdRouteImport.update({
+  id: '/guests/$id',
+  path: '/guests/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedFrontDeskNewRoute =
   AuthenticatedFrontDeskNewRouteImport.update({
     id: '/front-desk/new',
@@ -238,6 +257,8 @@ export interface FileRoutesByFullPath {
   '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
   '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
+  '/guests/$id': typeof AuthenticatedGuestsIdRoute
+  '/guests/new': typeof AuthenticatedGuestsNewRoute
   '/housekeeping/board': typeof AuthenticatedHousekeepingBoardRoute
   '/housekeeping/new': typeof AuthenticatedHousekeepingNewRoute
   '/housekeeping/tasks': typeof AuthenticatedHousekeepingTasksRoute
@@ -252,6 +273,7 @@ export interface FileRoutesByFullPath {
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/guests/': typeof AuthenticatedGuestsIndexRoute
   '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
@@ -271,6 +293,8 @@ export interface FileRoutesByTo {
   '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
   '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
+  '/guests/$id': typeof AuthenticatedGuestsIdRoute
+  '/guests/new': typeof AuthenticatedGuestsNewRoute
   '/housekeeping/board': typeof AuthenticatedHousekeepingBoardRoute
   '/housekeeping/new': typeof AuthenticatedHousekeepingNewRoute
   '/housekeeping/tasks': typeof AuthenticatedHousekeepingTasksRoute
@@ -285,6 +309,7 @@ export interface FileRoutesByTo {
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/guests': typeof AuthenticatedGuestsIndexRoute
   '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
@@ -306,6 +331,8 @@ export interface FileRoutesById {
   '/_authenticated/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/_authenticated/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
   '/_authenticated/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
+  '/_authenticated/guests/$id': typeof AuthenticatedGuestsIdRoute
+  '/_authenticated/guests/new': typeof AuthenticatedGuestsNewRoute
   '/_authenticated/housekeeping/board': typeof AuthenticatedHousekeepingBoardRoute
   '/_authenticated/housekeeping/new': typeof AuthenticatedHousekeepingNewRoute
   '/_authenticated/housekeeping/tasks': typeof AuthenticatedHousekeepingTasksRoute
@@ -320,6 +347,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
   '/_authenticated/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/_authenticated/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/_authenticated/guests/': typeof AuthenticatedGuestsIndexRoute
   '/_authenticated/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/_authenticated/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/_authenticated/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
@@ -341,6 +369,8 @@ export interface FileRouteTypes {
     | '/front-desk/bookings'
     | '/front-desk/in-house'
     | '/front-desk/new'
+    | '/guests/$id'
+    | '/guests/new'
     | '/housekeeping/board'
     | '/housekeeping/new'
     | '/housekeeping/tasks'
@@ -355,6 +385,7 @@ export interface FileRouteTypes {
     | '/reports/night-audit'
     | '/reports/sales'
     | '/superadmin/dashboard'
+    | '/guests/'
     | '/banquet/event/$id'
     | '/billing/folio/$bookingId'
     | '/food/kot/$id'
@@ -374,6 +405,8 @@ export interface FileRouteTypes {
     | '/front-desk/bookings'
     | '/front-desk/in-house'
     | '/front-desk/new'
+    | '/guests/$id'
+    | '/guests/new'
     | '/housekeeping/board'
     | '/housekeeping/new'
     | '/housekeeping/tasks'
@@ -388,6 +421,7 @@ export interface FileRouteTypes {
     | '/reports/night-audit'
     | '/reports/sales'
     | '/superadmin/dashboard'
+    | '/guests'
     | '/banquet/event/$id'
     | '/billing/folio/$bookingId'
     | '/food/kot/$id'
@@ -408,6 +442,8 @@ export interface FileRouteTypes {
     | '/_authenticated/front-desk/bookings'
     | '/_authenticated/front-desk/in-house'
     | '/_authenticated/front-desk/new'
+    | '/_authenticated/guests/$id'
+    | '/_authenticated/guests/new'
     | '/_authenticated/housekeeping/board'
     | '/_authenticated/housekeeping/new'
     | '/_authenticated/housekeeping/tasks'
@@ -422,6 +458,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/night-audit'
     | '/_authenticated/reports/sales'
     | '/_authenticated/superadmin/dashboard'
+    | '/_authenticated/guests/'
     | '/_authenticated/banquet/event/$id'
     | '/_authenticated/billing/folio/$bookingId'
     | '/_authenticated/food/kot/$id'
@@ -469,6 +506,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/guests/': {
+      id: '/_authenticated/guests/'
+      path: '/guests'
+      fullPath: '/guests/'
+      preLoaderRoute: typeof AuthenticatedGuestsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/superadmin/dashboard': {
@@ -567,6 +611,20 @@ declare module '@tanstack/react-router' {
       path: '/housekeeping/board'
       fullPath: '/housekeeping/board'
       preLoaderRoute: typeof AuthenticatedHousekeepingBoardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/guests/new': {
+      id: '/_authenticated/guests/new'
+      path: '/guests/new'
+      fullPath: '/guests/new'
+      preLoaderRoute: typeof AuthenticatedGuestsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/guests/$id': {
+      id: '/_authenticated/guests/$id'
+      path: '/guests/$id'
+      fullPath: '/guests/$id'
+      preLoaderRoute: typeof AuthenticatedGuestsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/front-desk/new': {
@@ -675,6 +733,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFrontDeskBookingsRoute: typeof AuthenticatedFrontDeskBookingsRoute
   AuthenticatedFrontDeskInHouseRoute: typeof AuthenticatedFrontDeskInHouseRoute
   AuthenticatedFrontDeskNewRoute: typeof AuthenticatedFrontDeskNewRoute
+  AuthenticatedGuestsIdRoute: typeof AuthenticatedGuestsIdRoute
+  AuthenticatedGuestsNewRoute: typeof AuthenticatedGuestsNewRoute
   AuthenticatedHousekeepingBoardRoute: typeof AuthenticatedHousekeepingBoardRoute
   AuthenticatedHousekeepingNewRoute: typeof AuthenticatedHousekeepingNewRoute
   AuthenticatedHousekeepingTasksRoute: typeof AuthenticatedHousekeepingTasksRoute
@@ -689,6 +749,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsNightAuditRoute: typeof AuthenticatedReportsNightAuditRoute
   AuthenticatedReportsSalesRoute: typeof AuthenticatedReportsSalesRoute
   AuthenticatedSuperadminDashboardRoute: typeof AuthenticatedSuperadminDashboardRoute
+  AuthenticatedGuestsIndexRoute: typeof AuthenticatedGuestsIndexRoute
   AuthenticatedBanquetEventIdRoute: typeof AuthenticatedBanquetEventIdRoute
   AuthenticatedBillingFolioBookingIdRoute: typeof AuthenticatedBillingFolioBookingIdRoute
   AuthenticatedFoodKotIdRoute: typeof AuthenticatedFoodKotIdRoute
@@ -707,6 +768,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFrontDeskBookingsRoute: AuthenticatedFrontDeskBookingsRoute,
   AuthenticatedFrontDeskInHouseRoute: AuthenticatedFrontDeskInHouseRoute,
   AuthenticatedFrontDeskNewRoute: AuthenticatedFrontDeskNewRoute,
+  AuthenticatedGuestsIdRoute: AuthenticatedGuestsIdRoute,
+  AuthenticatedGuestsNewRoute: AuthenticatedGuestsNewRoute,
   AuthenticatedHousekeepingBoardRoute: AuthenticatedHousekeepingBoardRoute,
   AuthenticatedHousekeepingNewRoute: AuthenticatedHousekeepingNewRoute,
   AuthenticatedHousekeepingTasksRoute: AuthenticatedHousekeepingTasksRoute,
@@ -721,6 +784,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsNightAuditRoute: AuthenticatedReportsNightAuditRoute,
   AuthenticatedReportsSalesRoute: AuthenticatedReportsSalesRoute,
   AuthenticatedSuperadminDashboardRoute: AuthenticatedSuperadminDashboardRoute,
+  AuthenticatedGuestsIndexRoute: AuthenticatedGuestsIndexRoute,
   AuthenticatedBanquetEventIdRoute: AuthenticatedBanquetEventIdRoute,
   AuthenticatedBillingFolioBookingIdRoute:
     AuthenticatedBillingFolioBookingIdRoute,

@@ -1,0 +1,196 @@
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
+import { AppShell } from "@/components/AppShell";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Ban, ShieldCheck } from "lucide-react";
+import { ID_PROOF_TYPES, guestSchema, emptyToNull } from "@/lib/guests";
+import { inr } from "@/lib/billing";
+
+export const Route = createFileRoute("/_authenticated/guests/$id")({
+  head: () => ({ meta: [{ title: "Guest — HotelPilot" }] }),
+  component: GuestDetail,
+});
+
+interface Guest {
+  id: string; property_id: string;
+  name: string; mobile: string | null; email: string | null;
+  gender: string | null; dob: string | null; nationality: string | null;
+  address: string | null; city: string | null; state: string | null;
+  country: string | null; pincode: string | null;
+  company: string | null; gst_number: string | null;
+  id_proof_type: string | null; id_proof_number: string | null;
+  notes: string | null; tags: string[] | null; is_blacklisted: boolean;
+}
+
+interface Stay {
+  id: string; booking_number: string; status: string;
+  check_in: string; check_out: string; total_amount: number;
+}
+
+function GuestDetail() {
+  const router = useRouter();
+  const { id } = Route.useParams();
+  const [g, setG] = useState<Guest | null>(null);
+  const [stays, setStays] = useState<Stay[]>([]);
+  const [tagsInput, setTagsInput] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    const { data } = await supabase.from("guests").select("*").eq("id", id).maybeSingle();
+    setG((data as Guest | null) ?? null);
+    setTagsInput((data?.tags ?? []).join(", "));
+    const { data: b } = await supabase.from("bookings")
+      .select("id,booking_number,status,check_in,check_out,total_amount")
+      .eq("guest_id", id).order("check_in", { ascending: false }).limit(50);
+    setStays((b ?? []) as Stay[]);
+  }, [id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (!g) return <AppShell title="Guest"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
+
+  function patch<K extends keyof Guest>(k: K, v: Guest[K]) { setG((cur) => cur ? { ...cur, [k]: v } : cur); }
+
+  async function save() {
+    if (!g) return;
+    const parsed = guestSchema.safeParse({
+      name: g.name, mobile: g.mobile ?? "", email: g.email ?? "",
+      gender: g.gender ?? "", dob: g.dob ?? "", nationality: g.nationality ?? "",
+      address: g.address ?? "", city: g.city ?? "", state: g.state ?? "",
+      country: g.country ?? "", pincode: g.pincode ?? "",
+      company: g.company ?? "", gst_number: g.gst_number ?? "",
+      id_proof_type: g.id_proof_type ?? "", id_proof_number: g.id_proof_number ?? "",
+      notes: g.notes ?? "",
+    });
+    if (!parsed.success) { toast.error(parsed.error.issues[0]?.message ?? "Invalid"); return; }
+    setBusy(true);
+    try {
+      const { name, ...rest } = parsed.data;
+      const payload = emptyToNull(rest);
+      const tags = tagsInput.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 10);
+      const { error } = await supabase.from("guests").update({ name, ...payload, tags }).eq("id", g.id);
+      if (error) throw error;
+      toast.success("Saved");
+      await load();
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+    finally { setBusy(false); }
+  }
+
+  async function toggleBlacklist() {
+    if (!g) return;
+    const { error } = await supabase.from("guests").update({ is_blacklisted: !g.is_blacklisted }).eq("id", g.id);
+    if (error) toast.error(error.message); else { toast.success(g.is_blacklisted ? "Unblocked" : "Blacklisted"); load(); }
+  }
+
+  const totalSpend = stays.reduce((s, r) => s + Number(r.total_amount ?? 0), 0);
+  const stayCount = stays.length;
+
+  return (
+    <AppShell title={g.name}>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        {g.is_blacklisted && <Badge variant="outline" className="bg-rose-100 text-rose-800 border-rose-300"><Ban className="h-3 w-3 mr-1" />Blacklisted</Badge>}
+        {(g.tags ?? []).map((t) => <Badge key={t} variant="secondary">{t}</Badge>)}
+        <div className="ml-auto flex gap-2">
+          <Button variant="outline" onClick={toggleBlacklist}>
+            {g.is_blacklisted ? <><ShieldCheck className="h-4 w-4 mr-1" />Unblacklist</> : <><Ban className="h-4 w-4 mr-1" />Blacklist</>}
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3 mb-4">
+        <Stat label="Total stays" value={stayCount.toString()} />
+        <Stat label="Lifetime value" value={inr(totalSpend)} />
+        <Stat label="Last visit" value={stays[0]?.check_in ?? "—"} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader><CardTitle className="text-base">Profile</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Name"><Input value={g.name} onChange={(e) => patch("name", e.target.value)} maxLength={120} /></Field>
+              <Field label="Mobile"><Input value={g.mobile ?? ""} onChange={(e) => patch("mobile", e.target.value)} maxLength={20} /></Field>
+              <Field label="Email"><Input value={g.email ?? ""} onChange={(e) => patch("email", e.target.value)} maxLength={255} /></Field>
+              <Field label="Gender">
+                <Select value={g.gender ?? ""} onValueChange={(v) => patch("gender", v)}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="DOB"><Input type="date" value={g.dob ?? ""} onChange={(e) => patch("dob", e.target.value)} /></Field>
+              <Field label="Nationality"><Input value={g.nationality ?? ""} onChange={(e) => patch("nationality", e.target.value)} /></Field>
+              <Field label="ID type">
+                <Select value={g.id_proof_type ?? ""} onValueChange={(v) => patch("id_proof_type", v)}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    {ID_PROOF_TYPES.map((t) => <SelectItem key={t} value={t}>{t.replace("_", " ")}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="ID number"><Input value={g.id_proof_number ?? ""} onChange={(e) => patch("id_proof_number", e.target.value)} maxLength={40} /></Field>
+              <Field label="Company"><Input value={g.company ?? ""} onChange={(e) => patch("company", e.target.value)} maxLength={200} /></Field>
+              <Field label="GSTIN"><Input value={g.gst_number ?? ""} onChange={(e) => patch("gst_number", e.target.value.toUpperCase())} maxLength={15} /></Field>
+              <Field label="City"><Input value={g.city ?? ""} onChange={(e) => patch("city", e.target.value)} /></Field>
+              <Field label="State"><Input value={g.state ?? ""} onChange={(e) => patch("state", e.target.value)} /></Field>
+              <Field label="Country"><Input value={g.country ?? ""} onChange={(e) => patch("country", e.target.value)} /></Field>
+              <Field label="Pincode"><Input value={g.pincode ?? ""} onChange={(e) => patch("pincode", e.target.value)} maxLength={12} /></Field>
+              <div className="md:col-span-2"><Field label="Address"><Textarea rows={2} value={g.address ?? ""} onChange={(e) => patch("address", e.target.value)} maxLength={500} /></Field></div>
+              <div className="md:col-span-2"><Field label="Tags (comma separated)"><Input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} /></Field></div>
+              <div className="md:col-span-2"><Field label="Notes"><Textarea rows={2} value={g.notes ?? ""} onChange={(e) => patch("notes", e.target.value)} maxLength={1000} /></Field></div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => router.history.back()}>Back</Button>
+              <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">Stay history</CardTitle></CardHeader>
+          <CardContent className="p-0 divide-y max-h-[600px] overflow-auto">
+            {stays.length === 0 && <p className="p-4 text-sm text-muted-foreground">No stays yet.</p>}
+            {stays.map((s) => (
+              <Link key={s.id} to="/front-desk/booking/$id" params={{ id: s.id }}
+                className="block px-4 py-3 text-sm hover:bg-accent">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium">{s.booking_number}</div>
+                  <Badge variant="outline" className="text-[10px]">{s.status}</Badge>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {s.check_in} → {s.check_out} · {inr(s.total_amount)}
+                </div>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    </AppShell>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div><Label className="mb-1 block text-xs">{label}</Label>{children}</div>;
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <Card><CardContent className="p-4">
+      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-2xl font-semibold mt-1">{value}</div>
+    </CardContent></Card>
+  );
+}
