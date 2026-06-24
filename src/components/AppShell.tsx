@@ -68,7 +68,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/properties", label: "Properties", icon: Building2 },
+      { to: "/properties", label: "Properties", icon: Building2, requireSuperadmin: true },
     ],
   },
   {
