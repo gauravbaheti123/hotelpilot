@@ -790,6 +790,59 @@ export type Database = {
           },
         ]
       }
+      inventory_items: {
+        Row: {
+          category: string
+          created_at: string
+          current_stock: number
+          id: string
+          is_active: boolean
+          last_rate: number
+          name: string
+          property_id: string
+          reorder_level: number
+          sku: string | null
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          current_stock?: number
+          id?: string
+          is_active?: boolean
+          last_rate?: number
+          name: string
+          property_id: string
+          reorder_level?: number
+          sku?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          current_stock?: number
+          id?: string
+          is_active?: boolean
+          last_rate?: number
+          name?: string
+          property_id?: string
+          reorder_level?: number
+          sku?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kot_items: {
         Row: {
           amount: number
@@ -1501,6 +1554,79 @@ export type Database = {
           },
         ]
       }
+      stock_movements: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          department: string | null
+          id: string
+          item_id: string
+          movement_date: string
+          movement_type: string
+          property_id: string
+          quantity: number
+          rate: number
+          reason: string | null
+          reference: string | null
+          vendor_id: string | null
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          item_id: string
+          movement_date?: string
+          movement_type: string
+          property_id: string
+          quantity: number
+          rate?: number
+          reason?: string | null
+          reference?: string | null
+          vendor_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          item_id?: string
+          movement_date?: string
+          movement_type?: string
+          property_id?: string
+          quantity?: number
+          rate?: number
+          reason?: string | null
+          reference?: string | null
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tariff_plans: {
         Row: {
           category_id: string | null
@@ -1587,6 +1713,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      vendors: {
+        Row: {
+          address: string | null
+          contact_person: string | null
+          created_at: string
+          email: string | null
+          gstin: string | null
+          id: string
+          is_active: boolean
+          mobile: string | null
+          name: string
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          is_active?: boolean
+          mobile?: string | null
+          name: string
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          is_active?: boolean
+          mobile?: string | null
+          name?: string
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendors_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
