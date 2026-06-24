@@ -203,6 +203,152 @@ export type Database = {
           },
         ]
       }
+      folio_charges: {
+        Row: {
+          amount: number
+          charge_type: string
+          charged_on: string
+          created_at: string
+          created_by: string | null
+          description: string
+          folio_id: string
+          gst_amount: number
+          gst_rate: number
+          id: string
+          qty: number
+          rate: number
+          source_id: string | null
+          source_table: string | null
+        }
+        Insert: {
+          amount?: number
+          charge_type: string
+          charged_on?: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          folio_id: string
+          gst_amount?: number
+          gst_rate?: number
+          id?: string
+          qty?: number
+          rate?: number
+          source_id?: string | null
+          source_table?: string | null
+        }
+        Update: {
+          amount?: number
+          charge_type?: string
+          charged_on?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          folio_id?: string
+          gst_amount?: number
+          gst_rate?: number
+          id?: string
+          qty?: number
+          rate?: number
+          source_id?: string | null
+          source_table?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folio_charges_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "folios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      folios: {
+        Row: {
+          balance_amount: number
+          booking_id: string
+          created_at: string
+          created_by: string | null
+          discount_amount: number
+          gst_amount: number
+          gst_mode: string
+          guest_company: string | null
+          guest_gstin: string | null
+          id: string
+          invoice_number: string
+          notes: string | null
+          paid_amount: number
+          property_id: string
+          settled_at: string | null
+          status: string
+          sub_total: number
+          total_amount: number
+          updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+        }
+        Insert: {
+          balance_amount?: number
+          booking_id: string
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number
+          gst_amount?: number
+          gst_mode?: string
+          guest_company?: string | null
+          guest_gstin?: string | null
+          id?: string
+          invoice_number?: string
+          notes?: string | null
+          paid_amount?: number
+          property_id: string
+          settled_at?: string | null
+          status?: string
+          sub_total?: number
+          total_amount?: number
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Update: {
+          balance_amount?: number
+          booking_id?: string
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number
+          gst_amount?: number
+          gst_mode?: string
+          guest_company?: string | null
+          guest_gstin?: string | null
+          id?: string
+          invoice_number?: string
+          notes?: string | null
+          paid_amount?: number
+          property_id?: string
+          settled_at?: string | null
+          status?: string
+          sub_total?: number
+          total_amount?: number
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folios_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folios_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guests: {
         Row: {
           address: string | null
@@ -537,6 +683,70 @@ export type Database = {
           },
           {
             foreignKeyName: "menu_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          booking_id: string | null
+          created_at: string
+          created_by: string | null
+          folio_id: string
+          id: string
+          mode: string
+          notes: string | null
+          paid_at: string
+          property_id: string
+          reference_no: string | null
+        }
+        Insert: {
+          amount: number
+          booking_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          folio_id: string
+          id?: string
+          mode: string
+          notes?: string | null
+          paid_at?: string
+          property_id: string
+          reference_no?: string | null
+        }
+        Update: {
+          amount?: number
+          booking_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          folio_id?: string
+          id?: string
+          mode?: string
+          notes?: string | null
+          paid_at?: string
+          property_id?: string
+          reference_no?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
@@ -1025,9 +1235,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_billing: { Args: { _user_id: string }; Returns: boolean }
       can_food: { Args: { _user_id: string }; Returns: boolean }
       can_front_desk: { Args: { _user_id: string }; Returns: boolean }
       can_manage_masters: { Args: { _user_id: string }; Returns: boolean }
+      get_or_create_folio: { Args: { _booking_id: string }; Returns: string }
       has_open_kot: { Args: { _booking_id: string }; Returns: boolean }
       has_role: {
         Args: {
