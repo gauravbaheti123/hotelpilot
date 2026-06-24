@@ -73,13 +73,19 @@ export const createOwnerLogin = createServerFn({ method: "POST" })
     }
     if (!userId) throw new Error("Failed to create user");
 
-    const { error: roleErr } = await supabaseAdmin
+    const { data: existing } = await supabaseAdmin
       .from("user_roles")
-      .upsert(
-        { user_id: userId, role: data.role, property_id: data.property_id },
-        { onConflict: "user_id,role,property_id" },
-      );
-    if (roleErr) throw roleErr;
+      .select("id")
+      .eq("user_id", userId)
+      .eq("role", data.role)
+      .eq("property_id", data.property_id)
+      .maybeSingle();
+    if (!existing) {
+      const { error: roleErr } = await supabaseAdmin
+        .from("user_roles")
+        .insert({ user_id: userId, role: data.role, property_id: data.property_id });
+      if (roleErr) throw roleErr;
+    }
 
     return { user_id: userId, email: data.email, role: data.role };
   });
