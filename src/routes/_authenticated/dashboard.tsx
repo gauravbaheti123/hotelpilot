@@ -53,15 +53,16 @@ function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Phase 2 ready</CardTitle>
+            <CardTitle>Phase 3 ready</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>
-              Master data is live: properties, room categories & rooms, tariff plans,
-              menu (categories & items), staff and printers — all with create / edit / delete.
+              Front desk is live: create bookings, check-in & check-out, shift rooms
+              between in-house guests, modify stay dates and cancel reservations.
             </p>
             <p>
-              Coming up — Phase 3: front desk (check-in, check-out, room shift, date modify).
+              Coming up — Phase 4: Food & KOT (dual KOT printers, food dashboard,
+              checkout lock).
             </p>
             {roles.includes("superadmin") && (
               <p>

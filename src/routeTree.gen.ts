@@ -20,6 +20,10 @@ import { Route as AuthenticatedMastersStaffRouteImport } from './routes/_authent
 import { Route as AuthenticatedMastersRoomsRouteImport } from './routes/_authenticated/masters.rooms'
 import { Route as AuthenticatedMastersPrintersRouteImport } from './routes/_authenticated/masters.printers'
 import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenticated/masters.menu'
+import { Route as AuthenticatedFrontDeskNewRouteImport } from './routes/_authenticated/front-desk.new'
+import { Route as AuthenticatedFrontDeskInHouseRouteImport } from './routes/_authenticated/front-desk.in-house'
+import { Route as AuthenticatedFrontDeskBookingsRouteImport } from './routes/_authenticated/front-desk.bookings'
+import { Route as AuthenticatedFrontDeskBookingIdRouteImport } from './routes/_authenticated/front-desk.booking.$id'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -81,30 +85,62 @@ const AuthenticatedMastersMenuRoute =
     path: '/masters/menu',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFrontDeskNewRoute =
+  AuthenticatedFrontDeskNewRouteImport.update({
+    id: '/front-desk/new',
+    path: '/front-desk/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFrontDeskInHouseRoute =
+  AuthenticatedFrontDeskInHouseRouteImport.update({
+    id: '/front-desk/in-house',
+    path: '/front-desk/in-house',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFrontDeskBookingsRoute =
+  AuthenticatedFrontDeskBookingsRouteImport.update({
+    id: '/front-desk/bookings',
+    path: '/front-desk/bookings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFrontDeskBookingIdRoute =
+  AuthenticatedFrontDeskBookingIdRouteImport.update({
+    id: '/front-desk/booking/$id',
+    path: '/front-desk/booking/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
+  '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
+  '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
+  '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
+  '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -113,12 +149,16 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
+  '/_authenticated/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
+  '/_authenticated/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
+  '/_authenticated/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
   '/_authenticated/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/_authenticated/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/_authenticated/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/_authenticated/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/_authenticated/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/_authenticated/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/_authenticated/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -127,24 +167,32 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/properties'
+    | '/front-desk/bookings'
+    | '/front-desk/in-house'
+    | '/front-desk/new'
     | '/masters/menu'
     | '/masters/printers'
     | '/masters/rooms'
     | '/masters/staff'
     | '/masters/tariff'
     | '/superadmin/dashboard'
+    | '/front-desk/booking/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/dashboard'
     | '/properties'
+    | '/front-desk/bookings'
+    | '/front-desk/in-house'
+    | '/front-desk/new'
     | '/masters/menu'
     | '/masters/printers'
     | '/masters/rooms'
     | '/masters/staff'
     | '/masters/tariff'
     | '/superadmin/dashboard'
+    | '/front-desk/booking/$id'
   id:
     | '__root__'
     | '/'
@@ -152,12 +200,16 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/dashboard'
     | '/_authenticated/properties'
+    | '/_authenticated/front-desk/bookings'
+    | '/_authenticated/front-desk/in-house'
+    | '/_authenticated/front-desk/new'
     | '/_authenticated/masters/menu'
     | '/_authenticated/masters/printers'
     | '/_authenticated/masters/rooms'
     | '/_authenticated/masters/staff'
     | '/_authenticated/masters/tariff'
     | '/_authenticated/superadmin/dashboard'
+    | '/_authenticated/front-desk/booking/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -245,29 +297,65 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMastersMenuRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/front-desk/new': {
+      id: '/_authenticated/front-desk/new'
+      path: '/front-desk/new'
+      fullPath: '/front-desk/new'
+      preLoaderRoute: typeof AuthenticatedFrontDeskNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/front-desk/in-house': {
+      id: '/_authenticated/front-desk/in-house'
+      path: '/front-desk/in-house'
+      fullPath: '/front-desk/in-house'
+      preLoaderRoute: typeof AuthenticatedFrontDeskInHouseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/front-desk/bookings': {
+      id: '/_authenticated/front-desk/bookings'
+      path: '/front-desk/bookings'
+      fullPath: '/front-desk/bookings'
+      preLoaderRoute: typeof AuthenticatedFrontDeskBookingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/front-desk/booking/$id': {
+      id: '/_authenticated/front-desk/booking/$id'
+      path: '/front-desk/booking/$id'
+      fullPath: '/front-desk/booking/$id'
+      preLoaderRoute: typeof AuthenticatedFrontDeskBookingIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPropertiesRoute: typeof AuthenticatedPropertiesRoute
+  AuthenticatedFrontDeskBookingsRoute: typeof AuthenticatedFrontDeskBookingsRoute
+  AuthenticatedFrontDeskInHouseRoute: typeof AuthenticatedFrontDeskInHouseRoute
+  AuthenticatedFrontDeskNewRoute: typeof AuthenticatedFrontDeskNewRoute
   AuthenticatedMastersMenuRoute: typeof AuthenticatedMastersMenuRoute
   AuthenticatedMastersPrintersRoute: typeof AuthenticatedMastersPrintersRoute
   AuthenticatedMastersRoomsRoute: typeof AuthenticatedMastersRoomsRoute
   AuthenticatedMastersStaffRoute: typeof AuthenticatedMastersStaffRoute
   AuthenticatedMastersTariffRoute: typeof AuthenticatedMastersTariffRoute
   AuthenticatedSuperadminDashboardRoute: typeof AuthenticatedSuperadminDashboardRoute
+  AuthenticatedFrontDeskBookingIdRoute: typeof AuthenticatedFrontDeskBookingIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPropertiesRoute: AuthenticatedPropertiesRoute,
+  AuthenticatedFrontDeskBookingsRoute: AuthenticatedFrontDeskBookingsRoute,
+  AuthenticatedFrontDeskInHouseRoute: AuthenticatedFrontDeskInHouseRoute,
+  AuthenticatedFrontDeskNewRoute: AuthenticatedFrontDeskNewRoute,
   AuthenticatedMastersMenuRoute: AuthenticatedMastersMenuRoute,
   AuthenticatedMastersPrintersRoute: AuthenticatedMastersPrintersRoute,
   AuthenticatedMastersRoomsRoute: AuthenticatedMastersRoomsRoute,
   AuthenticatedMastersStaffRoute: AuthenticatedMastersStaffRoute,
   AuthenticatedMastersTariffRoute: AuthenticatedMastersTariffRoute,
   AuthenticatedSuperadminDashboardRoute: AuthenticatedSuperadminDashboardRoute,
+  AuthenticatedFrontDeskBookingIdRoute: AuthenticatedFrontDeskBookingIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

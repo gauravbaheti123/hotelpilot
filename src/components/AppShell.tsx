@@ -13,6 +13,9 @@ import {
   IndianRupee,
   UtensilsCrossed,
   Printer,
+  CalendarCheck,
+  ListChecks,
+  PlusCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -35,6 +38,14 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { to: "/properties", label: "Properties", icon: Building2 },
+    ],
+  },
+  {
+    label: "Front Desk",
+    items: [
+      { to: "/front-desk/new", label: "New Booking", icon: PlusCircle },
+      { to: "/front-desk/bookings", label: "Bookings", icon: ListChecks },
+      { to: "/front-desk/in-house", label: "In-house", icon: CalendarCheck },
     ],
   },
   {
