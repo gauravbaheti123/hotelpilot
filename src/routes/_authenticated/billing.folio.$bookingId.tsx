@@ -23,6 +23,8 @@ import {
   recomputeFolio,
 } from "@/lib/billing";
 import { ArrowLeft, Plus, Printer, Trash2, Wallet, CheckCircle2, Ban } from "lucide-react";
+import { AlertTriangle, ShieldAlert } from "lucide-react";
+import { verifyManagerPassword } from "@/lib/manager-verify";
 
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
   head: () => ({ meta: [{ title: "Folio — HotelPilot" }] }),
@@ -44,7 +46,7 @@ interface Folio {
   sub_total: number; discount_amount: number; gst_amount: number;
   total_amount: number; paid_amount: number; balance_amount: number;
   guest_gstin: string | null; guest_company: string | null;
-  notes: string | null; property_id: string;
+  notes: string | null; property_id: string; bill_type: string | null;
 }
 interface BookingCtx {
   id: string; booking_number: string; status: string;
@@ -54,6 +56,12 @@ interface BookingCtx {
   booking_rooms: { id: string; rate: number; check_in: string; check_out: string; rooms: { room_number: string } | null; room_categories: { name: string } | null }[];
 }
 interface PropertyInfo { name: string; gst_number: string | null; address: string | null; }
+
+interface PendingKot {
+  id: string; kot_number: string; status: string;
+  total_amount: number; sub_total: number;
+  items: { id: string; item_name: string; qty: number; rate: number }[];
+}
 
 function FolioPage() {
   const { bookingId } = Route.useParams();
@@ -82,6 +90,17 @@ function FolioPage() {
 
   const [voidOpen, setVoidOpen] = useState(false);
   const [voidReason, setVoidReason] = useState("");
+
+  // Pending KOT lock state
+  const [pendingKots, setPendingKots] = useState<PendingKot[]>([]);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [mgrEmail, setMgrEmail] = useState("");
+  const [mgrPass, setMgrPass] = useState("");
+  const [mgrReason, setMgrReason] = useState("");
+  const [mgrBusy, setMgrBusy] = useState(false);
+  const [overrideApproved, setOverrideApproved] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -113,6 +132,16 @@ function FolioPage() {
     setFolio((f ?? null) as unknown as Folio);
     setCharges(((c ?? []) as unknown as Charge[]));
     setPayments(((p ?? []) as unknown as Payment[]));
+
+    // Load pending KOTs (not served/billed/cancelled, not wiped)
+    const { data: pk } = await supabase
+      .from("kot_orders")
+      .select("id,kot_number,status,total_amount,sub_total,kot_items(id,item_name,qty,rate)")
+      .eq("booking_id", bookingId)
+      .eq("is_wiped", false)
+      .not("status", "in", "(served,billed,cancelled)");
+    setPendingKots(((pk ?? []) as unknown as PendingKot[]));
+
     setLoading(false);
   }, [bookingId]);
 
@@ -196,7 +225,8 @@ function FolioPage() {
 
   async function toggleMode(mode: "cash" | "gst") {
     if (!folio) return;
-    await persistTotals(charges, payments, { gst_mode: mode });
+    const bill_type = mode === "gst" ? "gst_invoice" : "cash_bill";
+    await persistTotals(charges, payments, { gst_mode: mode, bill_type } as Partial<Folio>);
     toast.success(`Mode: ${mode === "gst" ? "GST tax invoice" : "Cash bill"}`);
     load();
   }
@@ -280,6 +310,9 @@ function FolioPage() {
   async function settle() {
     if (!folio) return;
     if (Number(folio.balance_amount) > 0.01) return toast.error("Balance not zero");
+    if (pendingKots.length > 0 && !overrideApproved) {
+      return toast.error("Resolve pending food orders before settling");
+    }
     await supabase.from("folios").update({
       status: "settled", settled_at: new Date().toISOString(),
     }).eq("id", folio.id);
@@ -300,8 +333,9 @@ function FolioPage() {
 
   function printInvoice() {
     if (!folio || !booking) return;
-    const isGst = folio.gst_mode === "gst";
-    const title = isGst ? "TAX INVOICE" : "BILL";
+    const isGst = (folio.bill_type ?? folio.gst_mode) === "gst_invoice" || folio.gst_mode === "gst";
+    const title = isGst ? "TAX INVOICE" : "RECEIPT";
+    const receiptNo = isGst ? folio.invoice_number : `RCPT-${folio.invoice_number.replace(/^INV-/, "")}`;
     const html = `
       <html><head><title>${folio.invoice_number}</title>
       <style>
@@ -331,31 +365,43 @@ function FolioPage() {
           ${isGst && folio.guest_company ? `<div>${folio.guest_company}</div>` : ""}
         </div>
         <div class="right">
-          <div><strong>Invoice:</strong> ${folio.invoice_number}</div>
+          <div><strong>${isGst ? "Invoice" : "Receipt"}:</strong> ${receiptNo}</div>
           <div>Booking: ${booking.booking_number}</div>
           <div>Stay: ${booking.check_in} → ${booking.check_out}</div>
           <div>Date: ${new Date().toLocaleDateString()}</div>
         </div>
       </div>
-      <table>
+      ${isGst ? `<table>
         <thead><tr>
-          <th>Description</th><th class="right">Qty</th><th class="right">Rate</th>
-          <th class="right">Amount</th>${isGst ? `<th class="right">GST%</th><th class="right">GST</th>` : ""}
+          <th>Description</th><th>HSN/SAC</th><th class="right">Qty</th><th class="right">Rate</th>
+          <th class="right">Amount</th><th class="right">CGST</th><th class="right">SGST</th>
         </tr></thead>
         <tbody>
-          ${charges.map((c) => `<tr>
+          ${charges.map((c: any) => `<tr>
             <td>${c.description}</td>
+            <td>${c.hsn_code ?? (c.charge_type === "room" ? "996311" : c.charge_type === "food" ? "996331" : "")}</td>
             <td class="right">${Number(c.qty).toLocaleString("en-IN")}</td>
             <td class="right">${inr(c.rate)}</td>
             <td class="right">${inr(c.amount)}</td>
-            ${isGst ? `<td class="right">${Number(c.gst_rate)}%</td><td class="right">${inr(c.gst_amount)}</td>` : ""}
+            <td class="right">${(Number(c.gst_rate) / 2).toFixed(1)}% · ${inr(Number(c.gst_amount) / 2)}</td>
+            <td class="right">${(Number(c.gst_rate) / 2).toFixed(1)}% · ${inr(Number(c.gst_amount) / 2)}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>` : `<table>
+        <thead><tr><th>Service description</th><th class="right">Amount</th></tr></thead>
+        <tbody>
+          ${charges.map((c) => `<tr>
+            <td>${c.description}</td>
+            <td class="right">${inr(Number(c.amount) + Number(c.gst_amount || 0))}</td>
           </tr>`).join("")}
         </tbody>
       </table>
+      <p class="small" style="margin-top:6px"><em>Amount includes all applicable taxes.</em></p>`}
       <table class="totals">
-        <tr><td>Sub-total</td><td class="right">${inr(folio.sub_total)}</td></tr>
-        ${Number(folio.discount_amount) > 0 ? `<tr><td>Discount</td><td class="right">- ${inr(folio.discount_amount)}</td></tr>` : ""}
-        ${isGst ? `<tr><td>GST</td><td class="right">${inr(folio.gst_amount)}</td></tr>` : ""}
+        ${isGst ? `<tr><td>Sub-total</td><td class="right">${inr(folio.sub_total)}</td></tr>` : ""}
+        ${isGst && Number(folio.discount_amount) > 0 ? `<tr><td>Discount</td><td class="right">- ${inr(folio.discount_amount)}</td></tr>` : ""}
+        ${isGst ? `<tr><td>CGST</td><td class="right">${inr(Number(folio.gst_amount) / 2)}</td></tr>` : ""}
+        ${isGst ? `<tr><td>SGST</td><td class="right">${inr(Number(folio.gst_amount) / 2)}</td></tr>` : ""}
         <tr class="grand"><td>Total</td><td class="right">${inr(folio.total_amount)}</td></tr>
         <tr><td>Paid</td><td class="right">${inr(folio.paid_amount)}</td></tr>
         <tr><td>Balance</td><td class="right">${inr(folio.balance_amount)}</td></tr>
@@ -379,6 +425,55 @@ function FolioPage() {
   if (!folio || !booking) return <AppShell title="Folio"><p className="text-sm text-muted-foreground">Not found.</p></AppShell>;
 
   const isOpen = folio.status === "open";
+  const pendingTotal = pendingKots.reduce((s, k) => s + Number(k.total_amount || 0), 0);
+  const hasPending = pendingKots.length > 0;
+
+  async function markAllServed() {
+    const ids = pendingKots.map((k) => k.id);
+    if (ids.length === 0) return;
+    const { error } = await supabase.from("kot_orders")
+      .update({ status: "served" }).in("id", ids);
+    if (error) return toast.error(error.message);
+    toast.success(`Marked ${ids.length} KOT(s) as served`);
+    load();
+  }
+
+  async function cancelPending() {
+    if (!cancelReason.trim()) return toast.error("Reason required");
+    const ids = pendingKots.map((k) => k.id);
+    const { error } = await supabase.from("kot_orders")
+      .update({ status: "cancelled", notes: `Cancelled at checkout: ${cancelReason}` })
+      .in("id", ids);
+    if (error) return toast.error(error.message);
+    setCancelOpen(false); setCancelReason("");
+    toast.success("Pending orders cancelled");
+    load();
+  }
+
+  async function submitOverride() {
+    if (!mgrEmail || !mgrPass) return toast.error("Manager email & password required");
+    if (!mgrReason.trim()) return toast.error("Reason required");
+    setMgrBusy(true);
+    const res = await verifyManagerPassword(mgrEmail.trim(), mgrPass);
+    setMgrBusy(false);
+    if (!res.ok) return toast.error(res.reason ?? "Incorrect manager password");
+    if (!folio || !booking) return;
+    await supabase.from("checkout_overrides").insert({
+      property_id: booking.property_id,
+      booking_id: booking.id,
+      folio_id: folio.id,
+      requested_by: user?.id ?? null,
+      approved_by: res.userId ?? null,
+      approver_email: mgrEmail,
+      reason: mgrReason,
+      pending_kot_ids: pendingKots.map((k) => k.id),
+      pending_amount: pendingTotal,
+    } as any);
+    setOverrideApproved(true);
+    setOverrideOpen(false);
+    setMgrEmail(""); setMgrPass(""); setMgrReason("");
+    toast.success("Manager override approved — checkout unlocked");
+  }
 
   return (
     <AppShell title={`Folio ${folio.invoice_number}`}>
@@ -393,7 +488,9 @@ function FolioPage() {
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={printInvoice}><Printer className="h-4 w-4 mr-1" /> Print</Button>
             {isOpen && Number(folio.balance_amount) < 0.01 && (
-              <Button size="sm" onClick={settle}><CheckCircle2 className="h-4 w-4 mr-1" /> Settle</Button>
+              <Button size="sm" onClick={settle} disabled={hasPending && !overrideApproved}>
+                <CheckCircle2 className="h-4 w-4 mr-1" /> Settle & Checkout
+              </Button>
             )}
             {isOpen && (
               <Button size="sm" variant="outline" className="text-destructive" onClick={() => setVoidOpen(true)}>
@@ -402,6 +499,47 @@ function FolioPage() {
             )}
           </div>
         </div>
+
+        {isOpen && hasPending && (
+          <Card className="border-destructive/60 bg-destructive/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2 text-destructive">
+                <AlertTriangle className="h-5 w-5" />
+                {pendingKots.length} food order(s) worth {inr(pendingTotal)} are pending
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="space-y-2">
+                {pendingKots.map((k) => (
+                  <div key={k.id} className="rounded border bg-background p-2">
+                    <div className="flex justify-between font-medium">
+                      <span>{k.kot_number} <span className="text-xs uppercase text-muted-foreground ml-1">({k.status})</span></span>
+                      <span>{inr(k.total_amount)}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {(k.items ?? []).map((i) => `${i.qty}× ${i.item_name}`).join(", ") || "—"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {overrideApproved ? (
+                <div className="rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-amber-900 text-xs">
+                  <ShieldAlert className="inline h-3.5 w-3.5 mr-1" />
+                  Manager override approved — you may proceed with checkout.
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={markAllServed}>Mark All as Served</Button>
+                  <Button size="sm" variant="outline" onClick={() => setCancelOpen(true)}>Cancel Pending Orders</Button>
+                  <Button size="sm" variant="outline" className="border-amber-500 text-amber-700"
+                    onClick={() => setOverrideOpen(true)}>
+                    <ShieldAlert className="h-4 w-4 mr-1" /> Manager Override
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
           <Card>
@@ -602,6 +740,57 @@ function FolioPage() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setVoidOpen(false)}>Cancel</Button>
               <Button variant="destructive" onClick={voidFolio}>Void</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* CANCEL PENDING KOTs */}
+        <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Cancel pending food orders</DialogTitle></DialogHeader>
+            <div className="space-y-1">
+              <Label className="text-xs">Reason *</Label>
+              <Textarea rows={3} value={cancelReason} onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Guest declined / kitchen unable to fulfil / etc." />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCancelOpen(false)}>Back</Button>
+              <Button variant="destructive" onClick={cancelPending}>Cancel orders</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* MANAGER OVERRIDE */}
+        <Dialog open={overrideOpen} onOpenChange={setOverrideOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Manager override — unlock checkout</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div className="text-xs text-muted-foreground">
+                A manager / owner must approve checkout while {pendingKots.length} food order(s)
+                worth {inr(pendingTotal)} remain unfulfilled. This override is logged.
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Manager email *</Label>
+                <Input type="email" autoComplete="off" value={mgrEmail}
+                  onChange={(e) => setMgrEmail(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Manager password *</Label>
+                <Input type="password" autoComplete="off" value={mgrPass}
+                  onChange={(e) => setMgrPass(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Reason *</Label>
+                <Textarea rows={2} value={mgrReason}
+                  onChange={(e) => setMgrReason(e.target.value)}
+                  placeholder="Why is this checkout being overridden?" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOverrideOpen(false)}>Cancel</Button>
+              <Button onClick={submitOverride} disabled={mgrBusy}>
+                {mgrBusy ? "Verifying…" : "Approve override"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
