@@ -20,6 +20,7 @@ import { Route as AuthenticatedMastersStaffRouteImport } from './routes/_authent
 import { Route as AuthenticatedMastersRoomsRouteImport } from './routes/_authenticated/masters.rooms'
 import { Route as AuthenticatedMastersPrintersRouteImport } from './routes/_authenticated/masters.printers'
 import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenticated/masters.menu'
+import { Route as AuthenticatedFrontDeskNewRouteImport } from './routes/_authenticated/front-desk.new'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -81,12 +82,19 @@ const AuthenticatedMastersMenuRoute =
     path: '/masters/menu',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFrontDeskNewRoute =
+  AuthenticatedFrontDeskNewRouteImport.update({
+    id: '/front-desk/new',
+    path: '/front-desk/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
@@ -99,6 +107,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
@@ -113,6 +122,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
+  '/_authenticated/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
   '/_authenticated/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/_authenticated/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/_authenticated/masters/rooms': typeof AuthenticatedMastersRoomsRoute
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/properties'
+    | '/front-desk/new'
     | '/masters/menu'
     | '/masters/printers'
     | '/masters/rooms'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/properties'
+    | '/front-desk/new'
     | '/masters/menu'
     | '/masters/printers'
     | '/masters/rooms'
@@ -152,6 +164,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/dashboard'
     | '/_authenticated/properties'
+    | '/_authenticated/front-desk/new'
     | '/_authenticated/masters/menu'
     | '/_authenticated/masters/printers'
     | '/_authenticated/masters/rooms'
@@ -245,12 +258,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMastersMenuRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/front-desk/new': {
+      id: '/_authenticated/front-desk/new'
+      path: '/front-desk/new'
+      fullPath: '/front-desk/new'
+      preLoaderRoute: typeof AuthenticatedFrontDeskNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPropertiesRoute: typeof AuthenticatedPropertiesRoute
+  AuthenticatedFrontDeskNewRoute: typeof AuthenticatedFrontDeskNewRoute
   AuthenticatedMastersMenuRoute: typeof AuthenticatedMastersMenuRoute
   AuthenticatedMastersPrintersRoute: typeof AuthenticatedMastersPrintersRoute
   AuthenticatedMastersRoomsRoute: typeof AuthenticatedMastersRoomsRoute
@@ -262,6 +283,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPropertiesRoute: AuthenticatedPropertiesRoute,
+  AuthenticatedFrontDeskNewRoute: AuthenticatedFrontDeskNewRoute,
   AuthenticatedMastersMenuRoute: AuthenticatedMastersMenuRoute,
   AuthenticatedMastersPrintersRoute: AuthenticatedMastersPrintersRoute,
   AuthenticatedMastersRoomsRoute: AuthenticatedMastersRoomsRoute,
