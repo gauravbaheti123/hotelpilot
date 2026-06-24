@@ -49,6 +49,7 @@ import { Route as AuthenticatedFrontDeskBookingsRouteImport } from './routes/_au
 import { Route as AuthenticatedFoodNewRouteImport } from './routes/_authenticated/food.new'
 import { Route as AuthenticatedFoodKotsRouteImport } from './routes/_authenticated/food.kots'
 import { Route as AuthenticatedFoodDashboardRouteImport } from './routes/_authenticated/food.dashboard'
+import { Route as AuthenticatedFeedbackNewRouteImport } from './routes/_authenticated/feedback.new'
 import { Route as AuthenticatedExpensesNewRouteImport } from './routes/_authenticated/expenses.new'
 import { Route as AuthenticatedBillingInvoicesRouteImport } from './routes/_authenticated/billing.invoices'
 import { Route as AuthenticatedBanquetNewRouteImport } from './routes/_authenticated/banquet.new'
@@ -287,6 +288,12 @@ const AuthenticatedFoodDashboardRoute =
     path: '/food/dashboard',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFeedbackNewRoute =
+  AuthenticatedFeedbackNewRouteImport.update({
+    id: '/feedback/new',
+    path: '/feedback/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedExpensesNewRoute =
   AuthenticatedExpensesNewRouteImport.update({
     id: '/expenses/new',
@@ -343,6 +350,7 @@ export interface FileRoutesByFullPath {
   '/banquet/new': typeof AuthenticatedBanquetNewRoute
   '/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
   '/expenses/new': typeof AuthenticatedExpensesNewRoute
+  '/feedback/new': typeof AuthenticatedFeedbackNewRoute
   '/food/dashboard': typeof AuthenticatedFoodDashboardRoute
   '/food/kots': typeof AuthenticatedFoodKotsRoute
   '/food/new': typeof AuthenticatedFoodNewRoute
@@ -392,6 +400,7 @@ export interface FileRoutesByTo {
   '/banquet/new': typeof AuthenticatedBanquetNewRoute
   '/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
   '/expenses/new': typeof AuthenticatedExpensesNewRoute
+  '/feedback/new': typeof AuthenticatedFeedbackNewRoute
   '/food/dashboard': typeof AuthenticatedFoodDashboardRoute
   '/food/kots': typeof AuthenticatedFoodKotsRoute
   '/food/new': typeof AuthenticatedFoodNewRoute
@@ -443,6 +452,7 @@ export interface FileRoutesById {
   '/_authenticated/banquet/new': typeof AuthenticatedBanquetNewRoute
   '/_authenticated/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
   '/_authenticated/expenses/new': typeof AuthenticatedExpensesNewRoute
+  '/_authenticated/feedback/new': typeof AuthenticatedFeedbackNewRoute
   '/_authenticated/food/dashboard': typeof AuthenticatedFoodDashboardRoute
   '/_authenticated/food/kots': typeof AuthenticatedFoodKotsRoute
   '/_authenticated/food/new': typeof AuthenticatedFoodNewRoute
@@ -494,6 +504,7 @@ export interface FileRouteTypes {
     | '/banquet/new'
     | '/billing/invoices'
     | '/expenses/new'
+    | '/feedback/new'
     | '/food/dashboard'
     | '/food/kots'
     | '/food/new'
@@ -543,6 +554,7 @@ export interface FileRouteTypes {
     | '/banquet/new'
     | '/billing/invoices'
     | '/expenses/new'
+    | '/feedback/new'
     | '/food/dashboard'
     | '/food/kots'
     | '/food/new'
@@ -593,6 +605,7 @@ export interface FileRouteTypes {
     | '/_authenticated/banquet/new'
     | '/_authenticated/billing/invoices'
     | '/_authenticated/expenses/new'
+    | '/_authenticated/feedback/new'
     | '/_authenticated/food/dashboard'
     | '/_authenticated/food/kots'
     | '/_authenticated/food/new'
@@ -922,6 +935,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFoodDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/feedback/new': {
+      id: '/_authenticated/feedback/new'
+      path: '/feedback/new'
+      fullPath: '/feedback/new'
+      preLoaderRoute: typeof AuthenticatedFeedbackNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/expenses/new': {
       id: '/_authenticated/expenses/new'
       path: '/expenses/new'
@@ -988,6 +1008,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBanquetNewRoute: typeof AuthenticatedBanquetNewRoute
   AuthenticatedBillingInvoicesRoute: typeof AuthenticatedBillingInvoicesRoute
   AuthenticatedExpensesNewRoute: typeof AuthenticatedExpensesNewRoute
+  AuthenticatedFeedbackNewRoute: typeof AuthenticatedFeedbackNewRoute
   AuthenticatedFoodDashboardRoute: typeof AuthenticatedFoodDashboardRoute
   AuthenticatedFoodKotsRoute: typeof AuthenticatedFoodKotsRoute
   AuthenticatedFoodNewRoute: typeof AuthenticatedFoodNewRoute
@@ -1036,6 +1057,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBanquetNewRoute: AuthenticatedBanquetNewRoute,
   AuthenticatedBillingInvoicesRoute: AuthenticatedBillingInvoicesRoute,
   AuthenticatedExpensesNewRoute: AuthenticatedExpensesNewRoute,
+  AuthenticatedFeedbackNewRoute: AuthenticatedFeedbackNewRoute,
   AuthenticatedFoodDashboardRoute: AuthenticatedFoodDashboardRoute,
   AuthenticatedFoodKotsRoute: AuthenticatedFoodKotsRoute,
   AuthenticatedFoodNewRoute: AuthenticatedFoodNewRoute,
