@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,29 +51,6 @@ function DashboardPage() {
           })}
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Phase 3 ready</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-muted-foreground">
-            <p>
-              Front desk is live: create bookings, check-in & check-out, shift rooms
-              between in-house guests, modify stay dates and cancel reservations.
-            </p>
-            <p>
-              Coming up — Phase 4: Food & KOT (dual KOT printers, food dashboard,
-              checkout lock).
-            </p>
-            {roles.includes("superadmin") && (
-              <p>
-                You have <span className="font-medium text-foreground">superadmin</span> access.{" "}
-                <Link to="/superadmin/dashboard" className="text-primary font-medium">
-                  Open superadmin panel →
-                </Link>
-              </p>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </AppShell>
   );
