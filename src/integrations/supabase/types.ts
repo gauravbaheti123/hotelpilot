@@ -604,6 +604,7 @@ export type Database = {
           pincode: string | null
           property_id: string
           state: string | null
+          tags: string[]
           updated_at: string
         }
         Insert: {
@@ -628,6 +629,7 @@ export type Database = {
           pincode?: string | null
           property_id: string
           state?: string | null
+          tags?: string[]
           updated_at?: string
         }
         Update: {
@@ -652,6 +654,7 @@ export type Database = {
           pincode?: string | null
           property_id?: string
           state?: string | null
+          tags?: string[]
           updated_at?: string
         }
         Relationships: [
