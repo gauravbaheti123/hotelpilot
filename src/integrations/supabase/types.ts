@@ -3165,6 +3165,7 @@ export type Database = {
         Returns: boolean
       }
       is_owner_or_super: { Args: { _user_id: string }; Returns: boolean }
+      is_superadmin: { Args: { _uid: string }; Returns: boolean }
       save_property_secrets: {
         Args: {
           _aisensy_api_key: string
@@ -3174,6 +3175,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      user_has_property: {
+        Args: { _prop: string; _uid: string }
+        Returns: boolean
+      }
+      user_property_ids: { Args: { _uid: string }; Returns: string[] }
     }
     Enums: {
       app_role:
