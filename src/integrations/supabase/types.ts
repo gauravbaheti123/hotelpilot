@@ -714,6 +714,79 @@ export type Database = {
           },
         ]
       }
+      housekeeping_tasks: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          id: string
+          notes: string | null
+          priority: string
+          property_id: string
+          room_id: string | null
+          status: string
+          task_type: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string
+          property_id: string
+          room_id?: string | null
+          status?: string
+          task_type?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          priority?: string
+          property_id?: string
+          room_id?: string | null
+          status?: string
+          task_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "housekeeping_tasks_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "housekeeping_tasks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "housekeeping_tasks_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kot_items: {
         Row: {
           amount: number
@@ -1520,6 +1593,7 @@ export type Database = {
       can_billing: { Args: { _user_id: string }; Returns: boolean }
       can_food: { Args: { _user_id: string }; Returns: boolean }
       can_front_desk: { Args: { _user_id: string }; Returns: boolean }
+      can_housekeeping: { Args: { _user_id: string }; Returns: boolean }
       can_manage_masters: { Args: { _user_id: string }; Returns: boolean }
       get_or_create_folio: { Args: { _booking_id: string }; Returns: string }
       has_open_kot: { Args: { _booking_id: string }; Returns: boolean }

@@ -25,6 +25,8 @@ import {
   BarChart3,
   Moon,
   FileSpreadsheet,
+  Sparkles,
+  LayoutGrid,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -78,6 +80,14 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/reports/sales", label: "Sales", icon: FileSpreadsheet },
       { to: "/reports/gst", label: "GST", icon: FileText },
       { to: "/reports/night-audit", label: "Night Audit", icon: Moon },
+    ],
+  },
+  {
+    label: "Housekeeping",
+    items: [
+      { to: "/housekeeping/board", label: "Room Board", icon: LayoutGrid },
+      { to: "/housekeeping/tasks", label: "Tasks", icon: Sparkles },
+      { to: "/housekeeping/new", label: "New Task", icon: PlusCircle },
     ],
   },
   {
