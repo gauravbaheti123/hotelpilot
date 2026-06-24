@@ -151,6 +151,23 @@ function NewKotPage() {
       const { error: e2 } = await supabase.from("kot_items").insert(lines as any);
       if (e2) throw e2;
       toast.success(printNow ? "KOT printed" : "KOT saved");
+      // Notify guest via WhatsApp for room orders (best-effort)
+      if (kotType === "room" && bookingId) {
+        const { fireTrigger } = await import("@/lib/whatsapp");
+        const { data: bg } = await supabase
+          .from("bookings")
+          .select("guests(id,mobile)")
+          .eq("id", bookingId).maybeSingle();
+        const g = (bg as any)?.guests ?? null;
+        if (g?.mobile) {
+          fireTrigger("food_ordered", {
+            property_id: propertyId,
+            booking_id: bookingId,
+            guest_id: g.id,
+            phone: g.mobile,
+          });
+        }
+      }
       router.navigate({ to: "/food/kot/$id", params: { id: kot!.id } });
     } catch (e: any) {
       toast.error(e.message ?? "Failed to save KOT");

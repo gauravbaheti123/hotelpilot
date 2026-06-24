@@ -181,6 +181,22 @@ function NewBookingPage() {
       }
 
       toast.success(`Booking ${booking!.booking_number} created`);
+      // Fire WhatsApp triggers (best-effort, never blocks navigation)
+      const { fireTrigger } = await import("@/lib/whatsapp");
+      fireTrigger("booking_confirm", {
+        property_id: current.id,
+        booking_id: booking!.id,
+        guest_id: guest!.id,
+        phone: mobile || null,
+      });
+      if (checkInNow) {
+        fireTrigger("checkin_welcome", {
+          property_id: current.id,
+          booking_id: booking!.id,
+          guest_id: guest!.id,
+          phone: mobile || null,
+        });
+      }
       router.navigate({ to: "/front-desk/booking/$id", params: { id: booking!.id } });
     } catch (e: any) {
       toast.error(e.message ?? "Failed to save");

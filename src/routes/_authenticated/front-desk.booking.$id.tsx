@@ -29,6 +29,7 @@ import {
   BOOKING_STATUS_TONE,
   nightsBetween,
 } from "@/lib/front-desk";
+import { fireTrigger } from "@/lib/whatsapp";
 import {
   LogIn,
   LogOut,
@@ -151,6 +152,12 @@ function BookingDetailPage() {
       await supabase.from("booking_rooms").update({ actual_check_in: now }).eq("id", br.id);
     }
     toast.success("Checked in");
+    fireTrigger("checkin_welcome", {
+      property_id: b.property_id,
+      booking_id: b.id,
+      guest_id: b.guests?.id ?? null,
+      phone: b.guests?.mobile ?? null,
+    });
     load();
   }
 
@@ -189,6 +196,12 @@ function BookingDetailPage() {
       await supabase.from("booking_rooms").update({ actual_check_out: now }).eq("id", br.id);
     }
     toast.success("Checked out");
+    fireTrigger("checkout_bill", {
+      property_id: b.property_id,
+      booking_id: b.id,
+      guest_id: b.guests?.id ?? null,
+      phone: b.guests?.mobile ?? null,
+    });
     load();
   }
 
