@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,18 +16,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, MapPin, Phone, KeyRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { createOwnerLogin } from "@/lib/admin-users.functions";
 
 export const Route = createFileRoute("/_authenticated/properties")({
   head: () => ({ meta: [{ title: "Properties — HotelPilot" }] }),
@@ -66,6 +67,13 @@ function PropertiesPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<PropertyRow> | null>(null);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginProp, setLoginProp] = useState<PropertyRow | null>(null);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginRole, setLoginRole] = useState<"owner" | "manager" | "receptionist">("owner");
+  const [creatingLogin, setCreatingLogin] = useState(false);
+  const createLoginFn = useServerFn(createOwnerLogin);
 
   async function load() {
     setLoading(true);
@@ -114,6 +122,39 @@ function PropertiesPage() {
     setOpen(false);
     setEditing(null);
     load();
+  }
+
+  function openCreateLogin(p: PropertyRow) {
+    setLoginProp(p);
+    setLoginEmail("");
+    setLoginPassword("");
+    setLoginRole("owner");
+    setLoginOpen(true);
+  }
+
+  async function submitCreateLogin() {
+    if (!loginProp) return;
+    if (!loginEmail.trim() || loginPassword.length < 8) {
+      toast.error("Email required and password must be 8+ characters");
+      return;
+    }
+    setCreatingLogin(true);
+    try {
+      await createLoginFn({
+        data: {
+          email: loginEmail.trim(),
+          password: loginPassword,
+          role: loginRole,
+          property_id: loginProp.id,
+        },
+      });
+      toast.success(`Login created for ${loginProp.name}`);
+      setLoginOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to create login");
+    } finally {
+      setCreatingLogin(false);
+    }
   }
 
   return (
@@ -205,55 +246,108 @@ function PropertiesPage() {
           )}
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">All properties</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : rows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No properties yet. Create your first one to begin.
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>City</TableHead>
-                    <TableHead>GSTIN</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-medium">{r.name}</TableCell>
-                      <TableCell>{r.city ?? "—"}</TableCell>
-                      <TableCell>{r.gstin ?? "—"}</TableCell>
-                      <TableCell>{r.phone ?? "—"}</TableCell>
-                      <TableCell>
-                        <Badge variant={r.is_active ? "default" : "secondary"}>
-                          {r.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {canManage && (
-                          <Button size="sm" variant="ghost" onClick={() => openEdit(r)}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No properties yet. Create your first one to begin.
+          </p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {rows.map((r) => (
+              <Card key={r.id} className="flex flex-col">
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <CardTitle className="text-base">{r.name}</CardTitle>
+                    <Badge variant={r.is_active ? "default" : "secondary"}>
+                      {r.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex flex-1 flex-col gap-2 text-sm">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5" />
+                    <span>{r.city ?? "—"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Phone className="h-3.5 w-3.5" />
+                    <span>{r.phone ?? "—"}</span>
+                  </div>
+                  {canManage && (
+                    <div className="mt-auto flex gap-2 pt-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => openEdit(r)}
+                      >
+                        <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="flex-1"
+                        onClick={() => openCreateLogin(r)}
+                      >
+                        <KeyRound className="mr-1 h-3.5 w-3.5" /> Create Owner Login
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        <Dialog open={loginOpen} onOpenChange={setLoginOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                Create login{loginProp ? ` — ${loginProp.name}` : ""}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Field label="Email">
+                <Input
+                  type="email"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  placeholder="owner@example.com"
+                />
+              </Field>
+              <Field label="Password (min 8 chars)">
+                <Input
+                  type="text"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                />
+              </Field>
+              <Field label="Role">
+                <Select
+                  value={loginRole}
+                  onValueChange={(v) => setLoginRole(v as typeof loginRole)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="owner">Owner</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="receptionist">Receptionist</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setLoginOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={submitCreateLogin} disabled={creatingLogin}>
+                {creatingLogin ? "Creating…" : "Create & Link"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppShell>
   );
