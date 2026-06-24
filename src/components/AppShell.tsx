@@ -95,6 +95,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Reports",
     items: [
       { to: "/reports/daily", label: "Daily Report", icon: BarChart3 },
+      { to: "/reports/analytics", label: "Analytics", icon: BarChart3 },
       { to: "/reports/sales", label: "Sales", icon: FileSpreadsheet },
       { to: "/reports/gst", label: "GST", icon: FileText },
       { to: "/reports/night-audit", label: "Night Audit", icon: Moon },
