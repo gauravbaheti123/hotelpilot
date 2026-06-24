@@ -30,13 +30,17 @@ function WhatsAppSettingsPage() {
 
   useEffect(() => {
     if (!propertyId) return;
-    supabase.from("properties")
-      .select("aisensy_api_key,wa_number,wifi_password")
-      .eq("id", propertyId).maybeSingle()
-      .then(({ data }) => {
-        setApiKey(data?.aisensy_api_key ?? "");
-        setWaNumber(data?.wa_number ?? "");
-        setWifiPassword(data?.wifi_password ?? "");
+    supabase.rpc("get_property_secrets", { _property_id: propertyId })
+      .then(({ data, error }) => {
+        if (error) {
+          toast.error(error.message);
+          setLoaded(true);
+          return;
+        }
+        const row = Array.isArray(data) ? data[0] : data;
+        setApiKey(row?.aisensy_api_key ?? "");
+        setWaNumber(row?.wa_number ?? "");
+        setWifiPassword(row?.wifi_password ?? "");
         setLoaded(true);
       });
   }, [propertyId]);
@@ -44,11 +48,12 @@ function WhatsAppSettingsPage() {
   async function save() {
     if (!propertyId) return;
     setSaving(true);
-    const { error } = await supabase.from("properties").update({
-      aisensy_api_key: apiKey || null,
-      wa_number: waNumber || null,
-      wifi_password: wifiPassword || null,
-    }).eq("id", propertyId);
+    const { error } = await supabase.rpc("save_property_secrets", {
+      _property_id: propertyId,
+      _aisensy_api_key: apiKey,
+      _wa_number: waNumber,
+      _wifi_password: wifiPassword,
+    });
     setSaving(false);
     if (error) toast.error(error.message); else toast.success("WhatsApp settings saved");
   }

@@ -3137,6 +3137,14 @@ export type Database = {
       can_housekeeping: { Args: { _user_id: string }; Returns: boolean }
       can_manage_masters: { Args: { _user_id: string }; Returns: boolean }
       get_or_create_folio: { Args: { _booking_id: string }; Returns: string }
+      get_property_secrets: {
+        Args: { _property_id: string }
+        Returns: {
+          aisensy_api_key: string
+          wa_number: string
+          wifi_password: string
+        }[]
+      }
       has_open_kot: { Args: { _booking_id: string }; Returns: boolean }
       has_role: {
         Args: {
@@ -3146,6 +3154,15 @@ export type Database = {
         Returns: boolean
       }
       is_owner_or_super: { Args: { _user_id: string }; Returns: boolean }
+      save_property_secrets: {
+        Args: {
+          _aisensy_api_key: string
+          _property_id: string
+          _wa_number: string
+          _wifi_password: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
