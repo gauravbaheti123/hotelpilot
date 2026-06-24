@@ -59,6 +59,7 @@ interface MenuItem {
   hsn_code: string | null;
   is_veg: boolean;
   is_available: boolean;
+  kitchen_type: string;
 }
 
 function MenuPage() {
@@ -125,6 +126,7 @@ function MenuPage() {
       hsn_code: editingItem.hsn_code ?? null,
       is_veg: editingItem.is_veg ?? true,
       is_available: editingItem.is_available ?? true,
+      kitchen_type: editingItem.kitchen_type ?? "hotel",
     };
     const { error } = editingItem.id
       ? await supabase.from("menu_items").update(payload).eq("id", editingItem.id)
@@ -333,6 +335,18 @@ function MenuPage() {
                         <Switch checked={editingItem.is_available ?? true}
                           onCheckedChange={(v) => setEditingItem({ ...editingItem, is_available: v })} />
                       </Field>
+                      <Field label="Kitchen">
+                        <Select value={editingItem.kitchen_type ?? "hotel"}
+                          onValueChange={(v) => setEditingItem({ ...editingItem, kitchen_type: v })}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="hotel">Hotel Kitchen</SelectItem>
+                            <SelectItem value="restaurant">Restaurant Kitchen</SelectItem>
+                            <SelectItem value="bar">Bar</SelectItem>
+                            <SelectItem value="banquet">Banquet Kitchen</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </Field>
                     </div>
                   )}
                   <DialogFooter>
@@ -359,6 +373,7 @@ function MenuPage() {
                     <TableHead>Category</TableHead>
                     <TableHead>Price</TableHead>
                     <TableHead>GST</TableHead>
+                    <TableHead>Kitchen</TableHead>
                     <TableHead>Available</TableHead>
                     {canManage && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
@@ -375,6 +390,7 @@ function MenuPage() {
                       <TableCell>{cats.find((c) => c.id === i.category_id)?.name ?? "—"}</TableCell>
                       <TableCell>₹{i.price}</TableCell>
                       <TableCell>{i.gst_rate}%</TableCell>
+                      <TableCell><Badge variant="outline">{i.kitchen_type}</Badge></TableCell>
                       <TableCell>
                         <Badge variant={i.is_available ? "default" : "secondary"}>
                           {i.is_available ? "Yes" : "No"}
