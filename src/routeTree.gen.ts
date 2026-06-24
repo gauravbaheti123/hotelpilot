@@ -53,6 +53,7 @@ import { Route as AuthenticatedFoodKotsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedFoodDashboardRouteImport } from './routes/_authenticated/food.dashboard'
 import { Route as AuthenticatedFeedbackNewRouteImport } from './routes/_authenticated/feedback.new'
 import { Route as AuthenticatedExpensesNewRouteImport } from './routes/_authenticated/expenses.new'
+import { Route as AuthenticatedCommsNewRouteImport } from './routes/_authenticated/comms.new'
 import { Route as AuthenticatedBillingInvoicesRouteImport } from './routes/_authenticated/billing.invoices'
 import { Route as AuthenticatedBanquetNewRouteImport } from './routes/_authenticated/banquet.new'
 import { Route as AuthenticatedBanquetBookingsRouteImport } from './routes/_authenticated/banquet.bookings'
@@ -314,6 +315,11 @@ const AuthenticatedExpensesNewRoute =
     path: '/expenses/new',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCommsNewRoute = AuthenticatedCommsNewRouteImport.update({
+  id: '/comms/new',
+  path: '/comms/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedBillingInvoicesRoute =
   AuthenticatedBillingInvoicesRouteImport.update({
     id: '/billing/invoices',
@@ -363,6 +369,7 @@ export interface FileRoutesByFullPath {
   '/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
   '/banquet/new': typeof AuthenticatedBanquetNewRoute
   '/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
+  '/comms/new': typeof AuthenticatedCommsNewRoute
   '/expenses/new': typeof AuthenticatedExpensesNewRoute
   '/feedback/new': typeof AuthenticatedFeedbackNewRoute
   '/food/dashboard': typeof AuthenticatedFoodDashboardRoute
@@ -415,6 +422,7 @@ export interface FileRoutesByTo {
   '/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
   '/banquet/new': typeof AuthenticatedBanquetNewRoute
   '/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
+  '/comms/new': typeof AuthenticatedCommsNewRoute
   '/expenses/new': typeof AuthenticatedExpensesNewRoute
   '/feedback/new': typeof AuthenticatedFeedbackNewRoute
   '/food/dashboard': typeof AuthenticatedFoodDashboardRoute
@@ -469,6 +477,7 @@ export interface FileRoutesById {
   '/_authenticated/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
   '/_authenticated/banquet/new': typeof AuthenticatedBanquetNewRoute
   '/_authenticated/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
+  '/_authenticated/comms/new': typeof AuthenticatedCommsNewRoute
   '/_authenticated/expenses/new': typeof AuthenticatedExpensesNewRoute
   '/_authenticated/feedback/new': typeof AuthenticatedFeedbackNewRoute
   '/_authenticated/food/dashboard': typeof AuthenticatedFoodDashboardRoute
@@ -523,6 +532,7 @@ export interface FileRouteTypes {
     | '/banquet/bookings'
     | '/banquet/new'
     | '/billing/invoices'
+    | '/comms/new'
     | '/expenses/new'
     | '/feedback/new'
     | '/food/dashboard'
@@ -575,6 +585,7 @@ export interface FileRouteTypes {
     | '/banquet/bookings'
     | '/banquet/new'
     | '/billing/invoices'
+    | '/comms/new'
     | '/expenses/new'
     | '/feedback/new'
     | '/food/dashboard'
@@ -628,6 +639,7 @@ export interface FileRouteTypes {
     | '/_authenticated/banquet/bookings'
     | '/_authenticated/banquet/new'
     | '/_authenticated/billing/invoices'
+    | '/_authenticated/comms/new'
     | '/_authenticated/expenses/new'
     | '/_authenticated/feedback/new'
     | '/_authenticated/food/dashboard'
@@ -989,6 +1001,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExpensesNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/comms/new': {
+      id: '/_authenticated/comms/new'
+      path: '/comms/new'
+      fullPath: '/comms/new'
+      preLoaderRoute: typeof AuthenticatedCommsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/billing/invoices': {
       id: '/_authenticated/billing/invoices'
       path: '/billing/invoices'
@@ -1047,6 +1066,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBanquetBookingsRoute: typeof AuthenticatedBanquetBookingsRoute
   AuthenticatedBanquetNewRoute: typeof AuthenticatedBanquetNewRoute
   AuthenticatedBillingInvoicesRoute: typeof AuthenticatedBillingInvoicesRoute
+  AuthenticatedCommsNewRoute: typeof AuthenticatedCommsNewRoute
   AuthenticatedExpensesNewRoute: typeof AuthenticatedExpensesNewRoute
   AuthenticatedFeedbackNewRoute: typeof AuthenticatedFeedbackNewRoute
   AuthenticatedFoodDashboardRoute: typeof AuthenticatedFoodDashboardRoute
@@ -1098,6 +1118,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBanquetBookingsRoute: AuthenticatedBanquetBookingsRoute,
   AuthenticatedBanquetNewRoute: AuthenticatedBanquetNewRoute,
   AuthenticatedBillingInvoicesRoute: AuthenticatedBillingInvoicesRoute,
+  AuthenticatedCommsNewRoute: AuthenticatedCommsNewRoute,
   AuthenticatedExpensesNewRoute: AuthenticatedExpensesNewRoute,
   AuthenticatedFeedbackNewRoute: AuthenticatedFeedbackNewRoute,
   AuthenticatedFoodDashboardRoute: AuthenticatedFoodDashboardRoute,
