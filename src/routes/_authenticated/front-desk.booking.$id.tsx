@@ -30,6 +30,8 @@ import {
   nightsBetween,
 } from "@/lib/front-desk";
 import { fireTrigger } from "@/lib/whatsapp";
+import { verifyManagerPassword } from "@/lib/manager-verify";
+import { recomputeFolio } from "@/lib/billing";
 import {
   LogIn,
   LogOut,
@@ -37,6 +39,8 @@ import {
   CalendarClock,
   Ban,
   Receipt,
+  ShieldAlert,
+  Check,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/front-desk/booking/$id")({
@@ -45,7 +49,13 @@ export const Route = createFileRoute("/_authenticated/front-desk/booking/$id")({
 });
 
 interface Guest { id: string; name: string; mobile: string | null; email: string | null; address: string | null; id_proof_type: string | null; id_proof_number: string | null; }
-interface Room { id: string; room_number: string; category_id: string | null; status: string; }
+interface Room {
+  id: string;
+  room_number: string;
+  category_id: string | null;
+  status: string;
+  room_categories?: { name: string; base_rate: number } | null;
+}
 interface BookingRoomRow {
   id: string;
   room_id: string | null;
@@ -97,6 +107,16 @@ function BookingDetailPage() {
   const [shiftBrId, setShiftBrId] = useState<string>("");
   const [shiftToRoom, setShiftToRoom] = useState<string>("");
   const [shiftReason, setShiftReason] = useState("");
+  const [shiftStep, setShiftStep] = useState<1 | 2 | 3 | 4>(1);
+  const [tariffChoice, setTariffChoice] = useState<"keep" | "new_standard" | "custom">("keep");
+  const [customRate, setCustomRate] = useState("");
+  const [transferKots, setTransferKots] = useState(true);
+  const [pendingKots, setPendingKots] = useState<{ id: string; kot_number: string; status: string; total_amount: number }[]>([]);
+  const [mgrEmail, setMgrEmail] = useState("");
+  const [mgrPass, setMgrPass] = useState("");
+  const [mgrBusy, setMgrBusy] = useState(false);
+  const [mgrApproved, setMgrApproved] = useState(false);
+  const [shiftBusy, setShiftBusy] = useState(false);
 
   const [dateOpen, setDateOpen] = useState(false);
   const [newCheckOut, setNewCheckOut] = useState("");
@@ -125,7 +145,7 @@ function BookingDetailPage() {
       setNewCheckOut(detail.check_out);
       const { data: rs } = await supabase
         .from("rooms")
-        .select("id,room_number,category_id,status")
+        .select("id,room_number,category_id,status,room_categories(name,base_rate)")
         .eq("property_id", detail.property_id)
         .order("room_number");
       setRooms((rs ?? []) as Room[]);
@@ -209,24 +229,91 @@ function BookingDetailPage() {
     setShiftBrId(brId);
     setShiftToRoom("");
     setShiftReason("");
+    setShiftStep(1);
+    setTariffChoice("keep");
+    setCustomRate("");
+    setTransferKots(true);
+    setPendingKots([]);
+    setMgrEmail(""); setMgrPass(""); setMgrApproved(false);
     setShiftOpen(true);
+  }
+
+  async function loadPendingKotsFor(brId: string) {
+    if (!b) return;
+    const br = b.booking_rooms.find((x) => x.id === brId);
+    if (!br) { setPendingKots([]); return; }
+    const { data } = await supabase
+      .from("kot_orders")
+      .select("id,kot_number,status,total_amount")
+      .eq("booking_id", b.id)
+      .in("status", ["open", "printed", "served"]);
+    setPendingKots(((data ?? []) as any));
+  }
+
+  async function verifyMgrForCustom() {
+    if (!mgrEmail || !mgrPass) return toast.error("Manager email & password required");
+    setMgrBusy(true);
+    const res = await verifyManagerPassword(mgrEmail.trim(), mgrPass);
+    setMgrBusy(false);
+    if (!res.ok) return toast.error(res.reason ?? "Incorrect manager password");
+    setMgrApproved(true);
+    toast.success("Custom rate authorised");
+  }
+
+  function resolveNewRate(br: BookingRoomRow, target: Room | undefined): number {
+    if (tariffChoice === "custom") return Number(customRate) || Number(br.rate);
+    if (tariffChoice === "new_standard") return Number(target?.room_categories?.base_rate ?? br.rate);
+    return Number(br.rate);
   }
 
   async function doShift() {
     if (!b || !shiftBrId || !shiftToRoom) return toast.error("Pick a target room");
     const br = b.booking_rooms.find((x) => x.id === shiftBrId);
     if (!br) return;
+    if (!shiftReason.trim()) return toast.error("Reason is required");
+    if (tariffChoice === "custom" && !mgrApproved) return toast.error("Manager authorisation required for custom rate");
+    const target = rooms.find((r) => r.id === shiftToRoom);
+    const oldRate = Number(br.rate);
+    const newRate = resolveNewRate(br, target);
     const fromRoomId = br.room_id;
+    setShiftBusy(true);
 
-    const { error: e1 } = await supabase.from("booking_rooms").update({ room_id: shiftToRoom }).eq("id", br.id);
-    if (e1) return toast.error(e1.message);
+    const { error: e1 } = await supabase.from("booking_rooms")
+      .update({ room_id: shiftToRoom, rate: newRate, category_id: target?.category_id ?? br.category_id }).eq("id", br.id);
+    if (e1) { setShiftBusy(false); return toast.error(e1.message); }
+
+    // Update folio room charges (if any) for this booking_room to reflect new rate
+    try {
+      const { data: folioId } = await supabase.rpc("get_or_create_folio", { _booking_id: b.id });
+      const fId = folioId as unknown as string;
+      const { data: roomCharges } = await supabase.from("folio_charges").select("*")
+        .eq("folio_id", fId).eq("source_table", "booking_rooms").eq("source_id", br.id);
+      for (const rc of (roomCharges ?? []) as any[]) {
+        const qty = Number(rc.qty) || 1;
+        const amount = qty * newRate;
+        const gstAmt = Math.round(amount * Number(rc.gst_rate || 0)) / 100;
+        await supabase.from("folio_charges")
+          .update({ rate: newRate, amount, gst_amount: gstAmt }).eq("id", rc.id);
+      }
+      const { data: allCharges } = await supabase.from("folio_charges").select("*").eq("folio_id", fId);
+      const { data: folio } = await supabase.from("folios").select("gst_mode,paid_amount").eq("id", fId).single();
+      const mode = ((folio as any)?.gst_mode ?? "cash") as "cash" | "gst";
+      const t = recomputeFolio((allCharges ?? []) as any, mode);
+      const paid = Number((folio as any)?.paid_amount ?? 0);
+      await supabase.from("folios").update({
+        ...t, balance_amount: Math.max(0, t.total_amount - paid),
+      }).eq("id", fId);
+    } catch (e) { console.warn("folio rate update failed", e); }
 
     await supabase.from("room_shifts").insert({
       property_id: b.property_id,
       booking_room_id: br.id,
       from_room_id: fromRoomId,
       to_room_id: shiftToRoom,
-      reason: shiftReason || null,
+      reason: shiftReason,
+      old_rate: oldRate,
+      new_rate: newRate,
+      tariff_choice: tariffChoice,
       shifted_by: user?.id ?? null,
     } as any);
 
@@ -241,7 +328,7 @@ function BookingDetailPage() {
     }
 
     // === Transfer open/printed KOTs to new room and log ===
-    try {
+    if (transferKots) try {
       if (!fromRoomId) throw new Error("no from room");
       const fromId: string = fromRoomId;
       const { data: openKots } = await supabase
@@ -271,6 +358,22 @@ function BookingDetailPage() {
       console.warn("KOT transfer failed", e);
     }
 
+    // WhatsApp notify guest
+    try {
+      if (b.guests?.mobile) {
+        const fromName = b.booking_rooms.find((x) => x.id === br.id)?.rooms?.room_number ?? "";
+        const toName = target?.room_number ?? "";
+        fireTrigger("room_shift" as any, {
+          property_id: b.property_id,
+          booking_id: b.id,
+          guest_id: b.guests?.id ?? null,
+          phone: b.guests.mobile,
+          extra: { from_room: fromName, to_room: toName, new_rate: newRate },
+        } as any);
+      }
+    } catch { /* ignore */ }
+
+    setShiftBusy(false);
     toast.success("Room shifted");
     setShiftOpen(false);
     load();
