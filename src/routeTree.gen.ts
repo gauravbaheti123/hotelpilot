@@ -38,6 +38,7 @@ import { Route as AuthenticatedMastersMessageTemplatesRouteImport } from './rout
 import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenticated/masters.menu'
 import { Route as AuthenticatedMastersHallsRouteImport } from './routes/_authenticated/masters.halls'
 import { Route as AuthenticatedMastersExpenseCategoriesRouteImport } from './routes/_authenticated/masters.expense-categories'
+import { Route as AuthenticatedMastersChannelsRouteImport } from './routes/_authenticated/masters.channels'
 import { Route as AuthenticatedInventoryVendorsRouteImport } from './routes/_authenticated/inventory.vendors'
 import { Route as AuthenticatedInventoryStockRouteImport } from './routes/_authenticated/inventory.stock'
 import { Route as AuthenticatedInventoryMovementsRouteImport } from './routes/_authenticated/inventory.movements'
@@ -231,6 +232,12 @@ const AuthenticatedMastersExpenseCategoriesRoute =
     path: '/masters/expense-categories',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMastersChannelsRoute =
+  AuthenticatedMastersChannelsRouteImport.update({
+    id: '/masters/channels',
+    path: '/masters/channels',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedInventoryVendorsRoute =
   AuthenticatedInventoryVendorsRouteImport.update({
     id: '/inventory/vendors',
@@ -415,6 +422,7 @@ export interface FileRoutesByFullPath {
   '/inventory/movements': typeof AuthenticatedInventoryMovementsRoute
   '/inventory/stock': typeof AuthenticatedInventoryStockRoute
   '/inventory/vendors': typeof AuthenticatedInventoryVendorsRoute
+  '/masters/channels': typeof AuthenticatedMastersChannelsRoute
   '/masters/expense-categories': typeof AuthenticatedMastersExpenseCategoriesRoute
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
@@ -472,6 +480,7 @@ export interface FileRoutesByTo {
   '/inventory/movements': typeof AuthenticatedInventoryMovementsRoute
   '/inventory/stock': typeof AuthenticatedInventoryStockRoute
   '/inventory/vendors': typeof AuthenticatedInventoryVendorsRoute
+  '/masters/channels': typeof AuthenticatedMastersChannelsRoute
   '/masters/expense-categories': typeof AuthenticatedMastersExpenseCategoriesRoute
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
@@ -531,6 +540,7 @@ export interface FileRoutesById {
   '/_authenticated/inventory/movements': typeof AuthenticatedInventoryMovementsRoute
   '/_authenticated/inventory/stock': typeof AuthenticatedInventoryStockRoute
   '/_authenticated/inventory/vendors': typeof AuthenticatedInventoryVendorsRoute
+  '/_authenticated/masters/channels': typeof AuthenticatedMastersChannelsRoute
   '/_authenticated/masters/expense-categories': typeof AuthenticatedMastersExpenseCategoriesRoute
   '/_authenticated/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/_authenticated/masters/menu': typeof AuthenticatedMastersMenuRoute
@@ -590,6 +600,7 @@ export interface FileRouteTypes {
     | '/inventory/movements'
     | '/inventory/stock'
     | '/inventory/vendors'
+    | '/masters/channels'
     | '/masters/expense-categories'
     | '/masters/halls'
     | '/masters/menu'
@@ -647,6 +658,7 @@ export interface FileRouteTypes {
     | '/inventory/movements'
     | '/inventory/stock'
     | '/inventory/vendors'
+    | '/masters/channels'
     | '/masters/expense-categories'
     | '/masters/halls'
     | '/masters/menu'
@@ -705,6 +717,7 @@ export interface FileRouteTypes {
     | '/_authenticated/inventory/movements'
     | '/_authenticated/inventory/stock'
     | '/_authenticated/inventory/vendors'
+    | '/_authenticated/masters/channels'
     | '/_authenticated/masters/expense-categories'
     | '/_authenticated/masters/halls'
     | '/_authenticated/masters/menu'
@@ -946,6 +959,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMastersExpenseCategoriesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/masters/channels': {
+      id: '/_authenticated/masters/channels'
+      path: '/masters/channels'
+      fullPath: '/masters/channels'
+      preLoaderRoute: typeof AuthenticatedMastersChannelsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/inventory/vendors': {
       id: '/_authenticated/inventory/vendors'
       path: '/inventory/vendors'
@@ -1164,6 +1184,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInventoryMovementsRoute: typeof AuthenticatedInventoryMovementsRoute
   AuthenticatedInventoryStockRoute: typeof AuthenticatedInventoryStockRoute
   AuthenticatedInventoryVendorsRoute: typeof AuthenticatedInventoryVendorsRoute
+  AuthenticatedMastersChannelsRoute: typeof AuthenticatedMastersChannelsRoute
   AuthenticatedMastersExpenseCategoriesRoute: typeof AuthenticatedMastersExpenseCategoriesRoute
   AuthenticatedMastersHallsRoute: typeof AuthenticatedMastersHallsRoute
   AuthenticatedMastersMenuRoute: typeof AuthenticatedMastersMenuRoute
@@ -1221,6 +1242,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInventoryMovementsRoute: AuthenticatedInventoryMovementsRoute,
   AuthenticatedInventoryStockRoute: AuthenticatedInventoryStockRoute,
   AuthenticatedInventoryVendorsRoute: AuthenticatedInventoryVendorsRoute,
+  AuthenticatedMastersChannelsRoute: AuthenticatedMastersChannelsRoute,
   AuthenticatedMastersExpenseCategoriesRoute:
     AuthenticatedMastersExpenseCategoriesRoute,
   AuthenticatedMastersHallsRoute: AuthenticatedMastersHallsRoute,
