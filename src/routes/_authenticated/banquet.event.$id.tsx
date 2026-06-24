@@ -148,9 +148,10 @@ function BanquetEventPage() {
       extra_charge: merged.extra_charge, discount_amount: merged.discount_amount,
     });
     const balance = Math.max(0, total - Number(merged.advance_amount));
-    await supabase.from("banquet_bookings").update({
-      ...patch, total_amount: total, balance_amount: balance,
-    }).eq("id", b.id);
+    const dbPatch: any = { ...patch, total_amount: total, balance_amount: balance };
+    delete dbPatch.guests;
+    delete dbPatch.halls;
+    await supabase.from("banquet_bookings").update(dbPatch).eq("id", b.id);
     setB({ ...merged, total_amount: total, balance_amount: balance });
   }
 

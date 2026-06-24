@@ -33,6 +33,7 @@ import { Route as AuthenticatedBanquetBookingsRouteImport } from './routes/_auth
 import { Route as AuthenticatedFrontDeskBookingIdRouteImport } from './routes/_authenticated/front-desk.booking.$id'
 import { Route as AuthenticatedFoodKotIdRouteImport } from './routes/_authenticated/food.kot.$id'
 import { Route as AuthenticatedBillingFolioBookingIdRouteImport } from './routes/_authenticated/billing.folio.$bookingId'
+import { Route as AuthenticatedBanquetEventIdRouteImport } from './routes/_authenticated/banquet.event.$id'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -168,6 +169,12 @@ const AuthenticatedBillingFolioBookingIdRoute =
     path: '/billing/folio/$bookingId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedBanquetEventIdRoute =
+  AuthenticatedBanquetEventIdRouteImport.update({
+    id: '/banquet/event/$id',
+    path: '/banquet/event/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -190,6 +197,7 @@ export interface FileRoutesByFullPath {
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
   '/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRoute
@@ -215,6 +223,7 @@ export interface FileRoutesByTo {
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
   '/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRoute
@@ -242,6 +251,7 @@ export interface FileRoutesById {
   '/_authenticated/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/_authenticated/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/_authenticated/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/_authenticated/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/_authenticated/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/_authenticated/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
   '/_authenticated/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRoute
@@ -269,6 +279,7 @@ export interface FileRouteTypes {
     | '/masters/staff'
     | '/masters/tariff'
     | '/superadmin/dashboard'
+    | '/banquet/event/$id'
     | '/billing/folio/$bookingId'
     | '/food/kot/$id'
     | '/front-desk/booking/$id'
@@ -294,6 +305,7 @@ export interface FileRouteTypes {
     | '/masters/staff'
     | '/masters/tariff'
     | '/superadmin/dashboard'
+    | '/banquet/event/$id'
     | '/billing/folio/$bookingId'
     | '/food/kot/$id'
     | '/front-desk/booking/$id'
@@ -320,6 +332,7 @@ export interface FileRouteTypes {
     | '/_authenticated/masters/staff'
     | '/_authenticated/masters/tariff'
     | '/_authenticated/superadmin/dashboard'
+    | '/_authenticated/banquet/event/$id'
     | '/_authenticated/billing/folio/$bookingId'
     | '/_authenticated/food/kot/$id'
     | '/_authenticated/front-desk/booking/$id'
@@ -501,6 +514,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBillingFolioBookingIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/banquet/event/$id': {
+      id: '/_authenticated/banquet/event/$id'
+      path: '/banquet/event/$id'
+      fullPath: '/banquet/event/$id'
+      preLoaderRoute: typeof AuthenticatedBanquetEventIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -523,6 +543,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMastersStaffRoute: typeof AuthenticatedMastersStaffRoute
   AuthenticatedMastersTariffRoute: typeof AuthenticatedMastersTariffRoute
   AuthenticatedSuperadminDashboardRoute: typeof AuthenticatedSuperadminDashboardRoute
+  AuthenticatedBanquetEventIdRoute: typeof AuthenticatedBanquetEventIdRoute
   AuthenticatedBillingFolioBookingIdRoute: typeof AuthenticatedBillingFolioBookingIdRoute
   AuthenticatedFoodKotIdRoute: typeof AuthenticatedFoodKotIdRoute
   AuthenticatedFrontDeskBookingIdRoute: typeof AuthenticatedFrontDeskBookingIdRoute
@@ -547,6 +568,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMastersStaffRoute: AuthenticatedMastersStaffRoute,
   AuthenticatedMastersTariffRoute: AuthenticatedMastersTariffRoute,
   AuthenticatedSuperadminDashboardRoute: AuthenticatedSuperadminDashboardRoute,
+  AuthenticatedBanquetEventIdRoute: AuthenticatedBanquetEventIdRoute,
   AuthenticatedBillingFolioBookingIdRoute:
     AuthenticatedBillingFolioBookingIdRoute,
   AuthenticatedFoodKotIdRoute: AuthenticatedFoodKotIdRoute,
