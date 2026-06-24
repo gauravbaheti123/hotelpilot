@@ -1573,6 +1573,72 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_seasons: {
+        Row: {
+          applies_to_category_id: string | null
+          color: string
+          created_at: string
+          end_date: string
+          id: string
+          is_active: boolean
+          multiplier: number
+          name: string
+          notes: string | null
+          priority: number
+          property_id: string
+          season_type: string
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          applies_to_category_id?: string | null
+          color?: string
+          created_at?: string
+          end_date: string
+          id?: string
+          is_active?: boolean
+          multiplier?: number
+          name: string
+          notes?: string | null
+          priority?: number
+          property_id: string
+          season_type?: string
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          applies_to_category_id?: string | null
+          color?: string
+          created_at?: string
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          multiplier?: number
+          name?: string
+          notes?: string | null
+          priority?: number
+          property_id?: string
+          season_type?: string
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rate_seasons_applies_to_category_id_fkey"
+            columns: ["applies_to_category_id"]
+            isOneToOne: false
+            referencedRelation: "room_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rate_seasons_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_categories: {
         Row: {
           base_rate: number
