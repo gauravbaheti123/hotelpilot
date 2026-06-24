@@ -27,6 +27,7 @@ import { Route as AuthenticatedReportsDailyRouteImport } from './routes/_authent
 import { Route as AuthenticatedMastersTariffRouteImport } from './routes/_authenticated/masters.tariff'
 import { Route as AuthenticatedMastersStaffRouteImport } from './routes/_authenticated/masters.staff'
 import { Route as AuthenticatedMastersRoomsRouteImport } from './routes/_authenticated/masters.rooms'
+import { Route as AuthenticatedMastersRateSeasonsRouteImport } from './routes/_authenticated/masters.rate-seasons'
 import { Route as AuthenticatedMastersPrintersRouteImport } from './routes/_authenticated/masters.printers'
 import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenticated/masters.menu'
 import { Route as AuthenticatedMastersHallsRouteImport } from './routes/_authenticated/masters.halls'
@@ -155,6 +156,12 @@ const AuthenticatedMastersRoomsRoute =
   AuthenticatedMastersRoomsRouteImport.update({
     id: '/masters/rooms',
     path: '/masters/rooms',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersRateSeasonsRoute =
+  AuthenticatedMastersRateSeasonsRouteImport.update({
+    id: '/masters/rate-seasons',
+    path: '/masters/rate-seasons',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedMastersPrintersRoute =
@@ -349,6 +356,7 @@ export interface FileRoutesByFullPath {
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
+  '/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
@@ -396,6 +404,7 @@ export interface FileRoutesByTo {
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
+  '/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
@@ -445,6 +454,7 @@ export interface FileRoutesById {
   '/_authenticated/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/_authenticated/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/_authenticated/masters/printers': typeof AuthenticatedMastersPrintersRoute
+  '/_authenticated/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
   '/_authenticated/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/_authenticated/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/_authenticated/masters/tariff': typeof AuthenticatedMastersTariffRoute
@@ -494,6 +504,7 @@ export interface FileRouteTypes {
     | '/masters/halls'
     | '/masters/menu'
     | '/masters/printers'
+    | '/masters/rate-seasons'
     | '/masters/rooms'
     | '/masters/staff'
     | '/masters/tariff'
@@ -541,6 +552,7 @@ export interface FileRouteTypes {
     | '/masters/halls'
     | '/masters/menu'
     | '/masters/printers'
+    | '/masters/rate-seasons'
     | '/masters/rooms'
     | '/masters/staff'
     | '/masters/tariff'
@@ -589,6 +601,7 @@ export interface FileRouteTypes {
     | '/_authenticated/masters/halls'
     | '/_authenticated/masters/menu'
     | '/_authenticated/masters/printers'
+    | '/_authenticated/masters/rate-seasons'
     | '/_authenticated/masters/rooms'
     | '/_authenticated/masters/staff'
     | '/_authenticated/masters/tariff'
@@ -740,6 +753,13 @@ declare module '@tanstack/react-router' {
       path: '/masters/rooms'
       fullPath: '/masters/rooms'
       preLoaderRoute: typeof AuthenticatedMastersRoomsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/rate-seasons': {
+      id: '/_authenticated/masters/rate-seasons'
+      path: '/masters/rate-seasons'
+      fullPath: '/masters/rate-seasons'
+      preLoaderRoute: typeof AuthenticatedMastersRateSeasonsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/masters/printers': {
@@ -968,6 +988,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMastersHallsRoute: typeof AuthenticatedMastersHallsRoute
   AuthenticatedMastersMenuRoute: typeof AuthenticatedMastersMenuRoute
   AuthenticatedMastersPrintersRoute: typeof AuthenticatedMastersPrintersRoute
+  AuthenticatedMastersRateSeasonsRoute: typeof AuthenticatedMastersRateSeasonsRoute
   AuthenticatedMastersRoomsRoute: typeof AuthenticatedMastersRoomsRoute
   AuthenticatedMastersStaffRoute: typeof AuthenticatedMastersStaffRoute
   AuthenticatedMastersTariffRoute: typeof AuthenticatedMastersTariffRoute
@@ -1015,6 +1036,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMastersHallsRoute: AuthenticatedMastersHallsRoute,
   AuthenticatedMastersMenuRoute: AuthenticatedMastersMenuRoute,
   AuthenticatedMastersPrintersRoute: AuthenticatedMastersPrintersRoute,
+  AuthenticatedMastersRateSeasonsRoute: AuthenticatedMastersRateSeasonsRoute,
   AuthenticatedMastersRoomsRoute: AuthenticatedMastersRoomsRoute,
   AuthenticatedMastersStaffRoute: AuthenticatedMastersStaffRoute,
   AuthenticatedMastersTariffRoute: AuthenticatedMastersTariffRoute,
