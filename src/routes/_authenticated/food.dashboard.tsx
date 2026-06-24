@@ -29,7 +29,7 @@ interface KotRow {
 }
 
 function FoodDashboardPage() {
-  const { propertyId } = useCurrentProperty();
+  const { currentId: propertyId } = useCurrentProperty();
   const [rows, setRows] = useState<KotRow[]>([]);
   const [loading, setLoading] = useState(true);
 
