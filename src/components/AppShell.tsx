@@ -41,6 +41,7 @@ import {
   Star,
   MessageSquare,
   MessagesSquare,
+  ShoppingCart,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -86,6 +87,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Billing",
     items: [
+      { to: "/pos", label: "POS / Sundry", icon: ShoppingCart },
       { to: "/billing/invoices", label: "Invoices", icon: Receipt },
     ],
   },
@@ -160,6 +162,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/masters/printers", label: "Printers", icon: Printer },
       { to: "/masters/expense-categories", label: "Expense Categories", icon: Tags },
       { to: "/masters/message-templates", label: "Message Templates", icon: MessageSquare },
+      { to: "/masters/sundry-items", label: "Sundry Items", icon: ShoppingCart },
     ],
   },
   {
