@@ -155,8 +155,8 @@ function BookingDetailPage() {
     fireTrigger("checkin_welcome", {
       property_id: b.property_id,
       booking_id: b.id,
-      guest_id: b.guest?.id ?? null,
-      phone: b.guest?.mobile ?? null,
+      guest_id: b.guests?.id ?? null,
+      phone: b.guests?.mobile ?? null,
     });
     load();
   }
@@ -199,8 +199,8 @@ function BookingDetailPage() {
     fireTrigger("checkout_bill", {
       property_id: b.property_id,
       booking_id: b.id,
-      guest_id: b.guest?.id ?? null,
-      phone: b.guest?.mobile ?? null,
+      guest_id: b.guests?.id ?? null,
+      phone: b.guests?.mobile ?? null,
     });
     load();
   }
