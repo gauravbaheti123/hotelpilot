@@ -26,8 +26,10 @@ import { Route as AuthenticatedFrontDeskBookingsRouteImport } from './routes/_au
 import { Route as AuthenticatedFoodNewRouteImport } from './routes/_authenticated/food.new'
 import { Route as AuthenticatedFoodKotsRouteImport } from './routes/_authenticated/food.kots'
 import { Route as AuthenticatedFoodDashboardRouteImport } from './routes/_authenticated/food.dashboard'
+import { Route as AuthenticatedBillingInvoicesRouteImport } from './routes/_authenticated/billing.invoices'
 import { Route as AuthenticatedFrontDeskBookingIdRouteImport } from './routes/_authenticated/front-desk.booking.$id'
 import { Route as AuthenticatedFoodKotIdRouteImport } from './routes/_authenticated/food.kot.$id'
+import { Route as AuthenticatedBillingFolioBookingIdRouteImport } from './routes/_authenticated/billing.folio.$bookingId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -123,6 +125,12 @@ const AuthenticatedFoodDashboardRoute =
     path: '/food/dashboard',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedBillingInvoicesRoute =
+  AuthenticatedBillingInvoicesRouteImport.update({
+    id: '/billing/invoices',
+    path: '/billing/invoices',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFrontDeskBookingIdRoute =
   AuthenticatedFrontDeskBookingIdRouteImport.update({
     id: '/front-desk/booking/$id',
@@ -134,12 +142,19 @@ const AuthenticatedFoodKotIdRoute = AuthenticatedFoodKotIdRouteImport.update({
   path: '/food/kot/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBillingFolioBookingIdRoute =
+  AuthenticatedBillingFolioBookingIdRouteImport.update({
+    id: '/billing/folio/$bookingId',
+    path: '/billing/folio/$bookingId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
   '/food/dashboard': typeof AuthenticatedFoodDashboardRoute
   '/food/kots': typeof AuthenticatedFoodKotsRoute
   '/food/new': typeof AuthenticatedFoodNewRoute
@@ -152,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
   '/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRoute
 }
@@ -160,6 +176,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
   '/food/dashboard': typeof AuthenticatedFoodDashboardRoute
   '/food/kots': typeof AuthenticatedFoodKotsRoute
   '/food/new': typeof AuthenticatedFoodNewRoute
@@ -172,6 +189,7 @@ export interface FileRoutesByTo {
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
   '/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRoute
 }
@@ -182,6 +200,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
+  '/_authenticated/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
   '/_authenticated/food/dashboard': typeof AuthenticatedFoodDashboardRoute
   '/_authenticated/food/kots': typeof AuthenticatedFoodKotsRoute
   '/_authenticated/food/new': typeof AuthenticatedFoodNewRoute
@@ -194,6 +213,7 @@ export interface FileRoutesById {
   '/_authenticated/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/_authenticated/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/_authenticated/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/_authenticated/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/_authenticated/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
   '/_authenticated/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRoute
 }
@@ -204,6 +224,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/properties'
+    | '/billing/invoices'
     | '/food/dashboard'
     | '/food/kots'
     | '/food/new'
@@ -216,6 +237,7 @@ export interface FileRouteTypes {
     | '/masters/staff'
     | '/masters/tariff'
     | '/superadmin/dashboard'
+    | '/billing/folio/$bookingId'
     | '/food/kot/$id'
     | '/front-desk/booking/$id'
   fileRoutesByTo: FileRoutesByTo
@@ -224,6 +246,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/properties'
+    | '/billing/invoices'
     | '/food/dashboard'
     | '/food/kots'
     | '/food/new'
@@ -236,6 +259,7 @@ export interface FileRouteTypes {
     | '/masters/staff'
     | '/masters/tariff'
     | '/superadmin/dashboard'
+    | '/billing/folio/$bookingId'
     | '/food/kot/$id'
     | '/front-desk/booking/$id'
   id:
@@ -245,6 +269,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/dashboard'
     | '/_authenticated/properties'
+    | '/_authenticated/billing/invoices'
     | '/_authenticated/food/dashboard'
     | '/_authenticated/food/kots'
     | '/_authenticated/food/new'
@@ -257,6 +282,7 @@ export interface FileRouteTypes {
     | '/_authenticated/masters/staff'
     | '/_authenticated/masters/tariff'
     | '/_authenticated/superadmin/dashboard'
+    | '/_authenticated/billing/folio/$bookingId'
     | '/_authenticated/food/kot/$id'
     | '/_authenticated/front-desk/booking/$id'
   fileRoutesById: FileRoutesById
@@ -388,6 +414,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFoodDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/billing/invoices': {
+      id: '/_authenticated/billing/invoices'
+      path: '/billing/invoices'
+      fullPath: '/billing/invoices'
+      preLoaderRoute: typeof AuthenticatedBillingInvoicesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/front-desk/booking/$id': {
       id: '/_authenticated/front-desk/booking/$id'
       path: '/front-desk/booking/$id'
@@ -402,12 +435,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFoodKotIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/billing/folio/$bookingId': {
+      id: '/_authenticated/billing/folio/$bookingId'
+      path: '/billing/folio/$bookingId'
+      fullPath: '/billing/folio/$bookingId'
+      preLoaderRoute: typeof AuthenticatedBillingFolioBookingIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPropertiesRoute: typeof AuthenticatedPropertiesRoute
+  AuthenticatedBillingInvoicesRoute: typeof AuthenticatedBillingInvoicesRoute
   AuthenticatedFoodDashboardRoute: typeof AuthenticatedFoodDashboardRoute
   AuthenticatedFoodKotsRoute: typeof AuthenticatedFoodKotsRoute
   AuthenticatedFoodNewRoute: typeof AuthenticatedFoodNewRoute
@@ -420,6 +461,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMastersStaffRoute: typeof AuthenticatedMastersStaffRoute
   AuthenticatedMastersTariffRoute: typeof AuthenticatedMastersTariffRoute
   AuthenticatedSuperadminDashboardRoute: typeof AuthenticatedSuperadminDashboardRoute
+  AuthenticatedBillingFolioBookingIdRoute: typeof AuthenticatedBillingFolioBookingIdRoute
   AuthenticatedFoodKotIdRoute: typeof AuthenticatedFoodKotIdRoute
   AuthenticatedFrontDeskBookingIdRoute: typeof AuthenticatedFrontDeskBookingIdRoute
 }
@@ -427,6 +469,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPropertiesRoute: AuthenticatedPropertiesRoute,
+  AuthenticatedBillingInvoicesRoute: AuthenticatedBillingInvoicesRoute,
   AuthenticatedFoodDashboardRoute: AuthenticatedFoodDashboardRoute,
   AuthenticatedFoodKotsRoute: AuthenticatedFoodKotsRoute,
   AuthenticatedFoodNewRoute: AuthenticatedFoodNewRoute,
@@ -439,6 +482,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMastersStaffRoute: AuthenticatedMastersStaffRoute,
   AuthenticatedMastersTariffRoute: AuthenticatedMastersTariffRoute,
   AuthenticatedSuperadminDashboardRoute: AuthenticatedSuperadminDashboardRoute,
+  AuthenticatedBillingFolioBookingIdRoute:
+    AuthenticatedBillingFolioBookingIdRoute,
   AuthenticatedFoodKotIdRoute: AuthenticatedFoodKotIdRoute,
   AuthenticatedFrontDeskBookingIdRoute: AuthenticatedFrontDeskBookingIdRoute,
 }

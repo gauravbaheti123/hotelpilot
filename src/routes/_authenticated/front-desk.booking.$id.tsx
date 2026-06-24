@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +35,7 @@ import {
   ArrowLeftRight,
   CalendarClock,
   Ban,
+  Receipt,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/front-desk/booking/$id")({
@@ -288,6 +289,9 @@ function BookingDetailPage() {
           <div className="flex-1" />
           {canAct && (
             <div className="flex gap-2">
+              <Link to="/billing/folio/$bookingId" params={{ bookingId: b.id }}>
+                <Button variant="outline"><Receipt className="h-4 w-4 mr-1" /> Folio</Button>
+              </Link>
               {canCheckIn && <Button onClick={checkIn}><LogIn className="h-4 w-4 mr-1" /> Check-in</Button>}
               {canCheckOut && <Button onClick={checkOut}><LogOut className="h-4 w-4 mr-1" /> Check-out</Button>}
               {canShift && b.booking_rooms[0] && (

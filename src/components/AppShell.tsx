@@ -18,6 +18,8 @@ import {
   PlusCircle,
   ChefHat,
   ClipboardList,
+  Receipt,
+  FileText,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -56,6 +58,12 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/food/dashboard", label: "Food Dashboard", icon: ChefHat },
       { to: "/food/new", label: "New KOT", icon: PlusCircle },
       { to: "/food/kots", label: "All KOTs", icon: ClipboardList },
+    ],
+  },
+  {
+    label: "Billing",
+    items: [
+      { to: "/billing/invoices", label: "Invoices", icon: Receipt },
     ],
   },
   {
