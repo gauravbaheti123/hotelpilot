@@ -17,6 +17,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedGuestsIndexRouteImport } from './routes/_authenticated/guests.index'
 import { Route as AuthenticatedExpensesIndexRouteImport } from './routes/_authenticated/expenses.index'
 import { Route as AuthenticatedSuperadminDashboardRouteImport } from './routes/_authenticated/superadmin.dashboard'
+import { Route as AuthenticatedStaffAttendanceHistoryRouteImport } from './routes/_authenticated/staff.attendance-history'
 import { Route as AuthenticatedStaffAttendanceRouteImport } from './routes/_authenticated/staff.attendance'
 import { Route as AuthenticatedReportsSalesRouteImport } from './routes/_authenticated/reports.sales'
 import { Route as AuthenticatedReportsNightAuditRouteImport } from './routes/_authenticated/reports.night-audit'
@@ -93,6 +94,12 @@ const AuthenticatedSuperadminDashboardRoute =
   AuthenticatedSuperadminDashboardRouteImport.update({
     id: '/superadmin/dashboard',
     path: '/superadmin/dashboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedStaffAttendanceHistoryRoute =
+  AuthenticatedStaffAttendanceHistoryRouteImport.update({
+    id: '/staff/attendance-history',
+    path: '/staff/attendance-history',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedStaffAttendanceRoute =
@@ -335,6 +342,7 @@ export interface FileRoutesByFullPath {
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/staff/attendance': typeof AuthenticatedStaffAttendanceRoute
+  '/staff/attendance-history': typeof AuthenticatedStaffAttendanceHistoryRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
   '/expenses/': typeof AuthenticatedExpensesIndexRoute
   '/guests/': typeof AuthenticatedGuestsIndexRoute
@@ -379,6 +387,7 @@ export interface FileRoutesByTo {
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/staff/attendance': typeof AuthenticatedStaffAttendanceRoute
+  '/staff/attendance-history': typeof AuthenticatedStaffAttendanceHistoryRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
   '/expenses': typeof AuthenticatedExpensesIndexRoute
   '/guests': typeof AuthenticatedGuestsIndexRoute
@@ -425,6 +434,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
   '/_authenticated/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/_authenticated/staff/attendance': typeof AuthenticatedStaffAttendanceRoute
+  '/_authenticated/staff/attendance-history': typeof AuthenticatedStaffAttendanceHistoryRoute
   '/_authenticated/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
   '/_authenticated/expenses/': typeof AuthenticatedExpensesIndexRoute
   '/_authenticated/guests/': typeof AuthenticatedGuestsIndexRoute
@@ -471,6 +481,7 @@ export interface FileRouteTypes {
     | '/reports/night-audit'
     | '/reports/sales'
     | '/staff/attendance'
+    | '/staff/attendance-history'
     | '/superadmin/dashboard'
     | '/expenses/'
     | '/guests/'
@@ -515,6 +526,7 @@ export interface FileRouteTypes {
     | '/reports/night-audit'
     | '/reports/sales'
     | '/staff/attendance'
+    | '/staff/attendance-history'
     | '/superadmin/dashboard'
     | '/expenses'
     | '/guests'
@@ -560,6 +572,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/night-audit'
     | '/_authenticated/reports/sales'
     | '/_authenticated/staff/attendance'
+    | '/_authenticated/staff/attendance-history'
     | '/_authenticated/superadmin/dashboard'
     | '/_authenticated/expenses/'
     | '/_authenticated/guests/'
@@ -631,6 +644,13 @@ declare module '@tanstack/react-router' {
       path: '/superadmin/dashboard'
       fullPath: '/superadmin/dashboard'
       preLoaderRoute: typeof AuthenticatedSuperadminDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/staff/attendance-history': {
+      id: '/_authenticated/staff/attendance-history'
+      path: '/staff/attendance-history'
+      fullPath: '/staff/attendance-history'
+      preLoaderRoute: typeof AuthenticatedStaffAttendanceHistoryRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/staff/attendance': {
@@ -915,6 +935,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsNightAuditRoute: typeof AuthenticatedReportsNightAuditRoute
   AuthenticatedReportsSalesRoute: typeof AuthenticatedReportsSalesRoute
   AuthenticatedStaffAttendanceRoute: typeof AuthenticatedStaffAttendanceRoute
+  AuthenticatedStaffAttendanceHistoryRoute: typeof AuthenticatedStaffAttendanceHistoryRoute
   AuthenticatedSuperadminDashboardRoute: typeof AuthenticatedSuperadminDashboardRoute
   AuthenticatedExpensesIndexRoute: typeof AuthenticatedExpensesIndexRoute
   AuthenticatedGuestsIndexRoute: typeof AuthenticatedGuestsIndexRoute
@@ -959,6 +980,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsNightAuditRoute: AuthenticatedReportsNightAuditRoute,
   AuthenticatedReportsSalesRoute: AuthenticatedReportsSalesRoute,
   AuthenticatedStaffAttendanceRoute: AuthenticatedStaffAttendanceRoute,
+  AuthenticatedStaffAttendanceHistoryRoute:
+    AuthenticatedStaffAttendanceHistoryRoute,
   AuthenticatedSuperadminDashboardRoute: AuthenticatedSuperadminDashboardRoute,
   AuthenticatedExpensesIndexRoute: AuthenticatedExpensesIndexRoute,
   AuthenticatedGuestsIndexRoute: AuthenticatedGuestsIndexRoute,
