@@ -68,7 +68,7 @@ function LoginPage() {
           <Logo size={40} />
           <div>
             <div className="font-semibold text-lg">HotelPilot</div>
-            <div className="text-xs text-sidebar-foreground/70">Powered by Growth Story Company</div>
+            <div className="text-xs text-sidebar-foreground/70">Powered by Hotel Management System</div>
           </div>
         </div>
         <div className="space-y-4 max-w-md">

@@ -33,7 +33,7 @@ function Index() {
             <Logo size={36} />
             <div>
               <div className="font-semibold">HotelPilot</div>
-              <div className="text-[10px] text-muted-foreground">Growth Story Company</div>
+              <div className="text-[10px] text-muted-foreground">Hotel Management System</div>
             </div>
           </div>
           <Link to="/login"><Button>Sign in</Button></Link>
