@@ -20,6 +20,8 @@ import {
   ClipboardList,
   Receipt,
   FileText,
+  PartyPopper,
+  CalendarRange,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -67,11 +69,19 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: "Banquet",
+    items: [
+      { to: "/banquet/bookings", label: "Events", icon: CalendarRange },
+      { to: "/banquet/new", label: "New Event", icon: PartyPopper },
+    ],
+  },
+  {
     label: "Master Data",
     items: [
       { to: "/masters/rooms", label: "Rooms & Categories", icon: BedDouble },
       { to: "/masters/tariff", label: "Tariff Plans", icon: IndianRupee },
       { to: "/masters/menu", label: "Menu", icon: UtensilsCrossed },
+      { to: "/masters/halls", label: "Halls", icon: PartyPopper },
       { to: "/masters/staff", label: "Staff", icon: Users },
       { to: "/masters/printers", label: "Printers", icon: Printer },
     ],
