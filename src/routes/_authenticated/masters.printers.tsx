@@ -11,6 +11,7 @@ interface Printer {
   id: string;
   name: string;
   type: string;
+  printer_role: string;
   location: string | null;
   ip_address: string | null;
   port: number | null;
@@ -31,6 +32,20 @@ const fields: FieldDef[] = [
     ],
     defaultValue: "bill",
   },
+  {
+    name: "printer_role",
+    label: "Role",
+    type: "select",
+    options: [
+      { value: "hotel_kitchen", label: "Hotel Kitchen" },
+      { value: "restaurant_kitchen", label: "Restaurant Kitchen" },
+      { value: "banquet_kitchen", label: "Banquet Kitchen" },
+      { value: "bar", label: "Bar" },
+      { value: "reception_bill", label: "Reception (Bill)" },
+      { value: "housekeeping", label: "Housekeeping" },
+    ],
+    defaultValue: "hotel_kitchen",
+  },
   { name: "location", label: "Location", type: "text" },
   { name: "ip_address", label: "IP address", type: "text" },
   { name: "port", label: "Port", type: "number", defaultValue: 9100 },
@@ -41,6 +56,7 @@ const fields: FieldDef[] = [
 const columns: ColumnDef<Printer>[] = [
   { header: "Name", render: (r) => <span className="font-medium">{r.name}</span> },
   { header: "Type", render: (r) => <Badge variant="outline">{r.type}</Badge> },
+  { header: "Role", render: (r) => <Badge variant="secondary">{r.printer_role}</Badge> },
   { header: "Location", render: (r) => r.location ?? "—" },
   {
     header: "Address",
