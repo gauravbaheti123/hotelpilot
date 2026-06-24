@@ -27,6 +27,7 @@ import { Route as AuthenticatedReportsDailyRouteImport } from './routes/_authent
 import { Route as AuthenticatedMastersTariffRouteImport } from './routes/_authenticated/masters.tariff'
 import { Route as AuthenticatedMastersStaffRouteImport } from './routes/_authenticated/masters.staff'
 import { Route as AuthenticatedMastersRoomsRouteImport } from './routes/_authenticated/masters.rooms'
+import { Route as AuthenticatedMastersRateSeasonsRouteImport } from './routes/_authenticated/masters.rate-seasons'
 import { Route as AuthenticatedMastersPrintersRouteImport } from './routes/_authenticated/masters.printers'
 import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenticated/masters.menu'
 import { Route as AuthenticatedMastersHallsRouteImport } from './routes/_authenticated/masters.halls'
@@ -40,6 +41,7 @@ import { Route as AuthenticatedHousekeepingNewRouteImport } from './routes/_auth
 import { Route as AuthenticatedHousekeepingBoardRouteImport } from './routes/_authenticated/housekeeping.board'
 import { Route as AuthenticatedGuestsNewRouteImport } from './routes/_authenticated/guests.new'
 import { Route as AuthenticatedGuestsIdRouteImport } from './routes/_authenticated/guests.$id'
+import { Route as AuthenticatedFrontDeskRateCalendarRouteImport } from './routes/_authenticated/front-desk.rate-calendar'
 import { Route as AuthenticatedFrontDeskNewRouteImport } from './routes/_authenticated/front-desk.new'
 import { Route as AuthenticatedFrontDeskInHouseRouteImport } from './routes/_authenticated/front-desk.in-house'
 import { Route as AuthenticatedFrontDeskCalendarRouteImport } from './routes/_authenticated/front-desk.calendar'
@@ -157,6 +159,12 @@ const AuthenticatedMastersRoomsRoute =
     path: '/masters/rooms',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMastersRateSeasonsRoute =
+  AuthenticatedMastersRateSeasonsRouteImport.update({
+    id: '/masters/rate-seasons',
+    path: '/masters/rate-seasons',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMastersPrintersRoute =
   AuthenticatedMastersPrintersRouteImport.update({
     id: '/masters/printers',
@@ -233,6 +241,12 @@ const AuthenticatedGuestsIdRoute = AuthenticatedGuestsIdRouteImport.update({
   path: '/guests/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFrontDeskRateCalendarRoute =
+  AuthenticatedFrontDeskRateCalendarRouteImport.update({
+    id: '/front-desk/rate-calendar',
+    path: '/front-desk/rate-calendar',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFrontDeskNewRoute =
   AuthenticatedFrontDeskNewRouteImport.update({
     id: '/front-desk/new',
@@ -336,6 +350,7 @@ export interface FileRoutesByFullPath {
   '/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
   '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
+  '/front-desk/rate-calendar': typeof AuthenticatedFrontDeskRateCalendarRoute
   '/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/guests/new': typeof AuthenticatedGuestsNewRoute
   '/housekeeping/board': typeof AuthenticatedHousekeepingBoardRoute
@@ -349,6 +364,7 @@ export interface FileRoutesByFullPath {
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
+  '/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
@@ -383,6 +399,7 @@ export interface FileRoutesByTo {
   '/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
   '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
+  '/front-desk/rate-calendar': typeof AuthenticatedFrontDeskRateCalendarRoute
   '/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/guests/new': typeof AuthenticatedGuestsNewRoute
   '/housekeeping/board': typeof AuthenticatedHousekeepingBoardRoute
@@ -396,6 +413,7 @@ export interface FileRoutesByTo {
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
+  '/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
@@ -432,6 +450,7 @@ export interface FileRoutesById {
   '/_authenticated/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/_authenticated/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
   '/_authenticated/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
+  '/_authenticated/front-desk/rate-calendar': typeof AuthenticatedFrontDeskRateCalendarRoute
   '/_authenticated/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/_authenticated/guests/new': typeof AuthenticatedGuestsNewRoute
   '/_authenticated/housekeeping/board': typeof AuthenticatedHousekeepingBoardRoute
@@ -445,6 +464,7 @@ export interface FileRoutesById {
   '/_authenticated/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/_authenticated/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/_authenticated/masters/printers': typeof AuthenticatedMastersPrintersRoute
+  '/_authenticated/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
   '/_authenticated/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/_authenticated/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/_authenticated/masters/tariff': typeof AuthenticatedMastersTariffRoute
@@ -481,6 +501,7 @@ export interface FileRouteTypes {
     | '/front-desk/calendar'
     | '/front-desk/in-house'
     | '/front-desk/new'
+    | '/front-desk/rate-calendar'
     | '/guests/$id'
     | '/guests/new'
     | '/housekeeping/board'
@@ -494,6 +515,7 @@ export interface FileRouteTypes {
     | '/masters/halls'
     | '/masters/menu'
     | '/masters/printers'
+    | '/masters/rate-seasons'
     | '/masters/rooms'
     | '/masters/staff'
     | '/masters/tariff'
@@ -528,6 +550,7 @@ export interface FileRouteTypes {
     | '/front-desk/calendar'
     | '/front-desk/in-house'
     | '/front-desk/new'
+    | '/front-desk/rate-calendar'
     | '/guests/$id'
     | '/guests/new'
     | '/housekeeping/board'
@@ -541,6 +564,7 @@ export interface FileRouteTypes {
     | '/masters/halls'
     | '/masters/menu'
     | '/masters/printers'
+    | '/masters/rate-seasons'
     | '/masters/rooms'
     | '/masters/staff'
     | '/masters/tariff'
@@ -576,6 +600,7 @@ export interface FileRouteTypes {
     | '/_authenticated/front-desk/calendar'
     | '/_authenticated/front-desk/in-house'
     | '/_authenticated/front-desk/new'
+    | '/_authenticated/front-desk/rate-calendar'
     | '/_authenticated/guests/$id'
     | '/_authenticated/guests/new'
     | '/_authenticated/housekeeping/board'
@@ -589,6 +614,7 @@ export interface FileRouteTypes {
     | '/_authenticated/masters/halls'
     | '/_authenticated/masters/menu'
     | '/_authenticated/masters/printers'
+    | '/_authenticated/masters/rate-seasons'
     | '/_authenticated/masters/rooms'
     | '/_authenticated/masters/staff'
     | '/_authenticated/masters/tariff'
@@ -742,6 +768,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMastersRoomsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/masters/rate-seasons': {
+      id: '/_authenticated/masters/rate-seasons'
+      path: '/masters/rate-seasons'
+      fullPath: '/masters/rate-seasons'
+      preLoaderRoute: typeof AuthenticatedMastersRateSeasonsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/masters/printers': {
       id: '/_authenticated/masters/printers'
       path: '/masters/printers'
@@ -831,6 +864,13 @@ declare module '@tanstack/react-router' {
       path: '/guests/$id'
       fullPath: '/guests/$id'
       preLoaderRoute: typeof AuthenticatedGuestsIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/front-desk/rate-calendar': {
+      id: '/_authenticated/front-desk/rate-calendar'
+      path: '/front-desk/rate-calendar'
+      fullPath: '/front-desk/rate-calendar'
+      preLoaderRoute: typeof AuthenticatedFrontDeskRateCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/front-desk/new': {
@@ -955,6 +995,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFrontDeskCalendarRoute: typeof AuthenticatedFrontDeskCalendarRoute
   AuthenticatedFrontDeskInHouseRoute: typeof AuthenticatedFrontDeskInHouseRoute
   AuthenticatedFrontDeskNewRoute: typeof AuthenticatedFrontDeskNewRoute
+  AuthenticatedFrontDeskRateCalendarRoute: typeof AuthenticatedFrontDeskRateCalendarRoute
   AuthenticatedGuestsIdRoute: typeof AuthenticatedGuestsIdRoute
   AuthenticatedGuestsNewRoute: typeof AuthenticatedGuestsNewRoute
   AuthenticatedHousekeepingBoardRoute: typeof AuthenticatedHousekeepingBoardRoute
@@ -968,6 +1009,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMastersHallsRoute: typeof AuthenticatedMastersHallsRoute
   AuthenticatedMastersMenuRoute: typeof AuthenticatedMastersMenuRoute
   AuthenticatedMastersPrintersRoute: typeof AuthenticatedMastersPrintersRoute
+  AuthenticatedMastersRateSeasonsRoute: typeof AuthenticatedMastersRateSeasonsRoute
   AuthenticatedMastersRoomsRoute: typeof AuthenticatedMastersRoomsRoute
   AuthenticatedMastersStaffRoute: typeof AuthenticatedMastersStaffRoute
   AuthenticatedMastersTariffRoute: typeof AuthenticatedMastersTariffRoute
@@ -1001,6 +1043,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFrontDeskCalendarRoute: AuthenticatedFrontDeskCalendarRoute,
   AuthenticatedFrontDeskInHouseRoute: AuthenticatedFrontDeskInHouseRoute,
   AuthenticatedFrontDeskNewRoute: AuthenticatedFrontDeskNewRoute,
+  AuthenticatedFrontDeskRateCalendarRoute:
+    AuthenticatedFrontDeskRateCalendarRoute,
   AuthenticatedGuestsIdRoute: AuthenticatedGuestsIdRoute,
   AuthenticatedGuestsNewRoute: AuthenticatedGuestsNewRoute,
   AuthenticatedHousekeepingBoardRoute: AuthenticatedHousekeepingBoardRoute,
@@ -1015,6 +1059,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMastersHallsRoute: AuthenticatedMastersHallsRoute,
   AuthenticatedMastersMenuRoute: AuthenticatedMastersMenuRoute,
   AuthenticatedMastersPrintersRoute: AuthenticatedMastersPrintersRoute,
+  AuthenticatedMastersRateSeasonsRoute: AuthenticatedMastersRateSeasonsRoute,
   AuthenticatedMastersRoomsRoute: AuthenticatedMastersRoomsRoute,
   AuthenticatedMastersStaffRoute: AuthenticatedMastersStaffRoute,
   AuthenticatedMastersTariffRoute: AuthenticatedMastersTariffRoute,

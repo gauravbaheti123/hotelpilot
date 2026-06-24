@@ -37,6 +37,7 @@ import {
   CalendarDays,
   History,
   Banknote,
+  TrendingUp,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -67,6 +68,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/front-desk/new", label: "New Booking", icon: PlusCircle },
       { to: "/front-desk/bookings", label: "Bookings", icon: ListChecks },
       { to: "/front-desk/calendar", label: "Calendar", icon: CalendarRange },
+      { to: "/front-desk/rate-calendar", label: "Rate Calendar", icon: TrendingUp },
       { to: "/front-desk/in-house", label: "In-house", icon: CalendarCheck },
     ],
   },
@@ -144,6 +146,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/masters/rooms", label: "Rooms & Categories", icon: BedDouble },
       { to: "/masters/tariff", label: "Tariff Plans", icon: IndianRupee },
+      { to: "/masters/rate-seasons", label: "Rate Seasons", icon: TrendingUp },
       { to: "/masters/menu", label: "Menu", icon: UtensilsCrossed },
       { to: "/masters/halls", label: "Halls", icon: PartyPopper },
       { to: "/masters/staff", label: "Staff", icon: Users },
