@@ -27,6 +27,7 @@ import { Route as AuthenticatedReportsSalesRouteImport } from './routes/_authent
 import { Route as AuthenticatedReportsNightAuditRouteImport } from './routes/_authenticated/reports.night-audit'
 import { Route as AuthenticatedReportsGstRouteImport } from './routes/_authenticated/reports.gst'
 import { Route as AuthenticatedReportsDailyRouteImport } from './routes/_authenticated/reports.daily'
+import { Route as AuthenticatedReportsAnalyticsRouteImport } from './routes/_authenticated/reports.analytics'
 import { Route as AuthenticatedMastersTariffRouteImport } from './routes/_authenticated/masters.tariff'
 import { Route as AuthenticatedMastersSundryItemsRouteImport } from './routes/_authenticated/masters.sundry-items'
 import { Route as AuthenticatedMastersStaffRouteImport } from './routes/_authenticated/masters.staff'
@@ -162,6 +163,12 @@ const AuthenticatedReportsDailyRoute =
   AuthenticatedReportsDailyRouteImport.update({
     id: '/reports/daily',
     path: '/reports/daily',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsAnalyticsRoute =
+  AuthenticatedReportsAnalyticsRouteImport.update({
+    id: '/reports/analytics',
+    path: '/reports/analytics',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedMastersTariffRoute =
@@ -418,6 +425,7 @@ export interface FileRoutesByFullPath {
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/sundry-items': typeof AuthenticatedMastersSundryItemsRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
+  '/reports/analytics': typeof AuthenticatedReportsAnalyticsRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
@@ -474,6 +482,7 @@ export interface FileRoutesByTo {
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/sundry-items': typeof AuthenticatedMastersSundryItemsRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
+  '/reports/analytics': typeof AuthenticatedReportsAnalyticsRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
@@ -532,6 +541,7 @@ export interface FileRoutesById {
   '/_authenticated/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/_authenticated/masters/sundry-items': typeof AuthenticatedMastersSundryItemsRoute
   '/_authenticated/masters/tariff': typeof AuthenticatedMastersTariffRoute
+  '/_authenticated/reports/analytics': typeof AuthenticatedReportsAnalyticsRoute
   '/_authenticated/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/_authenticated/reports/gst': typeof AuthenticatedReportsGstRoute
   '/_authenticated/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
@@ -590,6 +600,7 @@ export interface FileRouteTypes {
     | '/masters/staff'
     | '/masters/sundry-items'
     | '/masters/tariff'
+    | '/reports/analytics'
     | '/reports/daily'
     | '/reports/gst'
     | '/reports/night-audit'
@@ -646,6 +657,7 @@ export interface FileRouteTypes {
     | '/masters/staff'
     | '/masters/sundry-items'
     | '/masters/tariff'
+    | '/reports/analytics'
     | '/reports/daily'
     | '/reports/gst'
     | '/reports/night-audit'
@@ -703,6 +715,7 @@ export interface FileRouteTypes {
     | '/_authenticated/masters/staff'
     | '/_authenticated/masters/sundry-items'
     | '/_authenticated/masters/tariff'
+    | '/_authenticated/reports/analytics'
     | '/_authenticated/reports/daily'
     | '/_authenticated/reports/gst'
     | '/_authenticated/reports/night-audit'
@@ -854,6 +867,13 @@ declare module '@tanstack/react-router' {
       path: '/reports/daily'
       fullPath: '/reports/daily'
       preLoaderRoute: typeof AuthenticatedReportsDailyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/analytics': {
+      id: '/_authenticated/reports/analytics'
+      path: '/reports/analytics'
+      fullPath: '/reports/analytics'
+      preLoaderRoute: typeof AuthenticatedReportsAnalyticsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/masters/tariff': {
@@ -1154,6 +1174,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMastersStaffRoute: typeof AuthenticatedMastersStaffRoute
   AuthenticatedMastersSundryItemsRoute: typeof AuthenticatedMastersSundryItemsRoute
   AuthenticatedMastersTariffRoute: typeof AuthenticatedMastersTariffRoute
+  AuthenticatedReportsAnalyticsRoute: typeof AuthenticatedReportsAnalyticsRoute
   AuthenticatedReportsDailyRoute: typeof AuthenticatedReportsDailyRoute
   AuthenticatedReportsGstRoute: typeof AuthenticatedReportsGstRoute
   AuthenticatedReportsNightAuditRoute: typeof AuthenticatedReportsNightAuditRoute
@@ -1212,6 +1233,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMastersStaffRoute: AuthenticatedMastersStaffRoute,
   AuthenticatedMastersSundryItemsRoute: AuthenticatedMastersSundryItemsRoute,
   AuthenticatedMastersTariffRoute: AuthenticatedMastersTariffRoute,
+  AuthenticatedReportsAnalyticsRoute: AuthenticatedReportsAnalyticsRoute,
   AuthenticatedReportsDailyRoute: AuthenticatedReportsDailyRoute,
   AuthenticatedReportsGstRoute: AuthenticatedReportsGstRoute,
   AuthenticatedReportsNightAuditRoute: AuthenticatedReportsNightAuditRoute,
