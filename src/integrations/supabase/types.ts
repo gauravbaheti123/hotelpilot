@@ -1509,6 +1509,181 @@ export type Database = {
           },
         ]
       }
+      ota_channel_mappings: {
+        Row: {
+          category_id: string | null
+          channel_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          ota_rate_code: string | null
+          ota_room_code: string | null
+          property_id: string
+          rate_offset_pct: number
+          tariff_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          channel_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          ota_rate_code?: string | null
+          ota_room_code?: string | null
+          property_id: string
+          rate_offset_pct?: number
+          tariff_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          channel_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          ota_rate_code?: string | null
+          ota_room_code?: string | null
+          property_id?: string
+          rate_offset_pct?: number
+          tariff_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ota_channel_mappings_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "room_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ota_channel_mappings_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "ota_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ota_channel_mappings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ota_channel_mappings_tariff_id_fkey"
+            columns: ["tariff_id"]
+            isOneToOne: false
+            referencedRelation: "tariff_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ota_channels: {
+        Row: {
+          code: string
+          commission_pct: number
+          contact_email: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          commission_pct?: number
+          contact_email?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          commission_pct?: number
+          contact_email?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ota_channels_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ota_sync_logs: {
+        Row: {
+          channel_id: string | null
+          created_at: string
+          created_by: string | null
+          finished_at: string | null
+          id: string
+          message: string | null
+          payload: Json | null
+          property_id: string
+          started_at: string
+          status: string
+          sync_type: string
+        }
+        Insert: {
+          channel_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          finished_at?: string | null
+          id?: string
+          message?: string | null
+          payload?: Json | null
+          property_id: string
+          started_at?: string
+          status?: string
+          sync_type: string
+        }
+        Update: {
+          channel_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          finished_at?: string | null
+          id?: string
+          message?: string | null
+          payload?: Json | null
+          property_id?: string
+          started_at?: string
+          status?: string
+          sync_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ota_sync_logs_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "ota_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ota_sync_logs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
