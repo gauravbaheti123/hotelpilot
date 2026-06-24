@@ -1271,6 +1271,54 @@ export type Database = {
           },
         ]
       }
+      kot_audit_log: {
+        Row: {
+          actor: string | null
+          created_at: string
+          event_type: string
+          id: string
+          kot_order_id: string | null
+          message: string
+          meta: Json | null
+          property_id: string | null
+        }
+        Insert: {
+          actor?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          kot_order_id?: string | null
+          message: string
+          meta?: Json | null
+          property_id?: string | null
+        }
+        Update: {
+          actor?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          kot_order_id?: string | null
+          message?: string
+          meta?: Json | null
+          property_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kot_audit_log_kot_order_id_fkey"
+            columns: ["kot_order_id"]
+            isOneToOne: false
+            referencedRelation: "kot_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kot_audit_log_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kot_items: {
         Row: {
           amount: number
@@ -1357,9 +1405,11 @@ export type Database = {
           guest_name: string | null
           id: string
           is_wiped: boolean
+          kot_copy: string
           kot_number: string
           kot_type: string
           notes: string | null
+          parent_kot_id: string | null
           printed_at: string | null
           property_id: string
           room_id: string | null
@@ -1383,9 +1433,11 @@ export type Database = {
           guest_name?: string | null
           id?: string
           is_wiped?: boolean
+          kot_copy?: string
           kot_number?: string
           kot_type?: string
           notes?: string | null
+          parent_kot_id?: string | null
           printed_at?: string | null
           property_id: string
           room_id?: string | null
@@ -1409,9 +1461,11 @@ export type Database = {
           guest_name?: string | null
           id?: string
           is_wiped?: boolean
+          kot_copy?: string
           kot_number?: string
           kot_type?: string
           notes?: string | null
+          parent_kot_id?: string | null
           printed_at?: string | null
           property_id?: string
           room_id?: string | null
@@ -1432,6 +1486,13 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kot_orders_parent_kot_id_fkey"
+            columns: ["parent_kot_id"]
+            isOneToOne: false
+            referencedRelation: "kot_orders"
             referencedColumns: ["id"]
           },
           {
@@ -1508,6 +1569,7 @@ export type Database = {
           id: string
           is_available: boolean
           is_veg: boolean
+          kitchen_type: string
           kot_station: string
           name: string
           price: number
@@ -1523,6 +1585,7 @@ export type Database = {
           id?: string
           is_available?: boolean
           is_veg?: boolean
+          kitchen_type?: string
           kot_station?: string
           name: string
           price?: number
@@ -1538,6 +1601,7 @@ export type Database = {
           id?: string
           is_available?: boolean
           is_veg?: boolean
+          kitchen_type?: string
           kot_station?: string
           name?: string
           price?: number
@@ -1957,6 +2021,7 @@ export type Database = {
           location: string | null
           name: string
           port: number | null
+          printer_role: string
           property_id: string
           station: string | null
           type: Database["public"]["Enums"]["printer_type"]
@@ -1971,6 +2036,7 @@ export type Database = {
           location?: string | null
           name: string
           port?: number | null
+          printer_role?: string
           property_id: string
           station?: string | null
           type?: Database["public"]["Enums"]["printer_type"]
@@ -1985,6 +2051,7 @@ export type Database = {
           location?: string | null
           name?: string
           port?: number | null
+          printer_role?: string
           property_id?: string
           station?: string | null
           type?: Database["public"]["Enums"]["printer_type"]
@@ -2170,6 +2237,130 @@ export type Database = {
           },
           {
             foreignKeyName: "rate_seasons_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurant_credits: {
+        Row: {
+          amount: number
+          booking_id: string | null
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          is_settled: boolean
+          kot_order_id: string | null
+          property_id: string
+          room_id: string | null
+          settlement_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          booking_id?: string | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          is_settled?: boolean
+          kot_order_id?: string | null
+          property_id: string
+          room_id?: string | null
+          settlement_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          booking_id?: string | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          is_settled?: boolean
+          kot_order_id?: string | null
+          property_id?: string
+          room_id?: string | null
+          settlement_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_credits_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_credits_kot_order_id_fkey"
+            columns: ["kot_order_id"]
+            isOneToOne: false
+            referencedRelation: "kot_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_credits_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_credits_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurant_settlements: {
+        Row: {
+          created_at: string
+          id: string
+          month: number
+          notes: string | null
+          payment_mode: string | null
+          property_id: string
+          settled_amount: number
+          settlement_date: string
+          total_amount: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          month: number
+          notes?: string | null
+          payment_mode?: string | null
+          property_id: string
+          settled_amount?: number
+          settlement_date?: string
+          total_amount?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          month?: number
+          notes?: string | null
+          payment_mode?: string | null
+          property_id?: string
+          settled_amount?: number
+          settlement_date?: string
+          total_amount?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_settlements_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
