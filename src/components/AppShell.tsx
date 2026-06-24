@@ -28,6 +28,10 @@ import {
   Sparkles,
   LayoutGrid,
   UserCircle2,
+  Package,
+  Boxes,
+  Truck,
+  ArrowLeftRight,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -96,6 +100,15 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/guests", label: "Guest CRM", icon: UserCircle2 },
       { to: "/guests/new", label: "New Guest", icon: PlusCircle },
+    ],
+  },
+  {
+    label: "Inventory",
+    items: [
+      { to: "/inventory/stock", label: "Current Stock", icon: Boxes },
+      { to: "/inventory/movements", label: "Stock Movements", icon: ArrowLeftRight },
+      { to: "/inventory/items", label: "Items", icon: Package },
+      { to: "/inventory/vendors", label: "Vendors", icon: Truck },
     ],
   },
   {
