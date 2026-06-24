@@ -286,6 +286,160 @@ export type Database = {
           },
         ]
       }
+      kot_items: {
+        Row: {
+          amount: number
+          created_at: string
+          gst_rate: number
+          id: string
+          is_void: boolean
+          item_name: string
+          kot_id: string
+          kot_station: string
+          menu_item_id: string | null
+          notes: string | null
+          qty: number
+          rate: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          gst_rate?: number
+          id?: string
+          is_void?: boolean
+          item_name: string
+          kot_id: string
+          kot_station?: string
+          menu_item_id?: string | null
+          notes?: string | null
+          qty?: number
+          rate?: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          gst_rate?: number
+          id?: string
+          is_void?: boolean
+          item_name?: string
+          kot_id?: string
+          kot_station?: string
+          menu_item_id?: string | null
+          notes?: string | null
+          qty?: number
+          rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kot_items_kot_id_fkey"
+            columns: ["kot_id"]
+            isOneToOne: false
+            referencedRelation: "kot_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kot_items_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kot_orders: {
+        Row: {
+          billed_at: string | null
+          booking_id: string | null
+          created_at: string
+          created_by: string | null
+          gst_amount: number
+          guest_name: string | null
+          id: string
+          kot_number: string
+          kot_type: string
+          notes: string | null
+          printed_at: string | null
+          property_id: string
+          room_id: string | null
+          served_at: string | null
+          status: string
+          sub_total: number
+          table_no: string | null
+          total_amount: number
+          updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+        }
+        Insert: {
+          billed_at?: string | null
+          booking_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          gst_amount?: number
+          guest_name?: string | null
+          id?: string
+          kot_number?: string
+          kot_type?: string
+          notes?: string | null
+          printed_at?: string | null
+          property_id: string
+          room_id?: string | null
+          served_at?: string | null
+          status?: string
+          sub_total?: number
+          table_no?: string | null
+          total_amount?: number
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Update: {
+          billed_at?: string | null
+          booking_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          gst_amount?: number
+          guest_name?: string | null
+          id?: string
+          kot_number?: string
+          kot_type?: string
+          notes?: string | null
+          printed_at?: string | null
+          property_id?: string
+          room_id?: string | null
+          served_at?: string | null
+          status?: string
+          sub_total?: number
+          table_no?: string | null
+          total_amount?: number
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kot_orders_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kot_orders_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kot_orders_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_categories: {
         Row: {
           created_at: string
@@ -337,6 +491,7 @@ export type Database = {
           id: string
           is_available: boolean
           is_veg: boolean
+          kot_station: string
           name: string
           price: number
           property_id: string
@@ -351,6 +506,7 @@ export type Database = {
           id?: string
           is_available?: boolean
           is_veg?: boolean
+          kot_station?: string
           name: string
           price?: number
           property_id: string
@@ -365,6 +521,7 @@ export type Database = {
           id?: string
           is_available?: boolean
           is_veg?: boolean
+          kot_station?: string
           name?: string
           price?: number
           property_id?: string
@@ -398,6 +555,7 @@ export type Database = {
           name: string
           port: number | null
           property_id: string
+          station: string | null
           type: Database["public"]["Enums"]["printer_type"]
           updated_at: string
         }
@@ -411,6 +569,7 @@ export type Database = {
           name: string
           port?: number | null
           property_id: string
+          station?: string | null
           type?: Database["public"]["Enums"]["printer_type"]
           updated_at?: string
         }
@@ -424,6 +583,7 @@ export type Database = {
           name?: string
           port?: number | null
           property_id?: string
+          station?: string | null
           type?: Database["public"]["Enums"]["printer_type"]
           updated_at?: string
         }
@@ -865,8 +1025,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_food: { Args: { _user_id: string }; Returns: boolean }
       can_front_desk: { Args: { _user_id: string }; Returns: boolean }
       can_manage_masters: { Args: { _user_id: string }; Returns: boolean }
+      has_open_kot: { Args: { _booking_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

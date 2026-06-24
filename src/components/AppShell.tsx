@@ -16,6 +16,8 @@ import {
   CalendarCheck,
   ListChecks,
   PlusCircle,
+  ChefHat,
+  ClipboardList,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -46,6 +48,14 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/front-desk/new", label: "New Booking", icon: PlusCircle },
       { to: "/front-desk/bookings", label: "Bookings", icon: ListChecks },
       { to: "/front-desk/in-house", label: "In-house", icon: CalendarCheck },
+    ],
+  },
+  {
+    label: "Food & KOT",
+    items: [
+      { to: "/food/dashboard", label: "Food Dashboard", icon: ChefHat },
+      { to: "/food/new", label: "New KOT", icon: PlusCircle },
+      { to: "/food/kots", label: "All KOTs", icon: ClipboardList },
     ],
   },
   {
