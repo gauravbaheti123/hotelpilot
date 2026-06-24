@@ -239,6 +239,38 @@ function BookingDetailPage() {
       }
       await supabase.from("rooms").update({ status: "occupied" as any }).eq("id", shiftToRoom);
     }
+
+    // === Transfer open/printed KOTs to new room and log ===
+    try {
+      if (!fromRoomId) throw new Error("no from room");
+      const fromId: string = fromRoomId;
+      const { data: openKots } = await supabase
+        .from("kot_orders")
+        .select("id,kot_number")
+        .eq("booking_id", b.id)
+        .eq("room_id", fromId)
+        .in("status", ["open", "printed", "served"]);
+      const ids = (openKots ?? []).map((k: any) => k.id);
+      if (ids.length > 0) {
+        await supabase.from("kot_orders")
+          .update({ room_id: shiftToRoom } as any)
+          .in("id", ids);
+        const { data: toRoom } = await supabase.from("rooms").select("room_number").eq("id", shiftToRoom).single();
+        const { data: frRoom } = await supabase.from("rooms").select("room_number").eq("id", fromId).single();
+        await (supabase as any).from("kot_audit_log").insert(ids.map((kid: string) => ({
+          property_id: b.property_id,
+          kot_order_id: kid,
+          event_type: "room_shift",
+          message: `Orders transferred from Room ${frRoom?.room_number ?? "?"} to Room ${toRoom?.room_number ?? "?"}`,
+          meta: { from_room_id: fromId, to_room_id: shiftToRoom },
+          actor: user?.id ?? null,
+        })));
+        toast.success(`Kitchen alert: ${ids.length} order${ids.length > 1 ? "s" : ""} moved to Room ${toRoom?.room_number ?? ""}`);
+      }
+    } catch (e) {
+      console.warn("KOT transfer failed", e);
+    }
+
     toast.success("Room shifted");
     setShiftOpen(false);
     load();

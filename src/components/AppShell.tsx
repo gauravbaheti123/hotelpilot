@@ -94,6 +94,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/pos", label: "POS / Sundry", icon: ShoppingCart },
       { to: "/billing/invoices", label: "Invoices", icon: Receipt },
+      { to: "/restaurant", label: "Restaurant Billing", icon: UtensilsCrossed },
     ],
   },
   {
