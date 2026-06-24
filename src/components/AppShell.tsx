@@ -34,6 +34,9 @@ import {
   ArrowLeftRight,
   Wallet,
   Tags,
+  CalendarDays,
+  History,
+  Banknote,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -118,6 +121,14 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/expenses", label: "Expenses", icon: Wallet },
       { to: "/expenses/new", label: "New Expense", icon: PlusCircle },
+    ],
+  },
+  {
+    label: "Staff HR",
+    items: [
+      { to: "/staff/attendance", label: "Attendance", icon: CalendarDays },
+      { to: "/staff/attendance-history", label: "History", icon: History },
+      { to: "/staff/payroll", label: "Payroll", icon: Banknote },
     ],
   },
   {
