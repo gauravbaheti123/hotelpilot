@@ -17,6 +17,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedGuestsIndexRouteImport } from './routes/_authenticated/guests.index'
 import { Route as AuthenticatedFeedbackIndexRouteImport } from './routes/_authenticated/feedback.index'
 import { Route as AuthenticatedExpensesIndexRouteImport } from './routes/_authenticated/expenses.index'
+import { Route as AuthenticatedCommsIndexRouteImport } from './routes/_authenticated/comms.index'
 import { Route as AuthenticatedSuperadminDashboardRouteImport } from './routes/_authenticated/superadmin.dashboard'
 import { Route as AuthenticatedStaffPayrollRouteImport } from './routes/_authenticated/staff.payroll'
 import { Route as AuthenticatedStaffAttendanceHistoryRouteImport } from './routes/_authenticated/staff.attendance-history'
@@ -30,6 +31,7 @@ import { Route as AuthenticatedMastersStaffRouteImport } from './routes/_authent
 import { Route as AuthenticatedMastersRoomsRouteImport } from './routes/_authenticated/masters.rooms'
 import { Route as AuthenticatedMastersRateSeasonsRouteImport } from './routes/_authenticated/masters.rate-seasons'
 import { Route as AuthenticatedMastersPrintersRouteImport } from './routes/_authenticated/masters.printers'
+import { Route as AuthenticatedMastersMessageTemplatesRouteImport } from './routes/_authenticated/masters.message-templates'
 import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenticated/masters.menu'
 import { Route as AuthenticatedMastersHallsRouteImport } from './routes/_authenticated/masters.halls'
 import { Route as AuthenticatedMastersExpenseCategoriesRouteImport } from './routes/_authenticated/masters.expense-categories'
@@ -52,6 +54,7 @@ import { Route as AuthenticatedFoodKotsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedFoodDashboardRouteImport } from './routes/_authenticated/food.dashboard'
 import { Route as AuthenticatedFeedbackNewRouteImport } from './routes/_authenticated/feedback.new'
 import { Route as AuthenticatedExpensesNewRouteImport } from './routes/_authenticated/expenses.new'
+import { Route as AuthenticatedCommsNewRouteImport } from './routes/_authenticated/comms.new'
 import { Route as AuthenticatedBillingInvoicesRouteImport } from './routes/_authenticated/billing.invoices'
 import { Route as AuthenticatedBanquetNewRouteImport } from './routes/_authenticated/banquet.new'
 import { Route as AuthenticatedBanquetBookingsRouteImport } from './routes/_authenticated/banquet.bookings'
@@ -102,6 +105,11 @@ const AuthenticatedExpensesIndexRoute =
     path: '/expenses/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCommsIndexRoute = AuthenticatedCommsIndexRouteImport.update({
+  id: '/comms/',
+  path: '/comms/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSuperadminDashboardRoute =
   AuthenticatedSuperadminDashboardRouteImport.update({
     id: '/superadmin/dashboard',
@@ -177,6 +185,12 @@ const AuthenticatedMastersPrintersRoute =
   AuthenticatedMastersPrintersRouteImport.update({
     id: '/masters/printers',
     path: '/masters/printers',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersMessageTemplatesRoute =
+  AuthenticatedMastersMessageTemplatesRouteImport.update({
+    id: '/masters/message-templates',
+    path: '/masters/message-templates',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedMastersMenuRoute =
@@ -307,6 +321,11 @@ const AuthenticatedExpensesNewRoute =
     path: '/expenses/new',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCommsNewRoute = AuthenticatedCommsNewRouteImport.update({
+  id: '/comms/new',
+  path: '/comms/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedBillingInvoicesRoute =
   AuthenticatedBillingInvoicesRouteImport.update({
     id: '/billing/invoices',
@@ -356,6 +375,7 @@ export interface FileRoutesByFullPath {
   '/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
   '/banquet/new': typeof AuthenticatedBanquetNewRoute
   '/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
+  '/comms/new': typeof AuthenticatedCommsNewRoute
   '/expenses/new': typeof AuthenticatedExpensesNewRoute
   '/feedback/new': typeof AuthenticatedFeedbackNewRoute
   '/food/dashboard': typeof AuthenticatedFoodDashboardRoute
@@ -378,6 +398,7 @@ export interface FileRoutesByFullPath {
   '/masters/expense-categories': typeof AuthenticatedMastersExpenseCategoriesRoute
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
+  '/masters/message-templates': typeof AuthenticatedMastersMessageTemplatesRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
@@ -391,6 +412,7 @@ export interface FileRoutesByFullPath {
   '/staff/attendance-history': typeof AuthenticatedStaffAttendanceHistoryRoute
   '/staff/payroll': typeof AuthenticatedStaffPayrollRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/comms/': typeof AuthenticatedCommsIndexRoute
   '/expenses/': typeof AuthenticatedExpensesIndexRoute
   '/feedback/': typeof AuthenticatedFeedbackIndexRoute
   '/guests/': typeof AuthenticatedGuestsIndexRoute
@@ -407,6 +429,7 @@ export interface FileRoutesByTo {
   '/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
   '/banquet/new': typeof AuthenticatedBanquetNewRoute
   '/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
+  '/comms/new': typeof AuthenticatedCommsNewRoute
   '/expenses/new': typeof AuthenticatedExpensesNewRoute
   '/feedback/new': typeof AuthenticatedFeedbackNewRoute
   '/food/dashboard': typeof AuthenticatedFoodDashboardRoute
@@ -429,6 +452,7 @@ export interface FileRoutesByTo {
   '/masters/expense-categories': typeof AuthenticatedMastersExpenseCategoriesRoute
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
+  '/masters/message-templates': typeof AuthenticatedMastersMessageTemplatesRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
@@ -442,6 +466,7 @@ export interface FileRoutesByTo {
   '/staff/attendance-history': typeof AuthenticatedStaffAttendanceHistoryRoute
   '/staff/payroll': typeof AuthenticatedStaffPayrollRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/comms': typeof AuthenticatedCommsIndexRoute
   '/expenses': typeof AuthenticatedExpensesIndexRoute
   '/feedback': typeof AuthenticatedFeedbackIndexRoute
   '/guests': typeof AuthenticatedGuestsIndexRoute
@@ -460,6 +485,7 @@ export interface FileRoutesById {
   '/_authenticated/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
   '/_authenticated/banquet/new': typeof AuthenticatedBanquetNewRoute
   '/_authenticated/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
+  '/_authenticated/comms/new': typeof AuthenticatedCommsNewRoute
   '/_authenticated/expenses/new': typeof AuthenticatedExpensesNewRoute
   '/_authenticated/feedback/new': typeof AuthenticatedFeedbackNewRoute
   '/_authenticated/food/dashboard': typeof AuthenticatedFoodDashboardRoute
@@ -482,6 +508,7 @@ export interface FileRoutesById {
   '/_authenticated/masters/expense-categories': typeof AuthenticatedMastersExpenseCategoriesRoute
   '/_authenticated/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/_authenticated/masters/menu': typeof AuthenticatedMastersMenuRoute
+  '/_authenticated/masters/message-templates': typeof AuthenticatedMastersMessageTemplatesRoute
   '/_authenticated/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/_authenticated/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
   '/_authenticated/masters/rooms': typeof AuthenticatedMastersRoomsRoute
@@ -495,6 +522,7 @@ export interface FileRoutesById {
   '/_authenticated/staff/attendance-history': typeof AuthenticatedStaffAttendanceHistoryRoute
   '/_authenticated/staff/payroll': typeof AuthenticatedStaffPayrollRoute
   '/_authenticated/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
+  '/_authenticated/comms/': typeof AuthenticatedCommsIndexRoute
   '/_authenticated/expenses/': typeof AuthenticatedExpensesIndexRoute
   '/_authenticated/feedback/': typeof AuthenticatedFeedbackIndexRoute
   '/_authenticated/guests/': typeof AuthenticatedGuestsIndexRoute
@@ -513,6 +541,7 @@ export interface FileRouteTypes {
     | '/banquet/bookings'
     | '/banquet/new'
     | '/billing/invoices'
+    | '/comms/new'
     | '/expenses/new'
     | '/feedback/new'
     | '/food/dashboard'
@@ -535,6 +564,7 @@ export interface FileRouteTypes {
     | '/masters/expense-categories'
     | '/masters/halls'
     | '/masters/menu'
+    | '/masters/message-templates'
     | '/masters/printers'
     | '/masters/rate-seasons'
     | '/masters/rooms'
@@ -548,6 +578,7 @@ export interface FileRouteTypes {
     | '/staff/attendance-history'
     | '/staff/payroll'
     | '/superadmin/dashboard'
+    | '/comms/'
     | '/expenses/'
     | '/feedback/'
     | '/guests/'
@@ -564,6 +595,7 @@ export interface FileRouteTypes {
     | '/banquet/bookings'
     | '/banquet/new'
     | '/billing/invoices'
+    | '/comms/new'
     | '/expenses/new'
     | '/feedback/new'
     | '/food/dashboard'
@@ -586,6 +618,7 @@ export interface FileRouteTypes {
     | '/masters/expense-categories'
     | '/masters/halls'
     | '/masters/menu'
+    | '/masters/message-templates'
     | '/masters/printers'
     | '/masters/rate-seasons'
     | '/masters/rooms'
@@ -599,6 +632,7 @@ export interface FileRouteTypes {
     | '/staff/attendance-history'
     | '/staff/payroll'
     | '/superadmin/dashboard'
+    | '/comms'
     | '/expenses'
     | '/feedback'
     | '/guests'
@@ -616,6 +650,7 @@ export interface FileRouteTypes {
     | '/_authenticated/banquet/bookings'
     | '/_authenticated/banquet/new'
     | '/_authenticated/billing/invoices'
+    | '/_authenticated/comms/new'
     | '/_authenticated/expenses/new'
     | '/_authenticated/feedback/new'
     | '/_authenticated/food/dashboard'
@@ -638,6 +673,7 @@ export interface FileRouteTypes {
     | '/_authenticated/masters/expense-categories'
     | '/_authenticated/masters/halls'
     | '/_authenticated/masters/menu'
+    | '/_authenticated/masters/message-templates'
     | '/_authenticated/masters/printers'
     | '/_authenticated/masters/rate-seasons'
     | '/_authenticated/masters/rooms'
@@ -651,6 +687,7 @@ export interface FileRouteTypes {
     | '/_authenticated/staff/attendance-history'
     | '/_authenticated/staff/payroll'
     | '/_authenticated/superadmin/dashboard'
+    | '/_authenticated/comms/'
     | '/_authenticated/expenses/'
     | '/_authenticated/feedback/'
     | '/_authenticated/guests/'
@@ -722,6 +759,13 @@ declare module '@tanstack/react-router' {
       path: '/expenses'
       fullPath: '/expenses/'
       preLoaderRoute: typeof AuthenticatedExpensesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/comms/': {
+      id: '/_authenticated/comms/'
+      path: '/comms'
+      fullPath: '/comms/'
+      preLoaderRoute: typeof AuthenticatedCommsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/superadmin/dashboard': {
@@ -813,6 +857,13 @@ declare module '@tanstack/react-router' {
       path: '/masters/printers'
       fullPath: '/masters/printers'
       preLoaderRoute: typeof AuthenticatedMastersPrintersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/message-templates': {
+      id: '/_authenticated/masters/message-templates'
+      path: '/masters/message-templates'
+      fullPath: '/masters/message-templates'
+      preLoaderRoute: typeof AuthenticatedMastersMessageTemplatesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/masters/menu': {
@@ -969,6 +1020,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExpensesNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/comms/new': {
+      id: '/_authenticated/comms/new'
+      path: '/comms/new'
+      fullPath: '/comms/new'
+      preLoaderRoute: typeof AuthenticatedCommsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/billing/invoices': {
       id: '/_authenticated/billing/invoices'
       path: '/billing/invoices'
@@ -1027,6 +1085,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBanquetBookingsRoute: typeof AuthenticatedBanquetBookingsRoute
   AuthenticatedBanquetNewRoute: typeof AuthenticatedBanquetNewRoute
   AuthenticatedBillingInvoicesRoute: typeof AuthenticatedBillingInvoicesRoute
+  AuthenticatedCommsNewRoute: typeof AuthenticatedCommsNewRoute
   AuthenticatedExpensesNewRoute: typeof AuthenticatedExpensesNewRoute
   AuthenticatedFeedbackNewRoute: typeof AuthenticatedFeedbackNewRoute
   AuthenticatedFoodDashboardRoute: typeof AuthenticatedFoodDashboardRoute
@@ -1049,6 +1108,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMastersExpenseCategoriesRoute: typeof AuthenticatedMastersExpenseCategoriesRoute
   AuthenticatedMastersHallsRoute: typeof AuthenticatedMastersHallsRoute
   AuthenticatedMastersMenuRoute: typeof AuthenticatedMastersMenuRoute
+  AuthenticatedMastersMessageTemplatesRoute: typeof AuthenticatedMastersMessageTemplatesRoute
   AuthenticatedMastersPrintersRoute: typeof AuthenticatedMastersPrintersRoute
   AuthenticatedMastersRateSeasonsRoute: typeof AuthenticatedMastersRateSeasonsRoute
   AuthenticatedMastersRoomsRoute: typeof AuthenticatedMastersRoomsRoute
@@ -1062,6 +1122,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedStaffAttendanceHistoryRoute: typeof AuthenticatedStaffAttendanceHistoryRoute
   AuthenticatedStaffPayrollRoute: typeof AuthenticatedStaffPayrollRoute
   AuthenticatedSuperadminDashboardRoute: typeof AuthenticatedSuperadminDashboardRoute
+  AuthenticatedCommsIndexRoute: typeof AuthenticatedCommsIndexRoute
   AuthenticatedExpensesIndexRoute: typeof AuthenticatedExpensesIndexRoute
   AuthenticatedFeedbackIndexRoute: typeof AuthenticatedFeedbackIndexRoute
   AuthenticatedGuestsIndexRoute: typeof AuthenticatedGuestsIndexRoute
@@ -1077,6 +1138,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBanquetBookingsRoute: AuthenticatedBanquetBookingsRoute,
   AuthenticatedBanquetNewRoute: AuthenticatedBanquetNewRoute,
   AuthenticatedBillingInvoicesRoute: AuthenticatedBillingInvoicesRoute,
+  AuthenticatedCommsNewRoute: AuthenticatedCommsNewRoute,
   AuthenticatedExpensesNewRoute: AuthenticatedExpensesNewRoute,
   AuthenticatedFeedbackNewRoute: AuthenticatedFeedbackNewRoute,
   AuthenticatedFoodDashboardRoute: AuthenticatedFoodDashboardRoute,
@@ -1101,6 +1163,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedMastersExpenseCategoriesRoute,
   AuthenticatedMastersHallsRoute: AuthenticatedMastersHallsRoute,
   AuthenticatedMastersMenuRoute: AuthenticatedMastersMenuRoute,
+  AuthenticatedMastersMessageTemplatesRoute:
+    AuthenticatedMastersMessageTemplatesRoute,
   AuthenticatedMastersPrintersRoute: AuthenticatedMastersPrintersRoute,
   AuthenticatedMastersRateSeasonsRoute: AuthenticatedMastersRateSeasonsRoute,
   AuthenticatedMastersRoomsRoute: AuthenticatedMastersRoomsRoute,
@@ -1115,6 +1179,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedStaffAttendanceHistoryRoute,
   AuthenticatedStaffPayrollRoute: AuthenticatedStaffPayrollRoute,
   AuthenticatedSuperadminDashboardRoute: AuthenticatedSuperadminDashboardRoute,
+  AuthenticatedCommsIndexRoute: AuthenticatedCommsIndexRoute,
   AuthenticatedExpensesIndexRoute: AuthenticatedExpensesIndexRoute,
   AuthenticatedFeedbackIndexRoute: AuthenticatedFeedbackIndexRoute,
   AuthenticatedGuestsIndexRoute: AuthenticatedGuestsIndexRoute,

@@ -427,6 +427,104 @@ export type Database = {
           },
         ]
       }
+      communications: {
+        Row: {
+          body: string
+          booking_id: string | null
+          channel: string
+          created_at: string
+          created_by: string | null
+          delivered_at: string | null
+          direction: string
+          error_message: string | null
+          guest_id: string | null
+          id: string
+          notes: string | null
+          property_id: string
+          queued_at: string | null
+          recipient: string
+          recipient_name: string | null
+          sent_at: string | null
+          status: string
+          subject: string | null
+          template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          booking_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          direction?: string
+          error_message?: string | null
+          guest_id?: string | null
+          id?: string
+          notes?: string | null
+          property_id: string
+          queued_at?: string | null
+          recipient: string
+          recipient_name?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          booking_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          direction?: string
+          error_message?: string | null
+          guest_id?: string | null
+          id?: string
+          notes?: string | null
+          property_id?: string
+          queued_at?: string | null
+          recipient?: string
+          recipient_name?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communications_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communications_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communications_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "message_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       day_closures: {
         Row: {
           bank_total: number
@@ -1360,6 +1458,50 @@ export type Database = {
           },
           {
             foreignKeyName: "menu_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_templates: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          property_id: string
+          subject: string | null
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          channel?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          property_id: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          property_id?: string
+          subject?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_templates_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
