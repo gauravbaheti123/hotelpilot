@@ -108,7 +108,7 @@ export function CrudPage<T extends { id: string }>({
       ascending: order.ascending ?? true,
     });
     if (error) toast.error(error.message);
-    setRows((data ?? []) as T[]);
+    setRows(((data ?? []) as unknown) as T[]);
     setLoading(false);
   }
 
