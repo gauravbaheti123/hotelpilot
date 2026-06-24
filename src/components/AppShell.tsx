@@ -46,6 +46,7 @@ import {
   Settings,
   MessageCircle,
 } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { PropertySelector } from "./PropertySelector";
@@ -55,6 +56,7 @@ interface NavItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   requireSuperadmin?: boolean;
+  requireOwner?: boolean;
 }
 
 interface NavGroup {
@@ -187,6 +189,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Admin",
     items: [
       { to: "/superadmin/dashboard", label: "Superadmin", icon: ShieldCheck, requireSuperadmin: true },
+      { to: "/security", label: "Security / Wipe", icon: ShieldAlert, requireOwner: true },
     ],
   },
 ];
@@ -195,6 +198,7 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
   const router = useRouter();
   const { user, roles } = useAuth();
   const isSuperadmin = roles.includes("superadmin");
+  const isOwner = roles.includes("owner") || isSuperadmin;
   const currentPath = router.state.location.pathname;
 
   async function signOut() {
@@ -204,7 +208,14 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
   }
 
   const visibleGroups = NAV_GROUPS
-    .map((g) => ({ ...g, items: g.items.filter((n) => !n.requireSuperadmin || isSuperadmin) }))
+    .map((g) => ({
+      ...g,
+      items: g.items.filter(
+        (n) =>
+          (!n.requireSuperadmin || isSuperadmin) &&
+          (!n.requireOwner || isOwner),
+      ),
+    }))
     .filter((g) => g.items.length > 0);
 
   return (

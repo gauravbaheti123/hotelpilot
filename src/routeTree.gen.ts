@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedWhatsappIndexRouteImport } from './routes/_authenticated/whatsapp.index'
+import { Route as AuthenticatedSecurityIndexRouteImport } from './routes/_authenticated/security.index'
 import { Route as AuthenticatedPosIndexRouteImport } from './routes/_authenticated/pos.index'
 import { Route as AuthenticatedGuestsIndexRouteImport } from './routes/_authenticated/guests.index'
 import { Route as AuthenticatedFeedbackIndexRouteImport } from './routes/_authenticated/feedback.index'
@@ -98,6 +99,12 @@ const AuthenticatedWhatsappIndexRoute =
   AuthenticatedWhatsappIndexRouteImport.update({
     id: '/whatsapp/',
     path: '/whatsapp/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSecurityIndexRoute =
+  AuthenticatedSecurityIndexRouteImport.update({
+    id: '/security/',
+    path: '/security/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedPosIndexRoute = AuthenticatedPosIndexRouteImport.update({
@@ -470,6 +477,7 @@ export interface FileRoutesByFullPath {
   '/feedback/': typeof AuthenticatedFeedbackIndexRoute
   '/guests/': typeof AuthenticatedGuestsIndexRoute
   '/pos/': typeof AuthenticatedPosIndexRoute
+  '/security/': typeof AuthenticatedSecurityIndexRoute
   '/whatsapp/': typeof AuthenticatedWhatsappIndexRoute
   '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
@@ -531,6 +539,7 @@ export interface FileRoutesByTo {
   '/feedback': typeof AuthenticatedFeedbackIndexRoute
   '/guests': typeof AuthenticatedGuestsIndexRoute
   '/pos': typeof AuthenticatedPosIndexRoute
+  '/security': typeof AuthenticatedSecurityIndexRoute
   '/whatsapp': typeof AuthenticatedWhatsappIndexRoute
   '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
@@ -594,6 +603,7 @@ export interface FileRoutesById {
   '/_authenticated/feedback/': typeof AuthenticatedFeedbackIndexRoute
   '/_authenticated/guests/': typeof AuthenticatedGuestsIndexRoute
   '/_authenticated/pos/': typeof AuthenticatedPosIndexRoute
+  '/_authenticated/security/': typeof AuthenticatedSecurityIndexRoute
   '/_authenticated/whatsapp/': typeof AuthenticatedWhatsappIndexRoute
   '/_authenticated/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/_authenticated/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
@@ -657,6 +667,7 @@ export interface FileRouteTypes {
     | '/feedback/'
     | '/guests/'
     | '/pos/'
+    | '/security/'
     | '/whatsapp/'
     | '/banquet/event/$id'
     | '/billing/folio/$bookingId'
@@ -718,6 +729,7 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/guests'
     | '/pos'
+    | '/security'
     | '/whatsapp'
     | '/banquet/event/$id'
     | '/billing/folio/$bookingId'
@@ -780,6 +792,7 @@ export interface FileRouteTypes {
     | '/_authenticated/feedback/'
     | '/_authenticated/guests/'
     | '/_authenticated/pos/'
+    | '/_authenticated/security/'
     | '/_authenticated/whatsapp/'
     | '/_authenticated/banquet/event/$id'
     | '/_authenticated/billing/folio/$bookingId'
@@ -835,6 +848,13 @@ declare module '@tanstack/react-router' {
       path: '/whatsapp'
       fullPath: '/whatsapp/'
       preLoaderRoute: typeof AuthenticatedWhatsappIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/security/': {
+      id: '/_authenticated/security/'
+      path: '/security'
+      fullPath: '/security/'
+      preLoaderRoute: typeof AuthenticatedSecurityIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/pos/': {
@@ -1271,6 +1291,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFeedbackIndexRoute: typeof AuthenticatedFeedbackIndexRoute
   AuthenticatedGuestsIndexRoute: typeof AuthenticatedGuestsIndexRoute
   AuthenticatedPosIndexRoute: typeof AuthenticatedPosIndexRoute
+  AuthenticatedSecurityIndexRoute: typeof AuthenticatedSecurityIndexRoute
   AuthenticatedWhatsappIndexRoute: typeof AuthenticatedWhatsappIndexRoute
   AuthenticatedBanquetEventIdRoute: typeof AuthenticatedBanquetEventIdRoute
   AuthenticatedBillingFolioBookingIdRoute: typeof AuthenticatedBillingFolioBookingIdRoute
@@ -1335,6 +1356,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFeedbackIndexRoute: AuthenticatedFeedbackIndexRoute,
   AuthenticatedGuestsIndexRoute: AuthenticatedGuestsIndexRoute,
   AuthenticatedPosIndexRoute: AuthenticatedPosIndexRoute,
+  AuthenticatedSecurityIndexRoute: AuthenticatedSecurityIndexRoute,
   AuthenticatedWhatsappIndexRoute: AuthenticatedWhatsappIndexRoute,
   AuthenticatedBanquetEventIdRoute: AuthenticatedBanquetEventIdRoute,
   AuthenticatedBillingFolioBookingIdRoute:
