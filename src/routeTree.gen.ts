@@ -30,6 +30,7 @@ import { Route as AuthenticatedHousekeepingTasksRouteImport } from './routes/_au
 import { Route as AuthenticatedHousekeepingNewRouteImport } from './routes/_authenticated/housekeeping.new'
 import { Route as AuthenticatedHousekeepingBoardRouteImport } from './routes/_authenticated/housekeeping.board'
 import { Route as AuthenticatedGuestsNewRouteImport } from './routes/_authenticated/guests.new'
+import { Route as AuthenticatedGuestsIdRouteImport } from './routes/_authenticated/guests.$id'
 import { Route as AuthenticatedFrontDeskNewRouteImport } from './routes/_authenticated/front-desk.new'
 import { Route as AuthenticatedFrontDeskInHouseRouteImport } from './routes/_authenticated/front-desk.in-house'
 import { Route as AuthenticatedFrontDeskBookingsRouteImport } from './routes/_authenticated/front-desk.bookings'
@@ -162,6 +163,11 @@ const AuthenticatedGuestsNewRoute = AuthenticatedGuestsNewRouteImport.update({
   path: '/guests/new',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedGuestsIdRoute = AuthenticatedGuestsIdRouteImport.update({
+  id: '/guests/$id',
+  path: '/guests/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedFrontDeskNewRoute =
   AuthenticatedFrontDeskNewRouteImport.update({
     id: '/front-desk/new',
@@ -251,6 +257,7 @@ export interface FileRoutesByFullPath {
   '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
   '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
+  '/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/guests/new': typeof AuthenticatedGuestsNewRoute
   '/housekeeping/board': typeof AuthenticatedHousekeepingBoardRoute
   '/housekeeping/new': typeof AuthenticatedHousekeepingNewRoute
@@ -286,6 +293,7 @@ export interface FileRoutesByTo {
   '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
   '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
+  '/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/guests/new': typeof AuthenticatedGuestsNewRoute
   '/housekeeping/board': typeof AuthenticatedHousekeepingBoardRoute
   '/housekeeping/new': typeof AuthenticatedHousekeepingNewRoute
@@ -323,6 +331,7 @@ export interface FileRoutesById {
   '/_authenticated/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/_authenticated/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
   '/_authenticated/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
+  '/_authenticated/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/_authenticated/guests/new': typeof AuthenticatedGuestsNewRoute
   '/_authenticated/housekeeping/board': typeof AuthenticatedHousekeepingBoardRoute
   '/_authenticated/housekeeping/new': typeof AuthenticatedHousekeepingNewRoute
@@ -360,6 +369,7 @@ export interface FileRouteTypes {
     | '/front-desk/bookings'
     | '/front-desk/in-house'
     | '/front-desk/new'
+    | '/guests/$id'
     | '/guests/new'
     | '/housekeeping/board'
     | '/housekeeping/new'
@@ -395,6 +405,7 @@ export interface FileRouteTypes {
     | '/front-desk/bookings'
     | '/front-desk/in-house'
     | '/front-desk/new'
+    | '/guests/$id'
     | '/guests/new'
     | '/housekeeping/board'
     | '/housekeeping/new'
@@ -431,6 +442,7 @@ export interface FileRouteTypes {
     | '/_authenticated/front-desk/bookings'
     | '/_authenticated/front-desk/in-house'
     | '/_authenticated/front-desk/new'
+    | '/_authenticated/guests/$id'
     | '/_authenticated/guests/new'
     | '/_authenticated/housekeeping/board'
     | '/_authenticated/housekeeping/new'
@@ -608,6 +620,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGuestsNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/guests/$id': {
+      id: '/_authenticated/guests/$id'
+      path: '/guests/$id'
+      fullPath: '/guests/$id'
+      preLoaderRoute: typeof AuthenticatedGuestsIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/front-desk/new': {
       id: '/_authenticated/front-desk/new'
       path: '/front-desk/new'
@@ -714,6 +733,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFrontDeskBookingsRoute: typeof AuthenticatedFrontDeskBookingsRoute
   AuthenticatedFrontDeskInHouseRoute: typeof AuthenticatedFrontDeskInHouseRoute
   AuthenticatedFrontDeskNewRoute: typeof AuthenticatedFrontDeskNewRoute
+  AuthenticatedGuestsIdRoute: typeof AuthenticatedGuestsIdRoute
   AuthenticatedGuestsNewRoute: typeof AuthenticatedGuestsNewRoute
   AuthenticatedHousekeepingBoardRoute: typeof AuthenticatedHousekeepingBoardRoute
   AuthenticatedHousekeepingNewRoute: typeof AuthenticatedHousekeepingNewRoute
@@ -748,6 +768,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFrontDeskBookingsRoute: AuthenticatedFrontDeskBookingsRoute,
   AuthenticatedFrontDeskInHouseRoute: AuthenticatedFrontDeskInHouseRoute,
   AuthenticatedFrontDeskNewRoute: AuthenticatedFrontDeskNewRoute,
+  AuthenticatedGuestsIdRoute: AuthenticatedGuestsIdRoute,
   AuthenticatedGuestsNewRoute: AuthenticatedGuestsNewRoute,
   AuthenticatedHousekeepingBoardRoute: AuthenticatedHousekeepingBoardRoute,
   AuthenticatedHousekeepingNewRoute: AuthenticatedHousekeepingNewRoute,

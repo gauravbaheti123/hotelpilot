@@ -27,6 +27,7 @@ import {
   FileSpreadsheet,
   Sparkles,
   LayoutGrid,
+  UserCircle2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -88,6 +89,13 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/housekeeping/board", label: "Room Board", icon: LayoutGrid },
       { to: "/housekeeping/tasks", label: "Tasks", icon: Sparkles },
       { to: "/housekeeping/new", label: "New Task", icon: PlusCircle },
+    ],
+  },
+  {
+    label: "Guests",
+    items: [
+      { to: "/guests", label: "Guest CRM", icon: UserCircle2 },
+      { to: "/guests/new", label: "New Guest", icon: PlusCircle },
     ],
   },
   {
