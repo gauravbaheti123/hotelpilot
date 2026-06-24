@@ -147,14 +147,14 @@ async function runFeedbackCron(supabase: any) {
   const to = new Date(now.getTime() - 2 * 3600_000).toISOString();
   const { data: bookings } = await supabase
     .from("bookings")
-    .select("id,property_id,guest_id,guests(name,phone)")
+    .select("id,property_id,guest_id,checked_out_at,guests(name,mobile)")
     .eq("status", "checked_out")
-    .gte("updated_at", from)
-    .lte("updated_at", to);
+    .gte("checked_out_at", from)
+    .lte("checked_out_at", to);
   const results: any[] = [];
   for (const b of bookings ?? []) {
-    const phone = b.guests?.phone;
-    if (!phone) continue;
+    const mobile = b.guests?.mobile;
+    if (!mobile) continue;
     const { data: existing } = await supabase
       .from("whatsapp_messages")
       .select("id")
@@ -164,7 +164,7 @@ async function runFeedbackCron(supabase: any) {
     if (existing && existing.length > 0) continue;
     const r = await dispatch(supabase, {
       property_id: b.property_id,
-      destination: phone.replace(/[^0-9]/g, ""),
+      destination: mobile.replace(/[^0-9]/g, ""),
       template_event: "feedback_request",
       booking_id: b.id,
       guest_id: b.guest_id,
