@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedPosIndexRouteImport } from './routes/_authenticated/pos.index'
 import { Route as AuthenticatedGuestsIndexRouteImport } from './routes/_authenticated/guests.index'
 import { Route as AuthenticatedFeedbackIndexRouteImport } from './routes/_authenticated/feedback.index'
 import { Route as AuthenticatedExpensesIndexRouteImport } from './routes/_authenticated/expenses.index'
@@ -27,6 +28,7 @@ import { Route as AuthenticatedReportsNightAuditRouteImport } from './routes/_au
 import { Route as AuthenticatedReportsGstRouteImport } from './routes/_authenticated/reports.gst'
 import { Route as AuthenticatedReportsDailyRouteImport } from './routes/_authenticated/reports.daily'
 import { Route as AuthenticatedMastersTariffRouteImport } from './routes/_authenticated/masters.tariff'
+import { Route as AuthenticatedMastersSundryItemsRouteImport } from './routes/_authenticated/masters.sundry-items'
 import { Route as AuthenticatedMastersStaffRouteImport } from './routes/_authenticated/masters.staff'
 import { Route as AuthenticatedMastersRoomsRouteImport } from './routes/_authenticated/masters.rooms'
 import { Route as AuthenticatedMastersRateSeasonsRouteImport } from './routes/_authenticated/masters.rate-seasons'
@@ -85,6 +87,11 @@ const AuthenticatedPropertiesRoute = AuthenticatedPropertiesRouteImport.update({
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPosIndexRoute = AuthenticatedPosIndexRouteImport.update({
+  id: '/pos/',
+  path: '/pos/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedGuestsIndexRoute =
@@ -161,6 +168,12 @@ const AuthenticatedMastersTariffRoute =
   AuthenticatedMastersTariffRouteImport.update({
     id: '/masters/tariff',
     path: '/masters/tariff',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersSundryItemsRoute =
+  AuthenticatedMastersSundryItemsRouteImport.update({
+    id: '/masters/sundry-items',
+    path: '/masters/sundry-items',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedMastersStaffRoute =
@@ -403,6 +416,7 @@ export interface FileRoutesByFullPath {
   '/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
+  '/masters/sundry-items': typeof AuthenticatedMastersSundryItemsRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
@@ -416,6 +430,7 @@ export interface FileRoutesByFullPath {
   '/expenses/': typeof AuthenticatedExpensesIndexRoute
   '/feedback/': typeof AuthenticatedFeedbackIndexRoute
   '/guests/': typeof AuthenticatedGuestsIndexRoute
+  '/pos/': typeof AuthenticatedPosIndexRoute
   '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
@@ -457,6 +472,7 @@ export interface FileRoutesByTo {
   '/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
+  '/masters/sundry-items': typeof AuthenticatedMastersSundryItemsRoute
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
@@ -470,6 +486,7 @@ export interface FileRoutesByTo {
   '/expenses': typeof AuthenticatedExpensesIndexRoute
   '/feedback': typeof AuthenticatedFeedbackIndexRoute
   '/guests': typeof AuthenticatedGuestsIndexRoute
+  '/pos': typeof AuthenticatedPosIndexRoute
   '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
@@ -513,6 +530,7 @@ export interface FileRoutesById {
   '/_authenticated/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
   '/_authenticated/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/_authenticated/masters/staff': typeof AuthenticatedMastersStaffRoute
+  '/_authenticated/masters/sundry-items': typeof AuthenticatedMastersSundryItemsRoute
   '/_authenticated/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/_authenticated/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/_authenticated/reports/gst': typeof AuthenticatedReportsGstRoute
@@ -526,6 +544,7 @@ export interface FileRoutesById {
   '/_authenticated/expenses/': typeof AuthenticatedExpensesIndexRoute
   '/_authenticated/feedback/': typeof AuthenticatedFeedbackIndexRoute
   '/_authenticated/guests/': typeof AuthenticatedGuestsIndexRoute
+  '/_authenticated/pos/': typeof AuthenticatedPosIndexRoute
   '/_authenticated/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/_authenticated/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/_authenticated/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
@@ -569,6 +588,7 @@ export interface FileRouteTypes {
     | '/masters/rate-seasons'
     | '/masters/rooms'
     | '/masters/staff'
+    | '/masters/sundry-items'
     | '/masters/tariff'
     | '/reports/daily'
     | '/reports/gst'
@@ -582,6 +602,7 @@ export interface FileRouteTypes {
     | '/expenses/'
     | '/feedback/'
     | '/guests/'
+    | '/pos/'
     | '/banquet/event/$id'
     | '/billing/folio/$bookingId'
     | '/food/kot/$id'
@@ -623,6 +644,7 @@ export interface FileRouteTypes {
     | '/masters/rate-seasons'
     | '/masters/rooms'
     | '/masters/staff'
+    | '/masters/sundry-items'
     | '/masters/tariff'
     | '/reports/daily'
     | '/reports/gst'
@@ -636,6 +658,7 @@ export interface FileRouteTypes {
     | '/expenses'
     | '/feedback'
     | '/guests'
+    | '/pos'
     | '/banquet/event/$id'
     | '/billing/folio/$bookingId'
     | '/food/kot/$id'
@@ -678,6 +701,7 @@ export interface FileRouteTypes {
     | '/_authenticated/masters/rate-seasons'
     | '/_authenticated/masters/rooms'
     | '/_authenticated/masters/staff'
+    | '/_authenticated/masters/sundry-items'
     | '/_authenticated/masters/tariff'
     | '/_authenticated/reports/daily'
     | '/_authenticated/reports/gst'
@@ -691,6 +715,7 @@ export interface FileRouteTypes {
     | '/_authenticated/expenses/'
     | '/_authenticated/feedback/'
     | '/_authenticated/guests/'
+    | '/_authenticated/pos/'
     | '/_authenticated/banquet/event/$id'
     | '/_authenticated/billing/folio/$bookingId'
     | '/_authenticated/food/kot/$id'
@@ -738,6 +763,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/pos/': {
+      id: '/_authenticated/pos/'
+      path: '/pos'
+      fullPath: '/pos/'
+      preLoaderRoute: typeof AuthenticatedPosIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/guests/': {
@@ -829,6 +861,13 @@ declare module '@tanstack/react-router' {
       path: '/masters/tariff'
       fullPath: '/masters/tariff'
       preLoaderRoute: typeof AuthenticatedMastersTariffRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/sundry-items': {
+      id: '/_authenticated/masters/sundry-items'
+      path: '/masters/sundry-items'
+      fullPath: '/masters/sundry-items'
+      preLoaderRoute: typeof AuthenticatedMastersSundryItemsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/masters/staff': {
@@ -1113,6 +1152,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMastersRateSeasonsRoute: typeof AuthenticatedMastersRateSeasonsRoute
   AuthenticatedMastersRoomsRoute: typeof AuthenticatedMastersRoomsRoute
   AuthenticatedMastersStaffRoute: typeof AuthenticatedMastersStaffRoute
+  AuthenticatedMastersSundryItemsRoute: typeof AuthenticatedMastersSundryItemsRoute
   AuthenticatedMastersTariffRoute: typeof AuthenticatedMastersTariffRoute
   AuthenticatedReportsDailyRoute: typeof AuthenticatedReportsDailyRoute
   AuthenticatedReportsGstRoute: typeof AuthenticatedReportsGstRoute
@@ -1126,6 +1166,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedExpensesIndexRoute: typeof AuthenticatedExpensesIndexRoute
   AuthenticatedFeedbackIndexRoute: typeof AuthenticatedFeedbackIndexRoute
   AuthenticatedGuestsIndexRoute: typeof AuthenticatedGuestsIndexRoute
+  AuthenticatedPosIndexRoute: typeof AuthenticatedPosIndexRoute
   AuthenticatedBanquetEventIdRoute: typeof AuthenticatedBanquetEventIdRoute
   AuthenticatedBillingFolioBookingIdRoute: typeof AuthenticatedBillingFolioBookingIdRoute
   AuthenticatedFoodKotIdRoute: typeof AuthenticatedFoodKotIdRoute
@@ -1169,6 +1210,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMastersRateSeasonsRoute: AuthenticatedMastersRateSeasonsRoute,
   AuthenticatedMastersRoomsRoute: AuthenticatedMastersRoomsRoute,
   AuthenticatedMastersStaffRoute: AuthenticatedMastersStaffRoute,
+  AuthenticatedMastersSundryItemsRoute: AuthenticatedMastersSundryItemsRoute,
   AuthenticatedMastersTariffRoute: AuthenticatedMastersTariffRoute,
   AuthenticatedReportsDailyRoute: AuthenticatedReportsDailyRoute,
   AuthenticatedReportsGstRoute: AuthenticatedReportsGstRoute,
@@ -1183,6 +1225,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedExpensesIndexRoute: AuthenticatedExpensesIndexRoute,
   AuthenticatedFeedbackIndexRoute: AuthenticatedFeedbackIndexRoute,
   AuthenticatedGuestsIndexRoute: AuthenticatedGuestsIndexRoute,
+  AuthenticatedPosIndexRoute: AuthenticatedPosIndexRoute,
   AuthenticatedBanquetEventIdRoute: AuthenticatedBanquetEventIdRoute,
   AuthenticatedBillingFolioBookingIdRoute:
     AuthenticatedBillingFolioBookingIdRoute,

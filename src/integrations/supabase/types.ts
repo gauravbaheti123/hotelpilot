@@ -2182,6 +2182,56 @@ export type Database = {
           },
         ]
       }
+      sundry_items: {
+        Row: {
+          category: string
+          created_at: string
+          gst_rate: number
+          id: string
+          is_active: boolean
+          name: string
+          property_id: string
+          rate: number
+          sku: string | null
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          gst_rate?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          property_id: string
+          rate?: number
+          sku?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          gst_rate?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          property_id?: string
+          rate?: number
+          sku?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sundry_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tariff_plans: {
         Row: {
           category_id: string | null
