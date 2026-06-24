@@ -38,6 +38,7 @@ import {
   History,
   Banknote,
   TrendingUp,
+  Star,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -108,6 +109,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/guests", label: "Guest CRM", icon: UserCircle2 },
       { to: "/guests/new", label: "New Guest", icon: PlusCircle },
+      { to: "/feedback", label: "Feedback", icon: Star },
+      { to: "/feedback/new", label: "New Feedback", icon: PlusCircle },
     ],
   },
   {
