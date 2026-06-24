@@ -21,6 +21,7 @@ import { Route as AuthenticatedMastersRoomsRouteImport } from './routes/_authent
 import { Route as AuthenticatedMastersPrintersRouteImport } from './routes/_authenticated/masters.printers'
 import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenticated/masters.menu'
 import { Route as AuthenticatedFrontDeskNewRouteImport } from './routes/_authenticated/front-desk.new'
+import { Route as AuthenticatedFrontDeskBookingsRouteImport } from './routes/_authenticated/front-desk.bookings'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -88,12 +89,19 @@ const AuthenticatedFrontDeskNewRoute =
     path: '/front-desk/new',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFrontDeskBookingsRoute =
+  AuthenticatedFrontDeskBookingsRouteImport.update({
+    id: '/front-desk/bookings',
+    path: '/front-desk/bookings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
@@ -107,6 +115,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
@@ -122,6 +131,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
+  '/_authenticated/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/_authenticated/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
   '/_authenticated/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/_authenticated/masters/printers': typeof AuthenticatedMastersPrintersRoute
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/properties'
+    | '/front-desk/bookings'
     | '/front-desk/new'
     | '/masters/menu'
     | '/masters/printers'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/properties'
+    | '/front-desk/bookings'
     | '/front-desk/new'
     | '/masters/menu'
     | '/masters/printers'
@@ -164,6 +176,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/dashboard'
     | '/_authenticated/properties'
+    | '/_authenticated/front-desk/bookings'
     | '/_authenticated/front-desk/new'
     | '/_authenticated/masters/menu'
     | '/_authenticated/masters/printers'
@@ -265,12 +278,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrontDeskNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/front-desk/bookings': {
+      id: '/_authenticated/front-desk/bookings'
+      path: '/front-desk/bookings'
+      fullPath: '/front-desk/bookings'
+      preLoaderRoute: typeof AuthenticatedFrontDeskBookingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPropertiesRoute: typeof AuthenticatedPropertiesRoute
+  AuthenticatedFrontDeskBookingsRoute: typeof AuthenticatedFrontDeskBookingsRoute
   AuthenticatedFrontDeskNewRoute: typeof AuthenticatedFrontDeskNewRoute
   AuthenticatedMastersMenuRoute: typeof AuthenticatedMastersMenuRoute
   AuthenticatedMastersPrintersRoute: typeof AuthenticatedMastersPrintersRoute
@@ -283,6 +304,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPropertiesRoute: AuthenticatedPropertiesRoute,
+  AuthenticatedFrontDeskBookingsRoute: AuthenticatedFrontDeskBookingsRoute,
   AuthenticatedFrontDeskNewRoute: AuthenticatedFrontDeskNewRoute,
   AuthenticatedMastersMenuRoute: AuthenticatedMastersMenuRoute,
   AuthenticatedMastersPrintersRoute: AuthenticatedMastersPrintersRoute,
