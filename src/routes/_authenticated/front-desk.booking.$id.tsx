@@ -741,3 +741,23 @@ function Row({ k, v, highlight }: { k: string; v: React.ReactNode; highlight?: b
     </div>
   );
 }
+
+function TariffOption({
+  active, onClick, title, line1, line2, disabled,
+}: { active: boolean; onClick: () => void; title: string; line1: string; line2: string; disabled?: boolean }) {
+  return (
+    <div
+      onClick={() => { if (!disabled) onClick(); }}
+      className={`rounded-md border p-3 ${disabled ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${
+        active ? "border-primary bg-primary/5" : "hover:bg-muted/40"
+      }`}
+    >
+      <div className="flex items-center gap-2 font-medium text-sm">
+        <span className={`h-3 w-3 rounded-full border ${active ? "bg-primary border-primary" : "border-muted-foreground"}`} />
+        {title}
+      </div>
+      <div className="text-sm mt-1">{line1}</div>
+      <div className="text-xs text-muted-foreground">{line2}</div>
+    </div>
+  );
+}
