@@ -28,6 +28,7 @@ import { Route as AuthenticatedFoodNewRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedFoodKotsRouteImport } from './routes/_authenticated/food.kots'
 import { Route as AuthenticatedFoodDashboardRouteImport } from './routes/_authenticated/food.dashboard'
 import { Route as AuthenticatedBillingInvoicesRouteImport } from './routes/_authenticated/billing.invoices'
+import { Route as AuthenticatedBanquetBookingsRouteImport } from './routes/_authenticated/banquet.bookings'
 import { Route as AuthenticatedFrontDeskBookingIdRouteImport } from './routes/_authenticated/front-desk.booking.$id'
 import { Route as AuthenticatedFoodKotIdRouteImport } from './routes/_authenticated/food.kot.$id'
 import { Route as AuthenticatedBillingFolioBookingIdRouteImport } from './routes/_authenticated/billing.folio.$bookingId'
@@ -138,6 +139,12 @@ const AuthenticatedBillingInvoicesRoute =
     path: '/billing/invoices',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedBanquetBookingsRoute =
+  AuthenticatedBanquetBookingsRouteImport.update({
+    id: '/banquet/bookings',
+    path: '/banquet/bookings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFrontDeskBookingIdRoute =
   AuthenticatedFrontDeskBookingIdRouteImport.update({
     id: '/front-desk/booking/$id',
@@ -161,6 +168,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
   '/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
   '/food/dashboard': typeof AuthenticatedFoodDashboardRoute
   '/food/kots': typeof AuthenticatedFoodKotsRoute
@@ -184,6 +192,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
   '/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
   '/food/dashboard': typeof AuthenticatedFoodDashboardRoute
   '/food/kots': typeof AuthenticatedFoodKotsRoute
@@ -209,6 +218,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
+  '/_authenticated/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
   '/_authenticated/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
   '/_authenticated/food/dashboard': typeof AuthenticatedFoodDashboardRoute
   '/_authenticated/food/kots': typeof AuthenticatedFoodKotsRoute
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/properties'
+    | '/banquet/bookings'
     | '/billing/invoices'
     | '/food/dashboard'
     | '/food/kots'
@@ -257,6 +268,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/properties'
+    | '/banquet/bookings'
     | '/billing/invoices'
     | '/food/dashboard'
     | '/food/kots'
@@ -281,6 +293,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/dashboard'
     | '/_authenticated/properties'
+    | '/_authenticated/banquet/bookings'
     | '/_authenticated/billing/invoices'
     | '/_authenticated/food/dashboard'
     | '/_authenticated/food/kots'
@@ -441,6 +454,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBillingInvoicesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/banquet/bookings': {
+      id: '/_authenticated/banquet/bookings'
+      path: '/banquet/bookings'
+      fullPath: '/banquet/bookings'
+      preLoaderRoute: typeof AuthenticatedBanquetBookingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/front-desk/booking/$id': {
       id: '/_authenticated/front-desk/booking/$id'
       path: '/front-desk/booking/$id'
@@ -468,6 +488,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPropertiesRoute: typeof AuthenticatedPropertiesRoute
+  AuthenticatedBanquetBookingsRoute: typeof AuthenticatedBanquetBookingsRoute
   AuthenticatedBillingInvoicesRoute: typeof AuthenticatedBillingInvoicesRoute
   AuthenticatedFoodDashboardRoute: typeof AuthenticatedFoodDashboardRoute
   AuthenticatedFoodKotsRoute: typeof AuthenticatedFoodKotsRoute
@@ -490,6 +511,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPropertiesRoute: AuthenticatedPropertiesRoute,
+  AuthenticatedBanquetBookingsRoute: AuthenticatedBanquetBookingsRoute,
   AuthenticatedBillingInvoicesRoute: AuthenticatedBillingInvoicesRoute,
   AuthenticatedFoodDashboardRoute: AuthenticatedFoodDashboardRoute,
   AuthenticatedFoodKotsRoute: AuthenticatedFoodKotsRoute,
