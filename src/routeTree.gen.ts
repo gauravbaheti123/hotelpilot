@@ -27,6 +27,7 @@ import { Route as AuthenticatedMastersPrintersRouteImport } from './routes/_auth
 import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenticated/masters.menu'
 import { Route as AuthenticatedMastersHallsRouteImport } from './routes/_authenticated/masters.halls'
 import { Route as AuthenticatedInventoryVendorsRouteImport } from './routes/_authenticated/inventory.vendors'
+import { Route as AuthenticatedInventoryItemsRouteImport } from './routes/_authenticated/inventory.items'
 import { Route as AuthenticatedHousekeepingTasksRouteImport } from './routes/_authenticated/housekeeping.tasks'
 import { Route as AuthenticatedHousekeepingNewRouteImport } from './routes/_authenticated/housekeeping.new'
 import { Route as AuthenticatedHousekeepingBoardRouteImport } from './routes/_authenticated/housekeeping.board'
@@ -145,6 +146,12 @@ const AuthenticatedInventoryVendorsRoute =
   AuthenticatedInventoryVendorsRouteImport.update({
     id: '/inventory/vendors',
     path: '/inventory/vendors',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInventoryItemsRoute =
+  AuthenticatedInventoryItemsRouteImport.update({
+    id: '/inventory/items',
+    path: '/inventory/items',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedHousekeepingTasksRoute =
@@ -269,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/housekeeping/board': typeof AuthenticatedHousekeepingBoardRoute
   '/housekeeping/new': typeof AuthenticatedHousekeepingNewRoute
   '/housekeeping/tasks': typeof AuthenticatedHousekeepingTasksRoute
+  '/inventory/items': typeof AuthenticatedInventoryItemsRoute
   '/inventory/vendors': typeof AuthenticatedInventoryVendorsRoute
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
@@ -306,6 +314,7 @@ export interface FileRoutesByTo {
   '/housekeeping/board': typeof AuthenticatedHousekeepingBoardRoute
   '/housekeeping/new': typeof AuthenticatedHousekeepingNewRoute
   '/housekeeping/tasks': typeof AuthenticatedHousekeepingTasksRoute
+  '/inventory/items': typeof AuthenticatedInventoryItemsRoute
   '/inventory/vendors': typeof AuthenticatedInventoryVendorsRoute
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
@@ -345,6 +354,7 @@ export interface FileRoutesById {
   '/_authenticated/housekeeping/board': typeof AuthenticatedHousekeepingBoardRoute
   '/_authenticated/housekeeping/new': typeof AuthenticatedHousekeepingNewRoute
   '/_authenticated/housekeeping/tasks': typeof AuthenticatedHousekeepingTasksRoute
+  '/_authenticated/inventory/items': typeof AuthenticatedInventoryItemsRoute
   '/_authenticated/inventory/vendors': typeof AuthenticatedInventoryVendorsRoute
   '/_authenticated/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/_authenticated/masters/menu': typeof AuthenticatedMastersMenuRoute
@@ -384,6 +394,7 @@ export interface FileRouteTypes {
     | '/housekeeping/board'
     | '/housekeeping/new'
     | '/housekeeping/tasks'
+    | '/inventory/items'
     | '/inventory/vendors'
     | '/masters/halls'
     | '/masters/menu'
@@ -421,6 +432,7 @@ export interface FileRouteTypes {
     | '/housekeeping/board'
     | '/housekeeping/new'
     | '/housekeeping/tasks'
+    | '/inventory/items'
     | '/inventory/vendors'
     | '/masters/halls'
     | '/masters/menu'
@@ -459,6 +471,7 @@ export interface FileRouteTypes {
     | '/_authenticated/housekeeping/board'
     | '/_authenticated/housekeeping/new'
     | '/_authenticated/housekeeping/tasks'
+    | '/_authenticated/inventory/items'
     | '/_authenticated/inventory/vendors'
     | '/_authenticated/masters/halls'
     | '/_authenticated/masters/menu'
@@ -612,6 +625,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInventoryVendorsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/inventory/items': {
+      id: '/_authenticated/inventory/items'
+      path: '/inventory/items'
+      fullPath: '/inventory/items'
+      preLoaderRoute: typeof AuthenticatedInventoryItemsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/housekeeping/tasks': {
       id: '/_authenticated/housekeeping/tasks'
       path: '/housekeeping/tasks'
@@ -758,6 +778,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHousekeepingBoardRoute: typeof AuthenticatedHousekeepingBoardRoute
   AuthenticatedHousekeepingNewRoute: typeof AuthenticatedHousekeepingNewRoute
   AuthenticatedHousekeepingTasksRoute: typeof AuthenticatedHousekeepingTasksRoute
+  AuthenticatedInventoryItemsRoute: typeof AuthenticatedInventoryItemsRoute
   AuthenticatedInventoryVendorsRoute: typeof AuthenticatedInventoryVendorsRoute
   AuthenticatedMastersHallsRoute: typeof AuthenticatedMastersHallsRoute
   AuthenticatedMastersMenuRoute: typeof AuthenticatedMastersMenuRoute
@@ -794,6 +815,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHousekeepingBoardRoute: AuthenticatedHousekeepingBoardRoute,
   AuthenticatedHousekeepingNewRoute: AuthenticatedHousekeepingNewRoute,
   AuthenticatedHousekeepingTasksRoute: AuthenticatedHousekeepingTasksRoute,
+  AuthenticatedInventoryItemsRoute: AuthenticatedInventoryItemsRoute,
   AuthenticatedInventoryVendorsRoute: AuthenticatedInventoryVendorsRoute,
   AuthenticatedMastersHallsRoute: AuthenticatedMastersHallsRoute,
   AuthenticatedMastersMenuRoute: AuthenticatedMastersMenuRoute,
