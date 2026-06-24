@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedSuperadminDashboardRouteImport } from './routes/_authenticated/superadmin.dashboard'
+import { Route as AuthenticatedReportsSalesRouteImport } from './routes/_authenticated/reports.sales'
 import { Route as AuthenticatedReportsGstRouteImport } from './routes/_authenticated/reports.gst'
 import { Route as AuthenticatedReportsDailyRouteImport } from './routes/_authenticated/reports.daily'
 import { Route as AuthenticatedMastersTariffRouteImport } from './routes/_authenticated/masters.tariff'
@@ -65,6 +66,12 @@ const AuthenticatedSuperadminDashboardRoute =
   AuthenticatedSuperadminDashboardRouteImport.update({
     id: '/superadmin/dashboard',
     path: '/superadmin/dashboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsSalesRoute =
+  AuthenticatedReportsSalesRouteImport.update({
+    id: '/reports/sales',
+    path: '/reports/sales',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedReportsGstRoute = AuthenticatedReportsGstRouteImport.update({
@@ -211,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
+  '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
   '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
@@ -239,6 +247,7 @@ export interface FileRoutesByTo {
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
+  '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
   '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
@@ -269,6 +278,7 @@ export interface FileRoutesById {
   '/_authenticated/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/_authenticated/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/_authenticated/reports/gst': typeof AuthenticatedReportsGstRoute
+  '/_authenticated/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/_authenticated/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
   '/_authenticated/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/_authenticated/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
@@ -299,6 +309,7 @@ export interface FileRouteTypes {
     | '/masters/tariff'
     | '/reports/daily'
     | '/reports/gst'
+    | '/reports/sales'
     | '/superadmin/dashboard'
     | '/banquet/event/$id'
     | '/billing/folio/$bookingId'
@@ -327,6 +338,7 @@ export interface FileRouteTypes {
     | '/masters/tariff'
     | '/reports/daily'
     | '/reports/gst'
+    | '/reports/sales'
     | '/superadmin/dashboard'
     | '/banquet/event/$id'
     | '/billing/folio/$bookingId'
@@ -356,6 +368,7 @@ export interface FileRouteTypes {
     | '/_authenticated/masters/tariff'
     | '/_authenticated/reports/daily'
     | '/_authenticated/reports/gst'
+    | '/_authenticated/reports/sales'
     | '/_authenticated/superadmin/dashboard'
     | '/_authenticated/banquet/event/$id'
     | '/_authenticated/billing/folio/$bookingId'
@@ -411,6 +424,13 @@ declare module '@tanstack/react-router' {
       path: '/superadmin/dashboard'
       fullPath: '/superadmin/dashboard'
       preLoaderRoute: typeof AuthenticatedSuperadminDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/sales': {
+      id: '/_authenticated/reports/sales'
+      path: '/reports/sales'
+      fullPath: '/reports/sales'
+      preLoaderRoute: typeof AuthenticatedReportsSalesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/reports/gst': {
@@ -583,6 +603,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMastersTariffRoute: typeof AuthenticatedMastersTariffRoute
   AuthenticatedReportsDailyRoute: typeof AuthenticatedReportsDailyRoute
   AuthenticatedReportsGstRoute: typeof AuthenticatedReportsGstRoute
+  AuthenticatedReportsSalesRoute: typeof AuthenticatedReportsSalesRoute
   AuthenticatedSuperadminDashboardRoute: typeof AuthenticatedSuperadminDashboardRoute
   AuthenticatedBanquetEventIdRoute: typeof AuthenticatedBanquetEventIdRoute
   AuthenticatedBillingFolioBookingIdRoute: typeof AuthenticatedBillingFolioBookingIdRoute
@@ -610,6 +631,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMastersTariffRoute: AuthenticatedMastersTariffRoute,
   AuthenticatedReportsDailyRoute: AuthenticatedReportsDailyRoute,
   AuthenticatedReportsGstRoute: AuthenticatedReportsGstRoute,
+  AuthenticatedReportsSalesRoute: AuthenticatedReportsSalesRoute,
   AuthenticatedSuperadminDashboardRoute: AuthenticatedSuperadminDashboardRoute,
   AuthenticatedBanquetEventIdRoute: AuthenticatedBanquetEventIdRoute,
   AuthenticatedBillingFolioBookingIdRoute:
