@@ -42,6 +42,7 @@ import { Route as AuthenticatedGuestsNewRouteImport } from './routes/_authentica
 import { Route as AuthenticatedGuestsIdRouteImport } from './routes/_authenticated/guests.$id'
 import { Route as AuthenticatedFrontDeskNewRouteImport } from './routes/_authenticated/front-desk.new'
 import { Route as AuthenticatedFrontDeskInHouseRouteImport } from './routes/_authenticated/front-desk.in-house'
+import { Route as AuthenticatedFrontDeskCalendarRouteImport } from './routes/_authenticated/front-desk.calendar'
 import { Route as AuthenticatedFrontDeskBookingsRouteImport } from './routes/_authenticated/front-desk.bookings'
 import { Route as AuthenticatedFoodNewRouteImport } from './routes/_authenticated/food.new'
 import { Route as AuthenticatedFoodKotsRouteImport } from './routes/_authenticated/food.kots'
@@ -244,6 +245,12 @@ const AuthenticatedFrontDeskInHouseRoute =
     path: '/front-desk/in-house',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFrontDeskCalendarRoute =
+  AuthenticatedFrontDeskCalendarRouteImport.update({
+    id: '/front-desk/calendar',
+    path: '/front-desk/calendar',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFrontDeskBookingsRoute =
   AuthenticatedFrontDeskBookingsRouteImport.update({
     id: '/front-desk/bookings',
@@ -326,6 +333,7 @@ export interface FileRoutesByFullPath {
   '/food/kots': typeof AuthenticatedFoodKotsRoute
   '/food/new': typeof AuthenticatedFoodNewRoute
   '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
+  '/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
   '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
   '/guests/$id': typeof AuthenticatedGuestsIdRoute
@@ -372,6 +380,7 @@ export interface FileRoutesByTo {
   '/food/kots': typeof AuthenticatedFoodKotsRoute
   '/food/new': typeof AuthenticatedFoodNewRoute
   '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
+  '/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
   '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
   '/guests/$id': typeof AuthenticatedGuestsIdRoute
@@ -420,6 +429,7 @@ export interface FileRoutesById {
   '/_authenticated/food/kots': typeof AuthenticatedFoodKotsRoute
   '/_authenticated/food/new': typeof AuthenticatedFoodNewRoute
   '/_authenticated/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
+  '/_authenticated/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/_authenticated/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
   '/_authenticated/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
   '/_authenticated/guests/$id': typeof AuthenticatedGuestsIdRoute
@@ -468,6 +478,7 @@ export interface FileRouteTypes {
     | '/food/kots'
     | '/food/new'
     | '/front-desk/bookings'
+    | '/front-desk/calendar'
     | '/front-desk/in-house'
     | '/front-desk/new'
     | '/guests/$id'
@@ -514,6 +525,7 @@ export interface FileRouteTypes {
     | '/food/kots'
     | '/food/new'
     | '/front-desk/bookings'
+    | '/front-desk/calendar'
     | '/front-desk/in-house'
     | '/front-desk/new'
     | '/guests/$id'
@@ -561,6 +573,7 @@ export interface FileRouteTypes {
     | '/_authenticated/food/kots'
     | '/_authenticated/food/new'
     | '/_authenticated/front-desk/bookings'
+    | '/_authenticated/front-desk/calendar'
     | '/_authenticated/front-desk/in-house'
     | '/_authenticated/front-desk/new'
     | '/_authenticated/guests/$id'
@@ -834,6 +847,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrontDeskInHouseRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/front-desk/calendar': {
+      id: '/_authenticated/front-desk/calendar'
+      path: '/front-desk/calendar'
+      fullPath: '/front-desk/calendar'
+      preLoaderRoute: typeof AuthenticatedFrontDeskCalendarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/front-desk/bookings': {
       id: '/_authenticated/front-desk/bookings'
       path: '/front-desk/bookings'
@@ -932,6 +952,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFoodKotsRoute: typeof AuthenticatedFoodKotsRoute
   AuthenticatedFoodNewRoute: typeof AuthenticatedFoodNewRoute
   AuthenticatedFrontDeskBookingsRoute: typeof AuthenticatedFrontDeskBookingsRoute
+  AuthenticatedFrontDeskCalendarRoute: typeof AuthenticatedFrontDeskCalendarRoute
   AuthenticatedFrontDeskInHouseRoute: typeof AuthenticatedFrontDeskInHouseRoute
   AuthenticatedFrontDeskNewRoute: typeof AuthenticatedFrontDeskNewRoute
   AuthenticatedGuestsIdRoute: typeof AuthenticatedGuestsIdRoute
@@ -977,6 +998,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFoodKotsRoute: AuthenticatedFoodKotsRoute,
   AuthenticatedFoodNewRoute: AuthenticatedFoodNewRoute,
   AuthenticatedFrontDeskBookingsRoute: AuthenticatedFrontDeskBookingsRoute,
+  AuthenticatedFrontDeskCalendarRoute: AuthenticatedFrontDeskCalendarRoute,
   AuthenticatedFrontDeskInHouseRoute: AuthenticatedFrontDeskInHouseRoute,
   AuthenticatedFrontDeskNewRoute: AuthenticatedFrontDeskNewRoute,
   AuthenticatedGuestsIdRoute: AuthenticatedGuestsIdRoute,

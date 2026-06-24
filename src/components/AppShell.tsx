@@ -66,6 +66,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/front-desk/new", label: "New Booking", icon: PlusCircle },
       { to: "/front-desk/bookings", label: "Bookings", icon: ListChecks },
+      { to: "/front-desk/calendar", label: "Calendar", icon: CalendarRange },
       { to: "/front-desk/in-house", label: "In-house", icon: CalendarCheck },
     ],
   },
