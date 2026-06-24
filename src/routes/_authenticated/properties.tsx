@@ -23,11 +23,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, MapPin, Phone, KeyRound } from "lucide-react";
+import { Plus, Pencil, MapPin, Phone, KeyRound, Mail, Calendar, BedDouble, LogIn, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { createOwnerLogin } from "@/lib/admin-users.functions";
+import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/properties")({
   head: () => ({ meta: [{ title: "Properties — HotelPilot" }] }),
@@ -45,6 +46,7 @@ interface PropertyRow {
   address: string | null;
   pincode: string | null;
   is_active: boolean;
+  created_at?: string | null;
 }
 
 const blank: Partial<PropertyRow> = {
@@ -61,9 +63,12 @@ const blank: Partial<PropertyRow> = {
 
 function PropertiesPage() {
   const { roles } = useAuth();
+  const isSuperadmin = roles.includes("superadmin");
   const canManage =
-    roles.includes("superadmin") || roles.includes("owner") || roles.includes("manager");
+    isSuperadmin || roles.includes("owner") || roles.includes("manager");
   const [rows, setRows] = useState<PropertyRow[]>([]);
+  const [ownersByProp, setOwnersByProp] = useState<Record<string, string>>({});
+  const [roomsByProp, setRoomsByProp] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Partial<PropertyRow> | null>(null);
@@ -74,6 +79,7 @@ function PropertiesPage() {
   const [loginRole, setLoginRole] = useState<"owner" | "manager" | "receptionist">("owner");
   const [creatingLogin, setCreatingLogin] = useState(false);
   const createLoginFn = useServerFn(createOwnerLogin);
+  const navigate = useNavigate();
 
   async function load() {
     setLoading(true);
@@ -82,7 +88,48 @@ function PropertiesPage() {
       .select("*")
       .order("created_at", { ascending: true });
     if (error) toast.error(error.message);
-    setRows((data ?? []) as PropertyRow[]);
+    const list = (data ?? []) as PropertyRow[];
+    setRows(list);
+
+    const ids = list.map((p) => p.id);
+    if (ids.length) {
+      // owner emails via user_roles -> profiles
+      const { data: ownerRoles } = await supabase
+        .from("user_roles")
+        .select("property_id, user_id")
+        .eq("role", "owner")
+        .in("property_id", ids);
+      const userIds = Array.from(new Set((ownerRoles ?? []).map((r: any) => r.user_id)));
+      const emailByUser: Record<string, string> = {};
+      if (userIds.length) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, email")
+          .in("id", userIds);
+        for (const p of profs ?? []) emailByUser[(p as any).id] = (p as any).email;
+      }
+      const ownerMap: Record<string, string> = {};
+      for (const r of ownerRoles ?? []) {
+        const e = emailByUser[(r as any).user_id];
+        if (e && !ownerMap[(r as any).property_id]) ownerMap[(r as any).property_id] = e;
+      }
+      setOwnersByProp(ownerMap);
+
+      // rooms count per property
+      const { data: rms } = await supabase
+        .from("rooms")
+        .select("property_id")
+        .in("property_id", ids);
+      const rcount: Record<string, number> = {};
+      for (const r of rms ?? []) {
+        const pid = (r as any).property_id;
+        rcount[pid] = (rcount[pid] ?? 0) + 1;
+      }
+      setRoomsByProp(rcount);
+    } else {
+      setOwnersByProp({});
+      setRoomsByProp({});
+    }
     setLoading(false);
   }
 
@@ -130,6 +177,13 @@ function PropertiesPage() {
     setLoginPassword("");
     setLoginRole("owner");
     setLoginOpen(true);
+  }
+
+  function loginAsOwner(p: PropertyRow) {
+    localStorage.setItem("hp.currentPropertyId", p.id);
+    window.dispatchEvent(new Event("hp:property-changed"));
+    toast.success(`Switched to ${p.name}`);
+    navigate({ to: "/dashboard" });
   }
 
   async function submitCreateLogin() {
@@ -273,23 +327,43 @@ function PropertiesPage() {
                     <Phone className="h-3.5 w-3.5" />
                     <span>{r.phone ?? "—"}</span>
                   </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Mail className="h-3.5 w-3.5" />
+                    <span className="truncate">{ownersByProp[r.id] ?? "No owner linked"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <BedDouble className="h-3.5 w-3.5" />
+                    <span>{roomsByProp[r.id] ?? 0} rooms</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>
+                      {r.created_at ? new Date(r.created_at).toLocaleDateString() : "—"}
+                    </span>
+                  </div>
                   {canManage && (
-                    <div className="mt-auto flex gap-2 pt-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => openEdit(r)}
-                      >
+                    <div className="mt-auto grid grid-cols-2 gap-2 pt-3">
+                      <Button size="sm" variant="default" onClick={() => loginAsOwner(r)}>
+                        <Settings className="mr-1 h-3.5 w-3.5" /> Manage
+                      </Button>
+                      {isSuperadmin && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => loginAsOwner(r)}
+                        >
+                          <LogIn className="mr-1 h-3.5 w-3.5" /> Login as Owner
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" onClick={() => openEdit(r)}>
                         <Pencil className="mr-1 h-3.5 w-3.5" /> Edit
                       </Button>
                       <Button
                         size="sm"
-                        variant="secondary"
-                        className="flex-1"
+                        variant="outline"
                         onClick={() => openCreateLogin(r)}
                       >
-                        <KeyRound className="mr-1 h-3.5 w-3.5" /> Create Owner Login
+                        <KeyRound className="mr-1 h-3.5 w-3.5" /> Create Login
                       </Button>
                     </div>
                   )}
