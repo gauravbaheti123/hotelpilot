@@ -12,8 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedSuperadminDashboardRouteImport } from './routes/_authenticated/superadmin.dashboard'
+import { Route as AuthenticatedMastersTariffRouteImport } from './routes/_authenticated/masters.tariff'
+import { Route as AuthenticatedMastersStaffRouteImport } from './routes/_authenticated/masters.staff'
+import { Route as AuthenticatedMastersRoomsRouteImport } from './routes/_authenticated/masters.rooms'
+import { Route as AuthenticatedMastersPrintersRouteImport } from './routes/_authenticated/masters.printers'
+import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenticated/masters.menu'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -29,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedPropertiesRoute = AuthenticatedPropertiesRouteImport.update({
+  id: '/properties',
+  path: '/properties',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -40,17 +51,59 @@ const AuthenticatedSuperadminDashboardRoute =
     path: '/superadmin/dashboard',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMastersTariffRoute =
+  AuthenticatedMastersTariffRouteImport.update({
+    id: '/masters/tariff',
+    path: '/masters/tariff',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersStaffRoute =
+  AuthenticatedMastersStaffRouteImport.update({
+    id: '/masters/staff',
+    path: '/masters/staff',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersRoomsRoute =
+  AuthenticatedMastersRoomsRouteImport.update({
+    id: '/masters/rooms',
+    path: '/masters/rooms',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersPrintersRoute =
+  AuthenticatedMastersPrintersRouteImport.update({
+    id: '/masters/printers',
+    path: '/masters/printers',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersMenuRoute =
+  AuthenticatedMastersMenuRouteImport.update({
+    id: '/masters/menu',
+    path: '/masters/menu',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/properties': typeof AuthenticatedPropertiesRoute
+  '/masters/menu': typeof AuthenticatedMastersMenuRoute
+  '/masters/printers': typeof AuthenticatedMastersPrintersRoute
+  '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
+  '/masters/staff': typeof AuthenticatedMastersStaffRoute
+  '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/properties': typeof AuthenticatedPropertiesRoute
+  '/masters/menu': typeof AuthenticatedMastersMenuRoute
+  '/masters/printers': typeof AuthenticatedMastersPrintersRoute
+  '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
+  '/masters/staff': typeof AuthenticatedMastersStaffRoute
+  '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
 }
 export interface FileRoutesById {
@@ -59,19 +112,51 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/login': typeof LoginRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
+  '/_authenticated/masters/menu': typeof AuthenticatedMastersMenuRoute
+  '/_authenticated/masters/printers': typeof AuthenticatedMastersPrintersRoute
+  '/_authenticated/masters/rooms': typeof AuthenticatedMastersRoomsRoute
+  '/_authenticated/masters/staff': typeof AuthenticatedMastersStaffRoute
+  '/_authenticated/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/_authenticated/superadmin/dashboard': typeof AuthenticatedSuperadminDashboardRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/dashboard' | '/superadmin/dashboard'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/dashboard'
+    | '/properties'
+    | '/masters/menu'
+    | '/masters/printers'
+    | '/masters/rooms'
+    | '/masters/staff'
+    | '/masters/tariff'
+    | '/superadmin/dashboard'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/dashboard' | '/superadmin/dashboard'
+  to:
+    | '/'
+    | '/login'
+    | '/dashboard'
+    | '/properties'
+    | '/masters/menu'
+    | '/masters/printers'
+    | '/masters/rooms'
+    | '/masters/staff'
+    | '/masters/tariff'
+    | '/superadmin/dashboard'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/login'
     | '/_authenticated/dashboard'
+    | '/_authenticated/properties'
+    | '/_authenticated/masters/menu'
+    | '/_authenticated/masters/printers'
+    | '/_authenticated/masters/rooms'
+    | '/_authenticated/masters/staff'
+    | '/_authenticated/masters/tariff'
     | '/_authenticated/superadmin/dashboard'
   fileRoutesById: FileRoutesById
 }
@@ -104,6 +189,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/properties': {
+      id: '/_authenticated/properties'
+      path: '/properties'
+      fullPath: '/properties'
+      preLoaderRoute: typeof AuthenticatedPropertiesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -118,16 +210,63 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSuperadminDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/masters/tariff': {
+      id: '/_authenticated/masters/tariff'
+      path: '/masters/tariff'
+      fullPath: '/masters/tariff'
+      preLoaderRoute: typeof AuthenticatedMastersTariffRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/staff': {
+      id: '/_authenticated/masters/staff'
+      path: '/masters/staff'
+      fullPath: '/masters/staff'
+      preLoaderRoute: typeof AuthenticatedMastersStaffRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/rooms': {
+      id: '/_authenticated/masters/rooms'
+      path: '/masters/rooms'
+      fullPath: '/masters/rooms'
+      preLoaderRoute: typeof AuthenticatedMastersRoomsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/printers': {
+      id: '/_authenticated/masters/printers'
+      path: '/masters/printers'
+      fullPath: '/masters/printers'
+      preLoaderRoute: typeof AuthenticatedMastersPrintersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/menu': {
+      id: '/_authenticated/masters/menu'
+      path: '/masters/menu'
+      fullPath: '/masters/menu'
+      preLoaderRoute: typeof AuthenticatedMastersMenuRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedPropertiesRoute: typeof AuthenticatedPropertiesRoute
+  AuthenticatedMastersMenuRoute: typeof AuthenticatedMastersMenuRoute
+  AuthenticatedMastersPrintersRoute: typeof AuthenticatedMastersPrintersRoute
+  AuthenticatedMastersRoomsRoute: typeof AuthenticatedMastersRoomsRoute
+  AuthenticatedMastersStaffRoute: typeof AuthenticatedMastersStaffRoute
+  AuthenticatedMastersTariffRoute: typeof AuthenticatedMastersTariffRoute
   AuthenticatedSuperadminDashboardRoute: typeof AuthenticatedSuperadminDashboardRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedPropertiesRoute: AuthenticatedPropertiesRoute,
+  AuthenticatedMastersMenuRoute: AuthenticatedMastersMenuRoute,
+  AuthenticatedMastersPrintersRoute: AuthenticatedMastersPrintersRoute,
+  AuthenticatedMastersRoomsRoute: AuthenticatedMastersRoomsRoute,
+  AuthenticatedMastersStaffRoute: AuthenticatedMastersStaffRoute,
+  AuthenticatedMastersTariffRoute: AuthenticatedMastersTariffRoute,
   AuthenticatedSuperadminDashboardRoute: AuthenticatedSuperadminDashboardRoute,
 }
 

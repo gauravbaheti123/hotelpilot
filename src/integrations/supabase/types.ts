@@ -14,6 +14,157 @@ export type Database = {
   }
   public: {
     Tables: {
+      menu_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          kot_type: Database["public"]["Enums"]["kot_type"]
+          name: string
+          property_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kot_type?: Database["public"]["Enums"]["kot_type"]
+          name: string
+          property_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kot_type?: Database["public"]["Enums"]["kot_type"]
+          name?: string
+          property_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_categories_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_items: {
+        Row: {
+          category_id: string | null
+          code: string | null
+          created_at: string
+          gst_rate: number
+          hsn_code: string | null
+          id: string
+          is_available: boolean
+          is_veg: boolean
+          name: string
+          price: number
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          code?: string | null
+          created_at?: string
+          gst_rate?: number
+          hsn_code?: string | null
+          id?: string
+          is_available?: boolean
+          is_veg?: boolean
+          name: string
+          price?: number
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          code?: string | null
+          created_at?: string
+          gst_rate?: number
+          hsn_code?: string | null
+          id?: string
+          is_available?: boolean
+          is_veg?: boolean
+          name?: string
+          price?: number
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "menu_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_items_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      printers: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: string | null
+          is_active: boolean
+          is_default: boolean
+          location: string | null
+          name: string
+          port: number | null
+          property_id: string
+          type: Database["public"]["Enums"]["printer_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean
+          is_default?: boolean
+          location?: string | null
+          name: string
+          port?: number | null
+          property_id: string
+          type?: Database["public"]["Enums"]["printer_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          is_active?: boolean
+          is_default?: boolean
+          location?: string | null
+          name?: string
+          port?: number | null
+          property_id?: string
+          type?: Database["public"]["Enums"]["printer_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "printers_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -116,6 +267,244 @@ export type Database = {
         }
         Relationships: []
       }
+      room_categories: {
+        Row: {
+          base_rate: number
+          code: string | null
+          created_at: string
+          description: string | null
+          extra_bed_rate: number
+          id: string
+          is_active: boolean
+          max_occupancy: number
+          name: string
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          base_rate?: number
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          extra_bed_rate?: number
+          id?: string
+          is_active?: boolean
+          max_occupancy?: number
+          name: string
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          base_rate?: number
+          code?: string | null
+          created_at?: string
+          description?: string | null
+          extra_bed_rate?: number
+          id?: string
+          is_active?: boolean
+          max_occupancy?: number
+          name?: string
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_categories_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          floor: string | null
+          housekeeping_status: Database["public"]["Enums"]["housekeeping_status"]
+          id: string
+          is_active: boolean
+          notes: string | null
+          property_id: string
+          room_number: string
+          status: Database["public"]["Enums"]["room_status"]
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          floor?: string | null
+          housekeeping_status?: Database["public"]["Enums"]["housekeeping_status"]
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          property_id: string
+          room_number: string
+          status?: Database["public"]["Enums"]["room_status"]
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          floor?: string | null
+          housekeeping_status?: Database["public"]["Enums"]["housekeeping_status"]
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          property_id?: string
+          room_number?: string
+          status?: Database["public"]["Enums"]["room_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rooms_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "room_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rooms_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff: {
+        Row: {
+          address: string | null
+          created_at: string
+          department: string | null
+          designation: string | null
+          email: string | null
+          id: string
+          id_proof: string | null
+          is_active: boolean
+          joining_date: string | null
+          mobile: string | null
+          name: string
+          photo_url: string | null
+          property_id: string
+          salary: number | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          department?: string | null
+          designation?: string | null
+          email?: string | null
+          id?: string
+          id_proof?: string | null
+          is_active?: boolean
+          joining_date?: string | null
+          mobile?: string | null
+          name: string
+          photo_url?: string | null
+          property_id: string
+          salary?: number | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          department?: string | null
+          designation?: string | null
+          email?: string | null
+          id?: string
+          id_proof?: string | null
+          is_active?: boolean
+          joining_date?: string | null
+          mobile?: string | null
+          name?: string
+          photo_url?: string | null
+          property_id?: string
+          salary?: number | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tariff_plans: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          extra_adult_rate: number
+          extra_child_rate: number
+          id: string
+          is_active: boolean
+          is_default: boolean
+          meal_plan: Database["public"]["Enums"]["meal_plan"]
+          name: string
+          property_id: string
+          rate: number
+          updated_at: string
+          valid_from: string | null
+          valid_to: string | null
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          extra_adult_rate?: number
+          extra_child_rate?: number
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          meal_plan?: Database["public"]["Enums"]["meal_plan"]
+          name: string
+          property_id: string
+          rate?: number
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          extra_adult_rate?: number
+          extra_child_rate?: number
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          meal_plan?: Database["public"]["Enums"]["meal_plan"]
+          name?: string
+          property_id?: string
+          rate?: number
+          updated_at?: string
+          valid_from?: string | null
+          valid_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tariff_plans_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "room_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tariff_plans_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -142,6 +531,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_manage_masters: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -158,6 +548,11 @@ export type Database = {
         | "receptionist"
         | "housekeeping"
         | "kitchen"
+      housekeeping_status: "clean" | "dirty" | "inspected" | "out_of_order"
+      kot_type: "kitchen" | "bar" | "both"
+      meal_plan: "EP" | "CP" | "MAP" | "AP"
+      printer_type: "kot" | "bill" | "both"
+      room_status: "vacant" | "occupied" | "blocked" | "maintenance"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -293,6 +688,11 @@ export const Constants = {
         "housekeeping",
         "kitchen",
       ],
+      housekeeping_status: ["clean", "dirty", "inspected", "out_of_order"],
+      kot_type: ["kitchen", "bar", "both"],
+      meal_plan: ["EP", "CP", "MAP", "AP"],
+      printer_type: ["kot", "bill", "both"],
+      room_status: ["vacant", "occupied", "blocked", "maintenance"],
     },
   },
 } as const

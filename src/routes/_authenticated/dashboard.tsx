@@ -53,16 +53,15 @@ function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Phase 1 ready</CardTitle>
+            <CardTitle>Phase 2 ready</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>
-              Foundation is live: brand system, authentication, role-based access,
-              properties schema and dashboard shell.
+              Master data is live: properties, room categories & rooms, tariff plans,
+              menu (categories & items), staff and printers — all with create / edit / delete.
             </p>
             <p>
-              Coming up — Phase 2: master data (rooms, categories, tariff plans,
-              menu, staff, printers).
+              Coming up — Phase 3: front desk (check-in, check-out, room shift, date modify).
             </p>
             {roles.includes("superadmin") && (
               <p>
