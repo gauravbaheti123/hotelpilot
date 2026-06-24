@@ -25,10 +25,10 @@ async function findGuestBooking(supabase: any, propertyId: string, fromNumber: s
   if (!num) return { guest: null, booking: null };
   // Try guests table for property
   const { data: guests } = await supabase
-    .from("guests").select("id,phone,name")
+    .from("guests").select("id,mobile,name")
     .eq("property_id", propertyId)
     .limit(50);
-  const guest = (guests ?? []).find((g: any) => digits(g.phone ?? "").endsWith(num.slice(-10))) ?? null;
+  const guest = (guests ?? []).find((g: any) => digits(g.mobile ?? "").endsWith(num.slice(-10))) ?? null;
   let booking = null;
   if (guest) {
     const { data: bks } = await supabase
