@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -91,6 +92,33 @@ interface BookingDetail {
   booking_rooms: BookingRoomRow[];
 }
 
+interface ShiftRow {
+  id: string;
+  shifted_at: string;
+  reason: string | null;
+  old_rate: number | null;
+  new_rate: number | null;
+  from_room: { room_number: string } | null;
+  to_room: { room_number: string } | null;
+  shifted_by_profile: { name: string | null } | null;
+}
+interface KotSummaryRow {
+  id: string;
+  kot_number: string;
+  status: string;
+  created_at: string;
+  total_amount: number;
+  sub_total: number;
+  kot_items: { item_name: string; qty: number; amount: number }[];
+}
+interface AdditionalGuestRow {
+  id: string;
+  is_primary: boolean;
+  age: number | null;
+  relation_to_primary: string | null;
+  guests: { name: string; id_proof_type: string | null; id_proof_number: string | null; nationality: string | null } | null;
+}
+
 function BookingDetailPage() {
   const { id } = Route.useParams();
   const router = useRouter();
@@ -100,6 +128,9 @@ function BookingDetailPage() {
   );
   const [b, setB] = useState<BookingDetail | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [shifts, setShifts] = useState<ShiftRow[]>([]);
+  const [kots, setKots] = useState<KotSummaryRow[]>([]);
+  const [extraGuests, setExtraGuests] = useState<AdditionalGuestRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   // dialogs
@@ -143,12 +174,32 @@ function BookingDetailPage() {
     setB(detail);
     if (detail) {
       setNewCheckOut(detail.check_out);
-      const { data: rs } = await supabase
+      const [{ data: rs }, { data: sh }, { data: kt }, { data: bg }] = await Promise.all([
+        supabase
         .from("rooms")
         .select("id,room_number,category_id,status,room_categories(name,base_rate)")
         .eq("property_id", detail.property_id)
-        .order("room_number");
+        .order("room_number"),
+        supabase
+          .from("room_shifts")
+          .select("id, shifted_at, reason, old_rate, new_rate, from_room:from_room_id(room_number), to_room:to_room_id(room_number), shifted_by_profile:shifted_by(name)")
+          .in("booking_room_id", detail.booking_rooms.map((br) => br.id))
+          .order("shifted_at", { ascending: false }),
+        supabase
+          .from("kot_orders")
+          .select("id, kot_number, status, created_at, total_amount, sub_total, kot_items(item_name, qty, amount)")
+          .eq("booking_id", detail.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("booking_guests")
+          .select("id, is_primary, age, relation_to_primary, guests:guest_id(name, id_proof_type, id_proof_number, nationality)")
+          .eq("booking_id", detail.id)
+          .order("is_primary", { ascending: false }),
+      ]);
       setRooms((rs ?? []) as Room[]);
+      setShifts((sh ?? []) as unknown as ShiftRow[]);
+      setKots((kt ?? []) as unknown as KotSummaryRow[]);
+      setExtraGuests((bg ?? []) as unknown as AdditionalGuestRow[]);
     }
     setLoading(false);
   }
