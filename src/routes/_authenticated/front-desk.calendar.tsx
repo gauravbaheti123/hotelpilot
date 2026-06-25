@@ -34,6 +34,17 @@ interface BRRow {
   } | null;
 }
 
+interface EventBlockRow {
+  id: string;
+  banquet_booking_id: string;
+  event_name: string;
+  room_id: string | null;
+  checkin_date: string;
+  checkout_date: string;
+  status: "blocked" | "checked_in" | "checked_out" | "cancelled";
+  guest_name: string | null;
+}
+
 const DAYS = 14;
 
 function fmtDay(iso: string) {
@@ -49,6 +60,7 @@ function CalendarPage() {
   const [start, setStart] = useState<string>(todayIso());
   const [rooms, setRooms] = useState<RoomRow[]>([]);
   const [brs, setBrs] = useState<BRRow[]>([]);
+  const [events, setEvents] = useState<EventBlockRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   const days = useMemo(
@@ -60,7 +72,7 @@ function CalendarPage() {
   async function load() {
     if (!current) return;
     setLoading(true);
-    const [roomsRes, brRes] = await Promise.all([
+    const [roomsRes, brRes, evRes] = await Promise.all([
       supabase
         .from("rooms")
         .select("id,room_number,room_categories(name)")
@@ -72,11 +84,20 @@ function CalendarPage() {
         .eq("bookings.property_id", current.id)
         .lt("check_in", rangeEnd)
         .gt("check_out", start),
+      supabase
+        .from("event_room_blocks")
+        .select("id,banquet_booking_id,event_name,room_id,checkin_date,checkout_date,status,guest_name")
+        .eq("property_id", current.id)
+        .in("status", ["blocked", "checked_in"])
+        .lt("checkin_date", rangeEnd)
+        .gt("checkout_date", start),
     ]);
     if (roomsRes.error) toast.error(roomsRes.error.message);
     if (brRes.error) toast.error(brRes.error.message);
+    if (evRes.error) toast.error(evRes.error.message);
     setRooms((roomsRes.data ?? []) as unknown as RoomRow[]);
     setBrs((brRes.data ?? []) as unknown as BRRow[]);
+    setEvents((evRes.data ?? []) as unknown as EventBlockRow[]);
     setLoading(false);
   }
 
@@ -99,6 +120,13 @@ function CalendarPage() {
     list.push(br);
     byRoom.set(br.room_id, list);
   }
+  const eventsByRoom = new Map<string, EventBlockRow[]>();
+  for (const ev of events) {
+    if (!ev.room_id) continue;
+    const list = eventsByRoom.get(ev.room_id) ?? [];
+    list.push(ev);
+    eventsByRoom.set(ev.room_id, list);
+  }
 
   return (
     <AppShell title="Reservation Calendar">
@@ -118,9 +146,10 @@ function CalendarPage() {
               {fmtDay(start)} — {fmtDay(addDaysIso(start, DAYS - 1))}
             </div>
             <div className="ml-auto flex items-center gap-3 text-xs">
-              <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 rounded bg-emerald-500/60" /> Checked-in</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 rounded bg-emerald-500/60" /> Checked In</span>
               <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 rounded bg-blue-500/60" /> Reserved</span>
-              <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 rounded bg-slate-400/60" /> Checked-out</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 rounded bg-slate-400/60" /> Checked Out</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-3 w-3 rounded bg-purple-500/60" /> Event</span>
             </div>
           </CardContent>
         </Card>
@@ -152,6 +181,7 @@ function CalendarPage() {
 
                 {rooms.map((room) => {
                   const list = byRoom.get(room.id) ?? [];
+                  const eventList = eventsByRoom.get(room.id) ?? [];
                   return (
                     <div
                       key={room.id}
@@ -204,8 +234,28 @@ function CalendarPage() {
                                 style={{ left: `${left}%`, width: `calc(${width}% - 4px)` }}
                                 title={`${br.bookings?.booking_number} · ${br.bookings?.guests?.name ?? ""}`}
                               >
-                                {br.bookings?.guests?.name ?? br.bookings?.booking_number}
+                                {`${br.bookings?.guests?.name ?? br.bookings?.booking_number} · ${room.room_number}`}
                               </Link>
+                            );
+                          })}
+                          {eventList.map((ev) => {
+                            const startIdx = Math.max(0, days.findIndex((d) => d >= ev.checkin_date));
+                            const endIdx = (() => {
+                              const i = days.findIndex((d) => d >= ev.checkout_date);
+                              return i === -1 ? DAYS : i;
+                            })();
+                            if (endIdx <= startIdx) return null;
+                            const left = (startIdx / DAYS) * 100;
+                            const width = ((endIdx - startIdx) / DAYS) * 100;
+                            return (
+                              <div
+                                key={ev.id}
+                                className="absolute bottom-0 h-3 rounded px-1 text-[10px] font-medium truncate border bg-purple-500/30 border-purple-500/60 text-purple-900"
+                                style={{ left: `${left}%`, width: `calc(${width}% - 4px)` }}
+                                title={`Event: ${ev.event_name}${ev.guest_name ? ` · ${ev.guest_name}` : ""}`}
+                              >
+                                {ev.event_name}
+                              </div>
                             );
                           })}
                         </div>
