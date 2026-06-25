@@ -414,6 +414,7 @@ export type Database = {
           is_wiped: boolean
           notes: string | null
           property_id: string
+          restaurant_ledger_balance: number
           source: string | null
           status: Database["public"]["Enums"]["booking_status"]
           total_amount: number
@@ -442,6 +443,7 @@ export type Database = {
           is_wiped?: boolean
           notes?: string | null
           property_id: string
+          restaurant_ledger_balance?: number
           source?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
           total_amount?: number
@@ -470,6 +472,7 @@ export type Database = {
           is_wiped?: boolean
           notes?: string | null
           property_id?: string
+          restaurant_ledger_balance?: number
           source?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
           total_amount?: number
@@ -1027,6 +1030,74 @@ export type Database = {
           },
         ]
       }
+      guest_documents: {
+        Row: {
+          booking_id: string | null
+          document_name: string | null
+          drive_file_id: string | null
+          drive_folder_path: string | null
+          drive_view_url: string | null
+          guest_id: string | null
+          id: string
+          property_id: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          booking_id?: string | null
+          document_name?: string | null
+          drive_file_id?: string | null
+          drive_folder_path?: string | null
+          drive_view_url?: string | null
+          guest_id?: string | null
+          id?: string
+          property_id: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          booking_id?: string | null
+          document_name?: string | null
+          drive_file_id?: string | null
+          drive_folder_path?: string | null
+          drive_view_url?: string | null
+          guest_id?: string | null
+          id?: string
+          property_id?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_documents_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_documents_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_documents_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guest_feedback: {
         Row: {
           booking_id: string | null
@@ -1133,6 +1204,9 @@ export type Database = {
           gender: string | null
           gst_number: string | null
           id: string
+          id_document_name: string | null
+          id_document_uploaded_at: string | null
+          id_document_url: string | null
           id_proof_number: string | null
           id_proof_type: string | null
           is_blacklisted: boolean
@@ -1161,6 +1235,9 @@ export type Database = {
           gender?: string | null
           gst_number?: string | null
           id?: string
+          id_document_name?: string | null
+          id_document_uploaded_at?: string | null
+          id_document_url?: string | null
           id_proof_number?: string | null
           id_proof_type?: string | null
           is_blacklisted?: boolean
@@ -1189,6 +1266,9 @@ export type Database = {
           gender?: string | null
           gst_number?: string | null
           id?: string
+          id_document_name?: string | null
+          id_document_uploaded_at?: string | null
+          id_document_url?: string | null
           id_proof_number?: string | null
           id_proof_type?: string | null
           is_blacklisted?: boolean
@@ -2510,6 +2590,151 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurant_direct_charges: {
+        Row: {
+          amount: number
+          booking_id: string | null
+          charge_date: string
+          created_at: string
+          description: string | null
+          folio_charge_id: string | null
+          guest_id: string | null
+          id: string
+          is_settled: boolean
+          posted_by: string | null
+          property_id: string
+          settled_at: string | null
+          settled_by: string | null
+        }
+        Insert: {
+          amount: number
+          booking_id?: string | null
+          charge_date?: string
+          created_at?: string
+          description?: string | null
+          folio_charge_id?: string | null
+          guest_id?: string | null
+          id?: string
+          is_settled?: boolean
+          posted_by?: string | null
+          property_id: string
+          settled_at?: string | null
+          settled_by?: string | null
+        }
+        Update: {
+          amount?: number
+          booking_id?: string | null
+          charge_date?: string
+          created_at?: string
+          description?: string | null
+          folio_charge_id?: string | null
+          guest_id?: string | null
+          id?: string
+          is_settled?: boolean
+          posted_by?: string | null
+          property_id?: string
+          settled_at?: string | null
+          settled_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_direct_charges_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_direct_charges_folio_charge_id_fkey"
+            columns: ["folio_charge_id"]
+            isOneToOne: false
+            referencedRelation: "folio_charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_direct_charges_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_direct_charges_posted_by_fkey"
+            columns: ["posted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_direct_charges_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_direct_charges_settled_by_fkey"
+            columns: ["settled_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurant_payables: {
+        Row: {
+          amount: number
+          charge_date: string
+          charge_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_settled: boolean
+          property_id: string
+          settlement_date: string | null
+          settlement_notes: string | null
+        }
+        Insert: {
+          amount: number
+          charge_date: string
+          charge_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_settled?: boolean
+          property_id: string
+          settlement_date?: string | null
+          settlement_notes?: string | null
+        }
+        Update: {
+          amount?: number
+          charge_date?: string
+          charge_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_settled?: boolean
+          property_id?: string
+          settlement_date?: string | null
+          settlement_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_payables_charge_id_fkey"
+            columns: ["charge_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_direct_charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_payables_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
