@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShieldAlert, Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/superadmin/roles")({
+export const Route = createFileRoute("/_authenticated/superadmin/roles/")({
   head: () => ({ meta: [{ title: "Roles & Permissions — HotelPilot" }] }),
   component: RolesPage,
 });
@@ -147,7 +147,13 @@ function RolesPage() {
                 {rows.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">
-                      {r.name}
+                      <Link
+                        to="/superadmin/roles/$id"
+                        params={{ id: r.id }}
+                        className="hover:underline"
+                      >
+                        {r.name}
+                      </Link>
                       {r.is_system && <Badge variant="secondary" className="ml-2">System</Badge>}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{r.description ?? "—"}</TableCell>
