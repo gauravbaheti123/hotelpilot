@@ -126,6 +126,7 @@ export type Database = {
           advance_amount: number
           balance_amount: number
           banquet_number: string
+          bill_type: string
           cancelled_at: string | null
           cancelled_reason: string | null
           created_at: string
@@ -156,6 +157,7 @@ export type Database = {
           advance_amount?: number
           balance_amount?: number
           banquet_number?: string
+          bill_type?: string
           cancelled_at?: string | null
           cancelled_reason?: string | null
           created_at?: string
@@ -186,6 +188,7 @@ export type Database = {
           advance_amount?: number
           balance_amount?: number
           banquet_number?: string
+          bill_type?: string
           cancelled_at?: string | null
           cancelled_reason?: string | null
           created_at?: string
