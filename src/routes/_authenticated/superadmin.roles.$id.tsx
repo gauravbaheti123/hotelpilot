@@ -275,6 +275,33 @@ function EditRolePage() {
             </Table>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Discount Settings</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {/owner/i.test(role?.name ?? "") ? (
+              <p className="text-sm text-muted-foreground">
+                Owner role has <span className="font-medium">unlimited</span> discount ability — no cap applies.
+              </p>
+            ) : (
+              <div className="max-w-xs space-y-1.5">
+                <Label className="text-xs">Max Discount Allowed (%)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={maxDiscount}
+                  onChange={(e) => setMaxDiscount(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Users with this role cannot apply a discount above this percentage of the bill.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </AppShell>
   );
