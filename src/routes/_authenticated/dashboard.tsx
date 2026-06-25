@@ -125,6 +125,7 @@ function OwnerDashboard({
   const [departures, setDepartures] = useState<ScheduleRow[]>([]);
   const [staff, setStaff] = useState<StaffOpt[]>([]);
   const [modalRoom, setModalRoom] = useState<Room | null>(null);
+  const [checkoutBookingId, setCheckoutBookingId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -260,6 +261,13 @@ function OwnerDashboard({
             search: r ? { roomId: r.id, categoryId: r.category_id ?? undefined } : undefined,
           } as any);
         }}
+        onCheckout={(bid) => { setModalRoom(null); setCheckoutBookingId(bid); }}
+      />
+      <CheckoutDialog
+        bookingId={checkoutBookingId}
+        open={!!checkoutBookingId}
+        onOpenChange={(o) => { if (!o) setCheckoutBookingId(null); }}
+        onDone={() => { setCheckoutBookingId(null); reload(); }}
       />
     </AppShell>
   );
