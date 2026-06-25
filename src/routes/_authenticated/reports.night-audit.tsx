@@ -659,9 +659,11 @@ function ReportView({
         <section>
           <h3 className="font-semibold mb-1">Revenue Summary</h3>
           <div className="text-xs space-y-0.5">
-            <div className="flex justify-between"><span>Room Revenue</span><span>{inr(report.report_data?.room_revenue ?? 0)}</span></div>
-            <div className="flex justify-between"><span>Room Revenue</span><span>{inr(0)}</span></div>
-            <div className="flex justify-between"><span>Total Revenue</span><span className="font-semibold">{inr(report.total_revenue)}</span></div>
+            <div className="flex justify-between"><span>Room Revenue</span><span>{inr((report as any).room_revenue ?? 0)}</span></div>
+            <div className="flex justify-between"><span>Food Revenue</span><span>{inr((report as any).food_revenue ?? 0)}</span></div>
+            <div className="flex justify-between"><span>Banquet Revenue</span><span>{inr((report as any).banquet_revenue ?? 0)}</span></div>
+            <div className="flex justify-between"><span>Other Revenue</span><span>{inr((report as any).other_revenue ?? 0)}</span></div>
+            <div className="flex justify-between border-t pt-0.5"><span>Total Revenue</span><span className="font-semibold">{inr(report.total_revenue)}</span></div>
           </div>
         </section>
         <section>
