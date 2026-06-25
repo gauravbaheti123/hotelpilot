@@ -452,8 +452,6 @@ function OwnerDashboard({
           </CardContent>
         </Card>
 
-        <RemindersSection propertyId={propertyId} userId={userId} />
-
         <Card>
           <CardHeader className="pb-3">
             <button
