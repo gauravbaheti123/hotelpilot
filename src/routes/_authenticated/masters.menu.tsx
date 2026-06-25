@@ -36,6 +36,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
+import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
 
 export const Route = createFileRoute("/_authenticated/masters/menu")({
   head: () => ({ meta: [{ title: "Menu — HotelPilot" }] }),
@@ -276,6 +277,45 @@ function MenuPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">Menu items</CardTitle>
             {canManage && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {current && (
+                  <BulkCsvButtons
+                    table="menu_items"
+                    propertyId={current.id}
+                    module="menu-items"
+                    hotelName={current.name}
+                    extraDefaults={{ property_id: current.id }}
+                    columns={[
+                      { header: "name", field: "name", required: true },
+                      { header: "category_name", required: true,
+                        format: (_v, row) =>
+                          cats.find((c) => c.id === (row as { category_id?: string }).category_id)?.name ?? "" },
+                      { header: "price", field: "price",
+                        parse: (v) => Number(v || 0),
+                        format: (v) => (v == null ? "" : String(v)) },
+                      { header: "gst_rate", field: "gst_rate",
+                        parse: (v) => Number(v || 0),
+                        format: (v) => (v == null ? "" : String(v)) },
+                      { header: "is_veg", field: "is_veg",
+                        parse: (v) => v.toLowerCase() !== "false" && v !== "0" && v !== "",
+                        format: (v) => (v ? "true" : "false") },
+                      { header: "is_available", field: "is_available",
+                        parse: (v) => v.toLowerCase() !== "false" && v !== "0" && v !== "",
+                        format: (v) => (v ? "true" : "false") },
+                      { header: "kitchen_type", field: "kitchen_type" },
+                    ]}
+                    transformRow={(row) => {
+                      const name = String(row["category_name"] ?? "").trim().toLowerCase();
+                      if (!name) throw new Error("category_name required");
+                      const match = cats.find((c) => c.name.toLowerCase() === name);
+                      if (!match) throw new Error(`Unknown category: ${row["category_name"]}`);
+                      (row as Record<string, unknown>).category_id = match.id;
+                      delete (row as Record<string, unknown>)["category_name"];
+                      return row;
+                    }}
+                    onImported={load}
+                  />
+                )}
               <Dialog open={itemOpen} onOpenChange={setItemOpen}>
                 <DialogTrigger asChild>
                   <Button size="sm" disabled={cats.length === 0}
@@ -355,6 +395,7 @@ function MenuPage() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+              </div>
             )}
           </CardHeader>
           <CardContent>
