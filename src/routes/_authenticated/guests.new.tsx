@@ -39,7 +39,7 @@ function NewGuestPage() {
     setBusy(true);
     const tags = guestType === "regular" ? [] : [guestType];
     const { data, error } = await supabase.from("guests").insert({
-      property_id: propertyId,
+      property_id: propertyId!,
       name: name.trim(),
       mobile: mobile.trim(),
       email: email.trim() || null,
