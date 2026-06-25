@@ -532,6 +532,8 @@ function FolioPage() {
   const isOpen = folio.status === "open";
   const pendingTotal = pendingKots.reduce((s, k) => s + Number(k.total_amount || 0), 0);
   const hasPending = pendingKots.length > 0;
+  const canVoid = hasRole(user ? (useAuth as any).roles ?? [] : [], "superadmin")
+    || hasRole((useAuth as any)?.roles ?? [], "owner");
 
   async function markAllServed() {
     const ids = pendingKots.map((k) => k.id);
