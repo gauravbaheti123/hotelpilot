@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrossed, ChevronDown, ChevronRight, DoorOpen } from "lucide-react";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
-import { RemindersBell, RemindersSection } from "@/components/Reminders";
+// Bell moved to global header (AppShell). Reminders section removed here.
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -164,6 +164,7 @@ function OwnerDashboard({
   isSuperadmin: boolean;
 }) {
   const [name, setName] = useState<string>(email ? email.split("@")[0] : "");
+  const [viewDate, setViewDate] = useState<string>(todayISO());
   const [kpi, setKpi] = useState({ occupied: 0, arrivals: 0, departures: 0, revenue: 0 });
   const [rooms, setRooms] = useState<Room[]>([]);
   const [categories, setCategories] = useState<RoomCategory[]>([]);
@@ -193,21 +194,24 @@ function OwnerDashboard({
 
   const reload = useCallback(async () => {
     if (!propertyId) return;
-    const today = todayISO();
-      const [occ, arr, dep, pay, rms, activeBR] = await Promise.all([
-        supabase.from("bookings").select("id", { count: "exact", head: true })
-          .eq("property_id", propertyId).eq("status", "checked_in"),
-        supabase.from("bookings").select("id, booking_number, balance_amount, guest_id, guests:guest_id(name), booking_rooms(rooms(room_number))")
-          .eq("property_id", propertyId).eq("status", "reserved").eq("check_in", today),
-        supabase.from("bookings").select("id, booking_number, balance_amount, guest_id, guests:guest_id(name), booking_rooms(rooms(room_number))")
-          .eq("property_id", propertyId).eq("status", "checked_in").eq("check_out", today),
-        supabase.from("payments").select("amount").eq("property_id", propertyId)
-          .gte("paid_at", `${today}T00:00:00`).lte("paid_at", `${today}T23:59:59`),
-        supabase.from("rooms").select("id, room_number, status, housekeeping_status, category_id")
-          .eq("property_id", propertyId).eq("is_active", true).order("room_number"),
-        supabase.from("booking_rooms").select("room_id, booking_id, actual_check_out, bookings!inner(id, status, property_id, balance_amount, check_in, check_out, guests:guest_id(name))")
-          .eq("property_id", propertyId).is("actual_check_out", null).eq("bookings.status", "checked_in"),
-      ]);
+    const date = viewDate;
+    const isToday = date === todayISO();
+    const [arr, dep, pay, rms, activeBR] = await Promise.all([
+      supabase.from("bookings").select("id, booking_number, balance_amount, guest_id, guests:guest_id(name), booking_rooms(rooms(room_number))")
+        .eq("property_id", propertyId).in("status", ["reserved", "checked_in"]).eq("check_in", date),
+      supabase.from("bookings").select("id, booking_number, balance_amount, guest_id, guests:guest_id(name), booking_rooms(rooms(room_number))")
+        .eq("property_id", propertyId).in("status", ["checked_in", "checked_out"]).eq("check_out", date),
+      supabase.from("payments").select("amount").eq("property_id", propertyId)
+        .gte("paid_at", `${date}T00:00:00`).lte("paid_at", `${date}T23:59:59`),
+      supabase.from("rooms").select("id, room_number, status, housekeeping_status, category_id")
+        .eq("property_id", propertyId).eq("is_active", true).order("room_number"),
+      // Date-wise occupied rooms: booking spans the selected date and is active
+      supabase.from("booking_rooms").select("room_id, booking_id, bookings!inner(id, status, property_id, balance_amount, check_in, check_out, guests:guest_id(name))")
+        .eq("property_id", propertyId)
+        .lte("bookings.check_in", date)
+        .gt("bookings.check_out", date)
+        .in("bookings.status", ["reserved", "checked_in"]),
+    ]);
       const revenue = (pay.data ?? []).reduce((a, x: any) => a + Number(x.amount || 0), 0);
       const occSet = new Set<string>(
         (activeBR.data ?? []).map((b: any) => b.room_id).filter(Boolean),
@@ -230,7 +234,7 @@ function OwnerDashboard({
       setBookingByRoom(bMap);
       setOccInfoByRoom(oMap);
       setKpi({
-        occupied: occSet.size || (occ.count ?? 0),
+        occupied: occSet.size,
         arrivals: arr.data?.length ?? 0,
         departures: dep.data?.length ?? 0,
         revenue,
@@ -246,13 +250,13 @@ function OwnerDashboard({
       setDepartures((dep.data ?? []).map(mapRow));
       setRooms((rms.data ?? []) as Room[]);
 
-      // Pending food per room (open/printed/served, hotel copy only to avoid double-counting)
-      const { data: kots } = await supabase
+      // Pending food per room (open/printed/served, hotel copy only) — only meaningful today
+      const { data: kots } = isToday ? await supabase
         .from("kot_orders")
         .select("id, booking_id, room_id, total_amount, created_at, status, kot_items(item_name, qty)")
         .eq("property_id", propertyId)
         .eq("kot_copy", "hotel_copy")
-        .in("status", ["open", "printed", "served"]);
+        .in("status", ["open", "printed", "served"]) : { data: [] as any[] };
       const pfMap = new Map<string, PendingFood>();
       (kots ?? []).forEach((k: any) => {
         if (!k.room_id || !k.booking_id) return;
@@ -296,12 +300,26 @@ function OwnerDashboard({
       rows.sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }));
       setPendingFoodRows(rows);
 
-      // Event room blocks
+      // Event room blocks for the selected date
       try {
         const summaries = await loadEventSummaries(propertyId);
-        setEvents(summaries);
+        // Filter blocks to those covering the selected date
+        const filtered = summaries
+          .map((ev) => ({
+            ...ev,
+            blocks: ev.blocks.filter((b) => b.checkin_date <= date && b.checkout_date > date),
+          }))
+          .filter((ev) => ev.blocks.length > 0)
+          .map((ev) => ({
+            ...ev,
+            blocked: ev.blocks.filter((b) => b.status === "blocked").length,
+            checked_in: ev.blocks.filter((b) => b.status === "checked_in").length,
+            checked_out: ev.blocks.filter((b) => b.status === "checked_out").length,
+            total: ev.blocks.length,
+          }));
+        setEvents(filtered);
         const map = new Map<string, RoomEventInfo>();
-        summaries.forEach((ev) => ev.blocks.forEach((b) => {
+        filtered.forEach((ev) => ev.blocks.forEach((b) => {
           if (!b.room_id) return;
           map.set(b.room_id, {
             blockId: b.id,
@@ -319,7 +337,7 @@ function OwnerDashboard({
       } catch (e) {
         console.warn("loadEventSummaries failed", e);
       }
-  }, [propertyId]);
+  }, [propertyId, viewDate]);
 
   useEffect(() => { reload(); }, [reload]);
 
@@ -333,10 +351,28 @@ function OwnerDashboard({
 
   return (
     <AppShell title="Dashboard">
-      <div className="w-full space-y-6 relative">
-        <div className="absolute right-0 -top-10 z-10">
-          <RemindersBell propertyId={propertyId} userId={userId} />
-        </div>
+      <div className="w-full space-y-6">
+        <Card>
+          <CardContent className="pt-6 flex flex-wrap items-end gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Viewing Rooms For</Label>
+              <Input
+                type="date"
+                value={viewDate}
+                onChange={(e) => setViewDate(e.target.value || todayISO())}
+                className="w-48"
+              />
+            </div>
+            {viewDate !== todayISO() && (
+              <Button size="sm" variant="outline" onClick={() => setViewDate(todayISO())}>
+                Reset To Today
+              </Button>
+            )}
+            <div className="ml-auto text-xs text-muted-foreground">
+              Showing status for <span className="font-semibold">{viewDate}</span>
+            </div>
+          </CardContent>
+        </Card>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Kpi label="Occupied Rooms" value={kpi.occupied} icon={BedDouble} />
           <Kpi label="Available Rooms" value={Math.max(0, rooms.length - kpi.occupied)} icon={DoorOpen} />
@@ -415,8 +451,6 @@ function OwnerDashboard({
             </div>
           </CardContent>
         </Card>
-
-        <RemindersSection propertyId={propertyId} userId={userId} />
 
         <Card>
           <CardHeader className="pb-3">
