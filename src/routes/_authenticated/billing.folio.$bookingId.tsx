@@ -781,8 +781,8 @@ function FolioPage() {
       <style>{`
         @media print {
           body * { visibility: hidden !important; }
-          #invoice-doc, #invoice-doc * { visibility: visible !important; }
-          #invoice-doc { position: absolute !important; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; }
+          #invoice-content, #invoice-content * { visibility: visible !important; }
+          #invoice-content { position: absolute !important; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; }
           @page { size: A4; margin: 12mm; }
         }
         /* Force hex colors inside the invoice — html2canvas (PDF export)
