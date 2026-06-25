@@ -674,7 +674,47 @@ function FolioPage() {
         import("html2canvas"),
         import("jspdf"),
       ]);
-      const canvas = await html2canvas(node, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+      const canvas = await html2canvas(node, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        allowTaint: true,
+        onclone: (clonedDoc) => {
+          // html2canvas cannot parse oklch() values emitted by Tailwind v4.
+          // Walk every element in the clone and replace any computed style
+          // containing oklch with a safe hex fallback before rasterizing.
+          const FALLBACKS: Record<string, string> = {
+            color: "#111111",
+            backgroundColor: "#ffffff",
+            background: "#ffffff",
+            borderColor: "#e5e7eb",
+            borderTopColor: "#e5e7eb",
+            borderRightColor: "#e5e7eb",
+            borderBottomColor: "#e5e7eb",
+            borderLeftColor: "#e5e7eb",
+            outlineColor: "#e5e7eb",
+            textDecorationColor: "#111111",
+            fill: "#111111",
+            stroke: "#111111",
+            boxShadow: "none",
+          };
+          const all = clonedDoc.querySelectorAll<HTMLElement>("*");
+          all.forEach((el) => {
+            const cs = clonedDoc.defaultView?.getComputedStyle(el);
+            if (!cs) return;
+            for (const [prop, fallback] of Object.entries(FALLBACKS)) {
+              const val = (cs as any)[prop] as string | undefined;
+              if (typeof val === "string" && val.includes("oklch")) {
+                (el.style as any)[prop] = fallback;
+              }
+              const inline = (el.style as any)[prop] as string | undefined;
+              if (typeof inline === "string" && inline.includes("oklch")) {
+                (el.style as any)[prop] = fallback;
+              }
+            }
+          });
+        },
+      });
       const img = canvas.toDataURL("image/jpeg", 0.95);
       const pdf = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
       const pageW = pdf.internal.pageSize.getWidth();
