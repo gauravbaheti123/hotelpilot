@@ -74,6 +74,7 @@ function RoomDetailPage() {
   const [staffMap, setStaffMap] = useState<Record<string, string>>({});
   const [lastClean, setLastClean] = useState<{ at: string | null; by: string | null }>({ at: null, by: null });
   const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!currentId) return;
