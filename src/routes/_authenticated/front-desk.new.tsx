@@ -14,6 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
+import { Trash2, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
@@ -23,12 +25,25 @@ import { addDaysIso, nightsBetween, SOURCES, todayIso } from "@/lib/front-desk";
 
 export const Route = createFileRoute("/_authenticated/front-desk/new")({
   head: () => ({ meta: [{ title: "New Booking — HotelPilot" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    roomId: typeof s.roomId === "string" ? s.roomId : undefined,
+    categoryId: typeof s.categoryId === "string" ? s.categoryId : undefined,
+  }),
   component: NewBookingPage,
 });
 
 interface Category { id: string; name: string; base_rate: number; max_occupancy: number; }
 interface RoomRow { id: string; room_number: string; category_id: string | null; status: string; }
 interface Tariff { id: string; name: string; category_id: string | null; rate: number; meal_plan: string; }
+interface AdditionalGuest {
+  key: string;
+  kind: "adult" | "child";
+  name: string;
+  age: string;
+  id_proof_type: string;
+  id_proof_number: string;
+  relation: string;
+}
 interface GuestMatch {
   id: string;
   name: string;
@@ -45,6 +60,7 @@ interface GuestMatch {
 
 function NewBookingPage() {
   const router = useRouter();
+  const search = Route.useSearch();
   const { user, roles } = useAuth();
   const canBook = roles.some((r) =>
     ["superadmin", "owner", "manager", "receptionist"].includes(r),
@@ -84,8 +100,14 @@ function NewBookingPage() {
   const [mealPlan, setMealPlan] = useState("EP");
   const [source, setSource] = useState("walk_in");
   const [advance, setAdvance] = useState(0);
+  const [paymentMode, setPaymentMode] = useState<string>("cash");
+  const [paymentRef, setPaymentRef] = useState("");
+  const [nationality, setNationality] = useState("Indian");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Additional guests
+  const [extras, setExtras] = useState<AdditionalGuest[]>([]);
 
   useEffect(() => {
     if (!current) return;
@@ -100,6 +122,17 @@ function NewBookingPage() {
       setTariffs((t.data ?? []) as Tariff[]);
     })();
   }, [current?.id]);
+
+  // Auto-fill from dashboard tile click (?roomId=…&categoryId=…)
+  useEffect(() => {
+    if (!search?.roomId || rooms.length === 0) return;
+    const room = rooms.find((r) => r.id === search.roomId);
+    if (!room) return;
+    const catId = search.categoryId ?? room.category_id ?? "";
+    if (catId && !categoryId) pickCategory(catId);
+    setRoomId(room.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search?.roomId, rooms.length]);
 
   // Debounced guest search
   const debounceRef = useRef<number | null>(null);
@@ -168,6 +201,33 @@ function NewBookingPage() {
   );
   const categoryTariffs = tariffs.filter((t) => !categoryId || t.category_id === categoryId);
 
+  // === Additional guests: auto-sync row count to adult/child counts ===
+  useEffect(() => {
+    setExtras((prev) => {
+      const adultsNeeded = Math.max(0, adults - 1);
+      const childrenNeeded = Math.max(0, children);
+      const prevAdults = prev.filter((p) => p.kind === "adult");
+      const prevChildren = prev.filter((p) => p.kind === "child");
+      const adultRows = [...prevAdults];
+      while (adultRows.length < adultsNeeded) adultRows.push(blankGuest("adult"));
+      adultRows.length = adultsNeeded;
+      const childRows = [...prevChildren];
+      while (childRows.length < childrenNeeded) childRows.push(blankGuest("child"));
+      childRows.length = childrenNeeded;
+      return [...adultRows, ...childRows];
+    });
+  }, [adults, children]);
+
+  function updateExtra(key: string, patch: Partial<AdditionalGuest>) {
+    setExtras((prev) => prev.map((g) => (g.key === key ? { ...g, ...patch } : g)));
+  }
+  function addManualExtra() {
+    setExtras((prev) => [...prev, blankGuest("adult")]);
+  }
+  function removeExtra(key: string) {
+    setExtras((prev) => prev.filter((g) => g.key !== key));
+  }
+
   function pickCategory(id: string) {
     setCategoryId(id);
     setRoomId("");
@@ -215,6 +275,7 @@ function NewBookingPage() {
             id_proof_type: idType || null,
             id_proof_number: idNumber || null,
             address: address || null,
+            nationality: nationality || null,
             notes: guestNotes || null,
             tags,
           })
@@ -231,6 +292,7 @@ function NewBookingPage() {
             id_proof_type: idType || null,
             id_proof_number: idNumber || null,
             address: address || null,
+            nationality: nationality || null,
             notes: guestNotes || null,
             tags,
           })
@@ -285,6 +347,57 @@ function NewBookingPage() {
       // 4) If checked in, mark room occupied
       if (checkInNow) {
         await supabase.from("rooms").update({ status: "occupied" }).eq("id", roomId);
+      }
+
+      // 5) Primary guest link
+      await supabase.from("booking_guests").insert({
+        property_id: current.id,
+        booking_id: booking!.id,
+        guest_id: guestId!,
+        is_primary: true,
+        relation_to_primary: "self",
+      } as any);
+
+      // 6) Additional guests — insert lightweight guest rows + link
+      for (const ex of extras) {
+        if (!ex.name.trim()) continue;
+        const { data: ng, error: ngErr } = await supabase
+          .from("guests")
+          .insert({
+            property_id: current.id,
+            name: ex.name.trim(),
+            id_proof_type: ex.id_proof_type || null,
+            id_proof_number: ex.id_proof_number || null,
+            nationality: nationality || null,
+            notes: `Additional guest for booking ${booking!.booking_number}`,
+          })
+          .select("id")
+          .single();
+        if (ngErr) { console.warn("extra guest insert failed", ngErr); continue; }
+        await supabase.from("booking_guests").insert({
+          property_id: current.id,
+          booking_id: booking!.id,
+          guest_id: ng!.id,
+          is_primary: false,
+          age: ex.age ? Number(ex.age) : null,
+          relation_to_primary: ex.relation || null,
+        } as any);
+      }
+
+      // 7) Advance payment record (Issue #5)
+      if (advance > 0) {
+        const { data: folioId } = await supabase.rpc("get_or_create_folio", { _booking_id: booking!.id });
+        await supabase.from("payments").insert({
+          property_id: current.id,
+          booking_id: booking!.id,
+          folio_id: (folioId as unknown as string) ?? null,
+          amount: advance,
+          mode: paymentMode,
+          reference_no: paymentRef || null,
+          notes: "Advance at check-in",
+          paid_at: new Date().toISOString(),
+          created_by: user?.id ?? null,
+        } as any);
       }
 
       toast.success(`Booking ${booking!.booking_number} created`);
