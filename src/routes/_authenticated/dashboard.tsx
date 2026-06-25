@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users } from "lucide-react";
+import { CheckoutDialog } from "@/components/CheckoutDialog";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — HotelPilot" }] }),
@@ -261,12 +262,12 @@ function OwnerDashboard({
             search: r ? { roomId: r.id, categoryId: r.category_id ?? undefined } : undefined,
           } as any);
         }}
-        onCheckout={(bid) => { setModalRoom(null); setCheckoutBookingId(bid); }}
+        onCheckout={(bid: string) => { setModalRoom(null); setCheckoutBookingId(bid); }}
       />
       <CheckoutDialog
         bookingId={checkoutBookingId}
         open={!!checkoutBookingId}
-        onOpenChange={(o) => { if (!o) setCheckoutBookingId(null); }}
+        onOpenChange={(o: boolean) => { if (!o) setCheckoutBookingId(null); }}
         onDone={() => { setCheckoutBookingId(null); reload(); }}
       />
     </AppShell>
