@@ -92,6 +92,7 @@ function NewBookingPage() {
   const [address, setAddress] = useState("");
   const [guestType, setGuestType] = useState<"regular" | "corporate" | "vip">("regular");
   const [guestNotes, setGuestNotes] = useState("");
+  const [idFile, setIdFile] = useState<SelectedIdFile | null>(null);
 
   const [checkIn, setCheckIn] = useState(todayIso());
   const [checkOut, setCheckOut] = useState(addDaysIso(todayIso(), 1));
