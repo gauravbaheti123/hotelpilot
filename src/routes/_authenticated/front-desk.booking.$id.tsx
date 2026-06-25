@@ -33,6 +33,7 @@ import {
 import { fireTrigger } from "@/lib/whatsapp";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { recomputeFolio } from "@/lib/billing";
+import { CheckoutDialog } from "@/components/CheckoutDialog";
 import {
   LogIn,
   LogOut,
@@ -152,6 +153,7 @@ function BookingDetailPage() {
 
   const [dateOpen, setDateOpen] = useState(false);
   const [newCheckOut, setNewCheckOut] = useState("");
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -504,7 +506,7 @@ function BookingDetailPage() {
                 <Button variant="outline"><Receipt className="h-4 w-4 mr-1" /> Folio</Button>
               </Link>
               {canCheckIn && <Button onClick={checkIn}><LogIn className="h-4 w-4 mr-1" /> Check-in</Button>}
-              {canCheckOut && <Button onClick={checkOut}><LogOut className="h-4 w-4 mr-1" /> Check-out</Button>}
+              {canCheckOut && <Button onClick={() => setCheckoutOpen(true)}><LogOut className="h-4 w-4 mr-1" /> Check-out</Button>}
               {canShift && b.booking_rooms[0] && (
                 <Button variant="outline" onClick={() => openShift(b.booking_rooms[0].id)}>
                   <ArrowLeftRight className="h-4 w-4 mr-1" /> Shift room
