@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -211,8 +211,8 @@ function EditRolePage() {
               </TableHeader>
               <TableBody>
                 {SECTIONS.map((section) => (
-                  <>
-                    <TableRow key={`sec-${section.title}`} className="bg-muted/40 hover:bg-muted/40">
+                  <Fragment key={section.title}>
+                    <TableRow className="bg-muted/40 hover:bg-muted/40">
                       <TableCell colSpan={ACTIONS.length + 2} className="font-semibold text-xs uppercase tracking-wider text-muted-foreground py-2">
                         {section.title}
                       </TableCell>
@@ -247,7 +247,7 @@ function EditRolePage() {
                         </TableRow>
                       );
                     })}
-                  </>
+                  </Fragment>
                 ))}
               </TableBody>
             </Table>
