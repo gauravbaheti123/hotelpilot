@@ -117,8 +117,8 @@ function FolioPage() {
     setLoading(true);
     const { data: b, error: be } = await supabase
       .from("bookings")
-      .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,
-        guests(name,mobile,gst_number,company),
+      .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,
+        guests(name,mobile,gst_number,company,id_proof_type,id_proof_number,nationality),
         booking_rooms(id,rate,check_in,check_out,rooms(room_number),room_categories(name))`)
       .eq("id", bookingId).single();
     if (be) { toast.error(be.message); setLoading(false); return; }
