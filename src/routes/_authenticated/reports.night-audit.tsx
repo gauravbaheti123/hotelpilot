@@ -145,6 +145,12 @@ function NightAuditPage() {
         if (f.is_deleted || f.status === "void") return;
         if (!folioMap.has(f.booking_id)) folioMap.set(f.booking_id, f.id);
       });
+      // One-time correction: auto-create active folio for any booking missing one.
+      const missing = bookingIds.filter((b) => !folioMap.has(b));
+      for (const bId of missing) {
+        const { data: fid, error: fErr } = await supabase.rpc("get_or_create_folio", { _booking_id: bId });
+        if (!fErr && fid) folioMap.set(bId, fid as unknown as string);
+      }
     }
     setTariffPosts(checkedIn.map((c) => ({
       bookingId: c.booking_id,
@@ -251,9 +257,18 @@ function NightAuditPage() {
       // 1) Post nightly room charges
       const posted: string[] = [];
       for (const tp of tariffPosts) {
-        if (!tp.folioId || !(tp.amount > 0)) continue;
+        if (!(tp.amount > 0)) continue;
+        let folioId = tp.folioId;
+        if (!folioId) {
+          const { data: fid, error: fErr } = await supabase.rpc("get_or_create_folio", { _booking_id: tp.bookingId });
+          if (fErr || !fid) {
+            toast.error(`Could not create folio for Room ${tp.roomNumber}: ${fErr?.message ?? "unknown error"}`);
+            continue;
+          }
+          folioId = fid as unknown as string;
+        }
         const { error } = await supabase.from("folio_charges").insert({
-          folio_id: tp.folioId,
+          folio_id: folioId,
           charge_type: "room",
           description: `Room Charge — ${date}`,
           qty: 1,
