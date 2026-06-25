@@ -996,3 +996,190 @@ function ScheduleCard({
     </Card>
   );
 }
+
+function BulkCheckinDialog({
+  event, propertyId, userId, onClose, onDone,
+}: {
+  event: EventBlockSummary | null;
+  propertyId: string | null;
+  userId: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (event) setSelected(new Set(event.blocks.filter((b) => b.status === "blocked").map((b) => b.id)));
+  }, [event]);
+  if (!event) return null;
+  const blocked = event.blocks.filter((b) => b.status === "blocked");
+  const allSelected = blocked.every((b) => selected.has(b.id));
+  const toggle = (id: string) => {
+    setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
+  const confirm = async () => {
+    if (!propertyId) return;
+    setBusy(true);
+    try {
+      let n = 0;
+      for (const b of blocked) {
+        if (!selected.has(b.id)) continue;
+        await checkInBlock({ propertyId, block: b, userId });
+        n++;
+      }
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        logActivity({
+          property_id: propertyId, user_id: user?.id ?? "",
+          user_name: userDisplayName(user as any),
+          action_type: "BULK_CHECKIN", module: "Front Desk",
+          reference_id: event.banquet_booking_id,
+          reference_label: event.event_name,
+          details: { event_name: event.event_name, rooms_count: n },
+        });
+      } catch { /* ignore */ }
+      toast.success(`${n} rooms checked in for ${event.event_name}`);
+      onDone();
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed");
+    } finally { setBusy(false); }
+  };
+  return (
+    <Dialog open={!!event} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader><DialogTitle>Bulk Check-in — {event.event_name}</DialogTitle></DialogHeader>
+        <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <Checkbox checked={allSelected}
+              onCheckedChange={(c) => setSelected(c ? new Set(blocked.map((b) => b.id)) : new Set())} />
+            Select All
+          </label>
+          {blocked.map((b) => (
+            <label key={b.id} className="flex items-center gap-2 text-sm border-t py-2">
+              <Checkbox checked={selected.has(b.id)} onCheckedChange={() => toggle(b.id)} />
+              <span className="flex-1">
+                Room {b.room_number} · {b.guest_name ?? <span className="italic text-muted-foreground">Unassigned</span>}
+              </span>
+              <span className="text-xs text-muted-foreground">{b.checkin_date} → {b.checkout_date}</span>
+            </label>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={busy || selected.size === 0} onClick={confirm}>
+            {busy ? "Checking in…" : `Confirm Bulk Check-in (${selected.size})`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function BulkCheckoutDialog({
+  event, userId, onClose, onDone,
+}: {
+  event: EventBlockSummary | null;
+  userId: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (event) setSelected(new Set(event.blocks.filter((b) => b.status === "checked_in").map((b) => b.id)));
+  }, [event]);
+  if (!event) return null;
+  const checked = event.blocks.filter((b) => b.status === "checked_in");
+  const toggle = (id: string) => {
+    setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
+  const confirm = async () => {
+    setBusy(true);
+    try {
+      let n = 0;
+      for (const b of checked) {
+        if (!selected.has(b.id)) continue;
+        await checkOutBlock({ block: b, userId });
+        n++;
+      }
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        logActivity({
+          property_id: event.blocks[0]?.banquet_booking_id ? "" : "",
+          user_id: user?.id ?? "", user_name: userDisplayName(user as any),
+          action_type: "BULK_CHECKOUT", module: "Front Desk",
+          reference_id: event.banquet_booking_id, reference_label: event.event_name,
+          details: { event_name: event.event_name, rooms_count: n },
+        });
+      } catch { /* ignore */ }
+      toast.success(`${n} rooms checked out for ${event.event_name}`);
+      onDone();
+    } catch (e: any) { toast.error(e.message ?? "Failed"); }
+    finally { setBusy(false); }
+  };
+  return (
+    <Dialog open={!!event} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader><DialogTitle>Bulk Checkout — {event.event_name}</DialogTitle></DialogHeader>
+        <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+          {checked.map((b) => (
+            <label key={b.id} className="flex items-center gap-2 text-sm border-t py-2">
+              <Checkbox checked={selected.has(b.id)} onCheckedChange={() => toggle(b.id)} />
+              <span className="flex-1">
+                Room {b.room_number} · {b.guest_name ?? <span className="italic text-muted-foreground">Unassigned</span>}
+              </span>
+            </label>
+          ))}
+        </div>
+        <div className="text-xs text-muted-foreground border-t pt-2">
+          Combined payment is collected per booking via the standard Checkout dialog. This action releases the rooms and marks them ready for housekeeping.
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={busy || selected.size === 0} onClick={confirm}>
+            {busy ? "Checking out…" : `Confirm Bulk Checkout (${selected.size})`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AssignGuestDialog({
+  block, onClose, onDone,
+}: {
+  block: EventBlockRecord | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [mobile, setMobile] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setName(block?.guest_name ?? ""); setMobile(block?.guest_mobile ?? ""); }, [block?.id]);
+  if (!block) return null;
+  const save = async () => {
+    setBusy(true);
+    const { error } = await supabase.from("event_room_blocks").update({
+      guest_name: name.trim() || null, guest_mobile: mobile.trim() || null,
+    } as any).eq("id", block.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Guest assigned");
+    onDone();
+  };
+  return (
+    <Dialog open={!!block} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader><DialogTitle>Assign guest — Room {block.room_number}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div><Label className="text-xs">Guest name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div><Label className="text-xs">Mobile</Label><Input value={mobile} onChange={(e) => setMobile(e.target.value)} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={busy} onClick={save}>{busy ? "Saving…" : "Save"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
