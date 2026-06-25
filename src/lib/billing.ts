@@ -1,4 +1,4 @@
-export const PAYMENT_MODES = ["cash", "card", "upi", "bank", "wallet", "other"] as const;
+export const PAYMENT_MODES = ["cash", "card", "upi", "bank_transfer", "complimentary", "wallet", "other"] as const;
 export type PaymentMode = (typeof PAYMENT_MODES)[number];
 
 export const FOLIO_STATUS_TONE: Record<string, string> = {
