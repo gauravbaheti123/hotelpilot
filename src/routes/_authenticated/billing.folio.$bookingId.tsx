@@ -81,6 +81,7 @@ function FolioPage() {
   const [charges, setCharges] = useState<Charge[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
 
   // dialogs
   const [addOpen, setAddOpen] = useState(false);
