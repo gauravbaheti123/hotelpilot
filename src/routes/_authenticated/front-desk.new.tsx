@@ -415,6 +415,62 @@ function NewBookingPage() {
       }
 
       toast.success(`Booking ${booking!.booking_number} created`);
+
+      // Activity log — booking + (optional) checkin
+      const actorName = userDisplayName(user as any);
+      await logActivity({
+        property_id: current.id,
+        user_id: user?.id ?? "",
+        user_name: actorName,
+        ...ACTIVITY.BOOKING_CREATED,
+        reference_id: booking!.id,
+        reference_label: `${booking!.booking_number} — ${name}`,
+        details: { check_in: checkIn, check_out: checkOut, room_id: roomId, total },
+      });
+      if (checkInNow) {
+        await logActivity({
+          property_id: current.id,
+          user_id: user?.id ?? "",
+          user_name: actorName,
+          ...ACTIVITY.CHECKIN,
+          reference_id: booking!.id,
+          reference_label: `${booking!.booking_number} — ${name}`,
+        });
+      }
+
+      // ID Document upload (best-effort, deferred to after booking save)
+      if (idFile && guestId) {
+        try {
+          if (!isDriveConfigured()) {
+            await supabase.from("guests").update({
+              id_document_name: idFile.file.name,
+              notes: (guestNotes ? guestNotes + "\n" : "") + "ID document attached — Drive not configured",
+            } as any).eq("id", guestId);
+            toast.message("ID saved locally — Google Drive not configured");
+          } else {
+            const res = await uploadToDrive(idFile.file, current.name, name || "Guest", booking!.id);
+            await supabase.from("guests").update({
+              id_document_url: res.viewUrl,
+              id_document_name: idFile.file.name,
+              id_document_uploaded_at: new Date().toISOString(),
+            } as any).eq("id", guestId);
+            await supabase.from("guest_documents").insert({
+              property_id: current.id,
+              guest_id: guestId,
+              booking_id: booking!.id,
+              document_name: idFile.file.name,
+              drive_file_id: res.fileId,
+              drive_view_url: res.viewUrl,
+              drive_folder_path: res.folderPath,
+            } as any);
+            toast.success(`✓ Saved to Drive: ${res.folderPath}`);
+          }
+        } catch (e: any) {
+          console.warn("ID upload failed", e);
+          toast.error(`ID upload failed: ${e.message ?? "unknown"}`);
+        }
+      }
+
       // Fire WhatsApp triggers (best-effort, never blocks navigation)
       const { fireTrigger } = await import("@/lib/whatsapp");
       fireTrigger("booking_confirm", {
