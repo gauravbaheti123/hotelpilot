@@ -898,6 +898,15 @@ function Row({ k, v, highlight }: { k: string; v: React.ReactNode; highlight?: b
   );
 }
 
+function SummaryStat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="rounded border p-2">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={`text-sm font-semibold ${highlight ? "text-destructive" : ""}`}>{value}</div>
+    </div>
+  );
+}
+
 function TariffOption({
   active, onClick, title, line1, line2, disabled,
 }: { active: boolean; onClick: () => void; title: string; line1: string; line2: string; disabled?: boolean }) {
