@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CrudPage, FieldDef, ColumnDef } from "@/components/master/CrudPage";
 import { Badge } from "@/components/ui/badge";
+import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
+import { useCurrentProperty } from "@/hooks/use-property";
 
 export const Route = createFileRoute("/_authenticated/masters/expense-categories")({
   head: () => ({ meta: [{ title: "Expense Categories — HotelPilot" }] }),
@@ -23,6 +25,7 @@ const columns: ColumnDef<Cat>[] = [
 ];
 
 function ExpenseCategoriesPage() {
+  const { current } = useCurrentProperty();
   return (
     <CrudPage<Cat>
       title="Expense Categories"
@@ -31,6 +34,23 @@ function ExpenseCategoriesPage() {
       fields={fields}
       columns={columns}
       orderBy={{ column: "name", ascending: true }}
+      headerActions={
+        current ? (
+          <BulkCsvButtons
+            table="expense_categories"
+            propertyId={current.id}
+            module="expense-categories"
+            hotelName={current.name}
+            extraDefaults={{ property_id: current.id }}
+            columns={[
+              { header: "name", field: "name", required: true },
+              { header: "is_active", field: "is_active",
+                parse: (v) => v.toLowerCase() !== "false" && v !== "0" && v !== "",
+                format: (v) => (v ? "true" : "false") },
+            ]}
+          />
+        ) : null
+      }
     />
   );
 }
