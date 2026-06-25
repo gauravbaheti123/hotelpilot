@@ -2211,6 +2211,7 @@ export type Database = {
           phone: string | null
           pincode: string | null
           state: string | null
+          status: string
           updated_at: string
           wa_number: string | null
           wifi_password: string | null
@@ -2237,6 +2238,7 @@ export type Database = {
           phone?: string | null
           pincode?: string | null
           state?: string | null
+          status?: string
           updated_at?: string
           wa_number?: string | null
           wifi_password?: string | null
@@ -2263,6 +2265,7 @@ export type Database = {
           phone?: string | null
           pincode?: string | null
           state?: string | null
+          status?: string
           updated_at?: string
           wa_number?: string | null
           wifi_password?: string | null
