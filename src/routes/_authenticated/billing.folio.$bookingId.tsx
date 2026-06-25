@@ -620,6 +620,80 @@ function FolioPage() {
     w.document.write(html); w.document.close(); w.focus(); w.print();
   }
 
+  function printDraft() {
+    if (!folio || !booking) return;
+    const esc = (s: unknown) => String(s ?? "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    const isGst = (folio.bill_type ?? folio.gst_mode) === "gst_invoice" || folio.gst_mode === "gst";
+    const rows = charges.map((c) => `<tr>
+      <td>${esc(c.description)}</td>
+      <td class="right">${Number(c.qty)}</td>
+      <td class="right">${inr(c.rate)}</td>
+      <td class="right">${inr(Number(c.amount) + (isGst ? 0 : Number(c.gst_amount || 0)))}</td>
+    </tr>`).join("");
+    const html = `<html><head><title>DRAFT — ${esc(booking.booking_number)}</title>
+      <style>
+        body{font-family:Arial,sans-serif;font-size:12px;padding:24px;max-width:780px;margin:0 auto;color:#111;position:relative}
+        h1{font-size:18px;margin:0 0 4px;text-align:center;letter-spacing:1px}
+        table{width:100%;border-collapse:collapse;margin-top:8px}
+        th,td{padding:6px 8px;border-bottom:1px solid #ddd;text-align:left;font-size:11px}
+        th{background:#f3f4f6}
+        .right{text-align:right}
+        .totals{margin-top:8px;width:50%;margin-left:auto}
+        .totals td{border:none;padding:3px 8px}
+        .totals .grand{font-weight:bold;font-size:13px;border-top:2px solid #111}
+        .meta{display:flex;justify-content:space-between;margin:12px 0;gap:24px}
+        .meta>div{flex:1}
+        .small{font-size:10px;color:#555}
+        .bill-number-field.draft{color:#999;letter-spacing:4px;font-weight:600}
+        .draft-watermark{position:fixed;top:50%;left:50%;
+          transform:translate(-50%,-50%) rotate(-45deg);
+          font-size:72px;font-weight:700;color:#000;opacity:0.10;
+          white-space:nowrap;pointer-events:none;z-index:9999}
+        @media print{
+          .draft-watermark{position:fixed;top:50%;left:50%;
+            transform:translate(-50%,-50%) rotate(-45deg);
+            font-size:72px;font-weight:700;color:#000;opacity:0.12;
+            white-space:nowrap;pointer-events:none;z-index:9999}
+        }
+      </style></head><body>
+      <div class="draft-watermark">DRAFT — NOT A TAX INVOICE</div>
+      <h1>DRAFT BILL</h1>
+      <div style="text-align:center"><strong>${esc(property?.name ?? "")}</strong></div>
+      <div class="small" style="text-align:center">${esc(property?.address ?? "")}</div>
+      <hr/>
+      <div class="meta">
+        <div>
+          <div><strong>Guest:</strong> ${esc(booking.guests?.name ?? "")}</div>
+          <div>${esc(booking.guests?.mobile ?? "")}</div>
+        </div>
+        <div class="right">
+          <div><strong>Bill No:</strong> <span class="bill-number-field draft">- - - - - -</span></div>
+          <div>Booking: ${esc(booking.booking_number)}</div>
+          <div>Stay: ${esc(booking.check_in)} → ${esc(booking.check_out)}</div>
+          <div>Date: ${new Date().toLocaleDateString()}</div>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Description</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Amount</th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="4" style="text-align:center;color:#666">No charges yet</td></tr>`}</tbody>
+      </table>
+      <table class="totals">
+        <tr><td>Sub-total</td><td class="right">${inr(folio.sub_total)}</td></tr>
+        ${Number(folio.discount_amount) > 0 ? `<tr><td>Discount</td><td class="right">- ${inr(folio.discount_amount)}</td></tr>` : ""}
+        ${isGst ? `<tr><td>GST</td><td class="right">${inr(folio.gst_amount)}</td></tr>` : ""}
+        <tr class="grand"><td>Total</td><td class="right">${inr(folio.total_amount)}</td></tr>
+        <tr><td>Paid</td><td class="right">${inr(folio.paid_amount)}</td></tr>
+        <tr><td>Balance</td><td class="right">${inr(folio.balance_amount)}</td></tr>
+      </table>
+      <p class="small" style="margin-top:24px;text-align:center">This is a draft for verification only. The final tax invoice will be issued on confirmation.</p>
+      </body></html>`;
+    const w = window.open("", "_blank", "width=900,height=900");
+    if (!w) return;
+    w.document.write(html); w.document.close(); w.focus(); w.print();
+  }
+
   if (loading) return <AppShell title="Folio"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
   if (!folio || !booking) return <AppShell title="Folio"><p className="text-sm text-muted-foreground">Not found.</p></AppShell>;
 
