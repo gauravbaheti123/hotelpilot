@@ -664,9 +664,87 @@ function FolioPage() {
     setCheckoutOpen(true);
   }
 
+  async function downloadPdf() {
+    if (!folio || !booking) return;
+    setDownloading(true);
+    try {
+      const node = document.getElementById("invoice-doc");
+      if (!node) throw new Error("Invoice element not found");
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const canvas = await html2canvas(node, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+      const img = canvas.toDataURL("image/jpeg", 0.95);
+      const pdf = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      let heightLeft = imgH;
+      let position = 0;
+      pdf.addImage(img, "JPEG", 0, position, imgW, imgH);
+      heightLeft -= pageH;
+      while (heightLeft > 0) {
+        position = heightLeft - imgH;
+        pdf.addPage();
+        pdf.addImage(img, "JPEG", 0, position, imgW, imgH);
+        heightLeft -= pageH;
+      }
+      const safeName = (booking.guests?.name ?? "guest").replace(/[^\w]+/g, "");
+      pdf.save(`${folio.invoice_number}-${safeName}.pdf`);
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not generate PDF");
+    } finally {
+      setDownloading(false);
+    }
+  }
+
+  function openEmail() {
+    if (!folio || !booking) return;
+    const isGst = folio.gst_mode === "gst";
+    setEmailTo("");
+    setEmailSubject(`${isGst ? "Tax Invoice" : "Receipt"} from ${property?.name ?? "Hotel"} - ${folio.invoice_number}`);
+    setEmailBody(
+      `Dear ${booking.guests?.name ?? "Guest"},\n\n` +
+      `Please find your ${isGst ? "tax invoice" : "receipt"} ${folio.invoice_number} for ` +
+      `your stay from ${booking.check_in} to ${booking.check_out}.\n\n` +
+      `Grand Total: ${inr(folio.total_amount)}\n` +
+      `Paid: ${inr(folio.paid_amount)}\n` +
+      `Balance: ${inr(folio.balance_amount)}\n\n` +
+      `Thank you for staying with us.\n${property?.name ?? ""}`
+    );
+    setEmailOpen(true);
+  }
+
+  function sendEmail() {
+    if (!emailTo.trim()) return toast.error("Recipient email required");
+    const url = `mailto:${encodeURIComponent(emailTo)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    window.location.href = url;
+    setEmailOpen(false);
+    toast.success("Opening email client — please attach the downloaded PDF before sending");
+  }
+
+  const TEAL = "#1D9E75";
+  const TEAL_DARK = "#157A5A";
+  const isSettled = folio.status === "settled";
+  const isVoid = folio.status === "void";
+
   return (
     <AppShell title={`Folio ${folio.invoice_number}`}>
-      <div className="max-w-7xl space-y-4">
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          #invoice-doc, #invoice-doc * { visibility: visible !important; }
+          #invoice-doc { position: absolute !important; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; }
+          @page { size: A4; margin: 12mm; }
+        }
+        #invoice-doc { color: #111; }
+        #invoice-doc table { border-collapse: collapse; width: 100%; }
+        #invoice-doc th, #invoice-doc td { padding: 8px 10px; font-size: 12px; }
+        #invoice-doc .zebra tr:nth-child(even) td { background: #F7FBF9; }
+      `}</style>
+      <div className="max-w-5xl space-y-4">
         {/* Top bar */}
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="outline" size="sm" onClick={() => router.history.back()}>
@@ -675,8 +753,25 @@ function FolioPage() {
           <Badge variant="outline" className={FOLIO_STATUS_TONE[folio.status]}>
             {folio.status.toUpperCase()}
           </Badge>
+          {isSettled && (
+            <Badge style={{ background: TEAL, color: "#fff" }} className="border-0">PAID</Badge>
+          )}
           <div className="text-sm text-muted-foreground">
             Booking {booking.booking_number} · {booking.guests?.name ?? "—"}
+          </div>
+          <div className="ml-auto flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={printInvoice}>
+              <Printer className="h-4 w-4 mr-1" /> Print
+            </Button>
+            <Button variant="outline" size="sm" onClick={downloadPdf} disabled={downloading}>
+              <Download className="h-4 w-4 mr-1" /> {downloading ? "Generating…" : "Download PDF"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={openEmail}>
+              <Mail className="h-4 w-4 mr-1" /> Email
+            </Button>
+            <Button variant="outline" size="sm" onClick={shareOnWhatsApp}>
+              <MessageCircle className="h-4 w-4 mr-1" /> WhatsApp
+            </Button>
           </div>
         </div>
 
@@ -721,270 +816,362 @@ function FolioPage() {
           </Card>
         )}
 
-        <div className="grid gap-5 lg:grid-cols-[3fr_2fr]">
-          {/* ============ LEFT: INVOICE ============ */}
-          <Card className="overflow-hidden border-2 shadow-sm">
-            {/* Hotel header */}
-            <div className="border-b bg-gradient-to-br from-muted/40 to-background p-6">
-              <div className="flex items-start gap-4">
-                {property?.logo_url ? (
-                  <img src={property.logo_url} alt="" className="h-16 w-16 rounded-lg object-cover ring-1 ring-border" />
-                ) : (
-                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary ring-1 ring-border">
-                    <Hotel className="h-7 w-7" />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <h2 className="truncate text-2xl font-bold tracking-tight">{property?.name ?? "Hotel"}</h2>
-                  {propAddrLine && <div className="text-xs text-muted-foreground">{propAddrLine}</div>}
-                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
-                    {property?.phone && <span>Phone: {property.phone}</span>}
-                    {property?.email && <span>Email: {property.email}</span>}
-                    {property?.gst_number && <span className="font-medium text-foreground">GSTIN: {property.gst_number}</span>}
-                  </div>
+        {/* Bill Type controls (screen only) */}
+        <Card className="print:hidden">
+          <CardContent className="flex flex-wrap items-end gap-3 p-4">
+            <div className="flex gap-2 rounded-md border p-1 bg-muted/30">
+              <button type="button" disabled={!isOpen} onClick={() => toggleMode("gst")}
+                className={`rounded px-3 py-1.5 text-sm font-medium transition ${isGst ? "text-white shadow" : "hover:bg-background"}`}
+                style={isGst ? { background: TEAL } : undefined}>
+                GST Invoice
+              </button>
+              <button type="button" disabled={!isOpen} onClick={() => toggleMode("cash")}
+                className={`rounded px-3 py-1.5 text-sm font-medium transition ${!isGst ? "text-white shadow" : "hover:bg-background"}`}
+                style={!isGst ? { background: TEAL } : undefined}>
+                Cash Bill
+              </button>
+            </div>
+            {isGst && (
+              <>
+                <div className="space-y-1">
+                  <Label className="text-xs">Guest GSTIN</Label>
+                  <Input className="h-9 w-56" value={folio.guest_gstin ?? ""} disabled={!isOpen}
+                    onChange={async (e) => {
+                      setFolio({ ...folio, guest_gstin: e.target.value });
+                      await supabase.from("folios").update({ guest_gstin: e.target.value }).eq("id", folio.id);
+                    }} />
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Company Name</Label>
+                  <Input className="h-9 w-64" value={folio.guest_company ?? ""} disabled={!isOpen}
+                    onChange={async (e) => {
+                      setFolio({ ...folio, guest_company: e.target.value });
+                      await supabase.from("folios").update({ guest_company: e.target.value }).eq("id", folio.id);
+                    }} />
+                </div>
+              </>
+            )}
+            <div className="ml-auto flex flex-wrap gap-2">
+              {isOpen && (
+                <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
+                  <Plus className="h-4 w-4 mr-1" /> Add charge
+                </Button>
+              )}
+              {isOpen && (
+                <Button size="sm" onClick={handleCheckout} style={{ background: TEAL, color: "#fff" }}>
+                  <CheckCircle2 className="h-4 w-4 mr-1" /> Checkout
+                </Button>
+              )}
+              {isOpen && canVoid && (
+                <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10" onClick={handleVoidClick}>
+                  <Ban className="h-4 w-4 mr-1" /> Void
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* INVOICE DOCUMENT */}
+        <div id="invoice-doc" className="relative mx-auto w-full bg-white shadow-md ring-1 ring-black/5 print:shadow-none print:ring-0">
+          {isSettled && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+              <div style={{
+                transform: "rotate(-25deg)",
+                border: `8px solid ${TEAL}`,
+                color: TEAL,
+                padding: "12px 48px",
+                fontSize: "72px",
+                fontWeight: 900,
+                letterSpacing: "8px",
+                opacity: 0.18,
+                borderRadius: 12,
+              }}>SETTLED</div>
+            </div>
+          )}
+          {isVoid && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+              <div style={{
+                transform: "rotate(-25deg)",
+                border: "8px solid #dc2626",
+                color: "#dc2626",
+                padding: "12px 64px",
+                fontSize: "72px",
+                fontWeight: 900,
+                letterSpacing: "8px",
+                opacity: 0.18,
+                borderRadius: 12,
+              }}>VOID</div>
+            </div>
+          )}
+
+          {/* Header */}
+          <div style={{ background: TEAL, color: "#fff" }} className="flex items-center gap-5 px-8 py-6">
+            {property?.logo_url ? (
+              <img src={property.logo_url} alt="" className="h-20 w-20 rounded-md object-cover ring-2 ring-white/40" />
+            ) : (
+              <div className="grid h-20 w-20 shrink-0 place-items-center rounded-md bg-white/15 ring-2 ring-white/40">
+                <span className="text-2xl font-extrabold tracking-wider">
+                  {(property?.name ?? "HP").split(/\s+/).slice(0, 2).map(s => s[0]).join("").toUpperCase()}
+                </span>
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <h1 className="truncate text-3xl font-extrabold tracking-tight">{property?.name ?? "Hotel"}</h1>
+              {propAddrLine && <div className="text-sm opacity-95">{propAddrLine}</div>}
+              <div className="mt-1 flex flex-wrap gap-x-4 text-xs opacity-95">
+                {property?.phone && <span>Ph: {property.phone}</span>}
+                {property?.email && <span>Email: {property.email}</span>}
+                {property?.gst_number && <span>GSTIN: {property.gst_number}</span>}
               </div>
             </div>
+          </div>
 
-            {/* Invoice title block */}
-            <div className="flex flex-wrap items-end justify-between gap-3 border-b bg-background px-6 py-4">
-              <div>
-                <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
-                  {isGst ? "Tax Invoice" : "Cash Bill / Receipt"}
-                </div>
-                <div className="flex items-center gap-2 text-lg font-semibold">
-                  {isGst ? <FileText className="h-4 w-4" /> : <Receipt className="h-4 w-4" />}
-                  {folio.invoice_number}
-                </div>
+          {/* Title bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 border-y px-8 py-3" style={{ background: "#F0FAF6" }}>
+            <div className="text-lg font-bold tracking-wide" style={{ color: TEAL_DARK }}>
+              {isGst ? "TAX INVOICE" : "CASH BILL / RECEIPT"}
+            </div>
+            <div className="text-xs text-right">
+              <div><span className="text-muted-foreground">Invoice No:</span> <span className="font-semibold">{folio.invoice_number}</span>{isSettled && <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: TEAL }}>PAID</span>}</div>
+              <div><span className="text-muted-foreground">Date:</span> <span className="font-semibold">{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
+              <div><span className="text-muted-foreground">Booking:</span> <span className="font-semibold">{booking.booking_number}</span></div>
+            </div>
+          </div>
+
+          {/* Bill To + Stay */}
+          <div className="grid grid-cols-1 gap-0 border-b sm:grid-cols-2">
+            <div className="border-r px-8 py-4">
+              <div className="mb-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Bill To</div>
+              <div className="text-base font-semibold">{booking.guests?.name ?? "—"}</div>
+              {booking.guests?.mobile && <div className="text-xs text-gray-700">Mobile: {booking.guests.mobile}</div>}
+              {isGst && folio.guest_gstin && <div className="text-xs text-gray-700">GSTIN: {folio.guest_gstin}</div>}
+              {isGst && folio.guest_company && <div className="text-xs text-gray-700">{folio.guest_company}</div>}
+            </div>
+            <div className="px-8 py-4">
+              <div className="mb-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Stay Details</div>
+              {booking.booking_rooms[0] && (
+                <>
+                  <div className="text-xs">Room: <span className="font-semibold">{booking.booking_rooms[0].rooms?.room_number ?? "—"}</span></div>
+                  <div className="text-xs">Category: <span className="font-semibold">{booking.booking_rooms[0].room_categories?.name ?? "—"}</span></div>
+                </>
+              )}
+              <div className="text-xs">Check-in: <span className="font-semibold">{new Date(booking.check_in).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
+              <div className="text-xs">Check-out: <span className="font-semibold">{new Date(booking.check_out).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
+              <div className="text-xs">Duration: <span className="font-semibold">{nights} Night{nights > 1 ? "s" : ""}</span> · {booking.adults ?? 1} Adult{(booking.adults ?? 1) > 1 ? "s" : ""}{booking.children ? ` · ${booking.children} Child` : ""}</div>
+            </div>
+          </div>
+
+          {/* Charges */}
+          <div className="px-8 py-5">
+            <div className="mb-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Charges</div>
+            <table>
+              <thead>
+                <tr style={{ background: TEAL, color: "#fff" }}>
+                  <th style={{ textAlign: "left", width: 40 }}>#</th>
+                  <th style={{ textAlign: "left" }}>Description</th>
+                  {isGst && <th style={{ textAlign: "left", width: 80 }}>HSN</th>}
+                  <th style={{ textAlign: "right", width: 50 }}>Qty</th>
+                  <th style={{ textAlign: "right", width: 90 }}>Rate</th>
+                  <th style={{ textAlign: "right", width: 110 }}>Amount</th>
+                  {isOpen && <th className="print:hidden" style={{ width: 40 }}></th>}
+                </tr>
+              </thead>
+              <tbody className="zebra">
+                {charges.length === 0 ? (
+                  <tr><td colSpan={isGst ? 7 : 6} style={{ textAlign: "center", color: "#666", padding: 16 }}>No charges yet.</td></tr>
+                ) : charges.map((c, i) => (
+                  <tr key={c.id}>
+                    <td>{i + 1}</td>
+                    <td>
+                      <div>{c.description}</div>
+                      {isGst && <div style={{ fontSize: 10, color: "#666" }}>GST {Number(c.gst_rate)}%</div>}
+                    </td>
+                    {isGst && (
+                      <td style={{ fontSize: 11 }}>
+                        {(c as any).hsn_code ?? (c.charge_type === "room" ? "996311" : c.charge_type === "food" ? "996331" : "9963")}
+                      </td>
+                    )}
+                    <td style={{ textAlign: "right" }}>{Number(c.qty)}</td>
+                    <td style={{ textAlign: "right" }}>{inr(c.rate)}</td>
+                    <td style={{ textAlign: "right", fontWeight: 600 }}>{inr(c.amount)}</td>
+                    {isOpen && (
+                      <td className="print:hidden" style={{ textAlign: "right" }}>
+                        <button onClick={() => removeCharge(c.id)} className="text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* GST breakup */}
+            {isGst && Number(folio.gst_amount) > 0 && (
+              <div className="mt-5">
+                <div className="mb-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>GST Breakup</div>
+                <table>
+                  <thead>
+                    <tr style={{ background: TEAL, color: "#fff" }}>
+                      <th style={{ textAlign: "left" }}>Category</th>
+                      <th style={{ textAlign: "right" }}>Taxable</th>
+                      <th style={{ textAlign: "right" }}>CGST</th>
+                      <th style={{ textAlign: "right" }}>SGST</th>
+                      <th style={{ textAlign: "right" }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="zebra">
+                    {(["room", "food", "sundry", "extra"] as const).map((key) => {
+                      const arr = (groups as any)[key] as Charge[];
+                      const taxable = arr.reduce((s, c) => s + Number(c.amount), 0);
+                      const gst = arr.reduce((s, c) => s + Number(c.gst_amount || 0), 0);
+                      if (gst <= 0) return null;
+                      const label = key === "room" ? "Accommodation" : key === "food" ? "Food & Beverage" : key === "sundry" ? "Sundry / POS" : "Others";
+                      return (
+                        <tr key={key}>
+                          <td>{label}</td>
+                          <td style={{ textAlign: "right" }}>{inr(taxable)}</td>
+                          <td style={{ textAlign: "right" }}>{inr(gst / 2)}</td>
+                          <td style={{ textAlign: "right" }}>{inr(gst / 2)}</td>
+                          <td style={{ textAlign: "right", fontWeight: 600 }}>{inr(gst)}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr style={{ borderTop: `2px solid ${TEAL}` }}>
+                      <td colSpan={4} style={{ textAlign: "right", fontWeight: 700 }}>Total GST</td>
+                      <td style={{ textAlign: "right", fontWeight: 700, color: TEAL_DARK }}>{inr(folio.gst_amount)}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-              <div className="text-right text-xs text-muted-foreground">
-                <div>Date: <span className="font-medium text-foreground">{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
-                <div>Booking: <span className="font-medium text-foreground">{booking.booking_number}</span></div>
+            )}
+
+            {/* Totals box */}
+            <div className="mt-5 ml-auto" style={{ maxWidth: 360 }}>
+              <table>
+                <tbody>
+                  <tr><td style={{ color: "#555" }}>Sub-total</td><td style={{ textAlign: "right" }}>{inr(folio.sub_total)}</td></tr>
+                  {Number(folio.discount_amount) > 0 && (
+                    <tr><td style={{ color: "#555" }}>Discount</td><td style={{ textAlign: "right" }}>- {inr(folio.discount_amount)}</td></tr>
+                  )}
+                  {isGst && <tr><td style={{ color: "#555" }}>GST</td><td style={{ textAlign: "right" }}>{inr(folio.gst_amount)}</td></tr>}
+                </tbody>
+              </table>
+              <div style={{ background: TEAL, color: "#fff" }} className="mt-2 flex items-center justify-between rounded px-4 py-3">
+                <span className="text-sm font-bold uppercase tracking-wider">Grand Total</span>
+                <span className="text-2xl font-extrabold tabular-nums">{inr(folio.total_amount)}</span>
               </div>
+              {!isGst && (
+                <div className="mt-1 text-right text-[10px] italic text-gray-500">Amount includes all applicable taxes</div>
+              )}
             </div>
 
-            {/* Guest + Stay */}
-            <div className="grid grid-cols-1 gap-4 border-b bg-muted/20 px-6 py-4 sm:grid-cols-2">
-              <div className="space-y-0.5 text-sm">
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Guest details</div>
-                <div className="font-semibold">{booking.guests?.name ?? "—"}</div>
-                {booking.booking_rooms[0] && (
-                  <div className="text-xs text-muted-foreground">
-                    Room {booking.booking_rooms[0].rooms?.room_number} · {booking.booking_rooms[0].room_categories?.name}
-                  </div>
-                )}
-                {booking.guests?.mobile && <div className="text-xs">Mobile: {booking.guests.mobile}</div>}
-                {booking.guests?.id_proof_type && (
-                  <div className="text-xs">ID: {booking.guests.id_proof_type} {booking.guests?.id_proof_number ?? ""}</div>
-                )}
-                {isGst && folio.guest_gstin && <div className="text-xs">GSTIN: {folio.guest_gstin}</div>}
-              </div>
-              <div className="space-y-0.5 text-sm sm:text-right">
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Stay</div>
-                <div className="text-xs">Check-in: <span className="font-medium text-foreground">{new Date(booking.check_in).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
-                <div className="text-xs">Check-out: <span className="font-medium text-foreground">{new Date(booking.check_out).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
-                <div className="text-xs">{nights} night{nights > 1 ? "s" : ""} · {booking.adults ?? 1} adult{(booking.adults ?? 1) > 1 ? "s" : ""}{booking.children ? ` · ${booking.children} child` : ""}</div>
-              </div>
-            </div>
-
-            {/* Charges breakdown */}
-            <CardContent className="p-6">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Charges breakdown</h3>
-                {isOpen && (
-                  <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
-                    <Plus className="h-3.5 w-3.5 mr-1" /> Add charge
-                  </Button>
-                )}
-              </div>
-
-              {charges.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No charges yet.</p>
+            {/* Payments */}
+            <div className="mt-6">
+              <div className="mb-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Payment Details</div>
+              {payments.length === 0 ? (
+                <div className="text-xs text-gray-500">No payments recorded.</div>
               ) : (
-                <div className="space-y-4">
-                  <ChargeGroup title="Room Charges" rows={groups.room} subtotal={subRoom} isOpen={isOpen} onRemove={removeCharge} isGst={isGst} />
-                  {groups.food.length > 0 && (
-                    <ChargeGroup title="Food & Beverage" rows={groups.food} subtotal={subFood} isOpen={isOpen} onRemove={removeCharge} isGst={isGst} />
-                  )}
-                  {groups.sundry.length > 0 && (
-                    <ChargeGroup title="Sundry / POS" rows={groups.sundry} subtotal={subSundry} isOpen={isOpen} onRemove={removeCharge} isGst={isGst} />
-                  )}
-                  {(groups.extra.length + groups.discount.length) > 0 && (
-                    <ChargeGroup title="Other Charges" rows={[...groups.extra, ...groups.discount]} subtotal={subOther} isOpen={isOpen} onRemove={removeCharge} isGst={isGst} />
-                  )}
-                </div>
+                <table>
+                  <tbody className="zebra">
+                    {payments.map((p) => (
+                      <tr key={p.id}>
+                        <td style={{ textTransform: "capitalize" }}>{p.mode.replace(/_/g, " ")}</td>
+                        <td style={{ fontSize: 11, color: "#666" }}>{new Date(p.paid_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                        <td style={{ fontSize: 11, color: "#666" }}>{p.reference_no ?? ""}</td>
+                        <td style={{ textAlign: "right" }}>{inr(p.amount)}</td>
+                      </tr>
+                    ))}
+                    <tr style={{ borderTop: "2px solid #ddd" }}>
+                      <td colSpan={3} style={{ fontWeight: 700 }}>Total Paid</td>
+                      <td style={{ textAlign: "right", fontWeight: 700 }}>{inr(folio.paid_amount)}</td>
+                    </tr>
+                    <tr>
+                      <td colSpan={3} style={{ fontWeight: 700, color: Number(folio.balance_amount) > 0.01 ? "#dc2626" : TEAL_DARK }}>Balance Due</td>
+                      <td style={{ textAlign: "right", fontWeight: 700, color: Number(folio.balance_amount) > 0.01 ? "#dc2626" : TEAL_DARK }}>{inr(folio.balance_amount)}</td>
+                    </tr>
+                  </tbody>
+                </table>
               )}
+            </div>
 
-              {/* GST breakup */}
-              {isGst && Number(folio.gst_amount) > 0 && (
-                <div className="mt-5 rounded-md border bg-muted/20 p-3">
-                  <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GST breakup</div>
-                  <div className="grid grid-cols-2 gap-1 text-sm">
-                    <span>CGST</span><span className="text-right">{inr(Number(folio.gst_amount) / 2)}</span>
-                    <span>SGST</span><span className="text-right">{inr(Number(folio.gst_amount) / 2)}</span>
-                    <span className="border-t pt-1 font-semibold">Total GST</span>
-                    <span className="border-t pt-1 text-right font-semibold">{inr(folio.gst_amount)}</span>
-                  </div>
-                </div>
-              )}
+            {/* Footer */}
+            <div className="mt-8 border-t pt-4 text-center text-sm text-gray-700">
+              Thank you for staying with us! We hope to see you again.
+            </div>
+            <div className="mt-10 flex justify-between gap-12 text-xs text-gray-600">
+              <div className="flex-1 border-t border-gray-400 pt-1">Received by</div>
+              <div className="flex-1 border-t border-gray-400 pt-1 text-right">Guest Signature</div>
+            </div>
+            <div className="mt-6 text-center text-[10px] text-gray-400">
+              Powered by HotelPilot.in
+            </div>
+          </div>
+        </div>
 
-              {/* Grand total bar */}
-              <div className="mt-5 flex items-center justify-between rounded-md bg-primary px-4 py-3 text-primary-foreground">
-                <span className="text-sm font-semibold uppercase tracking-wider">Grand Total</span>
-                <span className="text-xl font-bold tabular-nums">{inr(folio.total_amount)}</span>
+        {/* Collect payment (screen only) */}
+        {isOpen && Number(folio.balance_amount) > 0.01 && (
+          <Card className="print:hidden">
+            <CardHeader className="pb-3"><CardTitle className="text-sm uppercase tracking-wider">Collect Payment</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+              <div className="space-y-1">
+                <Label className="text-xs">Amount</Label>
+                <Input type="number" value={payAmount}
+                  placeholder={String(folio.balance_amount)}
+                  onFocus={() => { if (!payAmount) setPayAmount(String(folio.balance_amount)); }}
+                  onChange={(e) => setPayAmount(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Mode</Label>
+                <Select value={payMode} onValueChange={setPayMode}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_MODES.map((m) => <SelectItem key={m} value={m}>{m.toUpperCase()}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Reference</Label>
+                <Input value={payRef} onChange={(e) => setPayRef(e.target.value)} placeholder="Txn id, last 4, etc." />
+              </div>
+              <div className="flex items-end">
+                <Button className="w-full" onClick={addPayment} style={{ background: TEAL, color: "#fff" }}>
+                  <Plus className="h-4 w-4 mr-1" /> Add payment
+                </Button>
               </div>
             </CardContent>
           </Card>
+        )}
 
-          {/* ============ RIGHT: ACTIONS ============ */}
-          <div className="space-y-4">
-            {/* Bill Type */}
-            <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-sm uppercase tracking-wider">Bill type</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 rounded-md border p-1 bg-muted/30">
-                  <button type="button" disabled={!isOpen} onClick={() => toggleMode("gst")}
-                    className={`flex flex-col items-start rounded px-3 py-2 text-left text-sm transition ${
-                      isGst ? "bg-primary text-primary-foreground shadow" : "hover:bg-background"
-                    }`}>
-                    <span className="flex items-center gap-2 font-semibold">
-                      <span className={`h-3 w-3 rounded-full border ${isGst ? "bg-primary-foreground border-primary-foreground" : "border-muted-foreground"}`} />
-                      GST Invoice
-                    </span>
-                    <span className={`text-[10px] mt-0.5 ${isGst ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-                      Tax invoice · HSN · CGST+SGST
-                    </span>
-                  </button>
-                  <button type="button" disabled={!isOpen} onClick={() => toggleMode("cash")}
-                    className={`flex flex-col items-start rounded px-3 py-2 text-left text-sm transition ${
-                      !isGst ? "bg-primary text-primary-foreground shadow" : "hover:bg-background"
-                    }`}>
-                    <span className="flex items-center gap-2 font-semibold">
-                      <span className={`h-3 w-3 rounded-full border ${!isGst ? "bg-primary-foreground border-primary-foreground" : "border-muted-foreground"}`} />
-                      Cash Bill
-                    </span>
-                    <span className={`text-[10px] mt-0.5 ${!isGst ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-                      Receipt · taxes included
-                    </span>
-                  </button>
-                </div>
-                {isGst && (
-                  <div className="grid grid-cols-1 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Guest GSTIN</Label>
-                      <Input value={folio.guest_gstin ?? ""} disabled={!isOpen}
-                        onChange={async (e) => {
-                          setFolio({ ...folio, guest_gstin: e.target.value });
-                          await supabase.from("folios").update({ guest_gstin: e.target.value }).eq("id", folio.id);
-                        }} />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Company</Label>
-                      <Input value={folio.guest_company ?? ""} disabled={!isOpen}
-                        onChange={async (e) => {
-                          setFolio({ ...folio, guest_company: e.target.value });
-                          await supabase.from("folios").update({ guest_company: e.target.value }).eq("id", folio.id);
-                        }} />
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Summary */}
-            <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-sm uppercase tracking-wider">Summary</CardTitle></CardHeader>
-              <CardContent className="space-y-1.5 text-sm">
-                <Row k="Room charges" v={inr(subRoom)} />
-                {subFood > 0 && <Row k="Food & beverage" v={inr(subFood)} />}
-                {subSundry > 0 && <Row k="Sundry / POS" v={inr(subSundry)} />}
-                {subOther !== 0 && <Row k="Other charges" v={inr(subOther)} />}
-                {isGst && <Row k="GST" v={inr(folio.gst_amount)} />}
-                <div className="mt-2 flex justify-between border-t pt-2 text-base font-bold">
-                  <span>Grand Total</span><span className="tabular-nums">{inr(folio.total_amount)}</span>
-                </div>
-                <div className="mt-3 border-t pt-2">
-                  <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Payments received</div>
-                  {payments.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No payments yet.</p>
-                  ) : (
-                    payments.map((p) => (
-                      <div key={p.id} className="flex justify-between text-xs">
-                        <span className="capitalize text-muted-foreground">{p.mode} · {new Date(p.paid_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span>
-                        <span className="tabular-nums">{inr(p.amount)}</span>
-                      </div>
-                    ))
-                  )}
-                  <div className="mt-1 flex justify-between text-sm font-medium">
-                    <span>Total paid</span><span className="tabular-nums">{inr(folio.paid_amount)}</span>
-                  </div>
-                </div>
-                <div className={`mt-2 flex items-center justify-between rounded-md px-3 py-2 text-base font-bold ${
-                  Number(folio.balance_amount) > 0.01
-                    ? "bg-destructive/10 text-destructive"
-                    : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                }`}>
-                  <span>Balance Due</span><span className="tabular-nums">{inr(folio.balance_amount)}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Collect payment inline */}
-            {isOpen && Number(folio.balance_amount) > 0.01 && (
-              <Card>
-                <CardHeader className="pb-3"><CardTitle className="text-sm uppercase tracking-wider">Collect payment</CardTitle></CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Amount</Label>
-                    <Input type="number" value={payAmount}
-                      placeholder={String(folio.balance_amount)}
-                      onFocus={() => { if (!payAmount) setPayAmount(String(folio.balance_amount)); }}
-                      onChange={(e) => setPayAmount(e.target.value)} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Mode</Label>
-                    <Select value={payMode} onValueChange={setPayMode}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {PAYMENT_MODES.map((m) => <SelectItem key={m} value={m}>{m.toUpperCase()}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Reference</Label>
-                    <Input value={payRef} onChange={(e) => setPayRef(e.target.value)} placeholder="Txn id, last 4, etc." />
-                  </div>
-                  <Button className="w-full" onClick={addPayment}>
-                    <Plus className="h-4 w-4 mr-1" /> Add payment
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Actions */}
-            <Card>
-              <CardHeader className="pb-3"><CardTitle className="text-sm uppercase tracking-wider">Actions</CardTitle></CardHeader>
-              <CardContent className="grid grid-cols-1 gap-2">
-                <Button variant="outline" onClick={printInvoice}>
-                  <Printer className="h-4 w-4 mr-2" /> Print bill
-                </Button>
-                <Button variant="outline" onClick={shareOnWhatsApp}>
-                  <Send className="h-4 w-4 mr-2" /> Share on WhatsApp
-                </Button>
-                {isOpen && (
-                  <Button onClick={handleCheckout}>
-                    <CheckCircle2 className="h-4 w-4 mr-2" /> Checkout
-                  </Button>
-                )}
-                {isOpen && canVoid && (
-                  <Button variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10" onClick={handleVoidClick}>
-                    <Ban className="h-4 w-4 mr-2" /> Void folio
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        {/* EMAIL DIALOG */}
+        <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Email invoice</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-xs">To *</Label>
+                <Input type="email" value={emailTo} onChange={(e) => setEmailTo(e.target.value)} placeholder="guest@example.com" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Subject</Label>
+                <Input value={emailSubject} onChange={(e) => setEmailSubject(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Message</Label>
+                <Textarea rows={6} value={emailBody} onChange={(e) => setEmailBody(e.target.value)} />
+              </div>
+              <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
+                Download the PDF first, then attach it in your email client.
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEmailOpen(false)}>Cancel</Button>
+              <Button onClick={sendEmail} style={{ background: TEAL, color: "#fff" }}>
+                <Mail className="h-4 w-4 mr-1" /> Open email client
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* ADD CHARGE */}
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
