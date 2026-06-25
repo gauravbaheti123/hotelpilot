@@ -1139,3 +1139,48 @@ function Row({ k, v, bold, highlight }: { k: string; v: React.ReactNode; bold?: 
     </div>
   );
 }
+
+function ChargeGroup({
+  title, rows, subtotal, isOpen, onRemove, isGst,
+}: {
+  title: string;
+  rows: Charge[];
+  subtotal: number;
+  isOpen: boolean;
+  onRemove: (id: string) => void;
+  isGst: boolean;
+}) {
+  if (rows.length === 0) return null;
+  return (
+    <div>
+      <div className="mb-1 flex items-baseline justify-between border-b pb-1">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-foreground/80">{title}</h4>
+      </div>
+      <div className="divide-y">
+        {rows.map((c) => (
+          <div key={c.id} className="flex items-start gap-2 py-1.5 text-sm">
+            <div className="flex-1 min-w-0">
+              <div className="truncate">{c.description}</div>
+              <div className="text-[11px] text-muted-foreground">
+                {Number(c.qty)} × {inr(c.rate)}
+                {isGst && c.charge_type !== "discount" ? ` · GST ${Number(c.gst_rate)}%` : ""}
+              </div>
+            </div>
+            <div className={`w-28 text-right tabular-nums ${c.charge_type === "discount" ? "text-emerald-700" : ""}`}>
+              {inr(c.amount)}
+            </div>
+            {isOpen && (
+              <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive shrink-0" onClick={() => onRemove(c.id)}>
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="mt-1 flex justify-between border-t pt-1 text-sm font-semibold">
+        <span className="text-muted-foreground">Subtotal</span>
+        <span className="tabular-nums">{inr(subtotal)}</span>
+      </div>
+    </div>
+  );
+}
