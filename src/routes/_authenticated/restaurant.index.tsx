@@ -49,6 +49,38 @@ function RestaurantPage() {
   async function load() {
     if (!current) return;
     setLoading(true);
+    // Backfill: ensure every restaurant_copy KOT (not void/wiped) has a credit row.
+    // The DB trigger only fires when status flips to 'billed'; we want all restaurant
+    // KOTs visible immediately, including those still 'open' / 'printed' / 'served'.
+    const { data: rKots } = await supabase
+      .from("kot_orders")
+      .select("id,property_id,booking_id,room_id,total_amount,kot_number,created_at,status")
+      .eq("property_id", current.id)
+      .eq("kot_copy", "restaurant_copy")
+      .eq("is_wiped", false)
+      .neq("status", "void");
+    if (rKots && rKots.length > 0) {
+      const ids = rKots.map((k: any) => k.id);
+      const { data: existing } = await supabase
+        .from("restaurant_credits")
+        .select("kot_order_id")
+        .in("kot_order_id", ids);
+      const have = new Set((existing ?? []).map((x: any) => x.kot_order_id));
+      const missing = rKots.filter((k: any) => !have.has(k.id));
+      if (missing.length > 0) {
+        await supabase.from("restaurant_credits").insert(
+          missing.map((k: any) => ({
+            property_id: k.property_id,
+            booking_id: k.booking_id,
+            room_id: k.room_id,
+            kot_order_id: k.id,
+            amount: Number(k.total_amount ?? 0),
+            date: (k.created_at ?? new Date().toISOString()).slice(0, 10),
+            description: `Auto-credit from KOT ${k.kot_number ?? k.id}`,
+          })) as any,
+        );
+      }
+    }
     const { data, error } = await supabase
       .from("restaurant_credits")
       .select("id,date,amount,description,is_settled,kot_order_id,booking_id,room_id")
