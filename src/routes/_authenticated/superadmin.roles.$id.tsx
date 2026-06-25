@@ -15,42 +15,56 @@ export const Route = createFileRoute("/_authenticated/superadmin/roles/$id")({
   component: EditRolePage,
 });
 
-const MODULES: { key: string; label: string }[] = [
-  { key: "dashboard", label: "Dashboard" },
-  { key: "bookings", label: "Bookings" },
-  { key: "calendar", label: "Calendar" },
-  { key: "inhouse", label: "In-house" },
-  { key: "food_kot", label: "Food / KOT" },
-  { key: "pos_sundry", label: "POS / Sundry" },
-  { key: "invoices", label: "Invoices" },
-  { key: "restaurant_billing", label: "Restaurant Billing" },
-  { key: "reports_daily", label: "Reports — Daily" },
-  { key: "reports_analytics", label: "Reports — Analytics" },
-  { key: "reports_sales", label: "Reports — Sales" },
-  { key: "reports_gst", label: "Reports — GST" },
-  { key: "night_audit", label: "Night Audit" },
-  { key: "room_board", label: "Room Board" },
-  { key: "housekeeping_tasks", label: "Housekeeping Tasks" },
-  { key: "guest_crm", label: "Guest CRM" },
-  { key: "communications", label: "Communications" },
-  { key: "whatsapp_inbox", label: "WhatsApp Inbox" },
-  { key: "inventory", label: "Inventory" },
-  { key: "masters_rooms", label: "Masters — Rooms" },
-  { key: "masters_tariff", label: "Masters — Tariff" },
-  { key: "masters_menu", label: "Masters — Menu" },
-  { key: "masters_halls", label: "Masters — Halls" },
-  { key: "masters_staff", label: "Masters — Staff" },
-  { key: "masters_printers", label: "Masters — Printers" },
-  { key: "masters_expense_categories", label: "Masters — Expense Categories" },
-  { key: "masters_ota_channels", label: "Masters — OTA Channels" },
-  { key: "channel_manager", label: "Channel Manager" },
-  { key: "properties", label: "Properties" },
-  { key: "staff_hr", label: "Staff HR" },
-  { key: "payroll", label: "Payroll" },
-  { key: "security_wipe", label: "Security / Wipe" },
-  { key: "superadmin_panel", label: "Superadmin Panel" },
+const MODULE_LABELS: Record<string, string> = {
+  dashboard: "Dashboard",
+  bookings: "Bookings",
+  calendar: "Calendar",
+  inhouse: "In-house",
+  food_kot: "Food & KOT",
+  pos_sundry: "POS / Sundry",
+  invoices: "Invoices",
+  restaurant_billing: "Restaurant Billing",
+  reports_daily: "Reports — Daily",
+  reports_analytics: "Reports — Analytics",
+  reports_sales: "Reports — Sales",
+  reports_gst: "Reports — GST",
+  night_audit: "Night Audit",
+  room_board: "Room Board",
+  housekeeping_tasks: "Housekeeping Tasks",
+  guest_crm: "Guest CRM",
+  communications: "Communications",
+  whatsapp_inbox: "WhatsApp Inbox",
+  inventory: "Inventory",
+  masters_rooms: "Masters — Rooms",
+  masters_tariff: "Masters — Tariff",
+  masters_menu: "Masters — Menu",
+  masters_halls: "Masters — Halls",
+  masters_staff: "Masters — Staff",
+  masters_printers: "Masters — Printers",
+  masters_expense_categories: "Masters — Expenses",
+  masters_ota_channels: "Masters — OTA Channels",
+  channel_manager: "Channel Manager",
+  properties: "Properties",
+  staff_hr: "Staff HR",
+  payroll: "Payroll",
+  security_wipe: "Security / Wipe",
+  superadmin_panel: "Superadmin Panel",
+};
+
+const SECTIONS: { title: string; modules: string[] }[] = [
+  { title: "Front Desk", modules: ["dashboard", "bookings", "calendar", "inhouse"] },
+  { title: "Food & KOT", modules: ["food_kot", "pos_sundry"] },
+  { title: "Billing", modules: ["invoices", "restaurant_billing"] },
+  { title: "Reports", modules: ["reports_daily", "reports_analytics", "reports_sales", "reports_gst", "night_audit"] },
+  { title: "Housekeeping", modules: ["room_board", "housekeeping_tasks"] },
+  { title: "Guests", modules: ["guest_crm", "communications", "whatsapp_inbox"] },
+  { title: "Inventory", modules: ["inventory"] },
+  { title: "Masters", modules: ["masters_rooms", "masters_tariff", "masters_menu", "masters_halls", "masters_staff", "masters_printers", "masters_expense_categories", "masters_ota_channels"] },
+  { title: "Admin", modules: ["channel_manager", "properties", "staff_hr", "payroll", "security_wipe", "superadmin_panel"] },
 ];
+
 const ACTIONS = ["view", "create", "edit", "delete"] as const;
+const ALL_MODULES = SECTIONS.flatMap((s) => s.modules);
 type Action = (typeof ACTIONS)[number];
 
 interface Perm {
@@ -105,6 +119,23 @@ function EditRolePage() {
     });
   }
 
+  function toggleColumn(action: Action, value: boolean) {
+    setAllowed((s) => {
+      const next = { ...s };
+      for (const m of ALL_MODULES) {
+        const p = byKey[`${m}:${action}`];
+        if (p) next[p.id] = value;
+      }
+      return next;
+    });
+  }
+
+  const columnAll = (action: Action) =>
+    ALL_MODULES.every((m) => {
+      const p = byKey[`${m}:${action}`];
+      return p ? !!allowed[p.id] : true;
+    });
+
   async function save() {
     setSaving(true);
     // upsert each permission row
@@ -139,64 +170,89 @@ function EditRolePage() {
   }
 
   return (
-    <AppShell title="Edit Role">
-      <div className="max-w-5xl space-y-4">
+    <AppShell title="Edit Permissions">
+      <div className="max-w-6xl space-y-4">
         <Button asChild variant="ghost" size="sm">
           <Link to="/superadmin/roles"><ArrowLeft className="h-4 w-4 mr-1" /> Back to roles</Link>
         </Button>
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">{role?.name ?? "Role"}</h2>
-          <p className="text-sm text-muted-foreground">{role?.description ?? "Toggle per-module permissions and save."}</p>
+        <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-background/95 backdrop-blur border-b flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight">
+              Edit Permissions — {role?.name ?? "Role"}
+            </h2>
+            {role?.description ? (
+              <p className="text-sm text-muted-foreground">{role.description}</p>
+            ) : null}
+          </div>
+          <Button onClick={save} disabled={saving}>
+            {saving ? "Saving…" : "Save Permissions"}
+          </Button>
         </div>
         <Card>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Module</TableHead>
+                  <TableHead className="w-[40%]">Module</TableHead>
                   {ACTIONS.map((a) => (
-                    <TableHead key={a} className="text-center capitalize">{a}</TableHead>
+                    <TableHead key={a} className="text-center capitalize">
+                      <div className="flex flex-col items-center gap-1">
+                        <span>{a}</span>
+                        <Checkbox
+                          checked={columnAll(a)}
+                          onCheckedChange={(v) => toggleColumn(a, !!v)}
+                          aria-label={`Select all ${a}`}
+                        />
+                      </div>
+                    </TableHead>
                   ))}
-                  <TableHead className="text-right">All</TableHead>
+                  <TableHead className="text-center">All</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {MODULES.map((m) => {
-                  const rowAll = ACTIONS.every((a) => allowed[byKey[`${m.key}:${a}`]?.id]);
-                  return (
-                    <TableRow key={m.key}>
-                      <TableCell className="font-medium">{m.label}</TableCell>
-                      {ACTIONS.map((a) => {
-                        const p = byKey[`${m.key}:${a}`];
-                        return (
-                          <TableCell key={a} className="text-center">
-                            {p ? (
-                              <Checkbox
-                                checked={!!allowed[p.id]}
-                                onCheckedChange={(v) => toggle(p.id, !!v)}
-                              />
-                            ) : null}
-                          </TableCell>
-                        );
-                      })}
-                      <TableCell className="text-right">
-                        <Checkbox
-                          checked={rowAll}
-                          onCheckedChange={(v) => toggleRow(m.key, !!v)}
-                        />
+                {SECTIONS.map((section) => (
+                  <>
+                    <TableRow key={`sec-${section.title}`} className="bg-muted/40 hover:bg-muted/40">
+                      <TableCell colSpan={ACTIONS.length + 2} className="font-semibold text-xs uppercase tracking-wider text-muted-foreground py-2">
+                        {section.title}
                       </TableCell>
                     </TableRow>
-                  );
-                })}
+                    {section.modules.map((mKey) => {
+                      const rowAll = ACTIONS.every((a) => {
+                        const p = byKey[`${mKey}:${a}`];
+                        return p ? !!allowed[p.id] : true;
+                      });
+                      return (
+                        <TableRow key={mKey}>
+                          <TableCell className="font-medium">{MODULE_LABELS[mKey] ?? mKey}</TableCell>
+                          {ACTIONS.map((a) => {
+                            const p = byKey[`${mKey}:${a}`];
+                            return (
+                              <TableCell key={a} className="text-center">
+                                {p ? (
+                                  <Checkbox
+                                    checked={!!allowed[p.id]}
+                                    onCheckedChange={(v) => toggle(p.id, !!v)}
+                                  />
+                                ) : null}
+                              </TableCell>
+                            );
+                          })}
+                          <TableCell className="text-center">
+                            <Checkbox
+                              checked={rowAll}
+                              onCheckedChange={(v) => toggleRow(mKey, !!v)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </>
+                ))}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
-        <div className="flex justify-end">
-          <Button onClick={save} disabled={saving}>
-            {saving ? "Saving…" : "Save Permissions"}
-          </Button>
-        </div>
       </div>
     </AppShell>
   );
