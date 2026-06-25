@@ -625,3 +625,15 @@ function fmtDate(iso: string) {
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   return `${dd}-${mm}-${d.getFullYear()}`;
 }
+
+function blankGuest(kind: "adult" | "child"): AdditionalGuest {
+  return {
+    key: Math.random().toString(36).slice(2),
+    kind,
+    name: "",
+    age: "",
+    id_proof_type: kind === "adult" ? "aadhaar" : "",
+    id_proof_number: "",
+    relation: kind === "child" ? "Child" : "",
+  };
+}
