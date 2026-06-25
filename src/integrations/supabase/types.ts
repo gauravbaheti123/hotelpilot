@@ -1410,6 +1410,7 @@ export type Database = {
           company: string | null
           country: string | null
           created_at: string
+          created_by: string | null
           dob: string | null
           email: string | null
           gender: string | null
@@ -1441,6 +1442,7 @@ export type Database = {
           company?: string | null
           country?: string | null
           created_at?: string
+          created_by?: string | null
           dob?: string | null
           email?: string | null
           gender?: string | null
@@ -1472,6 +1474,7 @@ export type Database = {
           company?: string | null
           country?: string | null
           created_at?: string
+          created_by?: string | null
           dob?: string | null
           email?: string | null
           gender?: string | null
@@ -1498,6 +1501,13 @@ export type Database = {
           wiped_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "guests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "guests_property_id_fkey"
             columns: ["property_id"]
