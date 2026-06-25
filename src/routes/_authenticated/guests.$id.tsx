@@ -30,6 +30,9 @@ interface Guest {
   company: string | null; gst_number: string | null;
   id_proof_type: string | null; id_proof_number: string | null;
   notes: string | null; tags: string[] | null; is_blacklisted: boolean;
+  id_document_url?: string | null;
+  id_document_name?: string | null;
+  id_document_uploaded_at?: string | null;
 }
 
 interface Stay {
