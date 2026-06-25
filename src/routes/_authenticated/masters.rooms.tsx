@@ -493,6 +493,7 @@ function RoomsMasterPage() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+              </div>
             )}
           </CardHeader>
           <CardContent>
