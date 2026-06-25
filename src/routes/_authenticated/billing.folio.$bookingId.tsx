@@ -14,7 +14,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, hasRole } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import {
   FOLIO_STATUS_TONE,
@@ -22,7 +22,7 @@ import {
   inr,
   recomputeFolio,
 } from "@/lib/billing";
-import { ArrowLeft, Plus, Printer, Trash2, Wallet, CheckCircle2, Ban } from "lucide-react";
+import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Send, Hotel, FileText, Receipt } from "lucide-react";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
@@ -56,7 +56,16 @@ interface BookingCtx {
   guests: { name: string; mobile: string | null; gst_number: string | null; company: string | null } | null;
   booking_rooms: { id: string; rate: number; check_in: string; check_out: string; rooms: { room_number: string } | null; room_categories: { name: string } | null }[];
 }
-interface PropertyInfo { name: string; gst_number: string | null; address: string | null; }
+interface PropertyInfo {
+  name: string; gst_number: string | null; address: string | null;
+  city: string | null; state: string | null; pincode: string | null;
+  phone: string | null; email: string | null; wa_number: string | null;
+  logo_url: string | null;
+}
+interface BookingExtra {
+  adults?: number | null; children?: number | null;
+  guests?: { id_proof_type?: string | null; id_proof_number?: string | null; nationality?: string | null } | null;
+}
 
 interface PendingKot {
   id: string; kot_number: string; status: string;
