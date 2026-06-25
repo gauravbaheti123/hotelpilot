@@ -145,6 +145,12 @@ function NightAuditPage() {
         if (f.is_deleted || f.status === "void") return;
         if (!folioMap.has(f.booking_id)) folioMap.set(f.booking_id, f.id);
       });
+      // One-time correction: auto-create active folio for any booking missing one.
+      const missing = bookingIds.filter((b) => !folioMap.has(b));
+      for (const bId of missing) {
+        const { data: fid, error: fErr } = await supabase.rpc("get_or_create_folio", { _booking_id: bId });
+        if (!fErr && fid) folioMap.set(bId, fid as unknown as string);
+      }
     }
     setTariffPosts(checkedIn.map((c) => ({
       bookingId: c.booking_id,
