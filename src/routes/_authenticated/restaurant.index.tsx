@@ -268,6 +268,25 @@ function RestaurantPage() {
   return (
     <AppShell title="Restaurant Billing">
       <div className="p-4 space-y-4 max-w-6xl">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card><CardContent className="pt-4">
+            <div className="text-xs text-muted-foreground">Total Food Orders</div>
+            <div className="text-2xl font-semibold">{monthRows.length}</div>
+            <div className="text-[10px] text-muted-foreground">{MONTHS[month - 1]} {year}</div>
+          </CardContent></Card>
+          <Card><CardContent className="pt-4">
+            <div className="text-xs text-muted-foreground">Total Amount</div>
+            <div className="text-2xl font-semibold">₹{totalMonth.toLocaleString()}</div>
+          </CardContent></Card>
+          <Card><CardContent className="pt-4">
+            <div className="text-xs text-muted-foreground">Settled</div>
+            <div className="text-2xl font-semibold text-emerald-600">₹{totalSettled.toLocaleString()}</div>
+          </CardContent></Card>
+          <Card><CardContent className="pt-4">
+            <div className="text-xs text-muted-foreground">Outstanding</div>
+            <div className={`text-2xl font-semibold ${totalActive > 0 ? "text-destructive" : ""}`}>₹{totalActive.toLocaleString()}</div>
+          </CardContent></Card>
+        </div>
         <Tabs defaultValue="active">
           <TabsList>
             <TabsTrigger value="active">Active Credits</TabsTrigger>
@@ -294,15 +313,17 @@ function RestaurantPage() {
                       <TableHead>KOT Ref</TableHead>
                       <TableHead>Items</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Kitchen</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loading && (
-                      <TableRow><TableCell colSpan={7} className="text-center py-6 text-sm text-muted-foreground">Loading…</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center py-6 text-sm text-muted-foreground">Loading…</TableCell></TableRow>
                     )}
                     {!loading && monthRows.length === 0 && (
-                      <TableRow><TableCell colSpan={7} className="text-center py-6 text-sm text-muted-foreground">No restaurant credits this month</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center py-6 text-sm text-muted-foreground">No food orders this month</TableCell></TableRow>
                     )}
                     {monthRows.map((r) => {
                       const e = enriched[r.id] ?? {};
@@ -314,10 +335,18 @@ function RestaurantPage() {
                           <TableCell className="text-xs font-mono">{e.kot_number ?? "—"}</TableCell>
                           <TableCell className="text-xs max-w-[280px] truncate">{e.items ?? "—"}</TableCell>
                           <TableCell className="text-right font-medium">₹{Number(r.amount).toFixed(2)}</TableCell>
+                          <TableCell className="text-xs capitalize">{e.kitchen ?? "—"}</TableCell>
                           <TableCell>
                             {r.is_settled
                               ? <Badge variant="secondary">Settled</Badge>
                               : <Badge variant="default">Open</Badge>}
+                          </TableCell>
+                          <TableCell>
+                            {!r.is_settled && (
+                              <Button size="sm" variant="outline" onClick={() => settleOne(r.id, Number(r.amount))}>
+                                Settle
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
