@@ -18,11 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, hasRole } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { inr, recomputeFolio } from "@/lib/billing";
 import { fireTrigger } from "@/lib/whatsapp";
-import { AlertTriangle, Plus, Trash2, Loader2 } from "lucide-react";
+import { AlertTriangle, Plus, Trash2, Loader2, ArrowRightLeft } from "lucide-react";
+import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 
 const PAY_MODES = [
   { v: "cash", label: "Cash" },
@@ -60,7 +61,9 @@ interface SplitRow {
 }
 
 export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props) {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const canShiftMis = hasRole(roles, "manager") || hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const [misOpen, setMisOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [booking, setBooking] = useState<any>(null);
