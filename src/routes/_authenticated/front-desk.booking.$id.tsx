@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import { supabase } from "@/integrations/supabase/client";
+import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import {
