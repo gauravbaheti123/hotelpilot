@@ -43,11 +43,13 @@ const MODULE_LABELS: Record<string, string> = {
   masters_printers: "Masters — Printers",
   masters_expense_categories: "Masters — Expenses",
   masters_ota_channels: "Masters — OTA Channels",
+  masters_sundry_items: "Masters — Sundry Items",
   channel_manager: "Channel Manager",
   properties: "Properties",
   staff_hr: "Staff HR",
   payroll: "Payroll",
-  security_wipe: "Security / Wipe",
+  security_wipe: "Security",
+  settings_whatsapp: "Settings — WhatsApp",
   superadmin_panel: "Superadmin Panel",
 };
 
@@ -59,8 +61,8 @@ const SECTIONS: { title: string; modules: string[] }[] = [
   { title: "Housekeeping", modules: ["room_board", "housekeeping_tasks"] },
   { title: "Guests", modules: ["guest_crm", "communications", "whatsapp_inbox"] },
   { title: "Inventory", modules: ["inventory"] },
-  { title: "Masters", modules: ["masters_rooms", "masters_tariff", "masters_menu", "masters_halls", "masters_staff", "masters_printers", "masters_expense_categories", "masters_ota_channels"] },
-  { title: "Admin", modules: ["channel_manager", "properties", "staff_hr", "payroll", "security_wipe", "superadmin_panel"] },
+  { title: "Masters", modules: ["masters_rooms", "masters_tariff", "masters_menu", "masters_halls", "masters_staff", "masters_printers", "masters_expense_categories", "masters_ota_channels", "masters_sundry_items"] },
+  { title: "Admin", modules: ["channel_manager", "properties", "staff_hr", "payroll", "security_wipe", "settings_whatsapp", "superadmin_panel"] },
 ];
 
 const ACTIONS = ["view", "create", "edit", "delete"] as const;
@@ -190,13 +192,13 @@ function EditRolePage() {
         </div>
         <Card>
           <CardContent className="p-0">
-            <Table>
+            <Table style={{ tableLayout: "fixed" }} className="w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[40%]">Module</TableHead>
+                  <TableHead style={{ width: "35%" }}>Module</TableHead>
                   {ACTIONS.map((a) => (
-                    <TableHead key={a} className="text-center capitalize">
-                      <div className="flex flex-col items-center gap-1">
+                    <TableHead key={a} style={{ width: "13%" }} className="text-center capitalize">
+                      <div className="flex flex-col items-center justify-center gap-1">
                         <span>{a}</span>
                         <Checkbox
                           checked={columnAll(a)}
@@ -206,7 +208,7 @@ function EditRolePage() {
                       </div>
                     </TableHead>
                   ))}
-                  <TableHead className="text-center">All</TableHead>
+                  <TableHead style={{ width: "13%" }} className="text-center">All</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -229,20 +231,24 @@ function EditRolePage() {
                             const p = byKey[`${mKey}:${a}`];
                             return (
                               <TableCell key={a} className="text-center">
-                                {p ? (
-                                  <Checkbox
-                                    checked={!!allowed[p.id]}
-                                    onCheckedChange={(v) => toggle(p.id, !!v)}
-                                  />
-                                ) : null}
+                                <div className="flex justify-center">
+                                  {p ? (
+                                    <Checkbox
+                                      checked={!!allowed[p.id]}
+                                      onCheckedChange={(v) => toggle(p.id, !!v)}
+                                    />
+                                  ) : null}
+                                </div>
                               </TableCell>
                             );
                           })}
                           <TableCell className="text-center">
-                            <Checkbox
-                              checked={rowAll}
-                              onCheckedChange={(v) => toggleRow(mKey, !!v)}
-                            />
+                            <div className="flex justify-center">
+                              <Checkbox
+                                checked={rowAll}
+                                onCheckedChange={(v) => toggleRow(mKey, !!v)}
+                              />
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
