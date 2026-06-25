@@ -1262,7 +1262,7 @@ function FolioPage() {
         </div>
 
         {/* Collect payment (screen only) */}
-        {isOpen && Number(folio.balance_amount) > 0.01 && (
+        {canEditNow && Number(folio.balance_amount) > 0.01 && (
           <Card className="print:hidden">
             <CardHeader className="pb-3"><CardTitle className="text-sm uppercase tracking-wider">Collect Payment</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 gap-2 sm:grid-cols-4">
