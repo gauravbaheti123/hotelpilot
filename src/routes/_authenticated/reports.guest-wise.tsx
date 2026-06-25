@@ -48,9 +48,10 @@ function Page() {
       const gid = b.guest_id; if (!gid) continue;
       const inD = new Date(b.check_in), outD = new Date(b.check_out);
       const nights = Math.max(1, Math.round((+outD - +inD) / 86400000));
-      const ex = m.get(gid) ?? {
+      const ex: GuestRow = m.get(gid) ?? {
         _id: gid, name: b.guests?.name ?? "—", mobile: b.guests?.mobile ?? "",
-        visits: 0, nights: 0, spending: 0, last_visit: b.check_in, outstanding: 0, bookings: [],
+        visits: 0, nights: 0, spending: 0, last_visit: b.check_in, outstanding: 0,
+        bookings: [] as BookingLite[],
       };
       ex.visits += 1; ex.nights += nights;
       ex.spending += Number(b.total_amount || 0);
