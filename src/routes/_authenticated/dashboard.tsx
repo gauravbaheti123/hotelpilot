@@ -12,7 +12,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users } from "lucide-react";
+import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrossed, ChevronDown, ChevronRight } from "lucide-react";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -39,6 +39,24 @@ type ScheduleRow = {
   balance_amount: number;
   guest_name: string | null;
   room_numbers: string;
+};
+
+type PendingFood = {
+  bookingId: string;
+  amount: number;
+  count: number;
+  lastAt: string | null;
+  items: string;
+};
+
+type PendingFoodRow = {
+  roomId: string;
+  roomNumber: string;
+  bookingId: string;
+  guestName: string | null;
+  amount: number;
+  items: string;
+  lastAt: string | null;
 };
 
 function todayISO() {
@@ -127,6 +145,9 @@ function OwnerDashboard({
   const [staff, setStaff] = useState<StaffOpt[]>([]);
   const [modalRoom, setModalRoom] = useState<Room | null>(null);
   const [checkoutBookingId, setCheckoutBookingId] = useState<string | null>(null);
+  const [pendingFoodByRoom, setPendingFoodByRoom] = useState<Map<string, PendingFood>>(new Map());
+  const [pendingFoodRows, setPendingFoodRows] = useState<PendingFoodRow[]>([]);
+  const [showPendingFood, setShowPendingFood] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -176,6 +197,56 @@ function OwnerDashboard({
       setArrivals((arr.data ?? []).map(mapRow));
       setDepartures((dep.data ?? []).map(mapRow));
       setRooms((rms.data ?? []) as Room[]);
+
+      // Pending food per room (open/printed/served, hotel copy only to avoid double-counting)
+      const { data: kots } = await supabase
+        .from("kot_orders")
+        .select("id, booking_id, room_id, total_amount, created_at, status, kot_items(item_name, qty)")
+        .eq("property_id", propertyId)
+        .eq("kot_copy", "hotel_copy")
+        .in("status", ["open", "printed", "served"]);
+      const pfMap = new Map<string, PendingFood>();
+      (kots ?? []).forEach((k: any) => {
+        if (!k.room_id || !k.booking_id) return;
+        const prev = pfMap.get(k.room_id) ?? { bookingId: k.booking_id, amount: 0, count: 0, lastAt: null, items: "" };
+        const itemSummary = (k.kot_items ?? []).map((i: any) => `${i.item_name}×${i.qty}`).join(", ");
+        prev.amount += Number(k.total_amount || 0);
+        prev.count += 1;
+        prev.lastAt = !prev.lastAt || k.created_at > prev.lastAt ? k.created_at : prev.lastAt;
+        prev.items = prev.items ? `${prev.items}; ${itemSummary}` : itemSummary;
+        prev.bookingId = k.booking_id;
+        pfMap.set(k.room_id, prev);
+      });
+      setPendingFoodByRoom(pfMap);
+
+      // Build per-row list for the collapsible section
+      const guestByBooking = new Map<string, string | null>();
+      (arr.data ?? []).concat(dep.data ?? []).forEach((b: any) => guestByBooking.set(b.id, b.guests?.name ?? null));
+      const roomNumberById = new Map<string, string>((rms.data ?? []).map((r: any) => [r.id, r.room_number]));
+      const missingBookingIds = Array.from(new Set(Array.from(pfMap.values()).map((v) => v.bookingId)))
+        .filter((bid) => !guestByBooking.has(bid));
+      if (missingBookingIds.length > 0) {
+        const { data: gb } = await supabase
+          .from("bookings")
+          .select("id, guests:guest_id(name)")
+          .in("id", missingBookingIds);
+        (gb ?? []).forEach((b: any) => guestByBooking.set(b.id, b.guests?.name ?? null));
+      }
+      const rows: PendingFoodRow[] = [];
+      pfMap.forEach((v, roomId) => {
+        if (v.amount <= 0) return;
+        rows.push({
+          roomId,
+          roomNumber: roomNumberById.get(roomId) ?? "—",
+          bookingId: v.bookingId,
+          guestName: guestByBooking.get(v.bookingId) ?? null,
+          amount: v.amount,
+          items: v.items,
+          lastAt: v.lastAt,
+        });
+      });
+      rows.sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }));
+      setPendingFoodRows(rows);
   }, [propertyId]);
 
   useEffect(() => { reload(); }, [reload]);
@@ -217,7 +288,12 @@ function OwnerDashboard({
                 rooms={rooms}
                 categories={categories}
                 occupiedRoomIds={occupiedRoomIds}
+                pendingFoodByRoom={pendingFoodByRoom}
                 onPick={(r) => setModalRoom(r)}
+                onPickFood={(r) => {
+                  const pf = pendingFoodByRoom.get(r.id);
+                  if (pf?.bookingId) navigate({ to: "/front-desk/booking/$id", params: { id: pf.bookingId } });
+                }}
               />
             )}
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
@@ -225,8 +301,72 @@ function OwnerDashboard({
               <LegendDot style={{ backgroundColor: "#dc2626" }} label="Occupied" />
               <LegendDot style={{ backgroundColor: "#d97706" }} label="Dirty" />
               <LegendDot style={{ backgroundColor: "#6b7280" }} label="Maintenance" />
+              <LegendDot style={{ backgroundColor: "#f59e0b" }} label="Pending food" />
             </div>
           </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between text-left"
+              onClick={() => setShowPendingFood((v) => !v)}
+            >
+              <CardTitle className="text-base flex items-center gap-2">
+                {showPendingFood ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                Pending Food Orders
+                <span className="inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 rounded-full bg-amber-500 text-white text-xs font-semibold">
+                  {pendingFoodRows.length}
+                </span>
+              </CardTitle>
+              {!showPendingFood && pendingFoodRows.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  ₹{pendingFoodRows.reduce((a, r) => a + r.amount, 0).toLocaleString("en-IN")} unbilled
+                </span>
+              )}
+            </button>
+          </CardHeader>
+          {showPendingFood && (
+            <CardContent>
+              {pendingFoodRows.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No pending food orders.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs uppercase text-muted-foreground">
+                        <th className="py-2 pr-3">Room</th>
+                        <th className="py-2 pr-3">Guest</th>
+                        <th className="py-2 pr-3">Items</th>
+                        <th className="py-2 pr-3 text-right">Amount</th>
+                        <th className="py-2 pr-3">Last order</th>
+                        <th className="py-2 pr-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingFoodRows.map((r) => (
+                        <tr key={r.roomId} className="border-t">
+                          <td className="py-2 pr-3 font-semibold">{r.roomNumber}</td>
+                          <td className="py-2 pr-3">{r.guestName ?? "—"}</td>
+                          <td className="py-2 pr-3 max-w-[280px] truncate" title={r.items}>{r.items || "—"}</td>
+                          <td className="py-2 pr-3 text-right font-medium">₹{r.amount.toLocaleString("en-IN")}</td>
+                          <td className="py-2 pr-3 text-xs text-muted-foreground">
+                            {r.lastAt ? new Date(r.lastAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "—"}
+                          </td>
+                          <td className="py-2 pr-3 text-right">
+                            <Button asChild size="sm" variant="outline">
+                              <Link to="/front-desk/booking/$id" params={{ id: r.bookingId }}>Add to Bill</Link>
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          )}
         </Card>
 
         <div className="grid gap-4 lg:grid-cols-2">
@@ -275,12 +415,14 @@ function OwnerDashboard({
 }
 
 function RoomGroups({
-  rooms, categories, occupiedRoomIds, onPick,
+  rooms, categories, occupiedRoomIds, pendingFoodByRoom, onPick, onPickFood,
 }: {
   rooms: Room[];
   categories: RoomCategory[];
   occupiedRoomIds: Set<string>;
+  pendingFoodByRoom: Map<string, PendingFood>;
   onPick: (r: Room) => void;
+  onPickFood: (r: Room) => void;
 }) {
   const byCat = new Map<string, Room[]>();
   const uncategorised: Room[] = [];
@@ -305,16 +447,33 @@ function RoomGroups({
           <div className="grid gap-2 grid-cols-[repeat(auto-fill,minmax(80px,1fr))]">
             {g.rooms.map((r) => {
               const { bg, label } = roomTileStyle(r, occupiedRoomIds.has(r.id));
+              const pf = pendingFoodByRoom.get(r.id);
+              const hasFood = !!pf && pf.amount > 0;
               return (
-                <button
+                <div
                   key={r.id}
-                  type="button"
-                  onClick={() => onPick(r)}
-                  className={`rounded-md px-2 py-3 text-center text-white transition hover:opacity-90 hover:ring-2 hover:ring-offset-1 ${bg}`}
+                  className={`overflow-hidden rounded-md text-white transition hover:opacity-95 hover:ring-2 hover:ring-offset-1 ${bg}`}
                 >
-                  <div className="text-sm font-semibold">{r.room_number}</div>
-                  <div className="text-[10px] uppercase tracking-wide opacity-90">{label}</div>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => onPick(r)}
+                    className="block w-full px-2 pt-3 pb-2 text-center"
+                  >
+                    <div className="text-sm font-semibold">{r.room_number}</div>
+                    <div className="text-[10px] uppercase tracking-wide opacity-90">{label}</div>
+                  </button>
+                  {hasFood && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); onPickFood(r); }}
+                      title={`${pf!.count} pending KOT${pf!.count > 1 ? "s" : ""} · click to view`}
+                      className="flex w-full items-center justify-center gap-1 bg-amber-500 px-1 py-0.5 text-[10px] font-semibold text-white hover:bg-amber-600"
+                    >
+                      <UtensilsCrossed className="h-3 w-3" />
+                      ₹{pf!.amount.toLocaleString("en-IN")}
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>
