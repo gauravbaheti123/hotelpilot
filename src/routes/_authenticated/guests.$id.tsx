@@ -37,11 +37,17 @@ interface Stay {
   check_in: string; check_out: string; total_amount: number;
 }
 
+interface Feedback {
+  id: string; feedback_date: string; overall_rating: number;
+  comments: string | null; source: string;
+}
+
 function GuestDetail() {
   const router = useRouter();
   const { id } = Route.useParams();
   const [g, setG] = useState<Guest | null>(null);
   const [stays, setStays] = useState<Stay[]>([]);
+  const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [tagsInput, setTagsInput] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -53,6 +59,10 @@ function GuestDetail() {
       .select("id,booking_number,status,check_in,check_out,total_amount")
       .eq("guest_id", id).order("check_in", { ascending: false }).limit(50);
     setStays((b ?? []) as Stay[]);
+    const { data: f } = await supabase.from("guest_feedback")
+      .select("id,feedback_date,overall_rating,comments,source")
+      .eq("guest_id", id).order("feedback_date", { ascending: false }).limit(20);
+    setFeedback((f ?? []) as Feedback[]);
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
@@ -174,6 +184,22 @@ function GuestDetail() {
                   {s.check_in} → {s.check_out} · {inr(s.total_amount)}
                 </div>
               </Link>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-3">
+          <CardHeader><CardTitle className="text-base">Feedback & reviews</CardTitle></CardHeader>
+          <CardContent className="p-0 divide-y">
+            {feedback.length === 0 && <p className="p-4 text-sm text-muted-foreground">No feedback received yet.</p>}
+            {feedback.map((f) => (
+              <div key={f.id} className="px-4 py-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium">★ {f.overall_rating}/5</div>
+                  <div className="text-xs text-muted-foreground">{f.feedback_date} · {f.source}</div>
+                </div>
+                {f.comments && <div className="text-xs text-muted-foreground mt-1">{f.comments}</div>}
+              </div>
             ))}
           </CardContent>
         </Card>
