@@ -981,6 +981,9 @@ function FolioPage() {
             Booking {booking.booking_number} · {booking.guests?.name ?? "—"}
           </div>
           <div className="ml-auto flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={printDraft}>
+              <Printer className="h-4 w-4 mr-1" /> Print Draft
+            </Button>
             <Button variant="outline" size="sm" onClick={printInvoice}>
               <Printer className="h-4 w-4 mr-1" /> Print
             </Button>
