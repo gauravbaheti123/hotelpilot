@@ -110,21 +110,24 @@ function KotDetailPage() {
 
   function printSlip(station?: string) {
     if (!k) return;
+    const esc = (s: unknown) => String(s ?? "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     const target = station ? k.kot_items.filter((i) => i.kot_station === station && !i.is_void) : k.kot_items.filter((i) => !i.is_void);
     const html = `
-      <html><head><title>${k.kot_number}</title>
+      <html><head><title>${esc(k.kot_number)}</title>
       <style>body{font:12px monospace;padding:8px;width:280px}h2{margin:0 0 4px;font-size:14px}hr{border:none;border-top:1px dashed #999;margin:6px 0}.row{display:flex;justify-content:space-between}</style>
       </head><body>
-      <h2>KOT ${k.kot_number}</h2>
+      <h2>KOT ${esc(k.kot_number)}</h2>
       <div>${new Date(k.created_at).toLocaleString()}</div>
-      <div>${k.kot_type === "room" ? `Room ${k.rooms?.room_number ?? "—"}` : `Table ${k.table_no ?? "—"}`}</div>
-      ${k.guest_name ? `<div>Guest: ${k.guest_name}</div>` : ""}
-      ${station ? `<div><strong>Station: ${station.toUpperCase()}</strong></div>` : ""}
+      <div>${k.kot_type === "room" ? `Room ${esc(k.rooms?.room_number ?? "—")}` : `Table ${esc(k.table_no ?? "—")}`}</div>
+      ${k.guest_name ? `<div>Guest: ${esc(k.guest_name)}</div>` : ""}
+      ${station ? `<div><strong>Station: ${esc(station.toUpperCase())}</strong></div>` : ""}
       <hr/>
-      ${target.map((i) => `<div class="row"><span>${i.qty} × ${i.item_name}</span><span>₹${(i.qty*i.rate).toFixed(0)}</span></div>${i.notes ? `<div style="padding-left:8px;color:#555">- ${i.notes}</div>` : ""}`).join("")}
+      ${target.map((i) => `<div class="row"><span>${i.qty} × ${esc(i.item_name)}</span><span>₹${(i.qty*i.rate).toFixed(0)}</span></div>${i.notes ? `<div style="padding-left:8px;color:#555">- ${esc(i.notes)}</div>` : ""}`).join("")}
       <hr/>
       <div class="row"><span>Total</span><span>₹${Number(k.total_amount).toFixed(2)}</span></div>
-      ${k.notes ? `<div><em>${k.notes}</em></div>` : ""}
+      ${k.notes ? `<div><em>${esc(k.notes)}</em></div>` : ""}
       </body></html>`;
     const w = window.open("", "_blank", "width=320,height=600");
     if (!w) return;
