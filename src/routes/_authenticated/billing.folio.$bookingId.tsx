@@ -26,6 +26,7 @@ import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, M
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
+import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
   head: () => ({ meta: [{ title: "Folio — HotelPilot" }] }),
@@ -371,6 +372,15 @@ function FolioPage() {
     const nextP = ((data ?? []) as unknown as Payment[]);
     await persistTotals(charges, nextP);
     toast.success("Payment recorded");
+    logActivity({
+      property_id: booking.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      ...ACTIVITY.PAYMENT_RECEIVED,
+      reference_id: booking.id,
+      reference_label: `${booking.booking_number} — ₹${amt} via ${payMode}`,
+      details: { amount: amt, mode: payMode, folio_id: folio.id },
+    });
     // WhatsApp payment receipt (best-effort)
     try {
       if (booking.guests?.mobile) {
