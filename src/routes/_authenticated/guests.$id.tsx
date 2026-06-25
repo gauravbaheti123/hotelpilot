@@ -191,6 +191,36 @@ function GuestDetail() {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader><CardTitle className="text-base">ID Document</CardTitle></CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {g.id_document_url ? (
+              <>
+                <div className="text-xs text-muted-foreground">
+                  {g.id_document_name ?? "Document"}
+                  {g.id_document_uploaded_at && (
+                    <> · uploaded {new Date(g.id_document_uploaded_at).toLocaleString()}</>
+                  )}
+                </div>
+                <a
+                  href={g.id_document_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-primary underline"
+                >
+                  View on Google Drive ↗
+                </a>
+              </>
+            ) : g.id_document_name ? (
+              <div className="text-xs text-muted-foreground">
+                {g.id_document_name} (Drive not configured)
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No document uploaded</p>
+            )}
+          </CardContent>
+        </Card>
+
         <Card className="lg:col-span-3">
           <CardHeader><CardTitle className="text-base">Feedback & reviews</CardTitle></CardHeader>
           <CardContent className="p-0 divide-y">
