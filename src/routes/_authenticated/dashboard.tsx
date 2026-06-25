@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -442,12 +443,13 @@ function RoomStatusModal({
           <div className="grid gap-3">
             <div className="grid gap-1.5">
               <Label>{kind === "dirty" ? "Cleaned by" : "Maintenance resolved by"}</Label>
-              <Select value={staffId} onValueChange={setStaffId}>
-                <SelectTrigger><SelectValue placeholder="Select staff (optional)" /></SelectTrigger>
-                <SelectContent>
-                  {staff.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={staffId}
+                onChange={setStaffId}
+                placeholder="Select staff (optional)"
+                searchPlaceholder="Search staff…"
+                options={staff.map((s) => ({ value: s.id, label: s.name }))}
+              />
             </div>
             <div className="grid gap-1.5">
               <Label>{kind === "dirty" ? "Cleaning notes" : "Resolution notes"}</Label>
