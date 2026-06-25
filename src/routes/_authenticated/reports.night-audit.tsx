@@ -1,0 +1,698 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AppShell } from "@/components/AppShell";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { useCurrentProperty } from "@/hooks/use-property";
+import { useAuth } from "@/hooks/use-auth";
+import { EmptyPropertyState } from "@/components/EmptyPropertyState";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { fetchDailySummary, fetchOccupancy, todayIso, PAYMENT_MODE_LABELS } from "@/lib/reports";
+import { inr } from "@/lib/billing";
+import { AlertTriangle, CheckCircle2, Lock, Printer, FileText } from "lucide-react";
+
+export const Route = createFileRoute("/_authenticated/reports/night-audit")({
+  head: () => ({ meta: [{ title: "Night Audit — HotelPilot" }] }),
+  component: NightAuditPage,
+});
+
+interface OccupiedRow {
+  booking_id: string;
+  room_id: string;
+  room_number: string;
+  guest_name: string | null;
+  check_in: string;
+  check_out: string;
+  category_id: string | null;
+}
+
+interface OpenKotRow {
+  id: string;
+  kot_number: string;
+  room_number: string | null;
+  total_amount: number;
+  status: string;
+  items: string;
+}
+
+interface UnsettledRow {
+  id: string;
+  invoice_number: string;
+  booking_id: string;
+  guest_name: string | null;
+  balance_amount: number;
+}
+
+interface AuditReport {
+  id: string;
+  audit_date: string;
+  closed_by: string | null;
+  closed_at: string;
+  occupancy_count: number;
+  rooms_total: number;
+  total_revenue: number;
+  total_collections: number;
+  total_expenses: number;
+  cash_difference: number;
+  closing_cash_actual: number;
+  notes: string | null;
+  report_data: any;
+}
+
+function NightAuditPage() {
+  const { currentId: propertyId, current } = useCurrentProperty();
+  const { user, roles } = useAuth();
+  const isOwner = roles.includes("owner") || roles.includes("superadmin");
+
+  const [date, setDate] = useState<string>(todayIso());
+  const [notes, setNotes] = useState("");
+  const [actualCash, setActualCash] = useState<string>("");
+  const [busy, setBusy] = useState(false);
+
+  const [occupied, setOccupied] = useState<OccupiedRow[]>([]);
+  const [openKots, setOpenKots] = useState<OpenKotRow[]>([]);
+  const [unsettled, setUnsettled] = useState<UnsettledRow[]>([]);
+  const [byMode, setByMode] = useState<Record<string, number>>({});
+  const [expenses, setExpenses] = useState(0);
+  const [revenueRoom, setRevenueRoom] = useState(0);
+  const [revenueFood, setRevenueFood] = useState(0);
+  const [revenueBanquet, setRevenueBanquet] = useState(0);
+  const [revenueOther, setRevenueOther] = useState(0);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalCollections, setTotalCollections] = useState(0);
+  const [openingCash, setOpeningCash] = useState(0);
+  const [tariffPosts, setTariffPosts] = useState<Array<{ bookingId: string; roomNumber: string; guest: string; amount: number; folioId: string | null }>>([]);
+  const [existing, setExisting] = useState<AuditReport | null>(null);
+  const [history, setHistory] = useState<AuditReport[]>([]);
+  const [viewReport, setViewReport] = useState<AuditReport | null>(null);
+
+  const dueToday = useMemo(() => occupied.filter((o) => o.check_out === date), [occupied, date]);
+
+  const refresh = useCallback(async () => {
+    if (!propertyId) return;
+
+    // Existing audit
+    const ex = await supabase
+      .from("night_audit_reports").select("*")
+      .eq("property_id", propertyId).eq("audit_date", date).maybeSingle();
+    setExisting((ex.data as AuditReport | null) ?? null);
+
+    // History (last 30)
+    const hist = await supabase
+      .from("night_audit_reports").select("*")
+      .eq("property_id", propertyId)
+      .order("audit_date", { ascending: false }).limit(30);
+    setHistory((hist.data as AuditReport[] | null) ?? []);
+
+    // Occupied rooms (spans selected date)
+    const occ = await supabase
+      .from("booking_rooms")
+      .select("booking_id, room_id, rate, rooms(room_number, category_id), bookings!inner(check_in, check_out, status, property_id, guests(name))")
+      .eq("property_id", propertyId)
+      .lte("bookings.check_in", date)
+      .gt("bookings.check_out", date)
+      .in("bookings.status", ["checked_in", "reserved"]);
+    const occRows: OccupiedRow[] = (occ.data ?? []).map((r: any) => ({
+      booking_id: r.booking_id,
+      room_id: r.room_id,
+      room_number: r.rooms?.room_number ?? "—",
+      guest_name: r.bookings?.guests?.name ?? null,
+      check_in: r.bookings?.check_in,
+      check_out: r.bookings?.check_out,
+      category_id: r.rooms?.category_id ?? null,
+    }));
+    setOccupied(occRows);
+
+    // Build tariff post preview using booking_rooms.rate (fallback) — only for checked_in rooms
+    const checkedIn = occRows.filter(() => true);
+    const rateMap = new Map<string, number>();
+    (occ.data ?? []).forEach((r: any) => {
+      rateMap.set(`${r.booking_id}|${r.room_id}`, Number(r.rate || 0));
+    });
+    // Folio lookup
+    const bookingIds = Array.from(new Set(checkedIn.map((c) => c.booking_id)));
+    const folioMap = new Map<string, string>();
+    if (bookingIds.length) {
+      const { data: fs } = await supabase
+        .from("folios").select("id, booking_id, status, is_deleted")
+        .eq("property_id", propertyId).in("booking_id", bookingIds);
+      (fs ?? []).forEach((f: any) => {
+        if (f.is_deleted || f.status === "void") return;
+        if (!folioMap.has(f.booking_id)) folioMap.set(f.booking_id, f.id);
+      });
+    }
+    setTariffPosts(checkedIn.map((c) => ({
+      bookingId: c.booking_id,
+      roomNumber: c.room_number,
+      guest: c.guest_name ?? "Guest",
+      amount: rateMap.get(`${c.booking_id}|${c.room_id}`) ?? 0,
+      folioId: folioMap.get(c.booking_id) ?? null,
+    })));
+
+    // Open KOTs
+    const { data: kots } = await supabase
+      .from("kot_orders")
+      .select("id, kot_number, total_amount, status, rooms(room_number), kot_items(item_name, qty)")
+      .eq("property_id", propertyId).eq("kot_copy", "hotel_copy")
+      .in("status", ["open", "printed", "served"]);
+    setOpenKots(((kots ?? []) as any[]).map((k) => ({
+      id: k.id, kot_number: k.kot_number,
+      room_number: k.rooms?.room_number ?? null,
+      total_amount: Number(k.total_amount || 0),
+      status: k.status,
+      items: (k.kot_items ?? []).map((i: any) => `${i.item_name}×${i.qty}`).join(", "),
+    })));
+
+    // Unsettled bills
+    const { data: uf } = await supabase
+      .from("folios")
+      .select("id, invoice_number, booking_id, balance_amount, status, bookings(guests(name))")
+      .eq("property_id", propertyId)
+      .neq("status", "void").eq("is_deleted", false)
+      .gt("balance_amount", 0);
+    setUnsettled(((uf ?? []) as any[]).map((f) => ({
+      id: f.id, invoice_number: f.invoice_number, booking_id: f.booking_id,
+      guest_name: f.bookings?.guests?.name ?? null,
+      balance_amount: Number(f.balance_amount || 0),
+    })));
+
+    // Daily summary (collections + revenue + counts)
+    const sum = await fetchDailySummary(propertyId, date);
+    setByMode(sum.by_mode || {});
+    setTotalCollections(sum.payments_total);
+    setTotalRevenue(sum.total_amount);
+
+    // Expenses
+    const startIso = `${date}T00:00:00`;
+    const endD = new Date(`${date}T00:00:00`); endD.setDate(endD.getDate() + 1);
+    const endIso = endD.toISOString();
+    const { data: exp } = await supabase
+      .from("expenses").select("amount").eq("property_id", propertyId)
+      .gte("expense_date", date).lte("expense_date", date);
+    setExpenses((exp ?? []).reduce((a, x: any) => a + Number(x.amount || 0), 0));
+
+    // Split revenue by source (best-effort)
+    const { data: folioRows } = await supabase
+      .from("folios").select("id, total_amount")
+      .eq("property_id", propertyId).neq("status", "void").eq("is_deleted", false)
+      .gte("created_at", startIso).lt("created_at", endIso);
+    const folioIds = (folioRows ?? []).map((f: any) => f.id);
+    let roomRev = 0, foodRev = 0, otherRev = 0;
+    if (folioIds.length) {
+      const { data: ch } = await supabase
+        .from("folio_charges").select("folio_id, charge_type, amount, gst_amount").in("folio_id", folioIds);
+      (ch ?? []).forEach((c: any) => {
+        const t = (c.charge_type ?? "").toLowerCase();
+        const v = Number(c.amount || 0) + Number(c.gst_amount || 0);
+        if (t.includes("room")) roomRev += v;
+        else if (t.includes("food") || t.includes("kot")) foodRev += v;
+        else otherRev += v;
+      });
+    }
+    setRevenueRoom(roomRev);
+    setRevenueFood(foodRev);
+    setRevenueOther(otherRev);
+
+    const { data: bq } = await supabase
+      .from("banquet_bookings").select("total_amount")
+      .eq("property_id", propertyId).eq("event_date", date);
+    setRevenueBanquet((bq ?? []).reduce((a, x: any) => a + Number(x.total_amount || 0), 0));
+
+    // Opening cash = previous day's closing_cash_actual, fallback 0
+    const prevD = new Date(`${date}T00:00:00`); prevD.setDate(prevD.getDate() - 1);
+    const prevIso = prevD.toISOString().slice(0, 10);
+    const { data: prev } = await supabase
+      .from("night_audit_reports").select("closing_cash_actual")
+      .eq("property_id", propertyId).eq("audit_date", prevIso).maybeSingle();
+    setOpeningCash(Number((prev as any)?.closing_cash_actual ?? 0));
+  }, [propertyId, date]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const cashCollected = Number(byMode.cash || 0);
+  const expectedClosing = openingCash + cashCollected - expenses;
+  const difference = (Number(actualCash) || 0) - expectedClosing;
+
+  async function closeDay() {
+    if (!propertyId) return;
+    if (existing) { toast.error("This day is already closed"); return; }
+    if (!actualCash) { toast.error("Enter actual cash in hand"); return; }
+    if (Math.abs(difference) > 0.01 && !notes.trim()) {
+      toast.error("Notes are required when cash difference is not zero");
+      return;
+    }
+    setBusy(true);
+    try {
+      // 1) Post nightly room charges
+      const posted: string[] = [];
+      for (const tp of tariffPosts) {
+        if (!tp.folioId || !(tp.amount > 0)) continue;
+        const { error } = await supabase.from("folio_charges").insert({
+          folio_id: tp.folioId,
+          charge_type: "room",
+          description: `Room Charge — ${date}`,
+          qty: 1,
+          rate: tp.amount,
+          amount: tp.amount,
+          gst_amount: 0,
+        } as any);
+        if (!error) posted.push(tp.bookingId);
+      }
+
+      // 2) Build occupancy/revenue snapshot
+      const occSnap = await fetchOccupancy(propertyId, date);
+      const totalRev = revenueRoom + revenueFood + revenueBanquet + revenueOther;
+
+      const reportData = {
+        date,
+        occupied_rooms: occupied.map((o) => ({ room: o.room_number, guest: o.guest_name, check_out: o.check_out })),
+        open_kots: openKots,
+        unsettled: unsettled,
+        by_mode: byMode,
+        expenses,
+        tariff_posts: tariffPosts.filter((tp) => tp.folioId && tp.amount > 0),
+      };
+
+      // 3) Insert audit report
+      const { error: nerr } = await supabase.from("night_audit_reports").insert({
+        property_id: propertyId,
+        audit_date: date,
+        closed_by: user?.id ?? null,
+        occupancy_count: occSnap.rooms_occupied,
+        rooms_total: occSnap.rooms_total,
+        total_revenue: totalRev,
+        room_revenue: revenueRoom,
+        food_revenue: revenueFood,
+        banquet_revenue: revenueBanquet,
+        other_revenue: revenueOther,
+        total_collections: totalCollections,
+        total_expenses: expenses,
+        opening_cash: openingCash,
+        closing_cash_expected: expectedClosing,
+        closing_cash_actual: Number(actualCash),
+        cash_difference: difference,
+        notes: notes || null,
+        report_data: reportData,
+      } as any);
+      if (nerr) throw nerr;
+
+      // 4) Also insert day_closures for back-compat
+      await supabase.from("day_closures").upsert({
+        property_id: propertyId,
+        business_date: date,
+        rooms_occupied: occSnap.rooms_occupied,
+        rooms_available: occSnap.rooms_total,
+        sub_total: 0,
+        gst_amount: 0,
+        total_amount: totalRev,
+        cash_total: byMode.cash || 0,
+        card_total: byMode.card || 0,
+        upi_total: byMode.upi || 0,
+        bank_total: byMode.bank || 0,
+        other_total: (byMode.wallet || 0) + (byMode.other || 0),
+        opening_cash: openingCash,
+        closing_cash_expected: expectedClosing,
+        closing_cash_actual: Number(actualCash),
+        cash_difference: difference,
+        expense_total: expenses,
+        notes: notes || null,
+      } as any, { onConflict: "property_id,business_date" });
+
+      toast.success(`Day closed. Posted ${posted.length} room charge(s).`);
+      setNotes(""); setActualCash("");
+      await refresh();
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to close day");
+    } finally { setBusy(false); }
+  }
+
+  async function deleteAudit(id: string) {
+    if (!isOwner) { toast.error("Only owners can override a closed day"); return; }
+    if (!confirm("Override and delete this day's audit?")) return;
+    const { error } = await supabase.from("night_audit_reports").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Audit removed — day unlocked");
+    refresh();
+  }
+
+  if (!propertyId) return <AppShell title="Night Audit"><EmptyPropertyState /></AppShell>;
+
+  const hasWarnings = dueToday.length > 0 || openKots.length > 0 || unsettled.length > 0;
+
+  return (
+    <AppShell title="Night Audit">
+      <div className="space-y-4">
+        {/* Date selector + property */}
+        <Card>
+          <CardContent className="pt-6 flex flex-wrap items-end gap-3">
+            <div>
+              <Label className="text-xs">Business Date</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-48" />
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              {existing ? (
+                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300" variant="outline">
+                  <Lock className="h-3 w-3 mr-1" /> Day Closed
+                </Badge>
+              ) : (
+                <Badge variant="outline">Open For Closing</Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pre-Audit Checklist */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {/* Occupied */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center justify-between">
+                Occupied Rooms
+                <Badge variant="secondary">{occupied.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {dueToday.length > 0 && (
+                <div className="text-xs rounded border border-amber-300 bg-amber-50 p-2 text-amber-900 flex gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 flex-none mt-0.5" />
+                  {dueToday.length} Guest(s) Due Checkout Today — Complete Checkout Before Closing
+                </div>
+              )}
+              <div className="max-h-40 overflow-auto text-xs space-y-1">
+                {occupied.slice(0, 10).map((o) => (
+                  <div key={o.booking_id + o.room_id} className="flex justify-between">
+                    <span className="font-medium">{o.room_number}</span>
+                    <span className="truncate ml-2">{o.guest_name ?? "—"}</span>
+                    <span className="ml-2 text-muted-foreground">{o.check_out}</span>
+                  </div>
+                ))}
+                {occupied.length > 10 && <div className="text-muted-foreground">+{occupied.length - 10} more</div>}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Open KOTs */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center justify-between">
+                Open KOTs
+                <Badge variant="secondary">{openKots.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {openKots.length > 0 && (
+                <div className="text-xs rounded border border-amber-300 bg-amber-50 p-2 text-amber-900 flex gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 flex-none mt-0.5" />
+                  {openKots.length} KOTs Still Open — Settle Or Transfer Before Closing
+                </div>
+              )}
+              <div className="max-h-40 overflow-auto text-xs space-y-1">
+                {openKots.slice(0, 10).map((k) => (
+                  <div key={k.id} className="flex justify-between">
+                    <span className="font-medium">{k.kot_number}</span>
+                    <span className="ml-2 text-muted-foreground">{k.room_number ?? "—"}</span>
+                    <span className="ml-2 font-medium">{inr(k.total_amount)}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Unsettled */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center justify-between">
+                Unsettled Bills
+                <Badge variant="secondary">{unsettled.length}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {unsettled.length > 0 && (
+                <div className="text-xs rounded border border-amber-300 bg-amber-50 p-2 text-amber-900 flex gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5 flex-none mt-0.5" />
+                  {unsettled.length} Bills Have Pending Balance
+                </div>
+              )}
+              <div className="max-h-40 overflow-auto text-xs space-y-1">
+                {unsettled.slice(0, 10).map((u) => (
+                  <Link key={u.id} to="/billing/folio/$bookingId" params={{ bookingId: u.booking_id }}
+                    className="flex justify-between hover:bg-accent rounded px-1">
+                    <span className="font-medium">{u.invoice_number}</span>
+                    <span className="ml-2 text-muted-foreground truncate">{u.guest_name ?? "—"}</span>
+                    <span className="ml-2 font-medium">{inr(u.balance_amount)}</span>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Cash Summary */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Cash Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="text-xs space-y-1">
+              {Object.keys(PAYMENT_MODE_LABELS).map((m) => (
+                <div key={m} className="flex justify-between">
+                  <span>{PAYMENT_MODE_LABELS[m]}</span>
+                  <span className="font-medium">{inr(byMode[m] || 0)}</span>
+                </div>
+              ))}
+              <div className="flex justify-between border-t pt-1 mt-1">
+                <span className="font-semibold">Total Collected</span>
+                <span className="font-semibold">{inr(totalCollections)}</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Expenses</span><span>{inr(expenses)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-1 font-semibold">
+                <span>Net Cash</span><span>{inr(cashCollected - expenses)}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Closing form */}
+        {!existing ? (
+          <>
+            <Card>
+              <CardHeader><CardTitle className="text-base">Room Charges To Be Posted</CardTitle></CardHeader>
+              <CardContent>
+                {tariffPosts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No occupied rooms to post charges for.</p>
+                ) : (
+                  <div className="overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead className="text-left text-xs uppercase text-muted-foreground">
+                        <tr><th className="py-2 pr-3">Room</th><th>Guest</th><th className="text-right">Tariff</th><th></th></tr>
+                      </thead>
+                      <tbody>
+                        {tariffPosts.map((tp) => (
+                          <tr key={tp.bookingId + tp.roomNumber} className="border-t">
+                            <td className="py-2 pr-3 font-medium">{tp.roomNumber}</td>
+                            <td className="pr-3">{tp.guest}</td>
+                            <td className="pr-3 text-right">{inr(tp.amount)}</td>
+                            <td className="text-right text-xs text-muted-foreground">
+                              {tp.folioId ? "" : "No active folio"}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="border-t font-semibold">
+                          <td colSpan={2} className="py-2">Total Room Charges</td>
+                          <td className="text-right">{inr(tariffPosts.reduce((a, t) => a + t.amount, 0))}</td>
+                          <td></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="text-base">Cash Closing</CardTitle></CardHeader>
+              <CardContent className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <Label className="text-xs">Opening Cash Balance</Label>
+                  <Input value={inr(openingCash)} readOnly />
+                </div>
+                <div>
+                  <Label className="text-xs">Total Collections (Cash)</Label>
+                  <Input value={inr(cashCollected)} readOnly />
+                </div>
+                <div>
+                  <Label className="text-xs">Total Expenses</Label>
+                  <Input value={inr(expenses)} readOnly />
+                </div>
+                <div>
+                  <Label className="text-xs">Expected Closing Balance</Label>
+                  <Input value={inr(expectedClosing)} readOnly />
+                </div>
+                <div>
+                  <Label className="text-xs">Actual Cash In Hand *</Label>
+                  <Input type="number" step="0.01" value={actualCash} onChange={(e) => setActualCash(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="text-xs">Difference</Label>
+                  <Input
+                    value={actualCash ? inr(difference) : "—"}
+                    readOnly
+                    className={Math.abs(difference) < 0.01 ? "text-emerald-700" : "text-red-700"}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="text-xs">
+                    Notes {Math.abs(difference) > 0.01 && actualCash && <span className="text-red-600">(required for difference)</span>}
+                  </Label>
+                  <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+                </div>
+                <div className="md:col-span-2 flex items-center gap-2">
+                  {hasWarnings && (
+                    <div className="text-xs text-amber-700 flex-1">
+                      ⚠ There are unresolved items above. You can still close the day.
+                    </div>
+                  )}
+                  <Button onClick={closeDay} disabled={busy}>
+                    {busy ? "Closing…" : "Close Day & Generate Report"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <ReportView report={existing} propertyName={current?.name ?? ""} onPrint={() => window.print()} onDelete={isOwner ? () => deleteAudit(existing.id) : undefined} isOwner={isOwner} />
+        )}
+
+        {/* History */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Recent Closures</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            {history.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground">No closures yet.</div>
+            ) : (
+              <div className="overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-left text-xs uppercase text-muted-foreground bg-muted/30">
+                    <tr>
+                      <th className="py-2 px-3">Date</th>
+                      <th className="px-3">Occupancy</th>
+                      <th className="px-3 text-right">Revenue</th>
+                      <th className="px-3 text-right">Cash Diff</th>
+                      <th className="px-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.map((h) => (
+                      <tr key={h.id} className="border-t">
+                        <td className="py-2 px-3 font-medium">{h.audit_date}</td>
+                        <td className="px-3">{h.occupancy_count}/{h.rooms_total}</td>
+                        <td className="px-3 text-right">{inr(h.total_revenue)}</td>
+                        <td className={`px-3 text-right ${Math.abs(Number(h.cash_difference)) < 0.01 ? "text-emerald-700" : "text-red-700"}`}>
+                          {inr(h.cash_difference)}
+                        </td>
+                        <td className="px-3 text-right">
+                          <Button size="sm" variant="outline" onClick={() => setViewReport(h)}>
+                            <FileText className="h-3 w-3 mr-1" /> View Report
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {viewReport && (
+          <div className="fixed inset-0 z-50 bg-background/95 overflow-auto p-6">
+            <div className="max-w-3xl mx-auto space-y-4">
+              <div className="flex justify-between">
+                <h2 className="text-lg font-semibold">Audit Report — {viewReport.audit_date}</h2>
+                <Button size="sm" variant="outline" onClick={() => setViewReport(null)}>Close</Button>
+              </div>
+              <ReportView report={viewReport} propertyName={current?.name ?? ""} onPrint={() => window.print()} />
+            </div>
+          </div>
+        )}
+      </div>
+    </AppShell>
+  );
+}
+
+function ReportView({
+  report, propertyName, onPrint, onDelete, isOwner,
+}: { report: AuditReport; propertyName: string; onPrint: () => void; onDelete?: () => void; isOwner?: boolean }) {
+  const data = (report.report_data ?? {}) as any;
+  const byMode = (data.by_mode ?? {}) as Record<string, number>;
+  const occPct = report.rooms_total > 0 ? Math.round((report.occupancy_count / report.rooms_total) * 1000) / 10 : 0;
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-base flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          Night Audit Report — {report.audit_date} — {propertyName}
+        </CardTitle>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={onPrint}>
+            <Printer className="h-4 w-4 mr-1" /> Print Report
+          </Button>
+          {isOwner && onDelete && (
+            <Button size="sm" variant="destructive" onClick={onDelete}>Override (Owner)</Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-4 md:grid-cols-2 text-sm">
+        <section>
+          <h3 className="font-semibold mb-1">Occupancy Summary</h3>
+          <div className="text-xs space-y-0.5">
+            <div>Rooms Occupied: <span className="font-medium">{report.occupancy_count} / {report.rooms_total}</span></div>
+            <div>Occupancy: <span className="font-medium">{occPct}%</span></div>
+          </div>
+        </section>
+        <section>
+          <h3 className="font-semibold mb-1">Revenue Summary</h3>
+          <div className="text-xs space-y-0.5">
+            <div className="flex justify-between"><span>Room Revenue</span><span>{inr(report.report_data?.room_revenue ?? 0)}</span></div>
+            <div className="flex justify-between"><span>Room Revenue</span><span>{inr(0)}</span></div>
+            <div className="flex justify-between"><span>Total Revenue</span><span className="font-semibold">{inr(report.total_revenue)}</span></div>
+          </div>
+        </section>
+        <section>
+          <h3 className="font-semibold mb-1">Collections By Mode</h3>
+          <div className="text-xs space-y-0.5">
+            {Object.keys(PAYMENT_MODE_LABELS).map((m) => (
+              <div key={m} className="flex justify-between"><span>{PAYMENT_MODE_LABELS[m]}</span><span>{inr(byMode[m] || 0)}</span></div>
+            ))}
+            <div className="flex justify-between border-t pt-0.5 font-semibold"><span>Total</span><span>{inr(report.total_collections)}</span></div>
+          </div>
+        </section>
+        <section>
+          <h3 className="font-semibold mb-1">Cash Position</h3>
+          <div className="text-xs space-y-0.5">
+            <div className="flex justify-between"><span>Opening Balance</span><span>{inr(report.report_data?.opening_cash ?? data.opening_cash ?? 0)}</span></div>
+            <div className="flex justify-between"><span>Collections (Cash)</span><span>+{inr(byMode.cash || 0)}</span></div>
+            <div className="flex justify-between"><span>Expenses</span><span>-{inr(report.total_expenses)}</span></div>
+            <div className="flex justify-between"><span>Expected Closing</span><span>{inr((data.opening_cash ?? 0) + (byMode.cash || 0) - report.total_expenses)}</span></div>
+            <div className="flex justify-between"><span>Actual Closing</span><span>{inr(report.closing_cash_actual)}</span></div>
+            <div className={`flex justify-between font-semibold ${Math.abs(Number(report.cash_difference)) < 0.01 ? "text-emerald-700" : "text-red-700"}`}>
+              <span>Difference</span><span>{inr(report.cash_difference)}</span>
+            </div>
+          </div>
+        </section>
+        {report.notes && (
+          <section className="md:col-span-2">
+            <h3 className="font-semibold mb-1">Notes</h3>
+            <p className="text-xs whitespace-pre-wrap">{report.notes}</p>
+          </section>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
