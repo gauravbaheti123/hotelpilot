@@ -645,6 +645,7 @@ function FolioPage() {
   }
 
   async function handleCheckout() {
+    if (!folio) return;
     if (hasPending && !overrideApproved) {
       return toast.error("Resolve pending food orders before checkout");
     }
