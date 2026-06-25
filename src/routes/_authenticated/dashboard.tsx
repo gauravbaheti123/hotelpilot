@@ -106,6 +106,7 @@ function OwnerDashboard({
   const [name, setName] = useState<string>(email ? email.split("@")[0] : "");
   const [kpi, setKpi] = useState({ occupied: 0, arrivals: 0, departures: 0, revenue: 0 });
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [occupiedRoomIds, setOccupiedRoomIds] = useState<Set<string>>(new Set());
   const [arrivals, setArrivals] = useState<ScheduleRow[]>([]);
   const [departures, setDepartures] = useState<ScheduleRow[]>([]);
 
@@ -119,7 +120,7 @@ function OwnerDashboard({
     if (!propertyId) return;
     const today = todayISO();
     (async () => {
-      const [occ, arr, dep, pay, rms] = await Promise.all([
+      const [occ, arr, dep, pay, rms, activeBR] = await Promise.all([
         supabase.from("bookings").select("id", { count: "exact", head: true })
           .eq("property_id", propertyId).eq("status", "checked_in"),
         supabase.from("bookings").select("id, booking_number, balance_amount, guest_id, guests:guest_id(name), booking_rooms(rooms(room_number))")
@@ -130,10 +131,16 @@ function OwnerDashboard({
           .gte("paid_at", `${today}T00:00:00`).lte("paid_at", `${today}T23:59:59`),
         supabase.from("rooms").select("id, room_number, status, housekeeping_status")
           .eq("property_id", propertyId).eq("is_active", true).order("room_number"),
+        supabase.from("booking_rooms").select("room_id, actual_check_out, bookings!inner(status, property_id)")
+          .eq("property_id", propertyId).is("actual_check_out", null).eq("bookings.status", "checked_in"),
       ]);
       const revenue = (pay.data ?? []).reduce((a, x: any) => a + Number(x.amount || 0), 0);
+      const occSet = new Set<string>(
+        (activeBR.data ?? []).map((b: any) => b.room_id).filter(Boolean),
+      );
+      setOccupiedRoomIds(occSet);
       setKpi({
-        occupied: occ.count ?? 0,
+        occupied: occSet.size || (occ.count ?? 0),
         arrivals: arr.data?.length ?? 0,
         departures: dep.data?.length ?? 0,
         revenue,
@@ -178,7 +185,7 @@ function OwnerDashboard({
             ) : (
               <div className="grid gap-2 grid-cols-[repeat(auto-fill,minmax(80px,1fr))]">
                 {rooms.map((r) => {
-                  const { bg, label } = roomTileStyle(r);
+                  const { bg, label } = roomTileStyle(r, occupiedRoomIds.has(r.id));
                   return (
                     <Link
                       key={r.id}
@@ -197,7 +204,7 @@ function OwnerDashboard({
               <LegendDot className="bg-emerald-600" label="Vacant" />
               <LegendDot className="bg-rose-600" label="Occupied" />
               <LegendDot className="bg-amber-500" label="Dirty" />
-              <LegendDot className="bg-slate-500" label="Maintenance" />
+              <LegendDot className="bg-slate-500" label="Maintenance (blue-grey)" />
             </div>
           </CardContent>
         </Card>
@@ -244,10 +251,10 @@ function LegendDot({ className, label }: { className: string; label: string }) {
   );
 }
 
-function roomTileStyle(r: Room): { bg: string; label: string } {
+function roomTileStyle(r: Room, isOccupied: boolean): { bg: string; label: string } {
   if (r.status === "maintenance" || r.housekeeping_status === "out_of_order")
     return { bg: "bg-slate-500", label: "Maintenance" };
-  if (r.status === "occupied") return { bg: "bg-rose-600", label: "Occupied" };
+  if (isOccupied || r.status === "occupied") return { bg: "bg-rose-600", label: "Occupied" };
   if (r.housekeeping_status === "dirty") return { bg: "bg-amber-500", label: "Dirty" };
   if (r.status === "blocked") return { bg: "bg-slate-500", label: "Blocked" };
   return { bg: "bg-emerald-600", label: "Vacant" };
