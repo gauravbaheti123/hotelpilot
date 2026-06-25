@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -91,6 +92,34 @@ interface BookingDetail {
   booking_rooms: BookingRoomRow[];
 }
 
+interface ShiftRow {
+  id: string;
+  shifted_at: string;
+  reason: string | null;
+  old_rate: number | null;
+  new_rate: number | null;
+  shifted_by: string | null;
+  from_room: { room_number: string } | null;
+  to_room: { room_number: string } | null;
+  shifted_by_name?: string | null;
+}
+interface KotSummaryRow {
+  id: string;
+  kot_number: string;
+  status: string;
+  created_at: string;
+  total_amount: number;
+  sub_total: number;
+  kot_items: { item_name: string; qty: number; amount: number }[];
+}
+interface AdditionalGuestRow {
+  id: string;
+  is_primary: boolean;
+  age: number | null;
+  relation_to_primary: string | null;
+  guests: { name: string; id_proof_type: string | null; id_proof_number: string | null; nationality: string | null } | null;
+}
+
 function BookingDetailPage() {
   const { id } = Route.useParams();
   const router = useRouter();
@@ -100,6 +129,9 @@ function BookingDetailPage() {
   );
   const [b, setB] = useState<BookingDetail | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [shifts, setShifts] = useState<ShiftRow[]>([]);
+  const [kots, setKots] = useState<KotSummaryRow[]>([]);
+  const [extraGuests, setExtraGuests] = useState<AdditionalGuestRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   // dialogs
@@ -143,12 +175,43 @@ function BookingDetailPage() {
     setB(detail);
     if (detail) {
       setNewCheckOut(detail.check_out);
-      const { data: rs } = await supabase
+      const [{ data: rs }, { data: sh }, { data: kt }, { data: bg }] = await Promise.all([
+        supabase
         .from("rooms")
         .select("id,room_number,category_id,status,room_categories(name,base_rate)")
         .eq("property_id", detail.property_id)
-        .order("room_number");
+        .order("room_number"),
+        supabase
+          .from("room_shifts")
+          .select("id, shifted_at, reason, old_rate, new_rate, shifted_by, from_room:from_room_id(room_number), to_room:to_room_id(room_number)")
+          .in("booking_room_id", detail.booking_rooms.map((br) => br.id))
+          .order("shifted_at", { ascending: false }),
+        supabase
+          .from("kot_orders")
+          .select("id, kot_number, status, created_at, total_amount, sub_total, kot_items(item_name, qty, amount)")
+          .eq("booking_id", detail.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("booking_guests")
+          .select("id, is_primary, age, relation_to_primary, guests:guest_id(name, id_proof_type, id_proof_number, nationality)")
+          .eq("booking_id", detail.id)
+          .order("is_primary", { ascending: false }),
+      ]);
       setRooms((rs ?? []) as Room[]);
+      const shiftRows = (sh ?? []) as unknown as ShiftRow[];
+      // Resolve shifted_by user names from profiles (no FK on shifted_by so we look up manually)
+      const userIds = Array.from(new Set(shiftRows.map((s) => s.shifted_by).filter(Boolean) as string[]));
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, name")
+          .in("id", userIds);
+        const nameById = new Map<string, string | null>((profs ?? []).map((p: any) => [p.id, p.name]));
+        shiftRows.forEach((s) => { s.shifted_by_name = s.shifted_by ? (nameById.get(s.shifted_by) ?? null) : null; });
+      }
+      setShifts(shiftRows);
+      setKots((kt ?? []) as unknown as KotSummaryRow[]);
+      setExtraGuests((bg ?? []) as unknown as AdditionalGuestRow[]);
     }
     setLoading(false);
   }
@@ -518,6 +581,109 @@ function BookingDetailPage() {
           </CardContent>
         </Card>
 
+        {/* ADDITIONAL GUESTS (Issue #6) */}
+        {extraGuests.length > 0 && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">All guests ({extraGuests.length})</CardTitle></CardHeader>
+            <CardContent>
+              <div className="text-sm divide-y">
+                {extraGuests.map((g) => (
+                  <div key={g.id} className="flex flex-wrap items-center gap-3 py-2">
+                    <Badge variant={g.is_primary ? "default" : "outline"} className="text-[10px]">
+                      {g.is_primary ? "Primary" : (g.relation_to_primary ?? "Guest")}
+                    </Badge>
+                    <div className="font-medium">{g.guests?.name ?? "—"}</div>
+                    {g.age != null && <div className="text-xs text-muted-foreground">{g.age} yrs</div>}
+                    {g.guests?.nationality && g.guests.nationality !== "Indian" && (
+                      <Badge variant="outline" className="text-[10px] border-amber-400 text-amber-700">Foreign</Badge>
+                    )}
+                    <div className="ml-auto text-xs text-muted-foreground">
+                      {g.guests?.id_proof_type
+                        ? `${g.guests.id_proof_type.toUpperCase()} · ${g.guests.id_proof_number ?? "—"}`
+                        : "No ID on file"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ROOM SHIFT HISTORY (Issue #3a) */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Room shift history</CardTitle></CardHeader>
+          <CardContent>
+            {shifts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No room changes.</p>
+            ) : (
+              <div className="space-y-3">
+                {shifts.map((s) => (
+                  <div key={s.id} className="rounded border p-3 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 font-medium">
+                      <span>Room {s.from_room?.room_number ?? "—"}</span>
+                      <ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>Room {s.to_room?.room_number ?? "—"}</span>
+                      {s.old_rate != null && s.new_rate != null && Number(s.old_rate) !== Number(s.new_rate) && (
+                        <Badge variant="outline" className="text-[10px]">
+                          ₹{Number(s.old_rate)} → ₹{Number(s.new_rate)}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {new Date(s.shifted_at).toLocaleString()} · by {s.shifted_by_name ?? "staff"}
+                    </div>
+                    {s.reason && <div className="text-xs mt-1"><span className="text-muted-foreground">Reason:</span> {s.reason}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* FOOD BILL SUMMARY (Issue #3b) */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Food bill summary</CardTitle></CardHeader>
+          <CardContent>
+            {kots.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No food orders for this booking.</p>
+            ) : (
+              (() => {
+                const total = kots.reduce((s, k) => s + Number(k.total_amount || 0), 0);
+                const settled = kots.filter((k) => k.status === "billed").reduce((s, k) => s + Number(k.total_amount || 0), 0);
+                const pending = total - settled;
+                return (
+                  <div className="space-y-3 text-sm">
+                    <div className="space-y-2">
+                      {kots.map((k) => (
+                        <div key={k.id} className="rounded border p-2">
+                          <div className="flex items-center justify-between font-medium">
+                            <span>
+                              {k.kot_number}
+                              <Badge variant="outline" className="ml-2 text-[10px] uppercase">{k.status}</Badge>
+                            </span>
+                            <span>₹{Number(k.total_amount).toLocaleString("en-IN")}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {new Date(k.created_at).toLocaleString()}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {(k.kot_items ?? []).map((i) => `${i.qty}× ${i.item_name}`).join(", ") || "—"}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t pt-2 grid grid-cols-3 gap-2">
+                      <SummaryStat label="Total food" value={`₹${total.toLocaleString("en-IN")}`} />
+                      <SummaryStat label="Settled" value={`₹${settled.toLocaleString("en-IN")}`} />
+                      <SummaryStat label="Pending" value={`₹${pending.toLocaleString("en-IN")}`} highlight={pending > 0} />
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+          </CardContent>
+        </Card>
+
         {/* SHIFT DIALOG */}
         <Dialog open={shiftOpen} onOpenChange={setShiftOpen}>
           <DialogContent className="max-w-lg">
@@ -537,18 +703,20 @@ function BookingDetailPage() {
                     <div className="space-y-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs">Move to vacant room *</Label>
-                        <Select value={shiftToRoom} onValueChange={setShiftToRoom}>
-                          <SelectTrigger><SelectValue placeholder="Pick a room" /></SelectTrigger>
-                          <SelectContent>
-                            {rooms
-                              .filter((r) => r.status === "vacant" && !b.booking_rooms.some((bx) => bx.room_id === r.id))
-                              .map((r) => (
-                                <SelectItem key={r.id} value={r.id}>
-                                  {r.room_number}{r.room_categories?.name ? ` · ${r.room_categories.name}` : ""}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                          value={shiftToRoom}
+                          onChange={setShiftToRoom}
+                          placeholder="Pick a room"
+                          searchPlaceholder="Search by room number or category…"
+                          options={rooms
+                            .filter((r) => r.status === "vacant" && !b.booking_rooms.some((bx) => bx.room_id === r.id))
+                            .map((r) => ({
+                              value: r.id,
+                              label: `Room ${r.room_number}`,
+                              hint: r.room_categories?.name ?? undefined,
+                              keywords: r.room_categories?.name ?? "",
+                            })) as SearchableOption[]}
+                        />
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Current: Room {br?.rooms?.room_number ?? "—"} ({br?.room_categories?.name ?? "—"}) @ ₹{fromRate}/night
@@ -738,6 +906,15 @@ function Row({ k, v, highlight }: { k: string; v: React.ReactNode; highlight?: b
     <div className="flex gap-2">
       <div className="w-28 text-xs text-muted-foreground">{k}</div>
       <div className={`flex-1 ${highlight ? "font-semibold text-amber-700 dark:text-amber-300" : ""}`}>{v}</div>
+    </div>
+  );
+}
+
+function SummaryStat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="rounded border p-2">
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className={`text-sm font-semibold ${highlight ? "text-destructive" : ""}`}>{value}</div>
     </div>
   );
 }

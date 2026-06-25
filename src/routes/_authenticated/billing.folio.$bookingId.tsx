@@ -313,10 +313,60 @@ function FolioPage() {
     if (pendingKots.length > 0 && !overrideApproved) {
       return toast.error("Resolve pending food orders before settling");
     }
-    await supabase.from("folios").update({
-      status: "settled", settled_at: new Date().toISOString(),
+    const now = new Date().toISOString();
+    // 1. Settle folio
+    const { error: fErr } = await supabase.from("folios").update({
+      status: "settled", settled_at: now,
     }).eq("id", folio.id);
-    toast.success("Folio settled");
+    if (fErr) return toast.error(fErr.message);
+
+    if (booking) {
+      // 2. Mark booking checked_out (if still active)
+      if (booking.status !== "checked_out" && booking.status !== "cancelled") {
+        await supabase.from("bookings").update({
+          status: "checked_out",
+          checked_out_at: now,
+          checked_out_by: user?.id ?? null,
+        } as any).eq("id", booking.id);
+      }
+
+      // 3. Stamp actual_check_out on every booking_room + free + mark room dirty
+      for (const br of booking.booking_rooms) {
+        await supabase.from("booking_rooms")
+          .update({ actual_check_out: now } as any)
+          .eq("id", br.id);
+        const roomNumber = br.rooms?.room_number;
+        if (roomNumber) {
+          // Look up the room id via the join we already have? rooms in BookingCtx
+          // only have room_number, so re-query by booking_rooms.id
+        }
+      }
+      const { data: brs } = await supabase
+        .from("booking_rooms")
+        .select("room_id")
+        .eq("booking_id", booking.id);
+      const roomIds = (brs ?? []).map((x: any) => x.room_id).filter(Boolean) as string[];
+      if (roomIds.length > 0) {
+        await supabase.from("rooms").update({
+          status: "vacant",
+          housekeeping_status: "dirty",
+        } as any).in("id", roomIds);
+      }
+
+      // 4. Best-effort WhatsApp receipt
+      try {
+        if (booking.guests?.mobile) {
+          const { fireTrigger } = await import("@/lib/whatsapp");
+          fireTrigger("checkout_bill", {
+            property_id: booking.property_id,
+            booking_id: booking.id,
+            phone: booking.guests.mobile,
+          });
+        }
+      } catch { /* ignore */ }
+    }
+
+    toast.success("Folio settled & guest checked out");
     load();
   }
 

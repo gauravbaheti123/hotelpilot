@@ -238,6 +238,64 @@ export type Database = {
           },
         ]
       }
+      booking_guests: {
+        Row: {
+          age: number | null
+          booking_id: string
+          created_at: string
+          guest_id: string
+          id: string
+          is_primary: boolean
+          property_id: string
+          relation_to_primary: string | null
+          updated_at: string
+        }
+        Insert: {
+          age?: number | null
+          booking_id: string
+          created_at?: string
+          guest_id: string
+          id?: string
+          is_primary?: boolean
+          property_id: string
+          relation_to_primary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          age?: number | null
+          booking_id?: string
+          created_at?: string
+          guest_id?: string
+          id?: string
+          is_primary?: boolean
+          property_id?: string
+          relation_to_primary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_guests_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_guests_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_guests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_rooms: {
         Row: {
           actual_check_in: string | null

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -23,7 +24,10 @@ type Room = {
   room_number: string;
   status: "vacant" | "occupied" | "blocked" | "maintenance";
   housekeeping_status: "clean" | "dirty" | "inspected" | "out_of_order";
+  category_id: string | null;
 };
+
+type RoomCategory = { id: string; name: string };
 
 type StaffOpt = { id: string; name: string };
 type TileKind = "vacant" | "occupied" | "dirty" | "maintenance";
@@ -114,6 +118,7 @@ function OwnerDashboard({
   const [name, setName] = useState<string>(email ? email.split("@")[0] : "");
   const [kpi, setKpi] = useState({ occupied: 0, arrivals: 0, departures: 0, revenue: 0 });
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [categories, setCategories] = useState<RoomCategory[]>([]);
   const [occupiedRoomIds, setOccupiedRoomIds] = useState<Set<string>>(new Set());
   const [bookingByRoom, setBookingByRoom] = useState<Map<string, string>>(new Map());
   const [arrivals, setArrivals] = useState<ScheduleRow[]>([]);
@@ -140,7 +145,7 @@ function OwnerDashboard({
           .eq("property_id", propertyId).eq("status", "checked_in").eq("check_out", today),
         supabase.from("payments").select("amount").eq("property_id", propertyId)
           .gte("paid_at", `${today}T00:00:00`).lte("paid_at", `${today}T23:59:59`),
-        supabase.from("rooms").select("id, room_number, status, housekeeping_status")
+        supabase.from("rooms").select("id, room_number, status, housekeeping_status, category_id")
           .eq("property_id", propertyId).eq("is_active", true).order("room_number"),
         supabase.from("booking_rooms").select("room_id, booking_id, actual_check_out, bookings!inner(status, property_id)")
           .eq("property_id", propertyId).is("actual_check_out", null).eq("bookings.status", "checked_in"),
@@ -177,6 +182,8 @@ function OwnerDashboard({
     if (!propertyId) return;
     supabase.from("staff").select("id, name").eq("property_id", propertyId).eq("is_active", true).order("name")
       .then(({ data }) => setStaff((data ?? []) as StaffOpt[]));
+    supabase.from("room_categories").select("id, name").eq("property_id", propertyId).order("name")
+      .then(({ data }) => setCategories((data ?? []) as RoomCategory[]));
   }, [propertyId]);
 
   const subtitle = propertyName
@@ -204,22 +211,12 @@ function OwnerDashboard({
             {rooms.length === 0 ? (
               <div className="text-sm text-muted-foreground">No rooms configured.</div>
             ) : (
-              <div className="grid gap-2 grid-cols-[repeat(auto-fill,minmax(80px,1fr))]">
-                {rooms.map((r) => {
-                  const { bg, label } = roomTileStyle(r, occupiedRoomIds.has(r.id));
-                  return (
-                    <button
-                      key={r.id}
-                      type="button"
-                      onClick={() => setModalRoom(r)}
-                      className={`rounded-md px-2 py-3 text-center text-white transition hover:opacity-90 hover:ring-2 hover:ring-offset-1 ${bg}`}
-                    >
-                      <div className="text-sm font-semibold">{r.room_number}</div>
-                      <div className="text-[10px] uppercase tracking-wide opacity-90">{label}</div>
-                    </button>
-                  );
-                })}
-              </div>
+              <RoomGroups
+                rooms={rooms}
+                categories={categories}
+                occupiedRoomIds={occupiedRoomIds}
+                onPick={(r) => setModalRoom(r)}
+              />
             )}
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
               <LegendDot style={{ backgroundColor: "#16a34a" }} label="Vacant" />
@@ -255,9 +252,66 @@ function OwnerDashboard({
         onClose={() => setModalRoom(null)}
         onChanged={async () => { await reload(); }}
         onOpenBooking={(bid) => { setModalRoom(null); navigate({ to: "/front-desk/booking/$id", params: { id: bid } }); }}
-        onNewBooking={() => { setModalRoom(null); navigate({ to: "/front-desk/new" }); }}
+        onNewBooking={() => {
+          const r = modalRoom;
+          setModalRoom(null);
+          navigate({
+            to: "/front-desk/new",
+            search: r ? { roomId: r.id, categoryId: r.category_id ?? undefined } : undefined,
+          } as any);
+        }}
       />
     </AppShell>
+  );
+}
+
+function RoomGroups({
+  rooms, categories, occupiedRoomIds, onPick,
+}: {
+  rooms: Room[];
+  categories: RoomCategory[];
+  occupiedRoomIds: Set<string>;
+  onPick: (r: Room) => void;
+}) {
+  const byCat = new Map<string, Room[]>();
+  const uncategorised: Room[] = [];
+  rooms.forEach((r) => {
+    if (!r.category_id) { uncategorised.push(r); return; }
+    const arr = byCat.get(r.category_id) ?? [];
+    arr.push(r);
+    byCat.set(r.category_id, arr);
+  });
+  const ordered = categories
+    .map((c) => ({ name: c.name, rooms: byCat.get(c.id) ?? [] }))
+    .filter((g) => g.rooms.length > 0);
+  if (uncategorised.length > 0) ordered.push({ name: "Uncategorised", rooms: uncategorised });
+
+  return (
+    <div className="space-y-4">
+      {ordered.map((g) => (
+        <div key={g.name} className="space-y-2">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {g.name} <span className="text-muted-foreground/70 font-normal">· {g.rooms.length}</span>
+          </div>
+          <div className="grid gap-2 grid-cols-[repeat(auto-fill,minmax(80px,1fr))]">
+            {g.rooms.map((r) => {
+              const { bg, label } = roomTileStyle(r, occupiedRoomIds.has(r.id));
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => onPick(r)}
+                  className={`rounded-md px-2 py-3 text-center text-white transition hover:opacity-90 hover:ring-2 hover:ring-offset-1 ${bg}`}
+                >
+                  <div className="text-sm font-semibold">{r.room_number}</div>
+                  <div className="text-[10px] uppercase tracking-wide opacity-90">{label}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -389,12 +443,13 @@ function RoomStatusModal({
           <div className="grid gap-3">
             <div className="grid gap-1.5">
               <Label>{kind === "dirty" ? "Cleaned by" : "Maintenance resolved by"}</Label>
-              <Select value={staffId} onValueChange={setStaffId}>
-                <SelectTrigger><SelectValue placeholder="Select staff (optional)" /></SelectTrigger>
-                <SelectContent>
-                  {staff.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={staffId}
+                onChange={setStaffId}
+                placeholder="Select staff (optional)"
+                searchPlaceholder="Search staff…"
+                options={staff.map((s) => ({ value: s.id, label: s.name }))}
+              />
             </div>
             <div className="grid gap-1.5">
               <Label>{kind === "dirty" ? "Cleaning notes" : "Resolution notes"}</Label>

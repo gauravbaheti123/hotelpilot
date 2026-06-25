@@ -14,6 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
+import { Trash2, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
@@ -23,12 +25,25 @@ import { addDaysIso, nightsBetween, SOURCES, todayIso } from "@/lib/front-desk";
 
 export const Route = createFileRoute("/_authenticated/front-desk/new")({
   head: () => ({ meta: [{ title: "New Booking — HotelPilot" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    roomId: typeof s.roomId === "string" ? s.roomId : undefined,
+    categoryId: typeof s.categoryId === "string" ? s.categoryId : undefined,
+  }),
   component: NewBookingPage,
 });
 
 interface Category { id: string; name: string; base_rate: number; max_occupancy: number; }
 interface RoomRow { id: string; room_number: string; category_id: string | null; status: string; }
 interface Tariff { id: string; name: string; category_id: string | null; rate: number; meal_plan: string; }
+interface AdditionalGuest {
+  key: string;
+  kind: "adult" | "child";
+  name: string;
+  age: string;
+  id_proof_type: string;
+  id_proof_number: string;
+  relation: string;
+}
 interface GuestMatch {
   id: string;
   name: string;
@@ -45,6 +60,7 @@ interface GuestMatch {
 
 function NewBookingPage() {
   const router = useRouter();
+  const search = Route.useSearch();
   const { user, roles } = useAuth();
   const canBook = roles.some((r) =>
     ["superadmin", "owner", "manager", "receptionist"].includes(r),
@@ -84,8 +100,14 @@ function NewBookingPage() {
   const [mealPlan, setMealPlan] = useState("EP");
   const [source, setSource] = useState("walk_in");
   const [advance, setAdvance] = useState(0);
+  const [paymentMode, setPaymentMode] = useState<string>("cash");
+  const [paymentRef, setPaymentRef] = useState("");
+  const [nationality, setNationality] = useState("Indian");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Additional guests
+  const [extras, setExtras] = useState<AdditionalGuest[]>([]);
 
   useEffect(() => {
     if (!current) return;
@@ -100,6 +122,17 @@ function NewBookingPage() {
       setTariffs((t.data ?? []) as Tariff[]);
     })();
   }, [current?.id]);
+
+  // Auto-fill from dashboard tile click (?roomId=…&categoryId=…)
+  useEffect(() => {
+    if (!search?.roomId || rooms.length === 0) return;
+    const room = rooms.find((r) => r.id === search.roomId);
+    if (!room) return;
+    const catId = search.categoryId ?? room.category_id ?? "";
+    if (catId && !categoryId) pickCategory(catId);
+    setRoomId(room.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search?.roomId, rooms.length]);
 
   // Debounced guest search
   const debounceRef = useRef<number | null>(null);
@@ -168,6 +201,33 @@ function NewBookingPage() {
   );
   const categoryTariffs = tariffs.filter((t) => !categoryId || t.category_id === categoryId);
 
+  // === Additional guests: auto-sync row count to adult/child counts ===
+  useEffect(() => {
+    setExtras((prev) => {
+      const adultsNeeded = Math.max(0, adults - 1);
+      const childrenNeeded = Math.max(0, children);
+      const prevAdults = prev.filter((p) => p.kind === "adult");
+      const prevChildren = prev.filter((p) => p.kind === "child");
+      const adultRows = [...prevAdults];
+      while (adultRows.length < adultsNeeded) adultRows.push(blankGuest("adult"));
+      adultRows.length = adultsNeeded;
+      const childRows = [...prevChildren];
+      while (childRows.length < childrenNeeded) childRows.push(blankGuest("child"));
+      childRows.length = childrenNeeded;
+      return [...adultRows, ...childRows];
+    });
+  }, [adults, children]);
+
+  function updateExtra(key: string, patch: Partial<AdditionalGuest>) {
+    setExtras((prev) => prev.map((g) => (g.key === key ? { ...g, ...patch } : g)));
+  }
+  function addManualExtra() {
+    setExtras((prev) => [...prev, blankGuest("adult")]);
+  }
+  function removeExtra(key: string) {
+    setExtras((prev) => prev.filter((g) => g.key !== key));
+  }
+
   function pickCategory(id: string) {
     setCategoryId(id);
     setRoomId("");
@@ -215,6 +275,7 @@ function NewBookingPage() {
             id_proof_type: idType || null,
             id_proof_number: idNumber || null,
             address: address || null,
+            nationality: nationality || null,
             notes: guestNotes || null,
             tags,
           })
@@ -231,6 +292,7 @@ function NewBookingPage() {
             id_proof_type: idType || null,
             id_proof_number: idNumber || null,
             address: address || null,
+            nationality: nationality || null,
             notes: guestNotes || null,
             tags,
           })
@@ -285,6 +347,57 @@ function NewBookingPage() {
       // 4) If checked in, mark room occupied
       if (checkInNow) {
         await supabase.from("rooms").update({ status: "occupied" }).eq("id", roomId);
+      }
+
+      // 5) Primary guest link
+      await supabase.from("booking_guests").insert({
+        property_id: current.id,
+        booking_id: booking!.id,
+        guest_id: guestId!,
+        is_primary: true,
+        relation_to_primary: "self",
+      } as any);
+
+      // 6) Additional guests — insert lightweight guest rows + link
+      for (const ex of extras) {
+        if (!ex.name.trim()) continue;
+        const { data: ng, error: ngErr } = await supabase
+          .from("guests")
+          .insert({
+            property_id: current.id,
+            name: ex.name.trim(),
+            id_proof_type: ex.id_proof_type || null,
+            id_proof_number: ex.id_proof_number || null,
+            nationality: nationality || null,
+            notes: `Additional guest for booking ${booking!.booking_number}`,
+          })
+          .select("id")
+          .single();
+        if (ngErr) { console.warn("extra guest insert failed", ngErr); continue; }
+        await supabase.from("booking_guests").insert({
+          property_id: current.id,
+          booking_id: booking!.id,
+          guest_id: ng!.id,
+          is_primary: false,
+          age: ex.age ? Number(ex.age) : null,
+          relation_to_primary: ex.relation || null,
+        } as any);
+      }
+
+      // 7) Advance payment record (Issue #5)
+      if (advance > 0) {
+        const { data: folioId } = await supabase.rpc("get_or_create_folio", { _booking_id: booking!.id });
+        await supabase.from("payments").insert({
+          property_id: current.id,
+          booking_id: booking!.id,
+          folio_id: (folioId as unknown as string) ?? null,
+          amount: advance,
+          mode: paymentMode,
+          reference_no: paymentRef || null,
+          notes: "Advance at check-in",
+          paid_at: new Date().toISOString(),
+          created_by: user?.id ?? null,
+        } as any);
       }
 
       toast.success(`Booking ${booking!.booking_number} created`);
@@ -403,6 +516,9 @@ function NewBookingPage() {
                 </SelectContent>
               </Select>
             </F>
+            <F label="Nationality">
+              <Input value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Indian" />
+            </F>
             <div className="col-span-2">
               <F label="Address"><Textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} /></F>
             </div>
@@ -413,6 +529,82 @@ function NewBookingPage() {
           </CardContent>
         </Card>
 
+        {/* Additional guests (Issue #6) */}
+        {extras.length > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Additional guests ({extras.length})</CardTitle>
+              <Button size="sm" variant="outline" onClick={addManualExtra}>
+                <UserPlus className="h-4 w-4 mr-1" /> Add guest manually
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {extras.map((g, idx) => (
+                <div key={g.key} className="rounded-md border p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {g.kind === "adult" ? `Adult guest #${idx + 1}` : `Child #${idx + 1 - extras.filter((e) => e.kind === "adult").length}`}
+                    </div>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeExtra(g.key)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <F label="Full name *">
+                      <Input value={g.name} onChange={(e) => updateExtra(g.key, { name: e.target.value })} />
+                    </F>
+                    <F label="Age *">
+                      <Input type="number" value={g.age} onChange={(e) => updateExtra(g.key, { age: e.target.value })} />
+                    </F>
+                    {g.kind === "adult" && (
+                      <>
+                        <F label="ID proof type *">
+                          <Select value={g.id_proof_type} onValueChange={(v) => updateExtra(g.key, { id_proof_type: v })}>
+                            <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="aadhaar">Aadhaar</SelectItem>
+                              <SelectItem value="passport">Passport</SelectItem>
+                              <SelectItem value="driving_license">Driving License</SelectItem>
+                              <SelectItem value="voter_id">Voter ID</SelectItem>
+                              <SelectItem value="pan">PAN</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </F>
+                        <F label="ID proof number *">
+                          <Input value={g.id_proof_number} onChange={(e) => updateExtra(g.key, { id_proof_number: e.target.value })} />
+                        </F>
+                        <div className="col-span-2">
+                          <F label="Relation to primary guest *">
+                            <Select value={g.relation} onValueChange={(v) => updateExtra(g.key, { relation: v })}>
+                              <SelectTrigger><SelectValue placeholder="Select relation" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Spouse">Spouse</SelectItem>
+                                <SelectItem value="Child">Child</SelectItem>
+                                <SelectItem value="Parent">Parent</SelectItem>
+                                <SelectItem value="Sibling">Sibling</SelectItem>
+                                <SelectItem value="Friend">Friend</SelectItem>
+                                <SelectItem value="Colleague">Colleague</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </F>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+        {extras.length === 0 && (adults > 1 || children > 0) === false && (
+          <div className="flex">
+            <Button size="sm" variant="outline" onClick={addManualExtra}>
+              <UserPlus className="h-4 w-4 mr-1" /> Add additional guest manually
+            </Button>
+          </div>
+        )}
+
         <Card>
           <CardHeader><CardTitle className="text-base">Stay & room</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
@@ -421,32 +613,41 @@ function NewBookingPage() {
             <F label="Adults"><Input type="number" min={1} value={adults} onChange={(e) => setAdults(Number(e.target.value))} /></F>
             <F label="Children"><Input type="number" min={0} value={children} onChange={(e) => setChildren(Number(e.target.value))} /></F>
             <F label="Category *">
-              <Select value={categoryId} onValueChange={pickCategory}>
-                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                <SelectContent>
-                  {cats.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={categoryId}
+                onChange={pickCategory}
+                placeholder="Select category"
+                searchPlaceholder="Type to filter categories…"
+                options={cats.map((c) => ({ value: c.id, label: c.name })) as SearchableOption[]}
+              />
             </F>
             <F label="Room *">
-              <Select value={roomId} onValueChange={setRoomId} disabled={!categoryId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={categoryId ? (availableRooms.length ? "Select vacant room" : "No vacant rooms") : "Pick category first"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableRooms.map((r) => (<SelectItem key={r.id} value={r.id}>{r.room_number}</SelectItem>))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={roomId}
+                onChange={setRoomId}
+                disabled={!categoryId}
+                placeholder={categoryId ? (availableRooms.length ? "Select vacant room" : "No vacant rooms") : "Pick category first"}
+                searchPlaceholder="Type room number…"
+                options={availableRooms.map((r) => ({
+                  value: r.id,
+                  label: r.room_number,
+                  keywords: cats.find((c) => c.id === r.category_id)?.name ?? "",
+                })) as SearchableOption[]}
+              />
             </F>
             <F label="Tariff plan">
-              <Select value={tariffId} onValueChange={pickTariff} disabled={!categoryId}>
-                <SelectTrigger><SelectValue placeholder="Custom / none" /></SelectTrigger>
-                <SelectContent>
-                  {categoryTariffs.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name} ({t.meal_plan}) ₹{t.rate}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={tariffId}
+                onChange={pickTariff}
+                disabled={!categoryId}
+                placeholder="Custom / none"
+                searchPlaceholder="Search tariff plans…"
+                options={categoryTariffs.map((t) => ({
+                  value: t.id,
+                  label: `${t.name} (${t.meal_plan})`,
+                  hint: `₹${t.rate}`,
+                })) as SearchableOption[]}
+              />
             </F>
             <F label="Meal plan">
               <Select value={mealPlan} onValueChange={setMealPlan}>
@@ -472,14 +673,34 @@ function NewBookingPage() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">Payment & notes</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Payment at Check-in (Advance)</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-4 gap-3 text-sm">
               <Stat label="Nights" value={String(nights)} />
               <Stat label="Room total" value={`₹${total.toLocaleString("en-IN")}`} />
-              <F label="Advance (₹)"><Input type="number" value={advance} onChange={(e) => setAdvance(Number(e.target.value))} /></F>
+              <F label="Advance ₹"><Input type="number" value={advance} onChange={(e) => setAdvance(Number(e.target.value))} /></F>
               <Stat label="Balance" value={`₹${balance.toLocaleString("en-IN")}`} highlight />
             </div>
+            {advance > 0 && (
+              <div className="grid grid-cols-2 gap-3">
+                <F label="Payment mode *">
+                  <Select value={paymentMode} onValueChange={setPaymentMode}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="card">Card</SelectItem>
+                      <SelectItem value="upi">UPI</SelectItem>
+                      <SelectItem value="bank">Bank Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </F>
+                <F label="Reference (txn id, last 4)">
+                  <Input value={paymentRef} onChange={(e) => setPaymentRef(e.target.value)} placeholder="Optional" />
+                </F>
+              </div>
+            )}
             <F label="Notes"><Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></F>
           </CardContent>
         </Card>
@@ -511,4 +732,16 @@ function fmtDate(iso: string) {
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   return `${dd}-${mm}-${d.getFullYear()}`;
+}
+
+function blankGuest(kind: "adult" | "child"): AdditionalGuest {
+  return {
+    key: Math.random().toString(36).slice(2),
+    kind,
+    name: "",
+    age: "",
+    id_proof_type: kind === "adult" ? "aadhaar" : "",
+    id_proof_number: "",
+    relation: kind === "child" ? "Child" : "",
+  };
 }
