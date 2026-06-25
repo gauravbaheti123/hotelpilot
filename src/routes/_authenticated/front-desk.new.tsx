@@ -516,6 +516,9 @@ function NewBookingPage() {
                 </SelectContent>
               </Select>
             </F>
+            <F label="Nationality">
+              <Input value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Indian" />
+            </F>
             <div className="col-span-2">
               <F label="Address"><Textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} /></F>
             </div>
@@ -526,6 +529,82 @@ function NewBookingPage() {
           </CardContent>
         </Card>
 
+        {/* Additional guests (Issue #6) */}
+        {extras.length > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Additional guests ({extras.length})</CardTitle>
+              <Button size="sm" variant="outline" onClick={addManualExtra}>
+                <UserPlus className="h-4 w-4 mr-1" /> Add guest manually
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {extras.map((g, idx) => (
+                <div key={g.key} className="rounded-md border p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {g.kind === "adult" ? `Adult guest #${idx + 1}` : `Child #${idx + 1 - extras.filter((e) => e.kind === "adult").length}`}
+                    </div>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeExtra(g.key)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <F label="Full name *">
+                      <Input value={g.name} onChange={(e) => updateExtra(g.key, { name: e.target.value })} />
+                    </F>
+                    <F label="Age *">
+                      <Input type="number" value={g.age} onChange={(e) => updateExtra(g.key, { age: e.target.value })} />
+                    </F>
+                    {g.kind === "adult" && (
+                      <>
+                        <F label="ID proof type *">
+                          <Select value={g.id_proof_type} onValueChange={(v) => updateExtra(g.key, { id_proof_type: v })}>
+                            <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="aadhaar">Aadhaar</SelectItem>
+                              <SelectItem value="passport">Passport</SelectItem>
+                              <SelectItem value="driving_license">Driving License</SelectItem>
+                              <SelectItem value="voter_id">Voter ID</SelectItem>
+                              <SelectItem value="pan">PAN</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </F>
+                        <F label="ID proof number *">
+                          <Input value={g.id_proof_number} onChange={(e) => updateExtra(g.key, { id_proof_number: e.target.value })} />
+                        </F>
+                        <div className="col-span-2">
+                          <F label="Relation to primary guest *">
+                            <Select value={g.relation} onValueChange={(v) => updateExtra(g.key, { relation: v })}>
+                              <SelectTrigger><SelectValue placeholder="Select relation" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Spouse">Spouse</SelectItem>
+                                <SelectItem value="Child">Child</SelectItem>
+                                <SelectItem value="Parent">Parent</SelectItem>
+                                <SelectItem value="Sibling">Sibling</SelectItem>
+                                <SelectItem value="Friend">Friend</SelectItem>
+                                <SelectItem value="Colleague">Colleague</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </F>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+        {extras.length === 0 && (adults > 1 || children > 0) === false && (
+          <div className="flex">
+            <Button size="sm" variant="outline" onClick={addManualExtra}>
+              <UserPlus className="h-4 w-4 mr-1" /> Add additional guest manually
+            </Button>
+          </div>
+        )}
+
         <Card>
           <CardHeader><CardTitle className="text-base">Stay & room</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
@@ -534,32 +613,41 @@ function NewBookingPage() {
             <F label="Adults"><Input type="number" min={1} value={adults} onChange={(e) => setAdults(Number(e.target.value))} /></F>
             <F label="Children"><Input type="number" min={0} value={children} onChange={(e) => setChildren(Number(e.target.value))} /></F>
             <F label="Category *">
-              <Select value={categoryId} onValueChange={pickCategory}>
-                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                <SelectContent>
-                  {cats.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={categoryId}
+                onChange={pickCategory}
+                placeholder="Select category"
+                searchPlaceholder="Type to filter categories…"
+                options={cats.map((c) => ({ value: c.id, label: c.name })) as SearchableOption[]}
+              />
             </F>
             <F label="Room *">
-              <Select value={roomId} onValueChange={setRoomId} disabled={!categoryId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={categoryId ? (availableRooms.length ? "Select vacant room" : "No vacant rooms") : "Pick category first"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableRooms.map((r) => (<SelectItem key={r.id} value={r.id}>{r.room_number}</SelectItem>))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={roomId}
+                onChange={setRoomId}
+                disabled={!categoryId}
+                placeholder={categoryId ? (availableRooms.length ? "Select vacant room" : "No vacant rooms") : "Pick category first"}
+                searchPlaceholder="Type room number…"
+                options={availableRooms.map((r) => ({
+                  value: r.id,
+                  label: r.room_number,
+                  keywords: cats.find((c) => c.id === r.category_id)?.name ?? "",
+                })) as SearchableOption[]}
+              />
             </F>
             <F label="Tariff plan">
-              <Select value={tariffId} onValueChange={pickTariff} disabled={!categoryId}>
-                <SelectTrigger><SelectValue placeholder="Custom / none" /></SelectTrigger>
-                <SelectContent>
-                  {categoryTariffs.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>{t.name} ({t.meal_plan}) ₹{t.rate}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={tariffId}
+                onChange={pickTariff}
+                disabled={!categoryId}
+                placeholder="Custom / none"
+                searchPlaceholder="Search tariff plans…"
+                options={categoryTariffs.map((t) => ({
+                  value: t.id,
+                  label: `${t.name} (${t.meal_plan})`,
+                  hint: `₹${t.rate}`,
+                })) as SearchableOption[]}
+              />
             </F>
             <F label="Meal plan">
               <Select value={mealPlan} onValueChange={setMealPlan}>
@@ -585,14 +673,34 @@ function NewBookingPage() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">Payment & notes</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base">Payment at Check-in (Advance)</CardTitle>
+          </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-4 gap-3 text-sm">
               <Stat label="Nights" value={String(nights)} />
               <Stat label="Room total" value={`₹${total.toLocaleString("en-IN")}`} />
-              <F label="Advance (₹)"><Input type="number" value={advance} onChange={(e) => setAdvance(Number(e.target.value))} /></F>
+              <F label="Advance ₹"><Input type="number" value={advance} onChange={(e) => setAdvance(Number(e.target.value))} /></F>
               <Stat label="Balance" value={`₹${balance.toLocaleString("en-IN")}`} highlight />
             </div>
+            {advance > 0 && (
+              <div className="grid grid-cols-2 gap-3">
+                <F label="Payment mode *">
+                  <Select value={paymentMode} onValueChange={setPaymentMode}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Cash</SelectItem>
+                      <SelectItem value="card">Card</SelectItem>
+                      <SelectItem value="upi">UPI</SelectItem>
+                      <SelectItem value="bank">Bank Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </F>
+                <F label="Reference (txn id, last 4)">
+                  <Input value={paymentRef} onChange={(e) => setPaymentRef(e.target.value)} placeholder="Optional" />
+                </F>
+              </div>
+            )}
             <F label="Notes"><Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></F>
           </CardContent>
         </Card>
