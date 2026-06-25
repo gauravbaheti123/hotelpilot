@@ -24,6 +24,7 @@ function NewGuestPage() {
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
+  const [dob, setDob] = useState("");
   const [idType, setIdType] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [address, setAddress] = useState("");
@@ -43,6 +44,7 @@ function NewGuestPage() {
       name: name.trim(),
       mobile: mobile.trim(),
       email: email.trim() || null,
+      dob: dob || null,
       id_proof_type: idType || null,
       id_proof_number: idNumber.trim() || null,
       address: address.trim() || null,
@@ -63,6 +65,7 @@ function NewGuestPage() {
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Full name *"><Input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} /></Field>
             <Field label="Mobile *"><Input value={mobile} onChange={(e) => setMobile(e.target.value)} maxLength={20} /></Field>
+            <Field label="Date of Birth (optional)"><Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} /></Field>
             <Field label="Email"><Input value={email} onChange={(e) => setEmail(e.target.value)} maxLength={255} /></Field>
             <Field label="Guest type">
               <Select value={guestType} onValueChange={(v) => setGuestType(v as typeof guestType)}>

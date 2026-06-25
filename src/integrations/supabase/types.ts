@@ -2396,6 +2396,50 @@ export type Database = {
           },
         ]
       }
+      reminders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_dismissed: boolean
+          notes: string | null
+          property_id: string
+          reminder_datetime: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_dismissed?: boolean
+          notes?: string | null
+          property_id: string
+          reminder_datetime: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_dismissed?: boolean
+          notes?: string | null
+          property_id?: string
+          reminder_datetime?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminders_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurant_credits: {
         Row: {
           amount: number
@@ -2565,6 +2609,7 @@ export type Database = {
           description: string | null
           id: string
           is_system: boolean
+          max_discount_pct: number
           name: string
           property_id: string | null
           updated_at: string
@@ -2574,6 +2619,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_system?: boolean
+          max_discount_pct?: number
           name: string
           property_id?: string | null
           updated_at?: string
@@ -2583,6 +2629,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_system?: boolean
+          max_discount_pct?: number
           name?: string
           property_id?: string | null
           updated_at?: string
@@ -3356,6 +3403,10 @@ export type Database = {
       user_has_property: {
         Args: { _prop: string; _uid: string }
         Returns: boolean
+      }
+      user_max_discount_pct: {
+        Args: { _property_id: string; _user_id: string }
+        Returns: number
       }
       user_property_ids: { Args: { _uid: string }; Returns: string[] }
     }
