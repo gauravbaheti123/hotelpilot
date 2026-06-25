@@ -520,6 +520,10 @@ function FolioPage() {
           <td class="right">${inr(p.amount)}</td>
         </tr>`).join("")}</tbody></table>` : ""}
       <p class="small" style="margin-top:24px;text-align:center">Thank you for staying with ${esc(property?.name ?? "us")}.</p>
+      <div style="margin-top:48px;display:flex;justify-content:space-between;gap:48px">
+        <div style="flex:1;border-top:1px solid #111;padding-top:4px;font-size:11px">Received by</div>
+        <div style="flex:1;border-top:1px solid #111;padding-top:4px;font-size:11px;text-align:right">Guest signature</div>
+      </div>
       </body></html>`;
     const w = window.open("", "_blank", "width=900,height=900");
     if (!w) return;
