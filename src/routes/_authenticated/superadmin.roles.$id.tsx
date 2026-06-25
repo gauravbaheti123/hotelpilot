@@ -231,20 +231,24 @@ function EditRolePage() {
                             const p = byKey[`${mKey}:${a}`];
                             return (
                               <TableCell key={a} className="text-center">
-                                {p ? (
-                                  <Checkbox
-                                    checked={!!allowed[p.id]}
-                                    onCheckedChange={(v) => toggle(p.id, !!v)}
-                                  />
-                                ) : null}
+                                <div className="flex justify-center">
+                                  {p ? (
+                                    <Checkbox
+                                      checked={!!allowed[p.id]}
+                                      onCheckedChange={(v) => toggle(p.id, !!v)}
+                                    />
+                                  ) : null}
+                                </div>
                               </TableCell>
                             );
                           })}
                           <TableCell className="text-center">
-                            <Checkbox
-                              checked={rowAll}
-                              onCheckedChange={(v) => toggleRow(mKey, !!v)}
-                            />
+                            <div className="flex justify-center">
+                              <Checkbox
+                                checked={rowAll}
+                                onCheckedChange={(v) => toggleRow(mKey, !!v)}
+                              />
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
