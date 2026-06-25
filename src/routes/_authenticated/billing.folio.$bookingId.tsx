@@ -74,7 +74,7 @@ interface PendingKot {
 function FolioPage() {
   const { bookingId } = Route.useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const [booking, setBooking] = useState<BookingCtx | null>(null);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
   const [folio, setFolio] = useState<Folio | null>(null);
@@ -532,8 +532,7 @@ function FolioPage() {
   const isOpen = folio.status === "open";
   const pendingTotal = pendingKots.reduce((s, k) => s + Number(k.total_amount || 0), 0);
   const hasPending = pendingKots.length > 0;
-  const canVoid = hasRole(user ? (useAuth as any).roles ?? [] : [], "superadmin")
-    || hasRole((useAuth as any)?.roles ?? [], "owner");
+  const canVoid = hasRole(roles, "superadmin") || hasRole(roles, "owner") || hasRole(roles, "manager");
 
   async function markAllServed() {
     const ids = pendingKots.map((k) => k.id);
