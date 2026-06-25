@@ -123,7 +123,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/guests", label: "Guest CRM", icon: UserCircle2, module: "guest_crm" },
       { to: "/comms", label: "Communications", icon: MessagesSquare, module: "communications" },
-      { to: "/comms/new", label: "New Message", icon: MessageSquare, module: "communications" },
       { to: "/whatsapp", label: "WhatsApp Inbox", icon: MessageCircle, module: "whatsapp_inbox" },
     ],
   },
