@@ -35,6 +35,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
+import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
 
 export const Route = createFileRoute("/_authenticated/masters/rooms")({
   head: () => ({ meta: [{ title: "Rooms & Categories — HotelPilot" }] }),
@@ -336,6 +337,42 @@ function RoomsMasterPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">Rooms</CardTitle>
             {canManage && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {current && (
+                  <BulkCsvButtons
+                    table="rooms"
+                    propertyId={current.id}
+                    module="rooms"
+                    hotelName={current.name}
+                    extraDefaults={{ property_id: current.id }}
+                    columns={[
+                      { header: "room_number", field: "room_number", required: true },
+                      { header: "floor", field: "floor" },
+                      { header: "category_name", required: true,
+                        format: (_v, row) =>
+                          cats.find((c) => c.id === (row as { category_id?: string }).category_id)?.name ?? "" },
+                      { header: "status", field: "status",
+                        format: (v) => (v == null ? "vacant" : String(v)) },
+                      { header: "housekeeping_status", field: "housekeeping_status",
+                        format: (v) => (v == null ? "clean" : String(v)) },
+                      { header: "is_active", field: "is_active",
+                        parse: (v) => v.toLowerCase() !== "false" && v !== "0" && v !== "",
+                        format: (v) => (v ? "true" : "false") },
+                    ]}
+                    transformRow={(row) => {
+                      const name = String(row["category_name"] ?? "").trim().toLowerCase();
+                      if (!name) throw new Error("category_name required");
+                      const match = cats.find((c) => c.name.toLowerCase() === name);
+                      if (!match) throw new Error(`Unknown category: ${row["category_name"]}`);
+                      (row as Record<string, unknown>).category_id = match.id;
+                      if (!row["status"]) (row as Record<string, unknown>).status = "vacant";
+                      if (!row["housekeeping_status"]) (row as Record<string, unknown>).housekeeping_status = "clean";
+                      delete (row as Record<string, unknown>)["category_name"];
+                      return row;
+                    }}
+                    onImported={load}
+                  />
+                )}
               <Dialog open={roomOpen} onOpenChange={setRoomOpen}>
                 <DialogTrigger asChild>
                   <Button
@@ -456,6 +493,7 @@ function RoomsMasterPage() {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+              </div>
             )}
           </CardHeader>
           <CardContent>

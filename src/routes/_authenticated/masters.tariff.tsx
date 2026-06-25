@@ -4,6 +4,7 @@ import { CrudPage, type FieldDef, type ColumnDef } from "@/components/master/Cru
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
+import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
 
 export const Route = createFileRoute("/_authenticated/masters/tariff")({
   head: () => ({ meta: [{ title: "Tariff Plans — HotelPilot" }] }),
@@ -98,6 +99,51 @@ function TariffPage() {
       fields={fields}
       columns={columns}
       orderBy={{ column: "name" }}
+      headerActions={
+        current ? (
+          <BulkCsvButtons
+            table="tariff_plans"
+            propertyId={current.id}
+            module="tariff"
+            hotelName={current.name}
+            extraDefaults={{ property_id: current.id }}
+            columns={[
+              { header: "name", field: "name", required: true },
+              { header: "category_name", required: true,
+                format: (_v, row) =>
+                  cats.find((c) => c.id === (row as { category_id?: string }).category_id)?.name ?? "" },
+              { header: "meal_plan", field: "meal_plan" },
+              { header: "rate", field: "rate",
+                parse: (v) => Number(v || 0),
+                format: (v) => (v == null ? "" : String(v)) },
+              { header: "extra_adult_rate", field: "extra_adult_rate",
+                parse: (v) => Number(v || 0),
+                format: (v) => (v == null ? "" : String(v)) },
+              { header: "extra_child_rate", field: "extra_child_rate",
+                parse: (v) => Number(v || 0),
+                format: (v) => (v == null ? "" : String(v)) },
+              { header: "valid_from", field: "valid_from" },
+              { header: "valid_to", field: "valid_to" },
+              { header: "is_default", field: "is_default",
+                parse: (v) => v.toLowerCase() === "true" || v === "1",
+                format: (v) => (v ? "true" : "false") },
+              { header: "is_active", field: "is_active",
+                parse: (v) => v.toLowerCase() !== "false" && v !== "0" && v !== "",
+                format: (v) => (v ? "true" : "false") },
+            ]}
+            transformRow={(row) => {
+              const name = String(row["category_name"] ?? "").trim().toLowerCase();
+              if (name) {
+                const match = cats.find((c) => c.name.toLowerCase() === name);
+                if (!match) throw new Error(`Unknown category: ${row["category_name"]}`);
+                (row as Record<string, unknown>).category_id = match.id;
+              }
+              delete (row as Record<string, unknown>)["category_name"];
+              return row;
+            }}
+          />
+        ) : null
+      }
     />
   );
 }

@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { CrudPage, type FieldDef, type ColumnDef } from "@/components/master/CrudPage";
 import { Badge } from "@/components/ui/badge";
+import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
+import { useCurrentProperty } from "@/hooks/use-property";
 
 export const Route = createFileRoute("/_authenticated/masters/staff")({
   head: () => ({ meta: [{ title: "Staff — HotelPilot" }] }),
@@ -62,6 +64,7 @@ const columns: ColumnDef<Staff>[] = [
 ];
 
 function StaffPage() {
+  const { current } = useCurrentProperty();
   return (
     <CrudPage<Staff>
       title="Staff"
@@ -70,6 +73,31 @@ function StaffPage() {
       fields={fields}
       columns={columns}
       orderBy={{ column: "name" }}
+      headerActions={
+        current ? (
+          <BulkCsvButtons
+            table="staff"
+            propertyId={current.id}
+            module="staff"
+            hotelName={current.name}
+            extraDefaults={{ property_id: current.id }}
+            columns={[
+              { header: "name", field: "name", required: true },
+              { header: "mobile", field: "mobile" },
+              { header: "email", field: "email" },
+              { header: "designation", field: "designation" },
+              { header: "department", field: "department" },
+              { header: "salary", field: "salary",
+                parse: (v) => (v === "" ? null : Number(v)),
+                format: (v) => (v == null ? "" : String(v)) },
+              { header: "joining_date", field: "joining_date" },
+              { header: "is_active", field: "is_active",
+                parse: (v) => v.toLowerCase() !== "false" && v !== "0" && v !== "",
+                format: (v) => (v ? "true" : "false") },
+            ]}
+          />
+        ) : null
+      }
     />
   );
 }
