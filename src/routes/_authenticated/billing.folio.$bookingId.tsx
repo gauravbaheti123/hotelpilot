@@ -149,6 +149,17 @@ function FolioPage() {
     setCharges(((c ?? []) as unknown as Charge[]));
     setPayments(((p ?? []) as unknown as Payment[]));
 
+    // Resolve current user's max-discount % for this property.
+    try {
+      if (user?.id) {
+        const { data: pct } = await supabase.rpc("user_max_discount_pct", {
+          _user_id: user.id, _property_id: bk.property_id,
+        });
+        const n = Number(pct);
+        setMaxDiscPct(Number.isFinite(n) ? n : 0);
+      }
+    } catch { /* keep default */ }
+
     // Load pending KOTs (not served/billed/cancelled, not wiped)
     const { data: pk } = await supabase
       .from("kot_orders")
