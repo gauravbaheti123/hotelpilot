@@ -106,9 +106,9 @@ function RestaurantPage() {
         .eq("property_id", current.id)
         .eq("status", "checked_in"),
     ]);
-    const rows = (dc.data ?? []) as DirectChargeRow[];
+    const rows = (dc.data ?? []) as unknown as DirectChargeRow[];
     setDirectCharges(rows);
-    setPayables((py.data ?? []) as PayableRow[]);
+    setPayables((py.data ?? []) as unknown as PayableRow[]);
 
     const bks = (bk.data ?? []) as any[];
     setActiveBookings(bks.map((b) => {
