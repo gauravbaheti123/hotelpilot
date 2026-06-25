@@ -65,11 +65,6 @@ interface PropertyInfo {
   phone: string | null; email: string | null; wa_number: string | null;
   logo_url: string | null;
 }
-interface BookingExtra {
-  adults?: number | null; children?: number | null;
-  guests?: { id_proof_type?: string | null; id_proof_number?: string | null; nationality?: string | null } | null;
-}
-
 interface PendingKot {
   id: string; kot_number: string; status: string;
   total_amount: number; sub_total: number;
