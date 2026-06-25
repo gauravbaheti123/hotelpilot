@@ -424,7 +424,16 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
             </div>
 
             <Section title="Room Charges" rows={totals.rooms} total={totals.roomTotal} />
-            <Section title="Food & Restaurant Bill" rows={totals.food} total={totals.foodTotal} empty="No food charges" />
+            <div>
+              <Section title="Food & Restaurant Bill" rows={totals.food} total={totals.foodTotal} empty="No food charges" />
+              {canShiftMis && totals.foodTotal > 0 && (
+                <div className="flex justify-end mt-1">
+                  <Button size="sm" variant="outline" onClick={() => setMisOpen(true)}>
+                    <ArrowRightLeft className="h-3.5 w-3.5 mr-1" /> Shift Food Charges to MIS
+                  </Button>
+                </div>
+              )}
+            </div>
             <Section title="Other Charges" rows={totals.other} total={totals.otherTotal} empty="—" />
 
             <div className="flex justify-between border-t-2 border-foreground pt-2 font-semibold text-base">
