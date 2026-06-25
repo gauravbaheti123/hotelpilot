@@ -52,8 +52,11 @@ interface Folio {
 interface BookingCtx {
   id: string; booking_number: string; status: string;
   check_in: string; check_out: string; total_amount: number;
-  property_id: string;
-  guests: { name: string; mobile: string | null; gst_number: string | null; company: string | null } | null;
+  property_id: string; adults: number | null; children: number | null;
+  guests: {
+    name: string; mobile: string | null; gst_number: string | null; company: string | null;
+    id_proof_type: string | null; id_proof_number: string | null; nationality: string | null;
+  } | null;
   booking_rooms: { id: string; rate: number; check_in: string; check_out: string; rooms: { room_number: string } | null; room_categories: { name: string } | null }[];
 }
 interface PropertyInfo {
