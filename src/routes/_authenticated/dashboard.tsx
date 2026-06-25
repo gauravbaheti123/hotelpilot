@@ -353,7 +353,7 @@ function roomTileStyle(r: Room, isOccupied: boolean): { bg: string; label: strin
 }
 
 function RoomStatusModal({
-  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking,
+  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout,
 }: {
   room: Room | null;
   kind: TileKind | null;
@@ -363,6 +363,7 @@ function RoomStatusModal({
   onChanged: () => Promise<void>;
   onOpenBooking: (bookingId: string) => void;
   onNewBooking: () => void;
+  onCheckout: (bookingId: string) => void;
 }) {
   const [staffId, setStaffId] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
@@ -433,7 +434,8 @@ function RoomStatusModal({
         {kind === "occupied" && (
           <div className="grid gap-2">
             <p className="text-sm text-muted-foreground">Status change not allowed while occupied — check out guest first.</p>
-            <Button disabled={!bookingId} onClick={() => bookingId && onOpenBooking(bookingId)}>View Booking</Button>
+            <Button disabled={!bookingId} onClick={() => bookingId && onCheckout(bookingId)}>Checkout</Button>
+            <Button variant="outline" disabled={!bookingId} onClick={() => bookingId && onOpenBooking(bookingId)}>View Booking</Button>
             <Button variant="outline" disabled={!bookingId}
               onClick={() => bookingId && onOpenBooking(bookingId)}>Room Shift</Button>
           </div>
