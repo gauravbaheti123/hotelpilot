@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { BANQUET_STATUS_TONE, computeBanquetTotal } from "@/lib/banquet";
 import { ArrowLeft, BedDouble, Trash2, CheckCircle2, Ban, Plus } from "lucide-react";
+import type { EventBlockRecord } from "@/lib/eventRoomBlocks";
 
 export const Route = createFileRoute("/_authenticated/banquet/event/$id")({
   head: () => ({ meta: [{ title: "Banquet Event — HotelPilot" }] }),
@@ -48,6 +49,7 @@ function BanquetEventPage() {
   const { user } = useAuth();
   const [b, setB] = useState<Bq | null>(null);
   const [bulk, setBulk] = useState<Bulk[]>([]);
+  const [blocks, setBlocks] = useState<EventBlockRecord[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +92,9 @@ function BanquetEventPage() {
     setBulk(((br ?? []) as unknown) as Bulk[]);
     setRooms((rs ?? []) as Room[]);
     setCats((cs ?? []) as Cat[]);
+    const { data: erb } = await supabase.from("event_room_blocks")
+      .select("*").eq("banquet_booking_id", id).order("room_number");
+    setBlocks((erb ?? []) as unknown as EventBlockRecord[]);
     setLoading(false);
   }, [id]);
 
@@ -118,6 +123,16 @@ function BanquetEventPage() {
   async function removeBulk(rowId: string) {
     if (!confirm("Remove this room from block?")) return;
     await supabase.from("banquet_bulk_rooms").delete().eq("id", rowId);
+    load();
+  }
+
+  async function saveBlockGuest(block: EventBlockRecord) {
+    const { error } = await supabase.from("event_room_blocks").update({
+      guest_name: block.guest_name?.trim() || null,
+      guest_mobile: block.guest_mobile?.trim() || null,
+    } as any).eq("id", block.id);
+    if (error) return toast.error(error.message);
+    toast.success("Guest info saved");
     load();
   }
 
@@ -243,6 +258,42 @@ function BanquetEventPage() {
             )}
           </CardContent>
         </Card>
+
+        {blocks.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <BedDouble className="h-4 w-4" /> Event Room Block · {b.banquet_number}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="grid grid-cols-[80px_1fr_1fr_1fr_120px_90px] gap-2 text-xs uppercase text-muted-foreground border-b pb-1">
+                <div>Room</div><div>Stay</div><div>Guest name</div><div>Mobile</div><div>Status</div><div></div>
+              </div>
+              {blocks.map((blk, i) => (
+                <div key={blk.id} className="grid grid-cols-[80px_1fr_1fr_1fr_120px_90px] gap-2 items-center text-sm">
+                  <div>
+                    <div className="font-semibold">{blk.room_number}</div>
+                    <div className="text-xs text-muted-foreground">{blk.room_category}</div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{blk.checkin_date}<br/>→ {blk.checkout_date}</div>
+                  <Input value={blk.guest_name ?? ""} disabled={blk.status !== "blocked"}
+                    placeholder="Unassigned"
+                    onChange={(e) => setBlocks((prev) => prev.map((x, idx) => idx === i ? { ...x, guest_name: e.target.value } : x))} />
+                  <Input value={blk.guest_mobile ?? ""} disabled={blk.status !== "blocked"}
+                    onChange={(e) => setBlocks((prev) => prev.map((x, idx) => idx === i ? { ...x, guest_mobile: e.target.value } : x))} />
+                  <Badge variant="outline" className={
+                    blk.status === "checked_in" ? "bg-blue-100 text-blue-800" :
+                    blk.status === "checked_out" ? "bg-emerald-100 text-emerald-800" :
+                    "bg-purple-100 text-purple-800"
+                  }>{blk.status.replace("_", " ")}</Badge>
+                  <Button size="sm" variant="outline" disabled={blk.status !== "blocked"}
+                    onClick={() => saveBlockGuest(blk)}>Save</Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogContent>
