@@ -3,6 +3,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { invalidatePermissions } from "@/hooks/use-permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -151,6 +152,7 @@ function EditRolePage() {
       .upsert(rows, { onConflict: "role_id,permission_id" });
     setSaving(false);
     if (error) return toast.error(error.message);
+    invalidatePermissions();
     toast.success("Permissions saved");
   }
 
