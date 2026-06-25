@@ -994,6 +994,8 @@ export type Database = {
           booking_id: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           discount_amount: number
           gst_amount: number
           gst_mode: string
@@ -1001,6 +1003,7 @@ export type Database = {
           guest_gstin: string | null
           id: string
           invoice_number: string
+          is_deleted: boolean
           notes: string | null
           paid_amount: number
           property_id: string
@@ -1018,6 +1021,8 @@ export type Database = {
           booking_id: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           discount_amount?: number
           gst_amount?: number
           gst_mode?: string
@@ -1025,6 +1030,7 @@ export type Database = {
           guest_gstin?: string | null
           id?: string
           invoice_number?: string
+          is_deleted?: boolean
           notes?: string | null
           paid_amount?: number
           property_id: string
@@ -1042,6 +1048,8 @@ export type Database = {
           booking_id?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           discount_amount?: number
           gst_amount?: number
           gst_mode?: string
@@ -1049,6 +1057,7 @@ export type Database = {
           guest_gstin?: string | null
           id?: string
           invoice_number?: string
+          is_deleted?: boolean
           notes?: string | null
           paid_amount?: number
           property_id?: string
@@ -1926,6 +1935,141 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mis_accounts: {
+        Row: {
+          created_at: string
+          id: string
+          name: string | null
+          property_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          property_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          property_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mis_accounts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mis_ledger: {
+        Row: {
+          amount: number
+          deleted_at: string | null
+          deleted_by: string | null
+          description: string | null
+          id: string
+          is_deleted: boolean
+          line_items: Json
+          mis_account_id: string | null
+          property_id: string
+          shifted_at: string
+          shifted_by: string | null
+          shifted_by_name: string | null
+          source_bill_id: string | null
+          source_bill_number: string | null
+          source_booking_id: string | null
+          source_guest_id: string | null
+          source_guest_name: string | null
+          source_room_number: string | null
+        }
+        Insert: {
+          amount: number
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          id?: string
+          is_deleted?: boolean
+          line_items?: Json
+          mis_account_id?: string | null
+          property_id: string
+          shifted_at?: string
+          shifted_by?: string | null
+          shifted_by_name?: string | null
+          source_bill_id?: string | null
+          source_bill_number?: string | null
+          source_booking_id?: string | null
+          source_guest_id?: string | null
+          source_guest_name?: string | null
+          source_room_number?: string | null
+        }
+        Update: {
+          amount?: number
+          deleted_at?: string | null
+          deleted_by?: string | null
+          description?: string | null
+          id?: string
+          is_deleted?: boolean
+          line_items?: Json
+          mis_account_id?: string | null
+          property_id?: string
+          shifted_at?: string
+          shifted_by?: string | null
+          shifted_by_name?: string | null
+          source_bill_id?: string | null
+          source_bill_number?: string | null
+          source_booking_id?: string | null
+          source_guest_id?: string | null
+          source_guest_name?: string | null
+          source_room_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mis_ledger_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mis_ledger_mis_account_id_fkey"
+            columns: ["mis_account_id"]
+            isOneToOne: false
+            referencedRelation: "mis_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mis_ledger_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mis_ledger_shifted_by_fkey"
+            columns: ["shifted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mis_ledger_source_booking_id_fkey"
+            columns: ["source_booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mis_ledger_source_guest_id_fkey"
+            columns: ["source_guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
             referencedColumns: ["id"]
           },
         ]

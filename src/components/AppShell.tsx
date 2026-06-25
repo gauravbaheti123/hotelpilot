@@ -98,6 +98,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/pos", label: "POS / Sundry", icon: ShoppingCart, module: "pos_sundry" },
       { to: "/billing/invoices", label: "Invoices", icon: Receipt, module: "invoices" },
       { to: "/restaurant", label: "Restaurant Billing", icon: UtensilsCrossed, module: "restaurant_billing" },
+      { to: "/billing/mis", label: "MIS Account", icon: ShieldAlert, requireOwner: true },
     ],
   },
   {
