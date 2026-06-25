@@ -31,12 +31,21 @@ interface CreditRow {
   room_id: string | null;
 }
 
+interface CreditEnrichment {
+  kot_number?: string;
+  room_no?: string;
+  guest_name?: string;
+  items?: string;
+  kitchen?: string;
+  settled_at?: string | null;
+}
+
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function RestaurantPage() {
   const { current } = useCurrentProperty();
   const [credits, setCredits] = useState<CreditRow[]>([]);
-  const [enriched, setEnriched] = useState<Record<string, { kot_number?: string; room_no?: string; guest_name?: string; items?: string }>>({});
+  const [enriched, setEnriched] = useState<Record<string, CreditEnrichment>>({});
   const [loading, setLoading] = useState(false);
 
   const now = new Date();
@@ -49,24 +58,23 @@ function RestaurantPage() {
   async function load() {
     if (!current) return;
     setLoading(true);
-    // Backfill: ensure every restaurant_copy KOT (not void/wiped) has a credit row.
-    // The DB trigger only fires when status flips to 'billed'; we want all restaurant
-    // KOTs visible immediately, including those still 'open' / 'printed' / 'served'.
-    const { data: rKots } = await supabase
+    // Hotel outsources ALL food to one restaurant partner. Track every canonical
+    // KOT (parent_kot_id IS NULL) for this property regardless of kitchen.
+    const { data: allKots } = await supabase
       .from("kot_orders")
-      .select("id,property_id,booking_id,room_id,total_amount,kot_number,created_at,status")
+      .select("id,property_id,booking_id,room_id,total_amount,kot_number,created_at,status,kot_type,parent_kot_id")
       .eq("property_id", current.id)
-      .eq("kot_copy", "restaurant_copy")
+      .is("parent_kot_id", null)
       .eq("is_wiped", false)
-      .neq("status", "void");
-    if (rKots && rKots.length > 0) {
-      const ids = rKots.map((k: any) => k.id);
+      .not("status", "in", "(void,cancelled)");
+    if (allKots && allKots.length > 0) {
+      const ids = allKots.map((k: any) => k.id);
       const { data: existing } = await supabase
         .from("restaurant_credits")
         .select("kot_order_id")
         .in("kot_order_id", ids);
       const have = new Set((existing ?? []).map((x: any) => x.kot_order_id));
-      const missing = rKots.filter((k: any) => !have.has(k.id));
+      const missing = allKots.filter((k: any) => !have.has(k.id));
       if (missing.length > 0) {
         await supabase.from("restaurant_credits").insert(
           missing.map((k: any) => ({
@@ -79,6 +87,20 @@ function RestaurantPage() {
             description: `Auto-credit from KOT ${k.kot_number ?? k.id}`,
           })) as any,
         );
+      }
+      // Clean up stale unsettled credits keyed to restaurant_copy duplicates.
+      const { data: dupKots } = await supabase
+        .from("kot_orders")
+        .select("id")
+        .eq("property_id", current.id)
+        .not("parent_kot_id", "is", null);
+      const dupIds = (dupKots ?? []).map((x: any) => x.id);
+      if (dupIds.length > 0) {
+        await supabase
+          .from("restaurant_credits")
+          .delete()
+          .in("kot_order_id", dupIds)
+          .eq("is_settled", false);
       }
     }
     const { data, error } = await supabase
@@ -95,12 +117,12 @@ function RestaurantPage() {
     const roomIds = Array.from(new Set(rows.map((r) => r.room_id).filter(Boolean))) as string[];
     const bookIds = Array.from(new Set(rows.map((r) => r.booking_id).filter(Boolean))) as string[];
     const [koRes, rmRes, bkRes, itemRes] = await Promise.all([
-      kotIds.length ? supabase.from("kot_orders").select("id,kot_number").in("id", kotIds) : Promise.resolve({ data: [] as any }),
+      kotIds.length ? supabase.from("kot_orders").select("id,kot_number,kot_type").in("id", kotIds) : Promise.resolve({ data: [] as any }),
       roomIds.length ? supabase.from("rooms").select("id,room_number").in("id", roomIds) : Promise.resolve({ data: [] as any }),
       bookIds.length ? supabase.from("bookings").select("id,guests(name)").in("id", bookIds) : Promise.resolve({ data: [] as any }),
       kotIds.length ? supabase.from("kot_items").select("kot_id,item_name,qty").in("kot_id", kotIds) : Promise.resolve({ data: [] as any }),
     ]);
-    const koMap = new Map((koRes.data ?? []).map((x: any) => [x.id, x.kot_number]));
+    const koMap = new Map((koRes.data ?? []).map((x: any) => [x.id, x]));
     const rmMap = new Map((rmRes.data ?? []).map((x: any) => [x.id, x.room_number]));
     const bkMap = new Map((bkRes.data ?? []).map((x: any) => [x.id, x.guests?.name]));
     const itemMap = new Map<string, string[]>();
@@ -111,8 +133,10 @@ function RestaurantPage() {
     }
     const e: typeof enriched = {};
     for (const r of rows) {
+      const ko = r.kot_order_id ? (koMap.get(r.kot_order_id) as any) : undefined;
       e[r.id] = {
-        kot_number: r.kot_order_id ? koMap.get(r.kot_order_id) as string | undefined : undefined,
+        kot_number: ko?.kot_number,
+        kitchen: ko?.kot_type,
         room_no: r.room_id ? rmMap.get(r.room_id) as string | undefined : undefined,
         guest_name: r.booking_id ? bkMap.get(r.booking_id) as string | undefined : undefined,
         items: r.kot_order_id ? (itemMap.get(r.kot_order_id) ?? []).join(", ") : undefined,
@@ -135,6 +159,10 @@ function RestaurantPage() {
   const activeRows = useMemo(() => monthRows.filter((c) => !c.is_settled), [monthRows]);
   const totalActive = useMemo(() => activeRows.reduce((s, r) => s + Number(r.amount), 0), [activeRows]);
   const totalMonth = useMemo(() => monthRows.reduce((s, r) => s + Number(r.amount), 0), [monthRows]);
+  const totalSettled = useMemo(
+    () => monthRows.filter((r) => r.is_settled).reduce((s, r) => s + Number(r.amount), 0),
+    [monthRows],
+  );
 
   const restInvoiceNum = typeof restInvoice === "number" ? restInvoice : Number(restInvoice || 0);
   const difference = restInvoiceNum - totalActive;
@@ -165,6 +193,29 @@ function RestaurantPage() {
     } catch (e: any) {
       toast.error(e.message ?? "Settlement failed");
     } finally { setSettling(false); }
+  }
+
+  async function settleOne(id: string, amount: number) {
+    if (!current) return;
+    try {
+      const ins = await (supabase as any).from("restaurant_settlements").insert({
+        property_id: current.id,
+        month, year,
+        total_amount: amount,
+        settled_amount: amount,
+        payment_mode: "bank_transfer",
+        notes: "Single KOT settled",
+      }).select("id").single();
+      if (ins.error) throw ins.error;
+      const upd = await supabase.from("restaurant_credits")
+        .update({ is_settled: true, settlement_id: ins.data.id } as any)
+        .eq("id", id);
+      if (upd.error) throw upd.error;
+      toast.success("Credit settled");
+      await load();
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed");
+    }
   }
 
   async function exportPdf() {
@@ -217,6 +268,25 @@ function RestaurantPage() {
   return (
     <AppShell title="Restaurant Billing">
       <div className="p-4 space-y-4 max-w-6xl">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card><CardContent className="pt-4">
+            <div className="text-xs text-muted-foreground">Total Food Orders</div>
+            <div className="text-2xl font-semibold">{monthRows.length}</div>
+            <div className="text-[10px] text-muted-foreground">{MONTHS[month - 1]} {year}</div>
+          </CardContent></Card>
+          <Card><CardContent className="pt-4">
+            <div className="text-xs text-muted-foreground">Total Amount</div>
+            <div className="text-2xl font-semibold">₹{totalMonth.toLocaleString()}</div>
+          </CardContent></Card>
+          <Card><CardContent className="pt-4">
+            <div className="text-xs text-muted-foreground">Settled</div>
+            <div className="text-2xl font-semibold text-emerald-600">₹{totalSettled.toLocaleString()}</div>
+          </CardContent></Card>
+          <Card><CardContent className="pt-4">
+            <div className="text-xs text-muted-foreground">Outstanding</div>
+            <div className={`text-2xl font-semibold ${totalActive > 0 ? "text-destructive" : ""}`}>₹{totalActive.toLocaleString()}</div>
+          </CardContent></Card>
+        </div>
         <Tabs defaultValue="active">
           <TabsList>
             <TabsTrigger value="active">Active Credits</TabsTrigger>
@@ -243,15 +313,17 @@ function RestaurantPage() {
                       <TableHead>KOT Ref</TableHead>
                       <TableHead>Items</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Kitchen</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loading && (
-                      <TableRow><TableCell colSpan={7} className="text-center py-6 text-sm text-muted-foreground">Loading…</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center py-6 text-sm text-muted-foreground">Loading…</TableCell></TableRow>
                     )}
                     {!loading && monthRows.length === 0 && (
-                      <TableRow><TableCell colSpan={7} className="text-center py-6 text-sm text-muted-foreground">No restaurant credits this month</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9} className="text-center py-6 text-sm text-muted-foreground">No food orders this month</TableCell></TableRow>
                     )}
                     {monthRows.map((r) => {
                       const e = enriched[r.id] ?? {};
@@ -263,10 +335,18 @@ function RestaurantPage() {
                           <TableCell className="text-xs font-mono">{e.kot_number ?? "—"}</TableCell>
                           <TableCell className="text-xs max-w-[280px] truncate">{e.items ?? "—"}</TableCell>
                           <TableCell className="text-right font-medium">₹{Number(r.amount).toFixed(2)}</TableCell>
+                          <TableCell className="text-xs capitalize">{e.kitchen ?? "—"}</TableCell>
                           <TableCell>
                             {r.is_settled
                               ? <Badge variant="secondary">Settled</Badge>
                               : <Badge variant="default">Open</Badge>}
+                          </TableCell>
+                          <TableCell>
+                            {!r.is_settled && (
+                              <Button size="sm" variant="outline" onClick={() => settleOne(r.id, Number(r.amount))}>
+                                Settle
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       );
