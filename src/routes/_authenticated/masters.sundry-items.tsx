@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { CrudPage, type FieldDef, type ColumnDef } from "@/components/master/CrudPage";
 import { Badge } from "@/components/ui/badge";
 import { SUNDRY_CATEGORIES, SUNDRY_UNITS, categoryColor, categoryLabel } from "@/lib/sundry";
+import { RequirePermission } from "@/components/RequirePermission";
 
 export const Route = createFileRoute("/_authenticated/masters/sundry-items")({
   head: () => ({ meta: [{ title: "Sundry Items — HotelPilot" }] }),
@@ -64,6 +65,7 @@ const columns: ColumnDef<Item>[] = [
 
 function SundryItemsPage() {
   return (
+    <RequirePermission module="masters_sundry_items">
     <CrudPage<Item>
       title="Sundry / POS Items"
       subtitle="Mini-bar, laundry, spa and other extras posted from the POS module."
@@ -72,5 +74,6 @@ function SundryItemsPage() {
       columns={columns}
       orderBy={{ column: "name", ascending: true }}
     />
+    </RequirePermission>
   );
 }
