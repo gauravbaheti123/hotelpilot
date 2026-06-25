@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { inr, recomputeFolio } from "@/lib/billing";
-import { ACTIVITY_NS, logActivity, userDisplayName } from "@/lib/activityLog";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { Loader2, ArrowRightLeft } from "lucide-react";
 
 interface ChargeRow {
@@ -228,6 +228,3 @@ export function ShiftToMisDialog({
     </Dialog>
   );
 }
-
-// re-export silencing unused import warnings if any
-export { ACTIVITY_NS };
