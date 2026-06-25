@@ -89,6 +89,20 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: corsHeaders });
 
+  // Verify caller identity via a shared webhook secret (configure as a query
+  // string or header in the AiSensy webhook URL, e.g. ?secret=... or X-Webhook-Secret).
+  const expected = Deno.env.get("AISENSY_WEBHOOK_SECRET") ?? "";
+  const provided =
+    req.headers.get("x-webhook-secret") ??
+    req.headers.get("x-aisensy-secret") ??
+    new URL(req.url).searchParams.get("secret") ??
+    "";
+  if (!expected || provided !== expected) {
+    return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,

@@ -185,13 +185,70 @@ Deno.serve(async (req) => {
 
     if (body.cron === "feedback_2h" || body.test === true) {
       if (body.test === true) {
+        // Test ping still requires either a valid JWT or the cron secret
+        const cronSecret = req.headers.get("x-cron-secret") ?? "";
+        const authHeader = req.headers.get("Authorization") ?? "";
+        const expected = Deno.env.get("WHATSAPP_CRON_SECRET") ?? "";
+        const hasCron = expected && cronSecret === expected;
+        let hasUser = false;
+        if (!hasCron && authHeader.startsWith("Bearer ")) {
+          const userClient = createClient(
+            Deno.env.get("SUPABASE_URL")!,
+            Deno.env.get("SUPABASE_ANON_KEY")!,
+            { global: { headers: { Authorization: authHeader } } },
+          );
+          const { data } = await userClient.auth.getUser();
+          hasUser = !!data?.user;
+        }
+        if (!hasCron && !hasUser) {
+          return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         return new Response(JSON.stringify({ ok: true, message: "Edge function reachable" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      // Cron path: require shared cron secret header
+      const cronSecret = req.headers.get("x-cron-secret") ?? "";
+      const expected = Deno.env.get("WHATSAPP_CRON_SECRET") ?? "";
+      if (!expected || cronSecret !== expected) {
+        return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       const out = await runFeedbackCron(supabase);
       return new Response(JSON.stringify(out), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Outbound send path: require an authenticated user
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: userRes, error: uErr } = await userClient.auth.getUser();
+    if (uErr || !userRes?.user) {
+      return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    // Verify caller has access to the target property
+    const { data: roles } = await supabase
+      .from("user_roles").select("role,property_id").eq("user_id", userRes.user.id);
+    const isSuper = (roles ?? []).some((r: any) => r.role === "superadmin");
+    const hasProperty = (roles ?? []).some((r: any) => r.property_id === body.property_id);
+    if (!isSuper && !hasProperty) {
+      return new Response(JSON.stringify({ ok: false, error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
