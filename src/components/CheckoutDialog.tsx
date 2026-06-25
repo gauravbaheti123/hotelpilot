@@ -573,6 +573,15 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
           </div>
         )}
       </DialogContent>
+      <ShiftToMisDialog
+        open={misOpen}
+        onOpenChange={setMisOpen}
+        folio={folio}
+        booking={booking}
+        charges={charges as any}
+        preselectFoodOnly
+        onShifted={() => load()}
+      />
     </Dialog>
   );
 }
