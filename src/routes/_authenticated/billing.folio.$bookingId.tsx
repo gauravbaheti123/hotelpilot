@@ -23,9 +23,10 @@ import {
   recomputeFolio,
 } from "@/lib/billing";
 import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle } from "lucide-react";
-import { AlertTriangle, ShieldAlert } from "lucide-react";
+import { AlertTriangle, ShieldAlert, ArrowRightLeft } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
+import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
@@ -112,6 +113,8 @@ function FolioPage() {
   const [mgrBusy, setMgrBusy] = useState(false);
   const [overrideApproved, setOverrideApproved] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [misOpen, setMisOpen] = useState(false);
+  const [misFoodOnly, setMisFoodOnly] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailTo, setEmailTo] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
@@ -582,6 +585,7 @@ function FolioPage() {
   const pendingTotal = pendingKots.reduce((s, k) => s + Number(k.total_amount || 0), 0);
   const hasPending = pendingKots.length > 0;
   const canVoid = hasRole(roles, "superadmin") || hasRole(roles, "owner") || hasRole(roles, "manager");
+  const canShiftMis = canVoid; // manager + owner + superadmin
 
   async function markAllServed() {
     const ids = pendingKots.map((k) => k.id);
@@ -962,6 +966,11 @@ function FolioPage() {
               {isOpen && canVoid && (
                 <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10" onClick={handleVoidClick}>
                   <Ban className="h-4 w-4 mr-1" /> Void
+                </Button>
+              )}
+              {isOpen && canShiftMis && (
+                <Button size="sm" variant="outline" onClick={() => { setMisFoodOnly(false); setMisOpen(true); }}>
+                  <ArrowRightLeft className="h-4 w-4 mr-1" /> Shift to MIS
                 </Button>
               )}
             </div>
