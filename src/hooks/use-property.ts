@@ -7,6 +7,7 @@ export interface Property {
   name: string;
   city: string | null;
   is_active: boolean;
+  status: "active" | "paused";
 }
 
 const LS_KEY = "hp.currentPropertyId";
@@ -20,7 +21,7 @@ export function useProperties() {
     setLoading(true);
     const { data } = await supabase
       .from("properties")
-      .select("id,name,city,is_active")
+      .select("id,name,city,is_active,status")
       .order("created_at", { ascending: true });
     setProperties((data ?? []) as Property[]);
     setLoading(false);
