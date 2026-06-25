@@ -333,11 +333,14 @@ function FolioPage() {
 
   function printInvoice() {
     if (!folio || !booking) return;
+    const esc = (s: unknown) => String(s ?? "")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     const isGst = (folio.bill_type ?? folio.gst_mode) === "gst_invoice" || folio.gst_mode === "gst";
     const title = isGst ? "TAX INVOICE" : "RECEIPT";
     const receiptNo = isGst ? folio.invoice_number : `RCPT-${folio.invoice_number.replace(/^INV-/, "")}`;
     const html = `
-      <html><head><title>${folio.invoice_number}</title>
+      <html><head><title>${esc(folio.invoice_number)}</title>
       <style>
         body{font-family:Arial,sans-serif;font-size:12px;padding:24px;max-width:780px;margin:0 auto;color:#111}
         h1{font-size:18px;margin:0 0 4px;text-align:center;letter-spacing:1px}
@@ -354,20 +357,20 @@ function FolioPage() {
         .small{font-size:10px;color:#555}
       </style></head><body>
       <h1>${title}</h1>
-      <div style="text-align:center"><strong>${property?.name ?? ""}</strong></div>
-      <div class="small" style="text-align:center">${property?.address ?? ""}${isGst && property?.gst_number ? ` · GSTIN: ${property.gst_number}` : ""}</div>
+      <div style="text-align:center"><strong>${esc(property?.name ?? "")}</strong></div>
+      <div class="small" style="text-align:center">${esc(property?.address ?? "")}${isGst && property?.gst_number ? ` · GSTIN: ${esc(property.gst_number)}` : ""}</div>
       <hr/>
       <div class="meta">
         <div>
-          <div><strong>Guest:</strong> ${booking.guests?.name ?? ""}</div>
-          <div>${booking.guests?.mobile ?? ""}</div>
-          ${isGst && folio.guest_gstin ? `<div>GSTIN: ${folio.guest_gstin}</div>` : ""}
-          ${isGst && folio.guest_company ? `<div>${folio.guest_company}</div>` : ""}
+          <div><strong>Guest:</strong> ${esc(booking.guests?.name ?? "")}</div>
+          <div>${esc(booking.guests?.mobile ?? "")}</div>
+          ${isGst && folio.guest_gstin ? `<div>GSTIN: ${esc(folio.guest_gstin)}</div>` : ""}
+          ${isGst && folio.guest_company ? `<div>${esc(folio.guest_company)}</div>` : ""}
         </div>
         <div class="right">
-          <div><strong>${isGst ? "Invoice" : "Receipt"}:</strong> ${receiptNo}</div>
-          <div>Booking: ${booking.booking_number}</div>
-          <div>Stay: ${booking.check_in} → ${booking.check_out}</div>
+          <div><strong>${isGst ? "Invoice" : "Receipt"}:</strong> ${esc(receiptNo)}</div>
+          <div>Booking: ${esc(booking.booking_number)}</div>
+          <div>Stay: ${esc(booking.check_in)} → ${esc(booking.check_out)}</div>
           <div>Date: ${new Date().toLocaleDateString()}</div>
         </div>
       </div>
@@ -378,8 +381,8 @@ function FolioPage() {
         </tr></thead>
         <tbody>
           ${charges.map((c: any) => `<tr>
-            <td>${c.description}</td>
-            <td>${c.hsn_code ?? (c.charge_type === "room" ? "996311" : c.charge_type === "food" ? "996331" : "")}</td>
+            <td>${esc(c.description)}</td>
+            <td>${esc(c.hsn_code ?? (c.charge_type === "room" ? "996311" : c.charge_type === "food" ? "996331" : ""))}</td>
             <td class="right">${Number(c.qty).toLocaleString("en-IN")}</td>
             <td class="right">${inr(c.rate)}</td>
             <td class="right">${inr(c.amount)}</td>
@@ -391,7 +394,7 @@ function FolioPage() {
         <thead><tr><th>Service description</th><th class="right">Amount</th></tr></thead>
         <tbody>
           ${charges.map((c) => `<tr>
-            <td>${c.description}</td>
+            <td>${esc(c.description)}</td>
             <td class="right">${inr(Number(c.amount) + Number(c.gst_amount || 0))}</td>
           </tr>`).join("")}
         </tbody>
@@ -410,11 +413,11 @@ function FolioPage() {
         <table><thead><tr><th>Date</th><th>Mode</th><th>Ref</th><th class="right">Amount</th></tr></thead>
         <tbody>${payments.map((p) => `<tr>
           <td>${new Date(p.paid_at).toLocaleString()}</td>
-          <td>${p.mode.toUpperCase()}</td>
-          <td>${p.reference_no ?? ""}</td>
+          <td>${esc(p.mode.toUpperCase())}</td>
+          <td>${esc(p.reference_no ?? "")}</td>
           <td class="right">${inr(p.amount)}</td>
         </tr>`).join("")}</tbody></table>` : ""}
-      <p class="small" style="margin-top:24px;text-align:center">Thank you for staying with ${property?.name ?? "us"}.</p>
+      <p class="small" style="margin-top:24px;text-align:center">Thank you for staying with ${esc(property?.name ?? "us")}.</p>
       </body></html>`;
     const w = window.open("", "_blank", "width=900,height=900");
     if (!w) return;
