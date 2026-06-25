@@ -12,8 +12,9 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrossed, ChevronDown, ChevronRight } from "lucide-react";
+import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrossed, ChevronDown, ChevronRight, DoorOpen } from "lucide-react";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
+import { RemindersBell, RemindersSection } from "@/components/Reminders";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — HotelPilot" }] }),
@@ -57,6 +58,14 @@ type PendingFoodRow = {
   amount: number;
   items: string;
   lastAt: string | null;
+};
+
+type OccInfo = {
+  bookingId: string;
+  guestName: string | null;
+  checkIn: string | null;
+  checkOut: string | null;
+  balance: number;
 };
 
 function todayISO() {
@@ -148,6 +157,7 @@ function OwnerDashboard({
   const [pendingFoodByRoom, setPendingFoodByRoom] = useState<Map<string, PendingFood>>(new Map());
   const [pendingFoodRows, setPendingFoodRows] = useState<PendingFoodRow[]>([]);
   const [showPendingFood, setShowPendingFood] = useState(false);
+  const [occInfoByRoom, setOccInfoByRoom] = useState<Map<string, OccInfo>>(new Map());
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -170,7 +180,7 @@ function OwnerDashboard({
           .gte("paid_at", `${today}T00:00:00`).lte("paid_at", `${today}T23:59:59`),
         supabase.from("rooms").select("id, room_number, status, housekeeping_status, category_id")
           .eq("property_id", propertyId).eq("is_active", true).order("room_number"),
-        supabase.from("booking_rooms").select("room_id, booking_id, actual_check_out, bookings!inner(status, property_id)")
+        supabase.from("booking_rooms").select("room_id, booking_id, actual_check_out, bookings!inner(id, status, property_id, balance_amount, check_in, check_out, guests:guest_id(name))")
           .eq("property_id", propertyId).is("actual_check_out", null).eq("bookings.status", "checked_in"),
       ]);
       const revenue = (pay.data ?? []).reduce((a, x: any) => a + Number(x.amount || 0), 0);
@@ -178,9 +188,22 @@ function OwnerDashboard({
         (activeBR.data ?? []).map((b: any) => b.room_id).filter(Boolean),
       );
       const bMap = new Map<string, string>();
-      (activeBR.data ?? []).forEach((b: any) => { if (b.room_id && b.booking_id) bMap.set(b.room_id, b.booking_id); });
+      const oMap = new Map<string, OccInfo>();
+      (activeBR.data ?? []).forEach((b: any) => {
+        if (b.room_id && b.booking_id) bMap.set(b.room_id, b.booking_id);
+        if (b.room_id && b.bookings) {
+          oMap.set(b.room_id, {
+            bookingId: b.booking_id,
+            guestName: b.bookings.guests?.name ?? null,
+            checkIn: b.bookings.check_in ?? null,
+            checkOut: b.bookings.check_out ?? null,
+            balance: Number(b.bookings.balance_amount || 0),
+          });
+        }
+      });
       setOccupiedRoomIds(occSet);
       setBookingByRoom(bMap);
+      setOccInfoByRoom(oMap);
       setKpi({
         occupied: occSet.size || (occ.count ?? 0),
         arrivals: arr.data?.length ?? 0,
@@ -271,11 +294,15 @@ function OwnerDashboard({
           {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
         </div>
 
+        <div className="flex items-center justify-between -mt-2">
+          <div className="text-xs text-muted-foreground">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
+          <RemindersBell propertyId={propertyId} userId={userId} />
+        </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Kpi label="Occupied Rooms" value={kpi.occupied} icon={BedDouble} />
+          <Kpi label="Available Rooms" value={Math.max(0, rooms.length - kpi.occupied)} icon={DoorOpen} />
           <Kpi label="Expected Arrivals" value={kpi.arrivals} icon={LogIn} />
           <Kpi label="Expected Departures" value={kpi.departures} icon={LogOut} />
-          <Kpi label="Today's Revenue" value={`₹${kpi.revenue.toLocaleString("en-IN")}`} icon={IndianRupee} />
         </div>
 
         <Card>
@@ -289,22 +316,27 @@ function OwnerDashboard({
                 categories={categories}
                 occupiedRoomIds={occupiedRoomIds}
                 pendingFoodByRoom={pendingFoodByRoom}
+                occInfoByRoom={occInfoByRoom}
                 onPick={(r) => setModalRoom(r)}
                 onPickFood={(r) => {
                   const pf = pendingFoodByRoom.get(r.id);
                   if (pf?.bookingId) navigate({ to: "/front-desk/booking/$id", params: { id: pf.bookingId } });
                 }}
+                onCheckout={(bid) => setCheckoutBookingId(bid)}
               />
             )}
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
-              <LegendDot style={{ backgroundColor: "#16a34a" }} label="Vacant" />
-              <LegendDot style={{ backgroundColor: "#dc2626" }} label="Occupied" />
-              <LegendDot style={{ backgroundColor: "#d97706" }} label="Dirty" />
-              <LegendDot style={{ backgroundColor: "#6b7280" }} label="Maintenance" />
+              <LegendDot style={{ backgroundColor: "#22c55e" }} label="Vacant" />
+              <LegendDot style={{ backgroundColor: "#3b82f6" }} label="Occupied" />
+              <LegendDot style={{ backgroundColor: "#f59e0b" }} label="Dirty" />
+              <LegendDot style={{ backgroundColor: "#ef4444" }} label="Maintenance" />
+              <LegendDot style={{ backgroundColor: "#6b7280" }} label="Blocked" />
               <LegendDot style={{ backgroundColor: "#f59e0b" }} label="Pending food" />
             </div>
           </CardContent>
         </Card>
+
+        <RemindersSection propertyId={propertyId} userId={userId} />
 
         <Card>
           <CardHeader className="pb-3">
@@ -415,14 +447,16 @@ function OwnerDashboard({
 }
 
 function RoomGroups({
-  rooms, categories, occupiedRoomIds, pendingFoodByRoom, onPick, onPickFood,
+  rooms, categories, occupiedRoomIds, pendingFoodByRoom, occInfoByRoom, onPick, onPickFood, onCheckout,
 }: {
   rooms: Room[];
   categories: RoomCategory[];
   occupiedRoomIds: Set<string>;
   pendingFoodByRoom: Map<string, PendingFood>;
+  occInfoByRoom: Map<string, OccInfo>;
   onPick: (r: Room) => void;
   onPickFood: (r: Room) => void;
+  onCheckout: (bookingId: string) => void;
 }) {
   const byCat = new Map<string, Room[]>();
   const uncategorised: Room[] = [];
@@ -444,41 +478,126 @@ function RoomGroups({
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {g.name} <span className="text-muted-foreground/70 font-normal">· {g.rooms.length}</span>
           </div>
-          <div className="grid gap-2 grid-cols-[repeat(auto-fill,minmax(80px,1fr))]">
-            {g.rooms.map((r) => {
-              const { bg, label } = roomTileStyle(r, occupiedRoomIds.has(r.id));
-              const pf = pendingFoodByRoom.get(r.id);
-              const hasFood = !!pf && pf.amount > 0;
-              return (
-                <div
-                  key={r.id}
-                  className={`overflow-hidden rounded-md text-white transition hover:opacity-95 hover:ring-2 hover:ring-offset-1 ${bg}`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => onPick(r)}
-                    className="block w-full px-2 pt-3 pb-2 text-center"
-                  >
-                    <div className="text-sm font-semibold">{r.room_number}</div>
-                    <div className="text-[10px] uppercase tracking-wide opacity-90">{label}</div>
-                  </button>
-                  {hasFood && (
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); onPickFood(r); }}
-                      title={`${pf!.count} pending KOT${pf!.count > 1 ? "s" : ""} · click to view`}
-                      className="flex w-full items-center justify-center gap-1 bg-amber-500 px-1 py-0.5 text-[10px] font-semibold text-white hover:bg-amber-600"
-                    >
-                      <UtensilsCrossed className="h-3 w-3" />
-                      ₹{pf!.amount.toLocaleString("en-IN")}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+          <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {g.rooms.map((r) => (
+              <RoomCard
+                key={r.id}
+                room={r}
+                category={g.name}
+                isOccupied={occupiedRoomIds.has(r.id)}
+                pendingFood={pendingFoodByRoom.get(r.id) ?? null}
+                occ={occInfoByRoom.get(r.id) ?? null}
+                onPick={() => onPick(r)}
+                onPickFood={() => onPickFood(r)}
+                onCheckout={onCheckout}
+              />
+            ))}
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+const STATUS_META: Record<string, { label: string; bar: string; badgeBg: string; badgeText: string }> = {
+  vacant:      { label: "Vacant",      bar: "#22c55e", badgeBg: "#dcfce7", badgeText: "#166534" },
+  occupied:    { label: "Occupied",    bar: "#3b82f6", badgeBg: "#dbeafe", badgeText: "#1e40af" },
+  dirty:       { label: "Dirty",       bar: "#f59e0b", badgeBg: "#fef3c7", badgeText: "#92400e" },
+  maintenance: { label: "Maintenance", bar: "#ef4444", badgeBg: "#fee2e2", badgeText: "#991b1b" },
+  blocked:     { label: "Blocked",     bar: "#6b7280", badgeBg: "#e5e7eb", badgeText: "#374151" },
+};
+
+function tileKindExt(r: Room, isOccupied: boolean): keyof typeof STATUS_META {
+  if (isOccupied || r.status === "occupied") return "occupied";
+  if (r.status === "blocked") return "blocked";
+  if (r.status === "maintenance" || r.housekeeping_status === "out_of_order") return "maintenance";
+  if (r.housekeeping_status === "dirty") return "dirty";
+  return "vacant";
+}
+
+function fmtShort(dateStr: string | null) {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+}
+
+function RoomCard({
+  room, category, isOccupied, pendingFood, occ, onPick, onPickFood, onCheckout,
+}: {
+  room: Room;
+  category: string;
+  isOccupied: boolean;
+  pendingFood: PendingFood | null;
+  occ: OccInfo | null;
+  onPick: () => void;
+  onPickFood: () => void;
+  onCheckout: (bid: string) => void;
+}) {
+  const kind = tileKindExt(room, isOccupied);
+  const meta = STATUS_META[kind];
+  const hasFood = !!pendingFood && pendingFood.amount > 0;
+  const baseBalance = occ?.balance ?? 0;
+  const pending = baseBalance + (hasFood ? pendingFood!.amount : 0);
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onPick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPick(); }}
+      className="relative rounded-lg border bg-card shadow-sm hover:shadow-md transition cursor-pointer overflow-hidden"
+      style={{ borderLeft: `4px solid ${meta.bar}`, minHeight: 120 }}
+    >
+      <div className="p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <div className="text-2xl font-bold leading-none">{room.room_number}</div>
+            <div className="text-xs text-muted-foreground mt-1">{category}</div>
+          </div>
+          <span
+            className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
+            style={{ backgroundColor: meta.badgeBg, color: meta.badgeText }}
+          >
+            {meta.label}
+          </span>
+        </div>
+
+        {kind === "occupied" && occ && (
+          <div className="mt-3 space-y-1">
+            <div className="text-sm font-medium truncate">{occ.guestName ?? "Guest"}</div>
+            <div className="text-xs text-muted-foreground">
+              {fmtShort(occ.checkIn)} → {fmtShort(occ.checkOut)}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap mt-1">
+              {pending > 0 && (
+                <span className="text-xs font-semibold text-red-600">
+                  ₹{pending.toLocaleString("en-IN")} pending
+                </span>
+              )}
+              {hasFood && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onPickFood(); }}
+                  className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 hover:bg-amber-200"
+                  title="View pending food orders"
+                >
+                  <UtensilsCrossed className="h-3 w-3" /> Food
+                </button>
+              )}
+            </div>
+            <div className="pt-2">
+              <Button
+                size="sm"
+                className="h-7 text-xs"
+                onClick={(e) => { e.stopPropagation(); onCheckout(occ.bookingId); }}
+              >
+                Checkout
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

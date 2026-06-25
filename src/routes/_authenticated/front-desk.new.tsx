@@ -83,6 +83,7 @@ function NewBookingPage() {
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
+  const [dob, setDob] = useState("");
   const [idType, setIdType] = useState("aadhaar");
   const [idNumber, setIdNumber] = useState("");
   const [address, setAddress] = useState("");
@@ -146,7 +147,7 @@ function NewBookingPage() {
       const like = `%${term}%`;
       const { data } = await supabase
         .from("guests")
-        .select("id,name,mobile,email,id_proof_type,id_proof_number,address,tags,notes")
+        .select("id,name,mobile,email,dob,id_proof_type,id_proof_number,address,tags,notes")
         .eq("property_id", current.id)
         .or(`name.ilike.${like},mobile.ilike.${like},email.ilike.${like}`)
         .limit(8);
@@ -173,6 +174,7 @@ function NewBookingPage() {
     setName(g.name ?? "");
     setMobile(g.mobile ?? "");
     setEmail(g.email ?? "");
+    setDob((g as any).dob ?? "");
     setIdType(g.id_proof_type ?? "aadhaar");
     setIdNumber(g.id_proof_number ?? "");
     setAddress(g.address ?? "");
@@ -187,7 +189,7 @@ function NewBookingPage() {
   function startNewGuest() {
     setSelectedGuestId(null);
     setReturningInfo(null);
-    setName(""); setMobile(""); setEmail(""); setIdNumber(""); setAddress("");
+    setName(""); setMobile(""); setEmail(""); setDob(""); setIdNumber(""); setAddress("");
     setGuestType("regular"); setGuestNotes(""); setIdType("aadhaar");
     setDropdownOpen(false);
     setSearchOpen(false);
@@ -233,7 +235,13 @@ function NewBookingPage() {
     setRoomId("");
     const cat = cats.find((c) => c.id === id);
     if (cat && rate === 0) setRate(cat.base_rate);
-    const t = tariffs.find((t) => t.category_id === id);
+    // Prefer "Rack Rate" tariff (case-insensitive name match), else first matching tariff.
+    const catTariffs = tariffs.filter((t) => t.category_id === id);
+    const t =
+      catTariffs.find((t) => /rack/i.test(t.name)) ??
+      catTariffs[0] ??
+      tariffs.find((t) => /rack/i.test(t.name)) ??
+      tariffs[0];
     if (t) {
       setTariffId(t.id);
       setRate(t.rate);
@@ -272,6 +280,7 @@ function NewBookingPage() {
             name: name.trim(),
             mobile: mobile || null,
             email: email || null,
+            dob: dob || null,
             id_proof_type: idType || null,
             id_proof_number: idNumber || null,
             address: address || null,
@@ -289,6 +298,7 @@ function NewBookingPage() {
             name: name.trim(),
             mobile: mobile || null,
             email: email || null,
+            dob: dob || null,
             id_proof_type: idType || null,
             id_proof_number: idNumber || null,
             address: address || null,
@@ -492,6 +502,9 @@ function NewBookingPage() {
             <div className="grid grid-cols-2 gap-3">
             <F label="Full name *"><Input value={name} onChange={(e) => setName(e.target.value)} /></F>
             <F label="Mobile *"><Input value={mobile} onChange={(e) => setMobile(e.target.value)} /></F>
+            <F label="Date of Birth (optional)">
+              <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
+            </F>
             <F label="Email"><Input value={email} onChange={(e) => setEmail(e.target.value)} /></F>
             <F label="ID type">
               <Select value={idType} onValueChange={setIdType}>

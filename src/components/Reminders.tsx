@@ -1,0 +1,297 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import { Bell, Plus, X } from "lucide-react";
+import { toast } from "sonner";
+
+export interface Reminder {
+  id: string;
+  property_id: string;
+  title: string;
+  reminder_datetime: string;
+  notes: string | null;
+  is_dismissed: boolean;
+  created_at: string;
+}
+
+function playBeep() {
+  try {
+    const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+  } catch { /* ignore */ }
+}
+
+function fmtWhen(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+}
+
+export function RemindersBell({ propertyId, userId }: { propertyId: string | null; userId: string }) {
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [open, setOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [when, setWhen] = useState("");
+  const [notes, setNotes] = useState("");
+  const alertedRef = useRef<Set<string>>(new Set());
+
+  const load = useCallback(async () => {
+    if (!propertyId) { setReminders([]); return; }
+    const { data } = await supabase
+      .from("reminders")
+      .select("id, property_id, title, reminder_datetime, notes, is_dismissed, created_at")
+      .eq("property_id", propertyId)
+      .eq("is_dismissed", false)
+      .order("reminder_datetime", { ascending: true });
+    setReminders((data ?? []) as Reminder[]);
+  }, [propertyId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // 60-second poll: refresh + check 15-min advance window
+  useEffect(() => {
+    if (!propertyId) return;
+    const tick = () => {
+      const now = Date.now();
+      reminders.forEach((r) => {
+        if (r.is_dismissed) return;
+        if (alertedRef.current.has(r.id)) return;
+        const t = new Date(r.reminder_datetime).getTime();
+        const diffMs = t - now;
+        if (diffMs > 0 && diffMs <= 15 * 60 * 1000) {
+          alertedRef.current.add(r.id);
+          const mins = Math.max(1, Math.round(diffMs / 60000));
+          toast(`⏰ Reminder: ${r.title} — in ${mins} minute${mins === 1 ? "" : "s"}`, {
+            description: r.notes ?? undefined,
+            duration: 10000,
+            action: { label: "Dismiss", onClick: () => dismiss(r.id) },
+          });
+          playBeep();
+        }
+      });
+    };
+    tick();
+    const id = window.setInterval(() => { load(); tick(); }, 60_000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyId, reminders]);
+
+  async function dismiss(id: string) {
+    await supabase.from("reminders").update({ is_dismissed: true }).eq("id", id);
+    setReminders((rs) => rs.filter((r) => r.id !== id));
+  }
+
+  async function addReminder() {
+    if (!propertyId) return;
+    if (!title.trim()) { toast.error("Title is required"); return; }
+    if (!when) { toast.error("Date & time is required"); return; }
+    const { error } = await supabase.from("reminders").insert({
+      property_id: propertyId,
+      created_by: userId || null,
+      title: title.trim(),
+      reminder_datetime: new Date(when).toISOString(),
+      notes: notes.trim() || null,
+    } as any);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Reminder added");
+    setTitle(""); setWhen(""); setNotes("");
+    setAddOpen(false);
+    load();
+  }
+
+  const count = reminders.length;
+
+  return (
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="ghost" size="icon" className="relative" aria-label="Reminders">
+            <Bell className="h-5 w-5" />
+            {count > 0 && (
+              <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                {count}
+              </span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-80 p-0">
+          <div className="flex items-center justify-between px-3 py-2 border-b">
+            <div className="font-semibold text-sm">Reminders</div>
+            <Button size="sm" variant="ghost" onClick={() => { setOpen(false); setAddOpen(true); }}>
+              <Plus className="h-4 w-4 mr-1" /> Add
+            </Button>
+          </div>
+          <div className="max-h-80 overflow-auto">
+            {reminders.length === 0 ? (
+              <div className="px-3 py-6 text-center text-xs text-muted-foreground">No upcoming reminders</div>
+            ) : reminders.map((r) => (
+              <div key={r.id} className="px-3 py-2 border-b last:border-0 text-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">{r.title}</div>
+                    <div className="text-[11px] text-muted-foreground">{fmtWhen(r.reminder_datetime)}</div>
+                    {r.notes && <div className="text-xs text-muted-foreground mt-1">{r.notes}</div>}
+                  </div>
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => dismiss(r.id)} aria-label="Dismiss">
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Add reminder</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Title *</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Call vendor" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Date & time *</Label>
+              <Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Notes</Label>
+              <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+            <Button onClick={addReminder}>Save reminder</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+export function RemindersSection({ propertyId, userId }: { propertyId: string | null; userId: string }) {
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [when, setWhen] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const load = useCallback(async () => {
+    if (!propertyId) { setReminders([]); return; }
+    const { data } = await supabase
+      .from("reminders")
+      .select("id, property_id, title, reminder_datetime, notes, is_dismissed, created_at")
+      .eq("property_id", propertyId)
+      .eq("is_dismissed", false)
+      .order("reminder_datetime", { ascending: true });
+    setReminders((data ?? []) as Reminder[]);
+  }, [propertyId]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const id = window.setInterval(load, 60_000);
+    return () => window.clearInterval(id);
+  }, [load]);
+
+  async function dismiss(id: string) {
+    await supabase.from("reminders").update({ is_dismissed: true }).eq("id", id);
+    setReminders((rs) => rs.filter((r) => r.id !== id));
+  }
+
+  async function add() {
+    if (!propertyId) return;
+    if (!title.trim()) { toast.error("Title required"); return; }
+    if (!when) { toast.error("Date & time required"); return; }
+    const { error } = await supabase.from("reminders").insert({
+      property_id: propertyId,
+      created_by: userId || null,
+      title: title.trim(),
+      reminder_datetime: new Date(when).toISOString(),
+      notes: notes.trim() || null,
+    } as any);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Reminder added");
+    setTitle(""); setWhen(""); setNotes("");
+    setAddOpen(false);
+    load();
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bell className="h-4 w-4" /> Reminders
+            <Badge variant="secondary" className="text-[10px]">{reminders.length}</Badge>
+          </CardTitle>
+          <Button size="sm" onClick={() => setAddOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" /> Add Reminder
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {reminders.length === 0 ? (
+            <div className="text-sm text-muted-foreground">No upcoming reminders.</div>
+          ) : (
+            <ul className="divide-y">
+              {reminders.map((r) => (
+                <li key={r.id} className="flex items-start justify-between gap-3 py-2">
+                  <div className="min-w-0">
+                    <div className="font-medium text-sm truncate">{r.title}</div>
+                    <div className="text-xs text-muted-foreground">{fmtWhen(r.reminder_datetime)}</div>
+                    {r.notes && <div className="text-xs text-muted-foreground mt-0.5">{r.notes}</div>}
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => dismiss(r.id)}>Dismiss</Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Add reminder</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Title *</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Call vendor" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Date & time *</Label>
+              <Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Notes</Label>
+              <Textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+            <Button onClick={add}>Save reminder</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

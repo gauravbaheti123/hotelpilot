@@ -81,6 +81,7 @@ function FolioPage() {
   const [charges, setCharges] = useState<Charge[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
 
   // dialogs
   const [addOpen, setAddOpen] = useState(false);
@@ -147,6 +148,17 @@ function FolioPage() {
     setFolio((f ?? null) as unknown as Folio);
     setCharges(((c ?? []) as unknown as Charge[]));
     setPayments(((p ?? []) as unknown as Payment[]));
+
+    // Resolve current user's max-discount % for this property.
+    try {
+      if (user?.id) {
+        const { data: pct } = await supabase.rpc("user_max_discount_pct", {
+          _user_id: user.id, _property_id: bk.property_id,
+        });
+        const n = Number(pct);
+        setMaxDiscPct(Number.isFinite(n) ? n : 0);
+      }
+    } catch { /* keep default */ }
 
     // Load pending KOTs (not served/billed/cancelled, not wiped)
     const { data: pk } = await supabase
@@ -295,6 +307,15 @@ function FolioPage() {
     const rate = Number(addRate) || 0;
     const amt = qty * rate;
     const gstR = addType === "discount" ? 0 : Number(addGst) || 0;
+    if (addType === "discount") {
+      const unlimited = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+      const capPct = unlimited ? 100 : Math.max(0, Math.min(100, maxDiscPct));
+      const base = Number(folio.sub_total || 0);
+      const capAmt = (base * capPct) / 100;
+      if (!unlimited && Math.abs(amt) > capAmt + 0.01) {
+        return toast.error(`Your role allows maximum ${capPct}% discount (₹${capAmt.toLocaleString("en-IN", { maximumFractionDigits: 2 })}).`);
+      }
+    }
     const { error } = await supabase.from("folio_charges").insert({
       folio_id: folio.id,
       charge_type: addType,
@@ -1249,6 +1270,11 @@ function FolioPage() {
                 <Label className="text-xs">Description *</Label>
                 <Input value={addDesc} onChange={(e) => setAddDesc(e.target.value)} placeholder="e.g. Laundry, Mini-bar, Festive discount" />
               </div>
+              {addType === "discount" && !(hasRole(roles, "owner") || hasRole(roles, "superadmin")) && (
+                <div className="text-xs text-muted-foreground">
+                  Your role allows maximum {Math.max(0, Math.min(100, maxDiscPct))}% discount.
+                </div>
+              )}
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs">Qty</Label>
