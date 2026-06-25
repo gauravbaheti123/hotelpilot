@@ -1125,7 +1125,7 @@ function FolioPage() {
                   <th style={{ textAlign: "right", width: 50 }}>Qty</th>
                   <th style={{ textAlign: "right", width: 90 }}>Rate</th>
                   <th style={{ textAlign: "right", width: 110 }}>Amount</th>
-                  {isOpen && <th className="print:hidden" style={{ width: 40 }}></th>}
+                  {canEditNow && <th className="print:hidden" style={{ width: 40 }}></th>}
                 </tr>
               </thead>
               <tbody className="zebra">
@@ -1146,7 +1146,7 @@ function FolioPage() {
                     <td style={{ textAlign: "right" }}>{Number(c.qty)}</td>
                     <td style={{ textAlign: "right" }}>{inr(c.rate)}</td>
                     <td style={{ textAlign: "right", fontWeight: 600 }}>{inr(c.amount)}</td>
-                    {isOpen && (
+                    {canEditNow && (
                       <td className="print:hidden" style={{ textAlign: "right" }}>
                         <button onClick={() => removeCharge(c.id)} className="text-destructive">
                           <Trash2 className="h-3.5 w-3.5" />
