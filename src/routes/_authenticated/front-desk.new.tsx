@@ -1,11 +1,12 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -28,6 +29,19 @@ export const Route = createFileRoute("/_authenticated/front-desk/new")({
 interface Category { id: string; name: string; base_rate: number; max_occupancy: number; }
 interface RoomRow { id: string; room_number: string; category_id: string | null; status: string; }
 interface Tariff { id: string; name: string; category_id: string | null; rate: number; meal_plan: string; }
+interface GuestMatch {
+  id: string;
+  name: string;
+  mobile: string | null;
+  email: string | null;
+  id_proof_type: string | null;
+  id_proof_number: string | null;
+  address: string | null;
+  tags: string[] | null;
+  notes: string | null;
+  visit_count: number;
+  last_stay: string | null;
+}
 
 function NewBookingPage() {
   const router = useRouter();
@@ -41,12 +55,23 @@ function NewBookingPage() {
   const [rooms, setRooms] = useState<RoomRow[]>([]);
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
 
+  // Guest lookup
+  const [searchOpen, setSearchOpen] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [matches, setMatches] = useState<GuestMatch[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [selectedGuestId, setSelectedGuestId] = useState<string | null>(null);
+  const [returningInfo, setReturningInfo] = useState<{ visits: number; last: string | null } | null>(null);
+
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
   const [idType, setIdType] = useState("aadhaar");
   const [idNumber, setIdNumber] = useState("");
   const [address, setAddress] = useState("");
+  const [guestType, setGuestType] = useState<"regular" | "corporate" | "vip">("regular");
+  const [guestNotes, setGuestNotes] = useState("");
 
   const [checkIn, setCheckIn] = useState(todayIso());
   const [checkOut, setCheckOut] = useState(addDaysIso(todayIso(), 1));
@@ -75,6 +100,65 @@ function NewBookingPage() {
       setTariffs((t.data ?? []) as Tariff[]);
     })();
   }, [current?.id]);
+
+  // Debounced guest search
+  const debounceRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!current || !searchOpen) return;
+    if (searchTerm.trim().length < 2) { setMatches([]); setDropdownOpen(false); return; }
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(async () => {
+      setSearching(true);
+      const term = searchTerm.trim().replace(/[%,]/g, "");
+      const like = `%${term}%`;
+      const { data } = await supabase
+        .from("guests")
+        .select("id,name,mobile,email,id_proof_type,id_proof_number,address,tags,notes")
+        .eq("property_id", current.id)
+        .or(`name.ilike.${like},mobile.ilike.${like},email.ilike.${like}`)
+        .limit(8);
+      const guests = (data ?? []) as any[];
+      // Fetch visit stats per guest
+      const enriched: GuestMatch[] = await Promise.all(guests.map(async (g) => {
+        const { data: bks } = await supabase
+          .from("bookings")
+          .select("check_in")
+          .eq("guest_id", g.id)
+          .order("check_in", { ascending: false });
+        const rows = bks ?? [];
+        return { ...g, visit_count: rows.length, last_stay: rows[0]?.check_in ?? null };
+      }));
+      setMatches(enriched);
+      setDropdownOpen(true);
+      setSearching(false);
+    }, 250);
+    return () => { if (debounceRef.current) window.clearTimeout(debounceRef.current); };
+  }, [searchTerm, current?.id, searchOpen]);
+
+  function selectGuest(g: GuestMatch) {
+    setSelectedGuestId(g.id);
+    setName(g.name ?? "");
+    setMobile(g.mobile ?? "");
+    setEmail(g.email ?? "");
+    setIdType(g.id_proof_type ?? "aadhaar");
+    setIdNumber(g.id_proof_number ?? "");
+    setAddress(g.address ?? "");
+    setGuestNotes(g.notes ?? "");
+    const tag = (g.tags ?? []).find((t) => ["corporate", "vip"].includes(t));
+    setGuestType((tag as any) ?? "regular");
+    setReturningInfo({ visits: g.visit_count, last: g.last_stay });
+    setDropdownOpen(false);
+    setSearchOpen(false);
+  }
+
+  function startNewGuest() {
+    setSelectedGuestId(null);
+    setReturningInfo(null);
+    setName(""); setMobile(""); setEmail(""); setIdNumber(""); setAddress("");
+    setGuestType("regular"); setGuestNotes(""); setIdType("aadhaar");
+    setDropdownOpen(false);
+    setSearchOpen(false);
+  }
 
   const nights = nightsBetween(checkIn, checkOut);
   const total = nights * rate;
@@ -111,27 +195,50 @@ function NewBookingPage() {
   async function save(checkInNow: boolean) {
     if (!current) return;
     if (!name.trim()) return toast.error("Guest name required");
+    if (!mobile.trim()) return toast.error("Mobile required");
     if (!categoryId) return toast.error("Pick a category");
     if (!roomId) return toast.error("Pick a room");
     if (nightsBetween(checkIn, checkOut) < 1) return toast.error("Check-out must be after check-in");
 
     setSaving(true);
     try {
-      // 1) Guest
-      const { data: guest, error: gErr } = await supabase
-        .from("guests")
-        .insert({
-          property_id: current.id,
-          name: name.trim(),
-          mobile: mobile || null,
-          email: email || null,
-          id_proof_type: idType || null,
-          id_proof_number: idNumber || null,
-          address: address || null,
-        })
-        .select("id")
-        .single();
-      if (gErr) throw gErr;
+      // 1) Guest — update existing or create new
+      const tags = guestType === "regular" ? [] : [guestType];
+      let guestId = selectedGuestId;
+      if (guestId) {
+        const { error: uErr } = await supabase
+          .from("guests")
+          .update({
+            name: name.trim(),
+            mobile: mobile || null,
+            email: email || null,
+            id_proof_type: idType || null,
+            id_proof_number: idNumber || null,
+            address: address || null,
+            notes: guestNotes || null,
+            tags,
+          })
+          .eq("id", guestId);
+        if (uErr) throw uErr;
+      } else {
+        const { data: g, error: gErr } = await supabase
+          .from("guests")
+          .insert({
+            property_id: current.id,
+            name: name.trim(),
+            mobile: mobile || null,
+            email: email || null,
+            id_proof_type: idType || null,
+            id_proof_number: idNumber || null,
+            address: address || null,
+            notes: guestNotes || null,
+            tags,
+          })
+          .select("id")
+          .single();
+        if (gErr) throw gErr;
+        guestId = g!.id;
+      }
 
       // 2) Booking
       const { data: booking, error: bErr } = await supabase
@@ -139,7 +246,7 @@ function NewBookingPage() {
         .insert({
           property_id: current.id,
           booking_number: "",
-          guest_id: guest!.id,
+          guest_id: guestId!,
           source,
           status: checkInNow ? "checked_in" : "reserved",
           check_in: checkIn,
@@ -186,14 +293,14 @@ function NewBookingPage() {
       fireTrigger("booking_confirm", {
         property_id: current.id,
         booking_id: booking!.id,
-        guest_id: guest!.id,
+        guest_id: guestId!,
         phone: mobile || null,
       });
       if (checkInNow) {
         fireTrigger("checkin_welcome", {
           property_id: current.id,
           booking_id: booking!.id,
-          guest_id: guest!.id,
+          guest_id: guestId!,
           phone: mobile || null,
         });
       }
@@ -214,9 +321,64 @@ function NewBookingPage() {
       <div className="max-w-5xl space-y-6">
         <Card>
           <CardHeader><CardTitle className="text-base">Guest details</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3">
+          <CardContent className="space-y-4">
+            {/* Guest lookup */}
+            <div className="space-y-2">
+              <Label className="text-xs">Find existing guest</Label>
+              <div className="relative">
+                <Input
+                  placeholder="Search by name, mobile, or email..."
+                  value={searchTerm}
+                  onChange={(e) => { setSearchTerm(e.target.value); setSearchOpen(true); }}
+                  onFocus={() => { if (matches.length) setDropdownOpen(true); }}
+                />
+                {dropdownOpen && (
+                  <div className="absolute z-20 mt-1 w-full rounded-md border bg-popover shadow-md max-h-72 overflow-auto">
+                    {searching && <div className="px-3 py-2 text-xs text-muted-foreground">Searching…</div>}
+                    {!searching && matches.length === 0 && (
+                      <div className="p-3 space-y-2">
+                        <div className="text-xs text-muted-foreground">No guest found</div>
+                        <Button size="sm" variant="outline" onClick={startNewGuest}>+ Create new guest</Button>
+                      </div>
+                    )}
+                    {!searching && matches.map((g) => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => selectGuest(g)}
+                        className="w-full text-left px-3 py-2 hover:bg-accent border-b last:border-b-0"
+                      >
+                        <div className="flex justify-between gap-2">
+                          <span className="font-medium text-sm">{g.name}</span>
+                          <span className="text-xs text-muted-foreground">{g.mobile ?? "—"}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {g.visit_count} visit{g.visit_count === 1 ? "" : "s"}
+                          {g.last_stay ? ` · Last stayed ${fmtDate(g.last_stay)}` : ""}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button type="button" className="text-xs text-primary underline" onClick={startNewGuest}>
+                Skip — enter details manually
+              </button>
+            </div>
+
+            {returningInfo && (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-xs">
+                <Badge className="bg-green-600 hover:bg-green-600">Returning Guest ✓</Badge>
+                <span className="text-green-900">
+                  {returningInfo.visits} visit{returningInfo.visits === 1 ? "" : "s"}
+                  {returningInfo.last ? ` · Last stayed ${fmtDate(returningInfo.last)}` : ""}
+                </span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
             <F label="Full name *"><Input value={name} onChange={(e) => setName(e.target.value)} /></F>
-            <F label="Mobile"><Input value={mobile} onChange={(e) => setMobile(e.target.value)} /></F>
+            <F label="Mobile *"><Input value={mobile} onChange={(e) => setMobile(e.target.value)} /></F>
             <F label="Email"><Input value={email} onChange={(e) => setEmail(e.target.value)} /></F>
             <F label="ID type">
               <Select value={idType} onValueChange={setIdType}>
@@ -231,9 +393,22 @@ function NewBookingPage() {
               </Select>
             </F>
             <F label="ID number"><Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} /></F>
-            <div />
+            <F label="Guest type">
+              <Select value={guestType} onValueChange={(v) => setGuestType(v as typeof guestType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="regular">Regular</SelectItem>
+                  <SelectItem value="corporate">Corporate</SelectItem>
+                  <SelectItem value="vip">VIP</SelectItem>
+                </SelectContent>
+              </Select>
+            </F>
             <div className="col-span-2">
               <F label="Address"><Textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} /></F>
+            </div>
+            <div className="col-span-2">
+              <F label="Guest notes"><Textarea rows={2} value={guestNotes} onChange={(e) => setGuestNotes(e.target.value)} /></F>
+            </div>
             </div>
           </CardContent>
         </Card>
@@ -328,4 +503,12 @@ function Stat({ label, value, highlight }: { label: string; value: string; highl
       <div className={`h-9 px-3 flex items-center rounded-md border ${highlight ? "font-semibold bg-primary/5" : "bg-muted/30"}`}>{value}</div>
     </div>
   );
+}
+
+function fmtDate(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}-${mm}-${d.getFullYear()}`;
 }
