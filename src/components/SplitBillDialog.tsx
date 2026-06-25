@@ -243,7 +243,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         const b = createdBills[i];
         const row = payRows[i];
         const amt = Number(row.amount);
-        if (!(amt > 0)) {
+        if (row.mode !== "credit" && !(amt > 0)) {
           setBusy(false);
           return toast.error(`Bill ${i + 1}: enter payment amount`);
         }
