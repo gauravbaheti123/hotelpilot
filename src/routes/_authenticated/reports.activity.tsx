@@ -90,7 +90,7 @@ function ActivityLogPage() {
         .order("user_name", { ascending: true })
         .limit(1000);
       const seen = new Map<string, string>();
-      ((data ?? []) as Array<{ user_id: string | null; user_name: string | null }>).forEach((r) => {
+      ((data ?? []) as unknown as Array<{ user_id: string | null; user_name: string | null }>).forEach((r) => {
         if (r.user_id && !seen.has(r.user_id)) {
           seen.set(r.user_id, r.user_name ?? "Unknown");
         }
@@ -131,7 +131,7 @@ function ActivityLogPage() {
     if (module !== ALL) q = q.eq("module", module);
     if (action !== ALL) q = q.eq("action_type", action);
     const { data } = await q;
-    const formatted = ((data ?? []) as Array<{
+    const formatted = ((data ?? []) as unknown as Array<{
       created_at: string; user_name: string | null; action_type: string;
       module: string; reference_label: string | null; details: unknown;
     }>).map((r) => ({
