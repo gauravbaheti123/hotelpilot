@@ -50,6 +50,7 @@ import { ShieldAlert } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { PropertySelector } from "./PropertySelector";
+import { usePermissions } from "@/hooks/use-permissions";
 
 interface NavItem {
   to: string;
@@ -57,6 +58,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   requireSuperadmin?: boolean;
   requireOwner?: boolean;
+  module?: string;
 }
 
 interface NavGroup {
@@ -67,117 +69,117 @@ interface NavGroup {
 const NAV_GROUPS: NavGroup[] = [
   {
     items: [
-      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, module: "dashboard" },
       { to: "/properties", label: "Properties", icon: Building2, requireSuperadmin: true },
     ],
   },
   {
     label: "Front Desk",
     items: [
-      { to: "/front-desk/new", label: "New Booking", icon: PlusCircle },
-      { to: "/front-desk/bookings", label: "Bookings", icon: ListChecks },
-      { to: "/front-desk/calendar", label: "Calendar", icon: CalendarRange },
-      { to: "/front-desk/rate-calendar", label: "Rate Calendar", icon: TrendingUp },
-      { to: "/front-desk/in-house", label: "In-house", icon: CalendarCheck },
+      { to: "/front-desk/new", label: "New Booking", icon: PlusCircle, module: "bookings" },
+      { to: "/front-desk/bookings", label: "Bookings", icon: ListChecks, module: "bookings" },
+      { to: "/front-desk/calendar", label: "Calendar", icon: CalendarRange, module: "calendar" },
+      { to: "/front-desk/rate-calendar", label: "Rate Calendar", icon: TrendingUp, module: "calendar" },
+      { to: "/front-desk/in-house", label: "In-house", icon: CalendarCheck, module: "inhouse" },
     ],
   },
   {
     label: "Food & KOT",
     items: [
-      { to: "/food/dashboard", label: "Food Dashboard", icon: ChefHat },
-      { to: "/food/new", label: "New KOT", icon: PlusCircle },
-      { to: "/food/kots", label: "All KOTs", icon: ClipboardList },
+      { to: "/food/dashboard", label: "Food Dashboard", icon: ChefHat, module: "food_kot" },
+      { to: "/food/new", label: "New KOT", icon: PlusCircle, module: "food_kot" },
+      { to: "/food/kots", label: "All KOTs", icon: ClipboardList, module: "food_kot" },
     ],
   },
   {
     label: "Billing",
     items: [
-      { to: "/pos", label: "POS / Sundry", icon: ShoppingCart },
-      { to: "/billing/invoices", label: "Invoices", icon: Receipt },
-      { to: "/restaurant", label: "Restaurant Billing", icon: UtensilsCrossed },
+      { to: "/pos", label: "POS / Sundry", icon: ShoppingCart, module: "pos_sundry" },
+      { to: "/billing/invoices", label: "Invoices", icon: Receipt, module: "invoices" },
+      { to: "/restaurant", label: "Restaurant Billing", icon: UtensilsCrossed, module: "restaurant_billing" },
     ],
   },
   {
     label: "Reports",
     items: [
-      { to: "/reports/daily", label: "Daily Report", icon: BarChart3 },
-      { to: "/reports/analytics", label: "Analytics", icon: BarChart3 },
-      { to: "/reports/sales", label: "Sales", icon: FileSpreadsheet },
-      { to: "/reports/gst", label: "GST", icon: FileText },
-      { to: "/reports/night-audit", label: "Night Audit", icon: Moon },
+      { to: "/reports/daily", label: "Daily Report", icon: BarChart3, module: "reports_daily" },
+      { to: "/reports/analytics", label: "Analytics", icon: BarChart3, module: "reports_analytics" },
+      { to: "/reports/sales", label: "Sales", icon: FileSpreadsheet, module: "reports_sales" },
+      { to: "/reports/gst", label: "GST", icon: FileText, module: "reports_gst" },
+      { to: "/reports/night-audit", label: "Night Audit", icon: Moon, module: "night_audit" },
     ],
   },
   {
     label: "Housekeeping",
     items: [
-      { to: "/housekeeping/board", label: "Room Board", icon: LayoutGrid },
-      { to: "/housekeeping/tasks", label: "Tasks", icon: Sparkles },
-      { to: "/housekeeping/new", label: "New Task", icon: PlusCircle },
+      { to: "/housekeeping/board", label: "Room Board", icon: LayoutGrid, module: "room_board" },
+      { to: "/housekeeping/tasks", label: "Tasks", icon: Sparkles, module: "housekeeping_tasks" },
+      { to: "/housekeeping/new", label: "New Task", icon: PlusCircle, module: "housekeeping_tasks" },
     ],
   },
   {
     label: "Guests",
     items: [
-      { to: "/guests", label: "Guest CRM", icon: UserCircle2 },
-      { to: "/guests/new", label: "New Guest", icon: PlusCircle },
-      { to: "/feedback", label: "Feedback", icon: Star },
-      { to: "/feedback/new", label: "New Feedback", icon: PlusCircle },
-      { to: "/comms", label: "Communications", icon: MessagesSquare },
-      { to: "/comms/new", label: "New Message", icon: MessageSquare },
-      { to: "/whatsapp", label: "WhatsApp Inbox", icon: MessageCircle },
+      { to: "/guests", label: "Guest CRM", icon: UserCircle2, module: "guest_crm" },
+      { to: "/guests/new", label: "New Guest", icon: PlusCircle, module: "guest_crm" },
+      { to: "/feedback", label: "Feedback", icon: Star, module: "guest_crm" },
+      { to: "/feedback/new", label: "New Feedback", icon: PlusCircle, module: "guest_crm" },
+      { to: "/comms", label: "Communications", icon: MessagesSquare, module: "communications" },
+      { to: "/comms/new", label: "New Message", icon: MessageSquare, module: "communications" },
+      { to: "/whatsapp", label: "WhatsApp Inbox", icon: MessageCircle, module: "whatsapp_inbox" },
     ],
   },
   {
     label: "Inventory",
     items: [
-      { to: "/inventory/stock", label: "Current Stock", icon: Boxes },
-      { to: "/inventory/movements", label: "Stock Movements", icon: ArrowLeftRight },
-      { to: "/inventory/items", label: "Items", icon: Package },
-      { to: "/inventory/vendors", label: "Vendors", icon: Truck },
+      { to: "/inventory/stock", label: "Current Stock", icon: Boxes, module: "inventory" },
+      { to: "/inventory/movements", label: "Stock Movements", icon: ArrowLeftRight, module: "inventory" },
+      { to: "/inventory/items", label: "Items", icon: Package, module: "inventory" },
+      { to: "/inventory/vendors", label: "Vendors", icon: Truck, module: "inventory" },
     ],
   },
   {
     label: "Expenses",
     items: [
-      { to: "/expenses", label: "Expenses", icon: Wallet },
-      { to: "/expenses/new", label: "New Expense", icon: PlusCircle },
+      { to: "/expenses", label: "Expenses", icon: Wallet, module: "masters_expense_categories" },
+      { to: "/expenses/new", label: "New Expense", icon: PlusCircle, module: "masters_expense_categories" },
     ],
   },
   {
     label: "Staff HR",
     items: [
-      { to: "/staff/attendance", label: "Attendance", icon: CalendarDays },
-      { to: "/staff/attendance-history", label: "History", icon: History },
-      { to: "/staff/payroll", label: "Payroll", icon: Banknote },
+      { to: "/staff/attendance", label: "Attendance", icon: CalendarDays, module: "staff_hr" },
+      { to: "/staff/attendance-history", label: "History", icon: History, module: "staff_hr" },
+      { to: "/staff/payroll", label: "Payroll", icon: Banknote, module: "payroll" },
     ],
   },
   {
     label: "Banquet",
     items: [
-      { to: "/banquet/bookings", label: "Events", icon: CalendarRange },
-      { to: "/banquet/new", label: "New Event", icon: PartyPopper },
+      { to: "/banquet/bookings", label: "Events", icon: CalendarRange, module: "masters_halls" },
+      { to: "/banquet/new", label: "New Event", icon: PartyPopper, module: "masters_halls" },
     ],
   },
   {
     label: "Master Data",
     items: [
-      { to: "/masters/rooms", label: "Rooms & Categories", icon: BedDouble },
-      { to: "/masters/tariff", label: "Tariff Plans", icon: IndianRupee },
-      { to: "/masters/rate-seasons", label: "Rate Seasons", icon: TrendingUp },
-      { to: "/masters/menu", label: "Menu", icon: UtensilsCrossed },
-      { to: "/masters/halls", label: "Halls", icon: PartyPopper },
-      { to: "/masters/staff", label: "Staff", icon: Users },
-      { to: "/masters/printers", label: "Printers", icon: Printer },
-      { to: "/masters/expense-categories", label: "Expense Categories", icon: Tags },
-      { to: "/masters/message-templates", label: "Message Templates", icon: MessageSquare },
-      { to: "/masters/sundry-items", label: "Sundry Items", icon: ShoppingCart },
-      { to: "/masters/channels", label: "OTA Channels", icon: Cloud },
+      { to: "/masters/rooms", label: "Rooms & Categories", icon: BedDouble, module: "masters_rooms" },
+      { to: "/masters/tariff", label: "Tariff Plans", icon: IndianRupee, module: "masters_tariff" },
+      { to: "/masters/rate-seasons", label: "Rate Seasons", icon: TrendingUp, module: "masters_tariff" },
+      { to: "/masters/menu", label: "Menu", icon: UtensilsCrossed, module: "masters_menu" },
+      { to: "/masters/halls", label: "Halls", icon: PartyPopper, module: "masters_halls" },
+      { to: "/masters/staff", label: "Staff", icon: Users, module: "masters_staff" },
+      { to: "/masters/printers", label: "Printers", icon: Printer, module: "masters_printers" },
+      { to: "/masters/expense-categories", label: "Expense Categories", icon: Tags, module: "masters_expense_categories" },
+      { to: "/masters/message-templates", label: "Message Templates", icon: MessageSquare, module: "masters_staff" },
+      { to: "/masters/sundry-items", label: "Sundry Items", icon: ShoppingCart, module: "pos_sundry" },
+      { to: "/masters/channels", label: "OTA Channels", icon: Cloud, module: "masters_ota_channels" },
     ],
   },
   {
     label: "Channel Manager",
     items: [
-      { to: "/channels", label: "Distribution", icon: Cloud },
+      { to: "/channels", label: "Distribution", icon: Cloud, module: "channel_manager" },
     ],
   },
   {
@@ -190,6 +192,8 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Admin",
     items: [
       { to: "/superadmin/dashboard", label: "Superadmin", icon: ShieldCheck, requireSuperadmin: true },
+      { to: "/superadmin/roles", label: "Roles & Permissions", icon: ShieldCheck, requireSuperadmin: true },
+      { to: "/superadmin/users", label: "User Role Assignments", icon: Users, requireSuperadmin: true },
       { to: "/security", label: "Security / Wipe", icon: ShieldAlert, requireOwner: true },
     ],
   },
@@ -201,6 +205,8 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
   const isSuperadmin = roles.includes("superadmin");
   const isOwner = roles.includes("owner") || isSuperadmin;
   const currentPath = router.state.location.pathname;
+  const { can, loading: permsLoading, isSuperadmin: permSuper, map } = usePermissions();
+  const hasAnyAssignment = permSuper || Object.keys(map).length > 0;
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -214,7 +220,11 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
       items: g.items.filter(
         (n) =>
           (!n.requireSuperadmin || isSuperadmin) &&
-          (!n.requireOwner || isOwner),
+          (!n.requireOwner || isOwner) &&
+          // If user has a custom-role permission map, gate by module 'view'.
+          // If no module declared, always show (legacy items).
+          // If no role assignment at all, fall back to legacy app-role visibility.
+          (!n.module || !hasAnyAssignment || permsLoading || can(n.module, "view")),
       ),
     }))
     .filter((g) => g.items.length > 0);
