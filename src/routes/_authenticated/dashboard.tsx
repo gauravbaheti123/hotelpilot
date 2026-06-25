@@ -180,10 +180,15 @@ function OwnerDashboard({
                 {rooms.map((r) => {
                   const { bg, label } = roomTileStyle(r);
                   return (
-                    <div key={r.id} className={`rounded-md px-2 py-3 text-center text-white ${bg}`}>
+                    <Link
+                      key={r.id}
+                      to="/rooms/$roomNumber"
+                      params={{ roomNumber: r.room_number }}
+                      className={`rounded-md px-2 py-3 text-center text-white transition hover:opacity-90 hover:ring-2 hover:ring-offset-1 ${bg}`}
+                    >
                       <div className="text-sm font-semibold">{r.room_number}</div>
                       <div className="text-[10px] uppercase tracking-wide opacity-90">{label}</div>
-                    </div>
+                    </Link>
                   );
                 })}
               </div>
