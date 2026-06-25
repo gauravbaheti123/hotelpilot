@@ -173,7 +173,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/masters/printers", label: "Printers", icon: Printer, module: "masters_printers" },
       { to: "/masters/expense-categories", label: "Expense Categories", icon: Tags, module: "masters_expense_categories" },
       { to: "/masters/message-templates", label: "Message Templates", icon: MessageSquare, module: "masters_staff" },
-      { to: "/masters/sundry-items", label: "Sundry Items", icon: ShoppingCart, module: "pos_sundry" },
+      { to: "/masters/sundry-items", label: "Sundry Items", icon: ShoppingCart, module: "masters_sundry_items" },
       { to: "/masters/channels", label: "OTA Channels", icon: Cloud, module: "masters_ota_channels" },
     ],
   },
@@ -186,7 +186,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Settings",
     items: [
-      { to: "/settings/whatsapp", label: "WhatsApp / AiSensy", icon: Settings },
+      { to: "/settings/whatsapp", label: "WhatsApp / AiSensy", icon: Settings, module: "settings_whatsapp" },
     ],
   },
   {
