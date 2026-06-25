@@ -307,6 +307,15 @@ function FolioPage() {
     const rate = Number(addRate) || 0;
     const amt = qty * rate;
     const gstR = addType === "discount" ? 0 : Number(addGst) || 0;
+    if (addType === "discount") {
+      const unlimited = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+      const capPct = unlimited ? 100 : Math.max(0, Math.min(100, maxDiscPct));
+      const base = Number(folio.sub_total || 0);
+      const capAmt = (base * capPct) / 100;
+      if (!unlimited && Math.abs(amt) > capAmt + 0.01) {
+        return toast.error(`Your role allows maximum ${capPct}% discount (₹${capAmt.toLocaleString("en-IN", { maximumFractionDigits: 2 })}).`);
+      }
+    }
     const { error } = await supabase.from("folio_charges").insert({
       folio_id: folio.id,
       charge_type: addType,
