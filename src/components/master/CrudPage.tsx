@@ -330,13 +330,19 @@ function renderField(
   }
   if (f.type === "select") {
     return (
-      <Select value={v ? String(v) : ""} onValueChange={set}>
+      <Select
+        value={v ? String(v) : "__none__"}
+        onValueChange={(val) => set(val === "__none__" ? "" : val)}
+      >
         <SelectTrigger>
           <SelectValue placeholder="Select…" />
         </SelectTrigger>
         <SelectContent>
           {(f.options ?? []).map((o) => (
-            <SelectItem key={o.value} value={o.value}>
+            <SelectItem
+              key={o.value === "" ? "__none__" : o.value}
+              value={o.value === "" ? "__none__" : o.value}
+            >
               {o.label}
             </SelectItem>
           ))}
