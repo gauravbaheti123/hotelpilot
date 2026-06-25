@@ -51,6 +51,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { PropertySelector } from "./PropertySelector";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useCurrentProperty } from "@/hooks/use-property";
 
 interface NavItem {
   to: string;
@@ -207,6 +208,8 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
   const currentPath = router.state.location.pathname;
   const { can, loading: permsLoading, isSuperadmin: permSuper, map } = usePermissions();
   const hasAnyAssignment = permSuper || Object.keys(map).length > 0;
+  const { current } = useCurrentProperty();
+  const propertyPaused = current?.status === "paused";
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -302,6 +305,22 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
         </header>
         <main className="flex-1 p-4 sm:p-6 overflow-auto">{children}</main>
       </div>
+      {propertyPaused && !isSuperadmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur">
+          <div className="max-w-md text-center px-6 py-10 rounded-lg border bg-card shadow-lg space-y-4">
+            <ShieldAlert className="mx-auto h-12 w-12 text-rose-600" />
+            <h2 className="text-xl font-semibold">Account on hold</h2>
+            <p className="text-sm text-muted-foreground">
+              This property is currently on hold. Please contact HotelPilot support to
+              restore access.
+            </p>
+            <div className="text-base font-medium">📞 8007444464</div>
+            <Button variant="outline" size="sm" onClick={signOut}>
+              <LogOut className="h-4 w-4 mr-2" /> Sign out
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
