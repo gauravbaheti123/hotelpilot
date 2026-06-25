@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronLeft } from "lucide-react";
+import { ChevronDown, ChevronLeft, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { CheckoutDialog } from "@/components/CheckoutDialog";
 
 export const Route = createFileRoute("/_authenticated/rooms/$roomNumber")({
   head: () => ({ meta: [{ title: "Room Detail — HotelPilot" }] }),
@@ -244,6 +245,11 @@ function RoomDetailPage() {
                 {isOccupied && booking && (
                   <Button asChild size="sm" variant="outline">
                     <Link to="/billing/folio/$bookingId" params={{ bookingId: booking.id }}>View Bill</Link>
+                  </Button>
+                )}
+                {isOccupied && booking && (
+                  <Button size="sm" onClick={() => setCheckoutOpen(true)}>
+                    <LogOut className="h-4 w-4 mr-1" /> Checkout
                   </Button>
                 )}
                 <Button size="sm" variant="outline"
