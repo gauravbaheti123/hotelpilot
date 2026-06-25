@@ -455,6 +455,15 @@ function FolioPage() {
     }
 
     toast.success("Folio settled & guest checked out");
+    logActivity({
+      property_id: booking.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      ...ACTIVITY.BILL_CREATED,
+      reference_id: booking.id,
+      reference_label: `${booking.booking_number} — ${booking.guests?.name ?? ""}`,
+      details: { total: folio.total_amount, bill_type: folio.bill_type },
+    });
     load();
   }
 
