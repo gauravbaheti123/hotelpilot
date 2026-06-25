@@ -1,0 +1,286 @@
+import * as XLSX from "xlsx";
+
+export interface ReportColumn<T> {
+  key: string;
+  header: string;
+  /** Render cell value for display / Excel; returns string or number */
+  get: (row: T) => string | number;
+  /** Numeric (right-aligned) / currency flag for Excel formatting */
+  numeric?: boolean;
+  currency?: boolean;
+}
+
+export interface ReportExportMeta {
+  reportName: string;
+  propertyName: string;
+  from?: string;
+  to?: string;
+  /** Footer rows: [label, value] pairs */
+  totals?: Array<[string, string | number]>;
+}
+
+function safeName(s: string) {
+  return (s ?? "").replace(/[^\w]+/g, "_").replace(/^_|_$/g, "");
+}
+
+export function buildFileName(meta: ReportExportMeta, ext: string) {
+  const parts = [
+    safeName(meta.reportName),
+    safeName(meta.propertyName),
+    meta.from ? meta.from : null,
+    meta.to ? meta.to : null,
+  ].filter(Boolean);
+  return `${parts.join("_")}.${ext}`;
+}
+
+/** Excel export — Sheet 1 data, Sheet 2 summary. */
+export function exportExcel<T>(
+  rows: T[],
+  columns: ReportColumn<T>[],
+  meta: ReportExportMeta,
+) {
+  const wb = XLSX.utils.book_new();
+
+  const header = columns.map((c) => c.header);
+  const aoa: (string | number)[][] = [header];
+  for (const r of rows) {
+    aoa.push(columns.map((c) => c.get(r)));
+  }
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Column widths
+  ws["!cols"] = columns.map((c) => ({ wch: Math.max(12, c.header.length + 2) }));
+
+  // Number formats for numeric/currency cols
+  const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+  for (let R = 1; R <= range.e.r; R++) {
+    for (let C = 0; C <= range.e.c; C++) {
+      const col = columns[C];
+      if (!col) continue;
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      const cell = ws[addr];
+      if (!cell) continue;
+      if (col.currency) {
+        cell.t = "n";
+        cell.z = '"₹"#,##0.00';
+      } else if (col.numeric) {
+        cell.t = "n";
+        cell.z = "#,##0.00";
+      }
+    }
+  }
+
+  XLSX.utils.book_append_sheet(wb, ws, "Report");
+
+  // Summary sheet
+  const summary: (string | number)[][] = [
+    ["Report", meta.reportName],
+    ["Property", meta.propertyName],
+    ["From", meta.from ?? ""],
+    ["To", meta.to ?? ""],
+    ["Generated", new Date().toLocaleString("en-IN")],
+    ["Total rows", rows.length],
+  ];
+  if (meta.totals) {
+    summary.push([]);
+    summary.push(["Totals", ""]);
+    for (const [k, v] of meta.totals) summary.push([k, v]);
+  }
+  const wsS = XLSX.utils.aoa_to_sheet(summary);
+  wsS["!cols"] = [{ wch: 28 }, { wch: 28 }];
+  XLSX.utils.book_append_sheet(wb, wsS, "Summary");
+
+  XLSX.writeFile(wb, buildFileName(meta, "xlsx"));
+}
+
+/** PDF export via window.print() on a generated HTML document. */
+export function exportPdf<T>(
+  rows: T[],
+  columns: ReportColumn<T>[],
+  meta: ReportExportMeta,
+  orientation: "portrait" | "landscape" = "landscape",
+) {
+  const esc = (v: unknown) =>
+    String(v ?? "").replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[m]!));
+
+  const head = `<tr>${columns.map((c) => `<th${c.numeric || c.currency ? ' class="right"' : ""}>${esc(c.header)}</th>`).join("")}</tr>`;
+  const body = rows.map((r, i) => (
+    `<tr class="${i % 2 ? "alt" : ""}">${
+      columns.map((c) => {
+        const v = c.get(r);
+        const cls = c.numeric || c.currency ? "right" : "";
+        return `<td class="${cls}">${esc(v)}</td>`;
+      }).join("")
+    }</tr>`
+  )).join("");
+
+  const totalsHtml = (meta.totals ?? []).map(
+    ([k, v]) => `<tr><td><strong>${esc(k)}</strong></td><td class="right"><strong>${esc(v)}</strong></td></tr>`,
+  ).join("");
+
+  const html = `<!doctype html><html><head>
+    <title>${esc(meta.reportName)}</title>
+    <style>
+      @page { size: A4 ${orientation}; margin: 12mm; }
+      body { font-family: Arial, sans-serif; font-size: 11px; color: #111; margin: 0; padding: 0; }
+      h1 { font-size: 16px; margin: 0 0 4px; color: #0F6E56; }
+      .meta { color: #444; margin-bottom: 8px; font-size: 11px; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1px solid #ddd; padding: 4px 6px; font-size: 10px; }
+      th { background: #0F6E56; color: #fff; text-align: left; }
+      td.right, th.right { text-align: right; }
+      tr.alt td { background: #F9F9F9; }
+      .totals { margin-top: 10px; width: 40%; margin-left: auto; }
+      .totals td { background: #ECFBF4; }
+      .footer { position: fixed; bottom: 6mm; left: 0; right: 0; text-align: center; font-size: 9px; color: #666; }
+    </style>
+  </head><body>
+    <h1>${esc(meta.reportName)} — ${esc(meta.propertyName)}</h1>
+    <div class="meta">${meta.from ? `From <strong>${esc(meta.from)}</strong>` : ""}${meta.to ? ` to <strong>${esc(meta.to)}</strong>` : ""} · Generated ${new Date().toLocaleString("en-IN")}</div>
+    <table>
+      <thead>${head}</thead>
+      <tbody>${body || `<tr><td colspan="${columns.length}" style="text-align:center;color:#666">No data</td></tr>`}</tbody>
+    </table>
+    ${totalsHtml ? `<table class="totals">${totalsHtml}</table>` : ""}
+    <div class="footer">${esc(meta.propertyName)} — ${esc(meta.reportName)}</div>
+  </body></html>`;
+
+  const w = window.open("", "_blank", "width=1100,height=900");
+  if (!w) return;
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 250);
+}
+
+/* -------------------- Tally Prime XML helpers -------------------- */
+
+function tallyDate(iso: string) {
+  if (!iso) return "";
+  const d = iso.slice(0, 10).replace(/-/g, "");
+  return d;
+}
+function esc(v: unknown) {
+  return String(v ?? "").replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m]!));
+}
+function envelope(messages: string, importType: string) {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC><REPORTNAME>${importType}</REPORTNAME></REQUESTDESC>
+      <REQUESTDATA>
+${messages}
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>`;
+}
+
+export interface TallySalesVoucher {
+  date: string;            // ISO
+  voucher_number: string;
+  guest_name: string;
+  taxable_amount: number;
+  cgst_amount: number;
+  sgst_amount: number;
+  total_amount: number;
+}
+
+export function buildTallySalesXml(vouchers: TallySalesVoucher[]) {
+  const messages = vouchers.map((v) => `        <TALLYMESSAGE>
+          <VOUCHER VCHTYPE="Sales" ACTION="Create">
+            <DATE>${tallyDate(v.date)}</DATE>
+            <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>${esc(v.voucher_number)}</VOUCHERNUMBER>
+            <PARTYLEDGERNAME>${esc(v.guest_name || "Walk-In Guest")}</PARTYLEDGERNAME>
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Sales Account</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>-${v.taxable_amount.toFixed(2)}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+            ${v.cgst_amount > 0 ? `<ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>CGST</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>-${v.cgst_amount.toFixed(2)}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>` : ""}
+            ${v.sgst_amount > 0 ? `<ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>SGST</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>-${v.sgst_amount.toFixed(2)}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>` : ""}
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Sundry Debtors</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <AMOUNT>${v.total_amount.toFixed(2)}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+          </VOUCHER>
+        </TALLYMESSAGE>`).join("\n");
+  return envelope(messages, "Vouchers");
+}
+
+export interface TallyPaymentVoucher {
+  date: string;
+  voucher_number: string;
+  category: string;
+  amount: number;
+}
+
+export function buildTallyPaymentXml(vouchers: TallyPaymentVoucher[]) {
+  const messages = vouchers.map((v) => `        <TALLYMESSAGE>
+          <VOUCHER VCHTYPE="Payment" ACTION="Create">
+            <DATE>${tallyDate(v.date)}</DATE>
+            <VOUCHERTYPENAME>Payment</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>${esc(v.voucher_number)}</VOUCHERNUMBER>
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>${esc(v.category || "Indirect Expenses")}</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <AMOUNT>${v.amount.toFixed(2)}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Cash</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>-${v.amount.toFixed(2)}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+          </VOUCHER>
+        </TALLYMESSAGE>`).join("\n");
+  return envelope(messages, "Vouchers");
+}
+
+export function downloadXml(xml: string, fileName: string) {
+  const blob = new Blob([xml], { type: "text/xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = fileName;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+}
+
+/** Format helpers */
+export function fmtINR(n: number | string | null | undefined) {
+  return `₹${Number(n ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+export function fmtDate(iso: string | null | undefined) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+export function fmtDateTime(iso: string | null | undefined) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+export function firstOfMonthIso(): string {
+  const d = new Date(); d.setDate(1);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 10);
+}

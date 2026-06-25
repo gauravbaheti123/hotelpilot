@@ -32,9 +32,18 @@ import { Route as AuthenticatedStaffAttendanceRouteImport } from './routes/_auth
 import { Route as AuthenticatedSettingsWhatsappRouteImport } from './routes/_authenticated/settings.whatsapp'
 import { Route as AuthenticatedRoomsRoomNumberRouteImport } from './routes/_authenticated/rooms.$roomNumber'
 import { Route as AuthenticatedReportsSalesRouteImport } from './routes/_authenticated/reports.sales'
+import { Route as AuthenticatedReportsRoomWiseRouteImport } from './routes/_authenticated/reports.room-wise'
 import { Route as AuthenticatedReportsNightAuditRouteImport } from './routes/_authenticated/reports.night-audit'
+import { Route as AuthenticatedReportsMisRouteImport } from './routes/_authenticated/reports.mis'
+import { Route as AuthenticatedReportsGuestWiseRouteImport } from './routes/_authenticated/reports.guest-wise'
 import { Route as AuthenticatedReportsGstRouteImport } from './routes/_authenticated/reports.gst'
+import { Route as AuthenticatedReportsFoodKotRouteImport } from './routes/_authenticated/reports.food-kot'
+import { Route as AuthenticatedReportsExpensesRouteImport } from './routes/_authenticated/reports.expenses'
+import { Route as AuthenticatedReportsDateWiseRevenueRouteImport } from './routes/_authenticated/reports.date-wise-revenue'
 import { Route as AuthenticatedReportsDailyRouteImport } from './routes/_authenticated/reports.daily'
+import { Route as AuthenticatedReportsCashCollectionRouteImport } from './routes/_authenticated/reports.cash-collection'
+import { Route as AuthenticatedReportsBillWiseRouteImport } from './routes/_authenticated/reports.bill-wise'
+import { Route as AuthenticatedReportsBanquetRouteImport } from './routes/_authenticated/reports.banquet'
 import { Route as AuthenticatedReportsAnalyticsRouteImport } from './routes/_authenticated/reports.analytics'
 import { Route as AuthenticatedReportsActivityRouteImport } from './routes/_authenticated/reports.activity'
 import { Route as AuthenticatedMastersTariffRouteImport } from './routes/_authenticated/masters.tariff'
@@ -78,6 +87,7 @@ import { Route as AuthenticatedFrontDeskBookingIdRouteImport } from './routes/_a
 import { Route as AuthenticatedFoodKotIdRouteImport } from './routes/_authenticated/food.kot.$id'
 import { Route as AuthenticatedBillingFolioBookingIdRouteImport } from './routes/_authenticated/billing.folio.$bookingId'
 import { Route as AuthenticatedBanquetEventIdRouteImport } from './routes/_authenticated/banquet.event.$id'
+import { Route as AuthenticatedBanquetBillIdRouteImport } from './routes/_authenticated/banquet.bill.$id'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -208,10 +218,27 @@ const AuthenticatedReportsSalesRoute =
     path: '/reports/sales',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedReportsRoomWiseRoute =
+  AuthenticatedReportsRoomWiseRouteImport.update({
+    id: '/reports/room-wise',
+    path: '/reports/room-wise',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedReportsNightAuditRoute =
   AuthenticatedReportsNightAuditRouteImport.update({
     id: '/reports/night-audit',
     path: '/reports/night-audit',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsMisRoute = AuthenticatedReportsMisRouteImport.update({
+  id: '/reports/mis',
+  path: '/reports/mis',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedReportsGuestWiseRoute =
+  AuthenticatedReportsGuestWiseRouteImport.update({
+    id: '/reports/guest-wise',
+    path: '/reports/guest-wise',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedReportsGstRoute = AuthenticatedReportsGstRouteImport.update({
@@ -219,10 +246,46 @@ const AuthenticatedReportsGstRoute = AuthenticatedReportsGstRouteImport.update({
   path: '/reports/gst',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedReportsFoodKotRoute =
+  AuthenticatedReportsFoodKotRouteImport.update({
+    id: '/reports/food-kot',
+    path: '/reports/food-kot',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsExpensesRoute =
+  AuthenticatedReportsExpensesRouteImport.update({
+    id: '/reports/expenses',
+    path: '/reports/expenses',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsDateWiseRevenueRoute =
+  AuthenticatedReportsDateWiseRevenueRouteImport.update({
+    id: '/reports/date-wise-revenue',
+    path: '/reports/date-wise-revenue',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedReportsDailyRoute =
   AuthenticatedReportsDailyRouteImport.update({
     id: '/reports/daily',
     path: '/reports/daily',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsCashCollectionRoute =
+  AuthenticatedReportsCashCollectionRouteImport.update({
+    id: '/reports/cash-collection',
+    path: '/reports/cash-collection',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsBillWiseRoute =
+  AuthenticatedReportsBillWiseRouteImport.update({
+    id: '/reports/bill-wise',
+    path: '/reports/bill-wise',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsBanquetRoute =
+  AuthenticatedReportsBanquetRouteImport.update({
+    id: '/reports/banquet',
+    path: '/reports/banquet',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedReportsAnalyticsRoute =
@@ -475,6 +538,12 @@ const AuthenticatedBanquetEventIdRoute =
     path: '/banquet/event/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedBanquetBillIdRoute =
+  AuthenticatedBanquetBillIdRouteImport.update({
+    id: '/banquet/bill/$id',
+    path: '/banquet/bill/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -519,9 +588,18 @@ export interface FileRoutesByFullPath {
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/reports/activity': typeof AuthenticatedReportsActivityRoute
   '/reports/analytics': typeof AuthenticatedReportsAnalyticsRoute
+  '/reports/banquet': typeof AuthenticatedReportsBanquetRoute
+  '/reports/bill-wise': typeof AuthenticatedReportsBillWiseRoute
+  '/reports/cash-collection': typeof AuthenticatedReportsCashCollectionRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
+  '/reports/date-wise-revenue': typeof AuthenticatedReportsDateWiseRevenueRoute
+  '/reports/expenses': typeof AuthenticatedReportsExpensesRoute
+  '/reports/food-kot': typeof AuthenticatedReportsFoodKotRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
+  '/reports/guest-wise': typeof AuthenticatedReportsGuestWiseRoute
+  '/reports/mis': typeof AuthenticatedReportsMisRoute
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
+  '/reports/room-wise': typeof AuthenticatedReportsRoomWiseRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/rooms/$roomNumber': typeof AuthenticatedRoomsRoomNumberRoute
   '/settings/whatsapp': typeof AuthenticatedSettingsWhatsappRoute
@@ -539,6 +617,7 @@ export interface FileRoutesByFullPath {
   '/restaurant/': typeof AuthenticatedRestaurantIndexRoute
   '/security/': typeof AuthenticatedSecurityIndexRoute
   '/whatsapp/': typeof AuthenticatedWhatsappIndexRoute
+  '/banquet/bill/$id': typeof AuthenticatedBanquetBillIdRoute
   '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
@@ -589,9 +668,18 @@ export interface FileRoutesByTo {
   '/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/reports/activity': typeof AuthenticatedReportsActivityRoute
   '/reports/analytics': typeof AuthenticatedReportsAnalyticsRoute
+  '/reports/banquet': typeof AuthenticatedReportsBanquetRoute
+  '/reports/bill-wise': typeof AuthenticatedReportsBillWiseRoute
+  '/reports/cash-collection': typeof AuthenticatedReportsCashCollectionRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
+  '/reports/date-wise-revenue': typeof AuthenticatedReportsDateWiseRevenueRoute
+  '/reports/expenses': typeof AuthenticatedReportsExpensesRoute
+  '/reports/food-kot': typeof AuthenticatedReportsFoodKotRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
+  '/reports/guest-wise': typeof AuthenticatedReportsGuestWiseRoute
+  '/reports/mis': typeof AuthenticatedReportsMisRoute
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
+  '/reports/room-wise': typeof AuthenticatedReportsRoomWiseRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/rooms/$roomNumber': typeof AuthenticatedRoomsRoomNumberRoute
   '/settings/whatsapp': typeof AuthenticatedSettingsWhatsappRoute
@@ -609,6 +697,7 @@ export interface FileRoutesByTo {
   '/restaurant': typeof AuthenticatedRestaurantIndexRoute
   '/security': typeof AuthenticatedSecurityIndexRoute
   '/whatsapp': typeof AuthenticatedWhatsappIndexRoute
+  '/banquet/bill/$id': typeof AuthenticatedBanquetBillIdRoute
   '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
@@ -661,9 +750,18 @@ export interface FileRoutesById {
   '/_authenticated/masters/tariff': typeof AuthenticatedMastersTariffRoute
   '/_authenticated/reports/activity': typeof AuthenticatedReportsActivityRoute
   '/_authenticated/reports/analytics': typeof AuthenticatedReportsAnalyticsRoute
+  '/_authenticated/reports/banquet': typeof AuthenticatedReportsBanquetRoute
+  '/_authenticated/reports/bill-wise': typeof AuthenticatedReportsBillWiseRoute
+  '/_authenticated/reports/cash-collection': typeof AuthenticatedReportsCashCollectionRoute
   '/_authenticated/reports/daily': typeof AuthenticatedReportsDailyRoute
+  '/_authenticated/reports/date-wise-revenue': typeof AuthenticatedReportsDateWiseRevenueRoute
+  '/_authenticated/reports/expenses': typeof AuthenticatedReportsExpensesRoute
+  '/_authenticated/reports/food-kot': typeof AuthenticatedReportsFoodKotRoute
   '/_authenticated/reports/gst': typeof AuthenticatedReportsGstRoute
+  '/_authenticated/reports/guest-wise': typeof AuthenticatedReportsGuestWiseRoute
+  '/_authenticated/reports/mis': typeof AuthenticatedReportsMisRoute
   '/_authenticated/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
+  '/_authenticated/reports/room-wise': typeof AuthenticatedReportsRoomWiseRoute
   '/_authenticated/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/_authenticated/rooms/$roomNumber': typeof AuthenticatedRoomsRoomNumberRoute
   '/_authenticated/settings/whatsapp': typeof AuthenticatedSettingsWhatsappRoute
@@ -681,6 +779,7 @@ export interface FileRoutesById {
   '/_authenticated/restaurant/': typeof AuthenticatedRestaurantIndexRoute
   '/_authenticated/security/': typeof AuthenticatedSecurityIndexRoute
   '/_authenticated/whatsapp/': typeof AuthenticatedWhatsappIndexRoute
+  '/_authenticated/banquet/bill/$id': typeof AuthenticatedBanquetBillIdRoute
   '/_authenticated/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/_authenticated/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/_authenticated/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
@@ -733,9 +832,18 @@ export interface FileRouteTypes {
     | '/masters/tariff'
     | '/reports/activity'
     | '/reports/analytics'
+    | '/reports/banquet'
+    | '/reports/bill-wise'
+    | '/reports/cash-collection'
     | '/reports/daily'
+    | '/reports/date-wise-revenue'
+    | '/reports/expenses'
+    | '/reports/food-kot'
     | '/reports/gst'
+    | '/reports/guest-wise'
+    | '/reports/mis'
     | '/reports/night-audit'
+    | '/reports/room-wise'
     | '/reports/sales'
     | '/rooms/$roomNumber'
     | '/settings/whatsapp'
@@ -753,6 +861,7 @@ export interface FileRouteTypes {
     | '/restaurant/'
     | '/security/'
     | '/whatsapp/'
+    | '/banquet/bill/$id'
     | '/banquet/event/$id'
     | '/billing/folio/$bookingId'
     | '/food/kot/$id'
@@ -803,9 +912,18 @@ export interface FileRouteTypes {
     | '/masters/tariff'
     | '/reports/activity'
     | '/reports/analytics'
+    | '/reports/banquet'
+    | '/reports/bill-wise'
+    | '/reports/cash-collection'
     | '/reports/daily'
+    | '/reports/date-wise-revenue'
+    | '/reports/expenses'
+    | '/reports/food-kot'
     | '/reports/gst'
+    | '/reports/guest-wise'
+    | '/reports/mis'
     | '/reports/night-audit'
+    | '/reports/room-wise'
     | '/reports/sales'
     | '/rooms/$roomNumber'
     | '/settings/whatsapp'
@@ -823,6 +941,7 @@ export interface FileRouteTypes {
     | '/restaurant'
     | '/security'
     | '/whatsapp'
+    | '/banquet/bill/$id'
     | '/banquet/event/$id'
     | '/billing/folio/$bookingId'
     | '/food/kot/$id'
@@ -874,9 +993,18 @@ export interface FileRouteTypes {
     | '/_authenticated/masters/tariff'
     | '/_authenticated/reports/activity'
     | '/_authenticated/reports/analytics'
+    | '/_authenticated/reports/banquet'
+    | '/_authenticated/reports/bill-wise'
+    | '/_authenticated/reports/cash-collection'
     | '/_authenticated/reports/daily'
+    | '/_authenticated/reports/date-wise-revenue'
+    | '/_authenticated/reports/expenses'
+    | '/_authenticated/reports/food-kot'
     | '/_authenticated/reports/gst'
+    | '/_authenticated/reports/guest-wise'
+    | '/_authenticated/reports/mis'
     | '/_authenticated/reports/night-audit'
+    | '/_authenticated/reports/room-wise'
     | '/_authenticated/reports/sales'
     | '/_authenticated/rooms/$roomNumber'
     | '/_authenticated/settings/whatsapp'
@@ -894,6 +1022,7 @@ export interface FileRouteTypes {
     | '/_authenticated/restaurant/'
     | '/_authenticated/security/'
     | '/_authenticated/whatsapp/'
+    | '/_authenticated/banquet/bill/$id'
     | '/_authenticated/banquet/event/$id'
     | '/_authenticated/billing/folio/$bookingId'
     | '/_authenticated/food/kot/$id'
@@ -1072,11 +1201,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsSalesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/reports/room-wise': {
+      id: '/_authenticated/reports/room-wise'
+      path: '/reports/room-wise'
+      fullPath: '/reports/room-wise'
+      preLoaderRoute: typeof AuthenticatedReportsRoomWiseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/reports/night-audit': {
       id: '/_authenticated/reports/night-audit'
       path: '/reports/night-audit'
       fullPath: '/reports/night-audit'
       preLoaderRoute: typeof AuthenticatedReportsNightAuditRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/mis': {
+      id: '/_authenticated/reports/mis'
+      path: '/reports/mis'
+      fullPath: '/reports/mis'
+      preLoaderRoute: typeof AuthenticatedReportsMisRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/guest-wise': {
+      id: '/_authenticated/reports/guest-wise'
+      path: '/reports/guest-wise'
+      fullPath: '/reports/guest-wise'
+      preLoaderRoute: typeof AuthenticatedReportsGuestWiseRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/reports/gst': {
@@ -1086,11 +1236,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsGstRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/reports/food-kot': {
+      id: '/_authenticated/reports/food-kot'
+      path: '/reports/food-kot'
+      fullPath: '/reports/food-kot'
+      preLoaderRoute: typeof AuthenticatedReportsFoodKotRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/expenses': {
+      id: '/_authenticated/reports/expenses'
+      path: '/reports/expenses'
+      fullPath: '/reports/expenses'
+      preLoaderRoute: typeof AuthenticatedReportsExpensesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/date-wise-revenue': {
+      id: '/_authenticated/reports/date-wise-revenue'
+      path: '/reports/date-wise-revenue'
+      fullPath: '/reports/date-wise-revenue'
+      preLoaderRoute: typeof AuthenticatedReportsDateWiseRevenueRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/reports/daily': {
       id: '/_authenticated/reports/daily'
       path: '/reports/daily'
       fullPath: '/reports/daily'
       preLoaderRoute: typeof AuthenticatedReportsDailyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/cash-collection': {
+      id: '/_authenticated/reports/cash-collection'
+      path: '/reports/cash-collection'
+      fullPath: '/reports/cash-collection'
+      preLoaderRoute: typeof AuthenticatedReportsCashCollectionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/bill-wise': {
+      id: '/_authenticated/reports/bill-wise'
+      path: '/reports/bill-wise'
+      fullPath: '/reports/bill-wise'
+      preLoaderRoute: typeof AuthenticatedReportsBillWiseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/banquet': {
+      id: '/_authenticated/reports/banquet'
+      path: '/reports/banquet'
+      fullPath: '/reports/banquet'
+      preLoaderRoute: typeof AuthenticatedReportsBanquetRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/reports/analytics': {
@@ -1394,6 +1586,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBanquetEventIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/banquet/bill/$id': {
+      id: '/_authenticated/banquet/bill/$id'
+      path: '/banquet/bill/$id'
+      fullPath: '/banquet/bill/$id'
+      preLoaderRoute: typeof AuthenticatedBanquetBillIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -1437,9 +1636,18 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMastersTariffRoute: typeof AuthenticatedMastersTariffRoute
   AuthenticatedReportsActivityRoute: typeof AuthenticatedReportsActivityRoute
   AuthenticatedReportsAnalyticsRoute: typeof AuthenticatedReportsAnalyticsRoute
+  AuthenticatedReportsBanquetRoute: typeof AuthenticatedReportsBanquetRoute
+  AuthenticatedReportsBillWiseRoute: typeof AuthenticatedReportsBillWiseRoute
+  AuthenticatedReportsCashCollectionRoute: typeof AuthenticatedReportsCashCollectionRoute
   AuthenticatedReportsDailyRoute: typeof AuthenticatedReportsDailyRoute
+  AuthenticatedReportsDateWiseRevenueRoute: typeof AuthenticatedReportsDateWiseRevenueRoute
+  AuthenticatedReportsExpensesRoute: typeof AuthenticatedReportsExpensesRoute
+  AuthenticatedReportsFoodKotRoute: typeof AuthenticatedReportsFoodKotRoute
   AuthenticatedReportsGstRoute: typeof AuthenticatedReportsGstRoute
+  AuthenticatedReportsGuestWiseRoute: typeof AuthenticatedReportsGuestWiseRoute
+  AuthenticatedReportsMisRoute: typeof AuthenticatedReportsMisRoute
   AuthenticatedReportsNightAuditRoute: typeof AuthenticatedReportsNightAuditRoute
+  AuthenticatedReportsRoomWiseRoute: typeof AuthenticatedReportsRoomWiseRoute
   AuthenticatedReportsSalesRoute: typeof AuthenticatedReportsSalesRoute
   AuthenticatedRoomsRoomNumberRoute: typeof AuthenticatedRoomsRoomNumberRoute
   AuthenticatedSettingsWhatsappRoute: typeof AuthenticatedSettingsWhatsappRoute
@@ -1457,6 +1665,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRestaurantIndexRoute: typeof AuthenticatedRestaurantIndexRoute
   AuthenticatedSecurityIndexRoute: typeof AuthenticatedSecurityIndexRoute
   AuthenticatedWhatsappIndexRoute: typeof AuthenticatedWhatsappIndexRoute
+  AuthenticatedBanquetBillIdRoute: typeof AuthenticatedBanquetBillIdRoute
   AuthenticatedBanquetEventIdRoute: typeof AuthenticatedBanquetEventIdRoute
   AuthenticatedBillingFolioBookingIdRoute: typeof AuthenticatedBillingFolioBookingIdRoute
   AuthenticatedFoodKotIdRoute: typeof AuthenticatedFoodKotIdRoute
@@ -1508,9 +1717,20 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMastersTariffRoute: AuthenticatedMastersTariffRoute,
   AuthenticatedReportsActivityRoute: AuthenticatedReportsActivityRoute,
   AuthenticatedReportsAnalyticsRoute: AuthenticatedReportsAnalyticsRoute,
+  AuthenticatedReportsBanquetRoute: AuthenticatedReportsBanquetRoute,
+  AuthenticatedReportsBillWiseRoute: AuthenticatedReportsBillWiseRoute,
+  AuthenticatedReportsCashCollectionRoute:
+    AuthenticatedReportsCashCollectionRoute,
   AuthenticatedReportsDailyRoute: AuthenticatedReportsDailyRoute,
+  AuthenticatedReportsDateWiseRevenueRoute:
+    AuthenticatedReportsDateWiseRevenueRoute,
+  AuthenticatedReportsExpensesRoute: AuthenticatedReportsExpensesRoute,
+  AuthenticatedReportsFoodKotRoute: AuthenticatedReportsFoodKotRoute,
   AuthenticatedReportsGstRoute: AuthenticatedReportsGstRoute,
+  AuthenticatedReportsGuestWiseRoute: AuthenticatedReportsGuestWiseRoute,
+  AuthenticatedReportsMisRoute: AuthenticatedReportsMisRoute,
   AuthenticatedReportsNightAuditRoute: AuthenticatedReportsNightAuditRoute,
+  AuthenticatedReportsRoomWiseRoute: AuthenticatedReportsRoomWiseRoute,
   AuthenticatedReportsSalesRoute: AuthenticatedReportsSalesRoute,
   AuthenticatedRoomsRoomNumberRoute: AuthenticatedRoomsRoomNumberRoute,
   AuthenticatedSettingsWhatsappRoute: AuthenticatedSettingsWhatsappRoute,
@@ -1529,6 +1749,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRestaurantIndexRoute: AuthenticatedRestaurantIndexRoute,
   AuthenticatedSecurityIndexRoute: AuthenticatedSecurityIndexRoute,
   AuthenticatedWhatsappIndexRoute: AuthenticatedWhatsappIndexRoute,
+  AuthenticatedBanquetBillIdRoute: AuthenticatedBanquetBillIdRoute,
   AuthenticatedBanquetEventIdRoute: AuthenticatedBanquetEventIdRoute,
   AuthenticatedBillingFolioBookingIdRoute:
     AuthenticatedBillingFolioBookingIdRoute,

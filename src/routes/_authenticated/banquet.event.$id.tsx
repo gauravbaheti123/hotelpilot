@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { BANQUET_STATUS_TONE, computeBanquetTotal } from "@/lib/banquet";
-import { ArrowLeft, BedDouble, Trash2, CheckCircle2, Ban, Plus } from "lucide-react";
+import { ArrowLeft, BedDouble, Trash2, CheckCircle2, Ban, Plus, FileText } from "lucide-react";
 import type { EventBlockRecord } from "@/lib/eventRoomBlocks";
 
 export const Route = createFileRoute("/_authenticated/banquet/event/$id")({
@@ -185,6 +185,13 @@ function BanquetEventPage() {
             {b.halls?.name ?? "—"} · {b.event_date} · {b.start_time?.slice(0,5)}–{b.end_time?.slice(0,5)} · {b.pax} pax
           </div>
           <div className="flex-1" />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => router.navigate({ to: "/banquet/bill/$id", params: { id: b.id } })}
+          >
+            <FileText className="h-4 w-4 mr-1" /> View / Print Event Bill
+          </Button>
           {editable && (
             <div className="flex gap-2">
               {b.status === "reserved" && <Button size="sm" onClick={() => setStatus("confirmed")}>Confirm</Button>}
