@@ -543,6 +543,10 @@ function NewBookingPage() {
               <F label="Guest notes"><Textarea rows={2} value={guestNotes} onChange={(e) => setGuestNotes(e.target.value)} /></F>
             </div>
             </div>
+
+            <div className="pt-2 border-t">
+              <GuestIdUploadField value={idFile} onChange={setIdFile} disabled={saving} />
+            </div>
           </CardContent>
         </Card>
 
