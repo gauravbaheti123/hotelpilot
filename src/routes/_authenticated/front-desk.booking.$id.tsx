@@ -98,9 +98,10 @@ interface ShiftRow {
   reason: string | null;
   old_rate: number | null;
   new_rate: number | null;
+  shifted_by: string | null;
   from_room: { room_number: string } | null;
   to_room: { room_number: string } | null;
-  shifted_by_profile: { name: string | null } | null;
+  shifted_by_name?: string | null;
 }
 interface KotSummaryRow {
   id: string;
@@ -182,7 +183,7 @@ function BookingDetailPage() {
         .order("room_number"),
         supabase
           .from("room_shifts")
-          .select("id, shifted_at, reason, old_rate, new_rate, from_room:from_room_id(room_number), to_room:to_room_id(room_number), shifted_by_profile:shifted_by(name)")
+          .select("id, shifted_at, reason, old_rate, new_rate, shifted_by, from_room:from_room_id(room_number), to_room:to_room_id(room_number)")
           .in("booking_room_id", detail.booking_rooms.map((br) => br.id))
           .order("shifted_at", { ascending: false }),
         supabase
@@ -197,7 +198,18 @@ function BookingDetailPage() {
           .order("is_primary", { ascending: false }),
       ]);
       setRooms((rs ?? []) as Room[]);
-      setShifts((sh ?? []) as unknown as ShiftRow[]);
+      const shiftRows = (sh ?? []) as unknown as ShiftRow[];
+      // Resolve shifted_by user names from profiles (no FK on shifted_by so we look up manually)
+      const userIds = Array.from(new Set(shiftRows.map((s) => s.shifted_by).filter(Boolean) as string[]));
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, name")
+          .in("id", userIds);
+        const nameById = new Map<string, string | null>((profs ?? []).map((p: any) => [p.id, p.name]));
+        shiftRows.forEach((s) => { s.shifted_by_name = s.shifted_by ? (nameById.get(s.shifted_by) ?? null) : null; });
+      }
+      setShifts(shiftRows);
       setKots((kt ?? []) as unknown as KotSummaryRow[]);
       setExtraGuests((bg ?? []) as unknown as AdditionalGuestRow[]);
     }
@@ -618,7 +630,7 @@ function BookingDetailPage() {
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      {new Date(s.shifted_at).toLocaleString()} · by {s.shifted_by_profile?.name ?? "staff"}
+                      {new Date(s.shifted_at).toLocaleString()} · by {s.shifted_by_name ?? "staff"}
                     </div>
                     {s.reason && <div className="text-xs mt-1"><span className="text-muted-foreground">Reason:</span> {s.reason}</div>}
                   </div>
