@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, MapPin, Phone, KeyRound, Mail, Calendar, BedDouble, LogIn, Settings } from "lucide-react";
+import { Plus, Pencil, MapPin, Phone, KeyRound, Mail, Calendar, BedDouble, LogIn, Settings, Pause, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -46,6 +46,7 @@ interface PropertyRow {
   address: string | null;
   pincode: string | null;
   is_active: boolean;
+  status?: "active" | "paused";
   created_at?: string;
 }
 
@@ -211,6 +212,52 @@ function PropertiesPage() {
     }
   }
 
+  async function togglePause(p: PropertyRow) {
+    const next = p.status === "paused" ? "active" : "paused";
+    const verb = next === "paused" ? "pause" : "resume";
+    if (!confirm(`Are you sure you want to ${verb} ${p.name}?`)) return;
+    const { error } = await supabase
+      .from("properties")
+      .update({ status: next })
+      .eq("id", p.id);
+    if (error) return toast.error(error.message);
+    toast.success(next === "paused" ? `${p.name} paused` : `${p.name} resumed`);
+    load();
+  }
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteProp, setDeleteProp] = useState<PropertyRow | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deletingProp, setDeletingProp] = useState(false);
+
+  function openDelete(p: PropertyRow) {
+    setDeleteProp(p);
+    setDeleteConfirm("");
+    setDeleteOpen(true);
+  }
+
+  async function submitDelete() {
+    if (!deleteProp) return;
+    if (deleteConfirm !== deleteProp.name) {
+      toast.error("Type the exact hotel name to confirm");
+      return;
+    }
+    setDeletingProp(true);
+    try {
+      const { deleteProperty } = await import("@/lib/admin-properties.functions");
+      const fn = deleteProperty;
+      await fn({ data: { property_id: deleteProp.id, confirm_name: deleteConfirm } });
+      toast.success(`${deleteProp.name} deleted`);
+      setDeleteOpen(false);
+      setDeleteProp(null);
+      load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to delete property");
+    } finally {
+      setDeletingProp(false);
+    }
+  }
+
   return (
     <AppShell title="Properties">
       <div className="max-w-6xl space-y-4">
@@ -313,9 +360,11 @@ function PropertiesPage() {
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-base">{r.name}</CardTitle>
-                    <Badge variant={r.is_active ? "default" : "secondary"}>
-                      {r.is_active ? "Active" : "Inactive"}
-                    </Badge>
+                    {r.status === "paused" ? (
+                      <Badge className="bg-rose-600 hover:bg-rose-600 text-white">Paused</Badge>
+                    ) : (
+                      <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">Active</Badge>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col gap-2 text-sm">
@@ -365,6 +414,28 @@ function PropertiesPage() {
                       >
                         <KeyRound className="mr-1 h-3.5 w-3.5" /> Create Login
                       </Button>
+                      {isSuperadmin && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => togglePause(r)}
+                          >
+                            {r.status === "paused" ? (
+                              <><Play className="mr-1 h-3.5 w-3.5" /> Resume</>
+                            ) : (
+                              <><Pause className="mr-1 h-3.5 w-3.5" /> Pause</>
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => openDelete(r)}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -372,6 +443,39 @@ function PropertiesPage() {
             ))}
           </div>
         )}
+
+        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Delete {deleteProp?.name}?</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 text-sm">
+              <p className="text-muted-foreground">
+                This will permanently delete <strong>{deleteProp?.name}</strong> and ALL its
+                data (bookings, rooms, staff, bills, etc.). This cannot be undone.
+              </p>
+              <Field label={`Type "${deleteProp?.name}" to confirm`}>
+                <Input
+                  value={deleteConfirm}
+                  onChange={(e) => setDeleteConfirm(e.target.value)}
+                  placeholder={deleteProp?.name ?? ""}
+                />
+              </Field>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={submitDelete}
+                disabled={deletingProp || deleteConfirm !== deleteProp?.name}
+              >
+                {deletingProp ? "Deleting…" : "Delete permanently"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={loginOpen} onOpenChange={setLoginOpen}>
           <DialogContent className="max-w-md">
