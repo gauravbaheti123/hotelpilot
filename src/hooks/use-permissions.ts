@@ -6,6 +6,15 @@ import { usePropertyId } from "./use-property";
 export type PermAction = "view" | "create" | "edit" | "delete";
 export type PermMap = Record<string, Record<PermAction, boolean>>;
 
+const PERMS_EVENT = "hp:permissions-changed";
+
+/** Notify all mounted usePermissions() hooks to re-fetch. */
+export function invalidatePermissions() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(PERMS_EVENT));
+  }
+}
+
 interface PermState {
   loading: boolean;
   isSuperadmin: boolean;
@@ -18,6 +27,7 @@ interface PermState {
  */
 export function usePermissions(): PermState & {
   can: (module: string, action?: PermAction) => boolean;
+  refresh: () => void;
 } {
   const { user, roles, loading: authLoading } = useAuth();
   const propertyId = usePropertyId();
@@ -27,6 +37,14 @@ export function usePermissions(): PermState & {
     isSuperadmin,
     map: {},
   });
+  const [tick, setTick] = useState(0);
+  const refresh = () => setTick((n) => n + 1);
+
+  useEffect(() => {
+    const onChange = () => setTick((n) => n + 1);
+    window.addEventListener(PERMS_EVENT, onChange);
+    return () => window.removeEventListener(PERMS_EVENT, onChange);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,12 +91,12 @@ export function usePermissions(): PermState & {
     return () => {
       cancelled = true;
     };
-  }, [user, authLoading, isSuperadmin, propertyId]);
+  }, [user, authLoading, isSuperadmin, propertyId, tick]);
 
   const can = (module: string, action: PermAction = "view") => {
     if (state.isSuperadmin) return true;
     return !!state.map[module]?.[action];
   };
 
-  return { ...state, can };
+  return { ...state, can, refresh };
 }

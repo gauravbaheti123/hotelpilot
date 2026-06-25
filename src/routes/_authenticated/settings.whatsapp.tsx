@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Eye, EyeOff, Wifi, MessageCircle, ShieldCheck } from "lucide-react";
 import { testAiSensy } from "@/lib/whatsapp";
+import { RequirePermission } from "@/components/RequirePermission";
 
 export const Route = createFileRoute("/_authenticated/settings/whatsapp")({
   head: () => ({ meta: [{ title: "WhatsApp Settings — HotelPilot" }] }),
@@ -73,6 +74,7 @@ function WhatsAppSettingsPage() {
   const webhookUrl = `https://fjhvpzpahlcezcbksnpr.supabase.co/functions/v1/aisensy-webhook`;
 
   return (
+    <RequirePermission module="settings_whatsapp">
     <AppShell title="WhatsApp Settings">
       <div className="max-w-3xl space-y-4">
         <Card>
@@ -134,5 +136,6 @@ function WhatsAppSettingsPage() {
         </Card>
       </div>
     </AppShell>
+    </RequirePermission>
   );
 }
