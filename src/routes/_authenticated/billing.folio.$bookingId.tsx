@@ -875,6 +875,12 @@ function FolioPage() {
           </DialogContent>
         </Dialog>
       </div>
+      <CheckoutDialog
+        bookingId={bookingId}
+        open={checkoutOpen}
+        onOpenChange={setCheckoutOpen}
+        onDone={() => { load(); router.navigate({ to: "/front-desk/bookings" }); }}
+      />
     </AppShell>
   );
 }
