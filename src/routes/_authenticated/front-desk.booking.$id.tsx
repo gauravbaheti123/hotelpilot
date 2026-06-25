@@ -899,6 +899,12 @@ function BookingDetailPage() {
           </DialogContent>
         </Dialog>
       </div>
+      <CheckoutDialog
+        bookingId={b.id}
+        open={checkoutOpen}
+        onOpenChange={setCheckoutOpen}
+        onDone={() => load()}
+      />
     </AppShell>
   );
 }
