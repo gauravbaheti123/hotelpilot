@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Send, MessageCircle, Search, AlertCircle } from "lucide-react";
+import { Send, MessageCircle, Search, AlertCircle, Settings } from "lucide-react";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { supabase } from "@/integrations/supabase/client";
@@ -154,6 +154,24 @@ function WhatsAppInboxPage() {
   }
 
   if (!propertyId) return <AppShell title="WhatsApp Inbox"><EmptyPropertyState /></AppShell>;
+
+  if (msgs.length === 0) {
+    return (
+      <AppShell title="WhatsApp Inbox">
+        <Card className="max-w-xl mx-auto mt-12 p-8 text-center space-y-4">
+          <MessageCircle className="h-12 w-12 mx-auto text-muted-foreground/60" />
+          <h2 className="text-lg font-semibold">No WhatsApp messages yet</h2>
+          <p className="text-sm text-muted-foreground">
+            WhatsApp messages from guests will appear here once AiSensy is connected.
+            Configure in Settings → WhatsApp.
+          </p>
+          <Button asChild>
+            <Link to="/settings/whatsapp"><Settings className="h-4 w-4 mr-2" />Configure WhatsApp</Link>
+          </Button>
+        </Card>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell title="WhatsApp Inbox">
