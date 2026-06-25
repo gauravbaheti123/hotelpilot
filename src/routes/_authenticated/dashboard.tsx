@@ -1,11 +1,16 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState, useCallback } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -19,6 +24,9 @@ type Room = {
   status: "vacant" | "occupied" | "blocked" | "maintenance";
   housekeeping_status: "clean" | "dirty" | "inspected" | "out_of_order";
 };
+
+type StaffOpt = { id: string; name: string };
+type TileKind = "vacant" | "occupied" | "dirty" | "maintenance";
 
 type ScheduleRow = {
   id: string;
@@ -107,8 +115,12 @@ function OwnerDashboard({
   const [kpi, setKpi] = useState({ occupied: 0, arrivals: 0, departures: 0, revenue: 0 });
   const [rooms, setRooms] = useState<Room[]>([]);
   const [occupiedRoomIds, setOccupiedRoomIds] = useState<Set<string>>(new Set());
+  const [bookingByRoom, setBookingByRoom] = useState<Map<string, string>>(new Map());
   const [arrivals, setArrivals] = useState<ScheduleRow[]>([]);
   const [departures, setDepartures] = useState<ScheduleRow[]>([]);
+  const [staff, setStaff] = useState<StaffOpt[]>([]);
+  const [modalRoom, setModalRoom] = useState<Room | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!userId) return;
@@ -116,10 +128,9 @@ function OwnerDashboard({
       .then(({ data }) => { if (data?.name) setName(data.name); });
   }, [userId]);
 
-  useEffect(() => {
+  const reload = useCallback(async () => {
     if (!propertyId) return;
     const today = todayISO();
-    (async () => {
       const [occ, arr, dep, pay, rms, activeBR] = await Promise.all([
         supabase.from("bookings").select("id", { count: "exact", head: true })
           .eq("property_id", propertyId).eq("status", "checked_in"),
@@ -131,14 +142,17 @@ function OwnerDashboard({
           .gte("paid_at", `${today}T00:00:00`).lte("paid_at", `${today}T23:59:59`),
         supabase.from("rooms").select("id, room_number, status, housekeeping_status")
           .eq("property_id", propertyId).eq("is_active", true).order("room_number"),
-        supabase.from("booking_rooms").select("room_id, actual_check_out, bookings!inner(status, property_id)")
+        supabase.from("booking_rooms").select("room_id, booking_id, actual_check_out, bookings!inner(status, property_id)")
           .eq("property_id", propertyId).is("actual_check_out", null).eq("bookings.status", "checked_in"),
       ]);
       const revenue = (pay.data ?? []).reduce((a, x: any) => a + Number(x.amount || 0), 0);
       const occSet = new Set<string>(
         (activeBR.data ?? []).map((b: any) => b.room_id).filter(Boolean),
       );
+      const bMap = new Map<string, string>();
+      (activeBR.data ?? []).forEach((b: any) => { if (b.room_id && b.booking_id) bMap.set(b.room_id, b.booking_id); });
       setOccupiedRoomIds(occSet);
+      setBookingByRoom(bMap);
       setKpi({
         occupied: occSet.size || (occ.count ?? 0),
         arrivals: arr.data?.length ?? 0,
@@ -155,7 +169,14 @@ function OwnerDashboard({
       setArrivals((arr.data ?? []).map(mapRow));
       setDepartures((dep.data ?? []).map(mapRow));
       setRooms((rms.data ?? []) as Room[]);
-    })();
+  }, [propertyId]);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  useEffect(() => {
+    if (!propertyId) return;
+    supabase.from("staff").select("id, name").eq("property_id", propertyId).eq("is_active", true).order("name")
+      .then(({ data }) => setStaff((data ?? []) as StaffOpt[]));
   }, [propertyId]);
 
   const subtitle = propertyName
@@ -187,24 +208,24 @@ function OwnerDashboard({
                 {rooms.map((r) => {
                   const { bg, label } = roomTileStyle(r, occupiedRoomIds.has(r.id));
                   return (
-                    <Link
+                    <button
                       key={r.id}
-                      to="/rooms/$roomNumber"
-                      params={{ roomNumber: r.room_number }}
+                      type="button"
+                      onClick={() => setModalRoom(r)}
                       className={`rounded-md px-2 py-3 text-center text-white transition hover:opacity-90 hover:ring-2 hover:ring-offset-1 ${bg}`}
                     >
                       <div className="text-sm font-semibold">{r.room_number}</div>
                       <div className="text-[10px] uppercase tracking-wide opacity-90">{label}</div>
-                    </Link>
+                    </button>
                   );
                 })}
               </div>
             )}
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
-              <LegendDot className="bg-emerald-600" label="Vacant" />
-              <LegendDot className="bg-rose-600" label="Occupied" />
-              <LegendDot className="bg-amber-500" label="Dirty" />
-              <LegendDot className="bg-slate-500" label="Maintenance (blue-grey)" />
+              <LegendDot style={{ backgroundColor: "#16a34a" }} label="Vacant" />
+              <LegendDot style={{ backgroundColor: "#dc2626" }} label="Occupied" />
+              <LegendDot style={{ backgroundColor: "#d97706" }} label="Dirty" />
+              <LegendDot style={{ backgroundColor: "#6b7280" }} label="Maintenance" />
             </div>
           </CardContent>
         </Card>
@@ -226,6 +247,16 @@ function OwnerDashboard({
           />
         </div>
       </div>
+      <RoomStatusModal
+        room={modalRoom}
+        kind={modalRoom ? tileKind(modalRoom, occupiedRoomIds.has(modalRoom.id)) : null}
+        bookingId={modalRoom ? bookingByRoom.get(modalRoom.id) ?? null : null}
+        staff={staff}
+        onClose={() => setModalRoom(null)}
+        onChanged={async () => { await reload(); }}
+        onOpenBooking={(bid) => { setModalRoom(null); navigate({ to: "/front-desk/booking/$id", params: { id: bid } }); }}
+        onNewBooking={() => { setModalRoom(null); navigate({ to: "/front-desk/new" }); }}
+      />
     </AppShell>
   );
 }
@@ -242,22 +273,163 @@ function Kpi({ label, value, icon: Icon }: { label: string; value: number | stri
   );
 }
 
-function LegendDot({ className, label }: { className: string; label: string }) {
+function LegendDot({ className, style, label }: { className?: string; style?: React.CSSProperties; label: string }) {
   return (
     <span className="flex items-center gap-1.5">
-      <span className={`h-2.5 w-2.5 rounded-full ${className}`} />
+      <span className={`h-2.5 w-2.5 rounded-full ${className ?? ""}`} style={style} />
       {label}
     </span>
   );
 }
 
+function tileKind(r: Room, isOccupied: boolean): TileKind {
+  if (isOccupied || r.status === "occupied") return "occupied";
+  if (r.status === "maintenance" || r.housekeeping_status === "out_of_order") return "maintenance";
+  if (r.housekeeping_status === "dirty") return "dirty";
+  return "vacant";
+}
+
 function roomTileStyle(r: Room, isOccupied: boolean): { bg: string; label: string } {
-  if (r.status === "maintenance" || r.housekeeping_status === "out_of_order")
-    return { bg: "bg-slate-500", label: "Maintenance" };
-  if (isOccupied || r.status === "occupied") return { bg: "bg-rose-600", label: "Occupied" };
-  if (r.housekeeping_status === "dirty") return { bg: "bg-amber-500", label: "Dirty" };
-  if (r.status === "blocked") return { bg: "bg-slate-500", label: "Blocked" };
-  return { bg: "bg-emerald-600", label: "Vacant" };
+  switch (tileKind(r, isOccupied)) {
+    case "occupied": return { bg: "bg-[#dc2626]", label: "Occupied" };
+    case "maintenance": return { bg: "bg-[#6b7280]", label: "Maintenance" };
+    case "dirty": return { bg: "bg-[#d97706]", label: "Dirty" };
+    default: return { bg: "bg-[#16a34a]", label: "Vacant" };
+  }
+}
+
+function RoomStatusModal({
+  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking,
+}: {
+  room: Room | null;
+  kind: TileKind | null;
+  bookingId: string | null;
+  staff: StaffOpt[];
+  onClose: () => void;
+  onChanged: () => Promise<void>;
+  onOpenBooking: (bookingId: string) => void;
+  onNewBooking: () => void;
+}) {
+  const [staffId, setStaffId] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { setStaffId(""); setNotes(""); }, [room?.id]);
+
+  if (!room || !kind) return null;
+
+  const update = async (
+    patch: Partial<Pick<Room, "status" | "housekeeping_status">>,
+    log: null | { task_type: "cleaning" | "maintenance" },
+    successLabel: string,
+  ) => {
+    setBusy(true);
+    try {
+      const { error } = await supabase.from("rooms").update(patch).eq("id", room.id);
+      if (error) throw error;
+      if (log) {
+        const { data: rRow } = await supabase.from("rooms").select("property_id").eq("id", room.id).maybeSingle();
+        const propertyId = (rRow as any)?.property_id;
+        if (propertyId) {
+          await supabase.from("housekeeping_tasks").insert({
+            property_id: propertyId,
+            room_id: room.id,
+            task_type: log.task_type,
+            status: "done",
+            assigned_to: staffId || null,
+            notes: notes || null,
+            completed_at: new Date().toISOString(),
+          } as any);
+        }
+      }
+      toast.success(`Room ${room.room_number} ${successLabel}`);
+      await onChanged();
+      onClose();
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to update room");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!room} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Room {room.room_number}</DialogTitle>
+          <DialogDescription>
+            Current: <span className="font-medium capitalize">{kind}</span>
+          </DialogDescription>
+        </DialogHeader>
+
+        {kind === "vacant" && (
+          <div className="grid gap-2">
+            <Button variant="outline" disabled={busy}
+              onClick={() => update({ housekeeping_status: "dirty" }, null, "marked as Dirty")}>
+              Mark as Dirty
+            </Button>
+            <Button variant="outline" disabled={busy}
+              onClick={() => update({ status: "maintenance" }, null, "marked as Maintenance")}>
+              Mark as Maintenance
+            </Button>
+            <Button disabled={busy} onClick={onNewBooking}>New Booking</Button>
+          </div>
+        )}
+
+        {kind === "occupied" && (
+          <div className="grid gap-2">
+            <p className="text-sm text-muted-foreground">Status change not allowed while occupied — check out guest first.</p>
+            <Button disabled={!bookingId} onClick={() => bookingId && onOpenBooking(bookingId)}>View Booking</Button>
+            <Button variant="outline" disabled={!bookingId}
+              onClick={() => bookingId && onOpenBooking(bookingId)}>Room Shift</Button>
+          </div>
+        )}
+
+        {(kind === "dirty" || kind === "maintenance") && (
+          <div className="grid gap-3">
+            <div className="grid gap-1.5">
+              <Label>{kind === "dirty" ? "Cleaned by" : "Maintenance resolved by"}</Label>
+              <Select value={staffId} onValueChange={setStaffId}>
+                <SelectTrigger><SelectValue placeholder="Select staff (optional)" /></SelectTrigger>
+                <SelectContent>
+                  {staff.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>{kind === "dirty" ? "Cleaning notes" : "Resolution notes"}</Label>
+              <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
+            </div>
+            <div className="grid gap-2">
+              <Button disabled={busy}
+                onClick={() => update(
+                  { status: "vacant", housekeeping_status: "clean" },
+                  { task_type: kind === "dirty" ? "cleaning" : "maintenance" },
+                  "marked as Vacant",
+                )}>
+                Mark as Clean (Vacant)
+              </Button>
+              {kind === "dirty" ? (
+                <Button variant="outline" disabled={busy}
+                  onClick={() => update({ status: "maintenance" }, null, "marked as Maintenance")}>
+                  Mark as Maintenance
+                </Button>
+              ) : (
+                <Button variant="outline" disabled={busy}
+                  onClick={() => update({ status: "vacant", housekeeping_status: "dirty" }, null, "marked as Dirty")}>
+                  Mark as Dirty
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function ScheduleCard({
