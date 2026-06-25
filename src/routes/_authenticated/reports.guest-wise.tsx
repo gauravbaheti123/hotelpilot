@@ -111,22 +111,21 @@ function Page() {
             <th className="w-8" />
             {columns.map((c) => <th key={c.key} className={`px-2 py-2 text-left ${c.currency || c.numeric ? "text-right" : ""}`}>{c.header}</th>)}
           </tr></thead>
-          <tbody>
-            {rows.map((r) => {
-              const open = !!expanded[r._id];
-              return (
-                <>
-                  <tr key={r._id} className="border-t cursor-pointer hover:bg-muted/30"
-                    onClick={() => setExpanded((s) => ({ ...s, [r._id]: !open }))}>
-                    <td className="px-2 py-1.5">{open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}</td>
-                    {columns.map((c) => (
-                      <td key={c.key} className={`px-2 py-1.5 ${c.currency || c.numeric ? "text-right tabular-nums" : ""}`}>
-                        {c.currency ? fmtINR(c.get(r) as number) : c.get(r)}
-                      </td>
-                    ))}
-                  </tr>
-                  {open && (
-                    <tr key={`${r._id}-d`} className="bg-muted/10">
+          {rows.map((r) => {
+            const open = !!expanded[r._id];
+            return (
+              <tbody key={r._id}>
+                <tr className="border-t cursor-pointer hover:bg-muted/30"
+                  onClick={() => setExpanded((s) => ({ ...s, [r._id]: !open }))}>
+                  <td className="px-2 py-1.5">{open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}</td>
+                  {columns.map((c) => (
+                    <td key={c.key} className={`px-2 py-1.5 ${c.currency || c.numeric ? "text-right tabular-nums" : ""}`}>
+                      {c.currency ? fmtINR(c.get(r) as number) : c.get(r)}
+                    </td>
+                  ))}
+                </tr>
+                {open && (
+                  <tr className="bg-muted/10">
                       <td />
                       <td colSpan={columns.length} className="px-3 py-2">
                         <div className="text-xs font-semibold mb-1">All bookings ({r.bookings.length})</div>
@@ -154,12 +153,11 @@ function Page() {
                         </table>
                       </td>
                     </tr>
-                  )}
-                </>
-              );
-            })}
-            {rows.length === 0 && <tr><td colSpan={columns.length + 1} className="text-center py-6 text-muted-foreground">No guests in range.</td></tr>}
-          </tbody>
+                )}
+              </tbody>
+            );
+          })}
+          {rows.length === 0 && <tbody><tr><td colSpan={columns.length + 1} className="text-center py-6 text-muted-foreground">No guests in range.</td></tr></tbody>}
           <tfoot className="bg-emerald-50 font-semibold">
             <tr>
               <td colSpan={5} className="px-2 py-2 text-right">{rows.length} guests</td>
