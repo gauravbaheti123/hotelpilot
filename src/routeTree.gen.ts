@@ -34,6 +34,7 @@ import { Route as AuthenticatedRoomsRoomNumberRouteImport } from './routes/_auth
 import { Route as AuthenticatedReportsSalesRouteImport } from './routes/_authenticated/reports.sales'
 import { Route as AuthenticatedReportsRoomWiseRouteImport } from './routes/_authenticated/reports.room-wise'
 import { Route as AuthenticatedReportsNightAuditRouteImport } from './routes/_authenticated/reports.night-audit'
+import { Route as AuthenticatedReportsMisRouteImport } from './routes/_authenticated/reports.mis'
 import { Route as AuthenticatedReportsGuestWiseRouteImport } from './routes/_authenticated/reports.guest-wise'
 import { Route as AuthenticatedReportsGstRouteImport } from './routes/_authenticated/reports.gst'
 import { Route as AuthenticatedReportsFoodKotRouteImport } from './routes/_authenticated/reports.food-kot'
@@ -229,6 +230,11 @@ const AuthenticatedReportsNightAuditRoute =
     path: '/reports/night-audit',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedReportsMisRoute = AuthenticatedReportsMisRouteImport.update({
+  id: '/reports/mis',
+  path: '/reports/mis',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedReportsGuestWiseRoute =
   AuthenticatedReportsGuestWiseRouteImport.update({
     id: '/reports/guest-wise',
@@ -591,6 +597,7 @@ export interface FileRoutesByFullPath {
   '/reports/food-kot': typeof AuthenticatedReportsFoodKotRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
   '/reports/guest-wise': typeof AuthenticatedReportsGuestWiseRoute
+  '/reports/mis': typeof AuthenticatedReportsMisRoute
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
   '/reports/room-wise': typeof AuthenticatedReportsRoomWiseRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
@@ -670,6 +677,7 @@ export interface FileRoutesByTo {
   '/reports/food-kot': typeof AuthenticatedReportsFoodKotRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
   '/reports/guest-wise': typeof AuthenticatedReportsGuestWiseRoute
+  '/reports/mis': typeof AuthenticatedReportsMisRoute
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
   '/reports/room-wise': typeof AuthenticatedReportsRoomWiseRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
@@ -751,6 +759,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/food-kot': typeof AuthenticatedReportsFoodKotRoute
   '/_authenticated/reports/gst': typeof AuthenticatedReportsGstRoute
   '/_authenticated/reports/guest-wise': typeof AuthenticatedReportsGuestWiseRoute
+  '/_authenticated/reports/mis': typeof AuthenticatedReportsMisRoute
   '/_authenticated/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
   '/_authenticated/reports/room-wise': typeof AuthenticatedReportsRoomWiseRoute
   '/_authenticated/reports/sales': typeof AuthenticatedReportsSalesRoute
@@ -832,6 +841,7 @@ export interface FileRouteTypes {
     | '/reports/food-kot'
     | '/reports/gst'
     | '/reports/guest-wise'
+    | '/reports/mis'
     | '/reports/night-audit'
     | '/reports/room-wise'
     | '/reports/sales'
@@ -911,6 +921,7 @@ export interface FileRouteTypes {
     | '/reports/food-kot'
     | '/reports/gst'
     | '/reports/guest-wise'
+    | '/reports/mis'
     | '/reports/night-audit'
     | '/reports/room-wise'
     | '/reports/sales'
@@ -991,6 +1002,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/food-kot'
     | '/_authenticated/reports/gst'
     | '/_authenticated/reports/guest-wise'
+    | '/_authenticated/reports/mis'
     | '/_authenticated/reports/night-audit'
     | '/_authenticated/reports/room-wise'
     | '/_authenticated/reports/sales'
@@ -1201,6 +1213,13 @@ declare module '@tanstack/react-router' {
       path: '/reports/night-audit'
       fullPath: '/reports/night-audit'
       preLoaderRoute: typeof AuthenticatedReportsNightAuditRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/mis': {
+      id: '/_authenticated/reports/mis'
+      path: '/reports/mis'
+      fullPath: '/reports/mis'
+      preLoaderRoute: typeof AuthenticatedReportsMisRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/reports/guest-wise': {
@@ -1626,6 +1645,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsFoodKotRoute: typeof AuthenticatedReportsFoodKotRoute
   AuthenticatedReportsGstRoute: typeof AuthenticatedReportsGstRoute
   AuthenticatedReportsGuestWiseRoute: typeof AuthenticatedReportsGuestWiseRoute
+  AuthenticatedReportsMisRoute: typeof AuthenticatedReportsMisRoute
   AuthenticatedReportsNightAuditRoute: typeof AuthenticatedReportsNightAuditRoute
   AuthenticatedReportsRoomWiseRoute: typeof AuthenticatedReportsRoomWiseRoute
   AuthenticatedReportsSalesRoute: typeof AuthenticatedReportsSalesRoute
@@ -1708,6 +1728,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsFoodKotRoute: AuthenticatedReportsFoodKotRoute,
   AuthenticatedReportsGstRoute: AuthenticatedReportsGstRoute,
   AuthenticatedReportsGuestWiseRoute: AuthenticatedReportsGuestWiseRoute,
+  AuthenticatedReportsMisRoute: AuthenticatedReportsMisRoute,
   AuthenticatedReportsNightAuditRoute: AuthenticatedReportsNightAuditRoute,
   AuthenticatedReportsRoomWiseRoute: AuthenticatedReportsRoomWiseRoute,
   AuthenticatedReportsSalesRoute: AuthenticatedReportsSalesRoute,
