@@ -126,7 +126,8 @@ function FolioPage() {
     setBooking(bk);
 
     const { data: prop } = await supabase.from("properties")
-      .select("name,gst_number,address").eq("id", bk.property_id).single();
+      .select("name,gst_number,address,city,state,pincode,phone,email,wa_number,logo_url")
+      .eq("id", bk.property_id).single();
     setProperty((prop ?? null) as PropertyInfo | null);
 
     // get or create folio
