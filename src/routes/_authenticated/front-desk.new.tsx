@@ -22,6 +22,9 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { addDaysIso, nightsBetween, SOURCES, todayIso } from "@/lib/front-desk";
+import { GuestIdUploadField, type SelectedIdFile } from "@/components/GuestIdUploadField";
+import { uploadToDrive, isDriveConfigured } from "@/lib/googleDrive";
+import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 
 export const Route = createFileRoute("/_authenticated/front-desk/new")({
   head: () => ({ meta: [{ title: "New Booking — HotelPilot" }] }),
