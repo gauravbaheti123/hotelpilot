@@ -408,6 +408,12 @@ function RoomDetailPage() {
           )}
         </Section>
       </div>
+      <CheckoutDialog
+        bookingId={booking?.id ?? null}
+        open={checkoutOpen}
+        onOpenChange={setCheckoutOpen}
+        onDone={() => { setCheckoutOpen(false); load(); }}
+      />
     </AppShell>
   );
 }
