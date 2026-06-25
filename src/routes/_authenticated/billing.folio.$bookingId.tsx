@@ -999,7 +999,7 @@ function FolioPage() {
               </>
             )}
             <div className="ml-auto flex flex-wrap gap-2">
-              {isOpen && (
+              {canEditNow && (
                 <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
                   <Plus className="h-4 w-4 mr-1" /> Add charge
                 </Button>
