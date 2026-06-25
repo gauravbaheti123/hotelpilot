@@ -60,7 +60,7 @@ interface BookingCtx {
   booking_rooms: { id: string; rate: number; check_in: string; check_out: string; rooms: { room_number: string } | null; room_categories: { name: string } | null }[];
 }
 interface PropertyInfo {
-  name: string; gst_number: string | null; address: string | null;
+  name: string; gstin: string | null; address: string | null;
   city: string | null; state: string | null; pincode: string | null;
   phone: string | null; email: string | null; wa_number: string | null;
   logo_url: string | null;
@@ -129,7 +129,7 @@ function FolioPage() {
     setBooking(bk);
 
     const { data: prop } = await supabase.from("properties")
-      .select("name,gst_number,address,city,state,pincode,phone,email,wa_number,logo_url")
+      .select("name,gstin,address,city,state,pincode,phone,email,wa_number,logo_url")
       .eq("id", bk.property_id).single();
     setProperty((prop ?? null) as PropertyInfo | null);
 
@@ -465,7 +465,7 @@ function FolioPage() {
       </style></head><body>
       <h1>${title}</h1>
       <div style="text-align:center"><strong>${esc(property?.name ?? "")}</strong></div>
-      <div class="small" style="text-align:center">${esc(property?.address ?? "")}${isGst && property?.gst_number ? ` · GSTIN: ${esc(property.gst_number)}` : ""}</div>
+      <div class="small" style="text-align:center">${esc(property?.address ?? "")}${isGst && property?.gstin ? ` · GSTIN: ${esc(property.gstin)}` : ""}</div>
       <hr/>
       <div class="meta">
         <div>
@@ -739,7 +739,18 @@ function FolioPage() {
           #invoice-doc { position: absolute !important; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; }
           @page { size: A4; margin: 12mm; }
         }
-        #invoice-doc { color: #111; }
+        /* Force hex colors inside the invoice — html2canvas (PDF export)
+           cannot parse Tailwind v4 oklch() values. Keep this in sync. */
+        #invoice-doc { color: #111111; background-color: #ffffff; }
+        #invoice-doc * { border-color: #e5e7eb; }
+        #invoice-doc .bg-white { background-color: #ffffff !important; }
+        #invoice-doc .text-muted-foreground { color: #6b7280 !important; }
+        #invoice-doc .text-gray-400 { color: #9ca3af !important; }
+        #invoice-doc .text-gray-500 { color: #6b7280 !important; }
+        #invoice-doc .text-gray-600 { color: #4b5563 !important; }
+        #invoice-doc .text-gray-700 { color: #374151 !important; }
+        #invoice-doc .border-gray-400 { border-color: #9ca3af !important; }
+        #invoice-doc .ring-1, #invoice-doc .ring-black\\/5 { box-shadow: none !important; }
         #invoice-doc table { border-collapse: collapse; width: 100%; }
         #invoice-doc th, #invoice-doc td { padding: 8px 10px; font-size: 12px; }
         #invoice-doc .zebra tr:nth-child(even) td { background: #F7FBF9; }
@@ -921,7 +932,7 @@ function FolioPage() {
               <div className="mt-1 flex flex-wrap gap-x-4 text-xs opacity-95">
                 {property?.phone && <span>Ph: {property.phone}</span>}
                 {property?.email && <span>Email: {property.email}</span>}
-                {property?.gst_number && <span>GSTIN: {property.gst_number}</span>}
+                {property?.gstin && <span>GSTIN: {property.gstin}</span>}
               </div>
             </div>
           </div>
