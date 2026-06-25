@@ -455,7 +455,7 @@ function FolioPage() {
     }
 
     toast.success("Folio settled & guest checked out");
-    logActivity({
+    if (booking) logActivity({
       property_id: booking.property_id,
       user_id: user?.id ?? "",
       user_name: userDisplayName(user as any),
