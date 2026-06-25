@@ -123,7 +123,7 @@ export function BulkCsvButtons(props: BulkCsvButtonsProps) {
     const { data, error } = await q;
     if (error) return toast.error(error.message);
     const lines = [props.columns.map((c) => csvEscape(c.header)).join(",")];
-    for (const row of (data ?? []) as Record<string, unknown>[]) {
+    for (const row of ((data ?? []) as unknown) as Record<string, unknown>[]) {
       const cells = props.columns.map((c) => {
         const raw = c.field ? row[c.field] : "";
         const formatted = c.format ? c.format(raw, row) : raw == null ? "" : String(raw);
