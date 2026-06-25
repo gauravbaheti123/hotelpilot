@@ -739,7 +739,18 @@ function FolioPage() {
           #invoice-doc { position: absolute !important; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; }
           @page { size: A4; margin: 12mm; }
         }
-        #invoice-doc { color: #111; }
+        /* Force hex colors inside the invoice — html2canvas (PDF export)
+           cannot parse Tailwind v4 oklch() values. Keep this in sync. */
+        #invoice-doc { color: #111111; background-color: #ffffff; }
+        #invoice-doc * { border-color: #e5e7eb; }
+        #invoice-doc .bg-white { background-color: #ffffff !important; }
+        #invoice-doc .text-muted-foreground { color: #6b7280 !important; }
+        #invoice-doc .text-gray-400 { color: #9ca3af !important; }
+        #invoice-doc .text-gray-500 { color: #6b7280 !important; }
+        #invoice-doc .text-gray-600 { color: #4b5563 !important; }
+        #invoice-doc .text-gray-700 { color: #374151 !important; }
+        #invoice-doc .border-gray-400 { border-color: #9ca3af !important; }
+        #invoice-doc .ring-1, #invoice-doc .ring-black\\/5 { box-shadow: none !important; }
         #invoice-doc table { border-collapse: collapse; width: 100%; }
         #invoice-doc th, #invoice-doc td { padding: 8px 10px; font-size: 12px; }
         #invoice-doc .zebra tr:nth-child(even) td { background: #F7FBF9; }
