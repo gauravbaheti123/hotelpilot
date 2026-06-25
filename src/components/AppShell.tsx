@@ -52,6 +52,7 @@ import { toast } from "sonner";
 import { PropertySelector } from "./PropertySelector";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useCurrentProperty } from "@/hooks/use-property";
+import { RemindersBell } from "./Reminders";
 
 interface NavItem {
   to: string;
@@ -88,7 +89,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Food & KOT",
     items: [
       { to: "/food/dashboard", label: "Food Dashboard", icon: ChefHat, module: "food_kot" },
-      { to: "/food/new", label: "New KOT", icon: PlusCircle, module: "food_kot" },
       { to: "/food/kots", label: "All KOTs", icon: ClipboardList, module: "food_kot" },
     ],
   },
@@ -117,7 +117,6 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/housekeeping/board", label: "Room Board", icon: LayoutGrid, module: "room_board" },
       { to: "/housekeeping/tasks", label: "Tasks", icon: Sparkles, module: "housekeeping_tasks" },
-      { to: "/housekeeping/new", label: "New Task", icon: PlusCircle, module: "housekeeping_tasks" },
     ],
   },
   {
@@ -141,7 +140,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Expenses",
     items: [
       { to: "/expenses", label: "Expenses", icon: Wallet, module: "masters_expense_categories" },
-      { to: "/expenses/new", label: "New Expense", icon: PlusCircle, module: "masters_expense_categories" },
     ],
   },
   {
@@ -156,7 +154,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Banquet",
     items: [
       { to: "/banquet/bookings", label: "Events", icon: CalendarRange, module: "masters_halls" },
-      { to: "/banquet/new", label: "New Event", icon: PartyPopper, module: "masters_halls" },
     ],
   },
   {
@@ -208,6 +205,7 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
   const hasAnyAssignment = permSuper || Object.keys(map).length > 0;
   const { current } = useCurrentProperty();
   const propertyPaused = current?.status === "paused";
+  const propertyId = current?.id ?? null;
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -295,6 +293,9 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
             <h1 className="text-base sm:text-lg font-semibold">{title}</h1>
           </div>
           <div className="flex items-center gap-4">
+            {user?.id && (
+              <RemindersBell propertyId={propertyId} userId={user.id} />
+            )}
             <div className="hidden sm:block"><PropertySelector /></div>
             <div className="text-xs text-muted-foreground hidden lg:block">
               Support: 8007444464
