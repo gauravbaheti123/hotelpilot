@@ -586,6 +586,10 @@ function FolioPage() {
   const hasPending = pendingKots.length > 0;
   const canVoid = hasRole(roles, "superadmin") || hasRole(roles, "owner") || hasRole(roles, "manager");
   const canShiftMis = canVoid; // manager + owner + superadmin
+  // Feature 2: Manager / Owner may edit ANY bill regardless of status.
+  // Receptionist keeps current behaviour (edit only while open).
+  const canEditAnyStatus = canVoid;
+  const canEditNow = isOpen || canEditAnyStatus;
 
   async function markAllServed() {
     const ids = pendingKots.map((k) => k.id);
