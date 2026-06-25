@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShieldAlert, Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/superadmin/roles")({
+export const Route = createFileRoute("/_authenticated/superadmin/roles/")({
   head: () => ({ meta: [{ title: "Roles & Permissions — HotelPilot" }] }),
   component: RolesPage,
 });
