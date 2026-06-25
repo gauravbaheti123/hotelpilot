@@ -1,3 +1,5 @@
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -80,20 +82,22 @@ function EditRolePage() {
   const { id } = useParams({ from: "/_authenticated/superadmin/roles/$id" });
   const { roles: appRoles, loading } = useAuth();
   const isSuperadmin = appRoles.includes("superadmin");
-  const [role, setRole] = useState<{ id: string; name: string; description: string | null } | null>(null);
+  const [role, setRole] = useState<{ id: string; name: string; description: string | null; max_discount_pct?: number | null } | null>(null);
   const [perms, setPerms] = useState<Perm[]>([]);
   const [allowed, setAllowed] = useState<Record<string, boolean>>({});
+  const [maxDiscount, setMaxDiscount] = useState<string>("0");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!isSuperadmin) return;
     (async () => {
       const [{ data: r }, { data: ps }, { data: rps }] = await Promise.all([
-        supabase.from("roles").select("id,name,description").eq("id", id).maybeSingle(),
+        supabase.from("roles").select("id,name,description,max_discount_pct").eq("id", id).maybeSingle(),
         supabase.from("permissions").select("id,module,action"),
         supabase.from("role_permissions").select("permission_id,allowed").eq("role_id", id),
       ]);
       setRole((r as any) ?? null);
+      setMaxDiscount(String((r as any)?.max_discount_pct ?? 0));
       setPerms((ps ?? []) as Perm[]);
       const next: Record<string, boolean> = {};
       for (const rp of rps ?? []) next[rp.permission_id as string] = !!rp.allowed;
@@ -150,8 +154,18 @@ function EditRolePage() {
     const { error } = await supabase
       .from("role_permissions")
       .upsert(rows, { onConflict: "role_id,permission_id" });
+    if (error) { setSaving(false); return toast.error(error.message); }
+    // Persist max discount % (skip for Owner — unlimited)
+    const isOwner = /owner/i.test(role?.name ?? "");
+    if (!isOwner) {
+      const pct = Math.max(0, Math.min(100, Number(maxDiscount) || 0));
+      const { error: rErr } = await supabase
+        .from("roles")
+        .update({ max_discount_pct: pct } as any)
+        .eq("id", id);
+      if (rErr) { setSaving(false); return toast.error(rErr.message); }
+    }
     setSaving(false);
-    if (error) return toast.error(error.message);
     invalidatePermissions();
     toast.success("Permissions saved");
   }
