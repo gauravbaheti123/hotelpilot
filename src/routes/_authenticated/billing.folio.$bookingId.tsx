@@ -22,7 +22,7 @@ import {
   inr,
   recomputeFolio,
 } from "@/lib/billing";
-import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Send, Hotel, FileText, Receipt } from "lucide-react";
+import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle } from "lucide-react";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
@@ -110,6 +110,11 @@ function FolioPage() {
   const [mgrBusy, setMgrBusy] = useState(false);
   const [overrideApproved, setOverrideApproved] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailTo, setEmailTo] = useState("");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [downloading, setDownloading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
