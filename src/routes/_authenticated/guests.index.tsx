@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,7 +8,12 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
-import { Plus, Ban } from "lucide-react";
+import { Plus, Ban, Eye, Pencil, Trash2 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/guests/")({
   head: () => ({ meta: [{ title: "Guests — HotelPilot" }] }),
@@ -23,20 +28,33 @@ interface Row {
 
 function GuestsListPage() {
   const { currentId: propertyId } = useCurrentProperty();
+  const router = useRouter();
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"all" | "blacklist" | "corporate">("all");
+  const [toDelete, setToDelete] = useState<Row | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
+  async function load() {
     if (!propertyId) return;
-    (async () => {
-      const { data } = await supabase.from("guests")
-        .select("id,name,mobile,email,city,tags,is_blacklisted,gst_number")
-        .eq("property_id", propertyId)
-        .order("created_at", { ascending: false }).limit(500);
-      setRows((data ?? []) as Row[]);
-    })();
-  }, [propertyId]);
+    const { data } = await supabase.from("guests")
+      .select("id,name,mobile,email,city,tags,is_blacklisted,gst_number")
+      .eq("property_id", propertyId)
+      .order("created_at", { ascending: false }).limit(500);
+    setRows((data ?? []) as Row[]);
+  }
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [propertyId]);
+
+  async function confirmDelete() {
+    if (!toDelete) return;
+    setDeleting(true);
+    const { error } = await supabase.from("guests").delete().eq("id", toDelete.id);
+    setDeleting(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Guest deleted");
+    setToDelete(null);
+    load();
+  }
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -66,9 +84,8 @@ function GuestsListPage() {
       <Card><CardContent className="p-0 divide-y">
         {filtered.length === 0 && <p className="p-4 text-sm text-muted-foreground">No guests.</p>}
         {filtered.map((g) => (
-          <Link key={g.id} to="/guests/$id" params={{ id: g.id }}
-            className="flex items-center gap-3 px-4 py-3 hover:bg-accent">
-            <div className="flex-1 min-w-0">
+          <div key={g.id} className="flex items-center gap-3 px-4 py-3 hover:bg-accent">
+            <Link to="/guests/$id" params={{ id: g.id }} className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <div className="font-medium text-sm">{g.name}</div>
                 {g.is_blacklisted && <Badge variant="outline" className="bg-rose-100 text-rose-800 border-rose-300 text-[10px]"><Ban className="h-3 w-3 mr-0.5" />Blacklist</Badge>}
@@ -78,10 +95,44 @@ function GuestsListPage() {
               <div className="text-xs text-muted-foreground truncate">
                 {[g.mobile, g.email, g.city].filter(Boolean).join(" · ") || "—"}
               </div>
+            </Link>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button size="sm" variant="ghost" title="View"
+                onClick={() => router.navigate({ to: "/guests/$id", params: { id: g.id } })}>
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Button size="sm" variant="ghost" title="Edit"
+                onClick={() => router.navigate({ to: "/guests/$id", params: { id: g.id } })}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button size="sm" variant="ghost" title="Delete"
+                className="text-rose-600 hover:text-rose-700"
+                onClick={() => setToDelete(g)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
-          </Link>
+          </div>
         ))}
       </CardContent></Card>
+
+      <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete guest?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes <span className="font-medium">{toDelete?.name}</span> and cannot be undone.
+              Bookings linked to this guest will lose the guest reference.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} disabled={deleting}
+              className="bg-rose-600 hover:bg-rose-700">
+              {deleting ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
