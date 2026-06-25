@@ -17,6 +17,7 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { computeKotTotals } from "@/lib/food";
 import { Plus, Minus, Trash2 } from "lucide-react";
+import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 
 export const Route = createFileRoute("/_authenticated/food/new")({
   head: () => ({ meta: [{ title: "New KOT — HotelPilot" }] }),
@@ -199,6 +200,18 @@ function NewKotPage() {
       }
 
       toast.success(printNow ? "KOT printed" : "KOT saved");
+      logActivity({
+        property_id: propertyId!,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        ...ACTIVITY.KOT_CREATED,
+        reference_id: kot!.id,
+        reference_label:
+          kotType === "room"
+            ? `Room ${br?.rooms?.room_number ?? ""} — ${br?.bookings?.guests?.name ?? ""}`
+            : "Walk-in",
+        details: { items: cart.length, total: totals.total_amount },
+      });
       // Notify guest via WhatsApp for room orders (best-effort)
       if (kotType === "room" && bookingId) {
         const { fireTrigger } = await import("@/lib/whatsapp");
