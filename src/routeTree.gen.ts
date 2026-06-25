@@ -32,6 +32,7 @@ import { Route as AuthenticatedStaffAttendanceRouteImport } from './routes/_auth
 import { Route as AuthenticatedSettingsWhatsappRouteImport } from './routes/_authenticated/settings.whatsapp'
 import { Route as AuthenticatedRoomsRoomNumberRouteImport } from './routes/_authenticated/rooms.$roomNumber'
 import { Route as AuthenticatedReportsSalesRouteImport } from './routes/_authenticated/reports.sales'
+import { Route as AuthenticatedReportsNightAuditRouteImport } from './routes/_authenticated/reports.night-audit'
 import { Route as AuthenticatedReportsGstRouteImport } from './routes/_authenticated/reports.gst'
 import { Route as AuthenticatedReportsDailyRouteImport } from './routes/_authenticated/reports.daily'
 import { Route as AuthenticatedReportsAnalyticsRouteImport } from './routes/_authenticated/reports.analytics'
@@ -205,6 +206,12 @@ const AuthenticatedReportsSalesRoute =
   AuthenticatedReportsSalesRouteImport.update({
     id: '/reports/sales',
     path: '/reports/sales',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsNightAuditRoute =
+  AuthenticatedReportsNightAuditRouteImport.update({
+    id: '/reports/night-audit',
+    path: '/reports/night-audit',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedReportsGstRoute = AuthenticatedReportsGstRouteImport.update({
@@ -514,6 +521,7 @@ export interface FileRoutesByFullPath {
   '/reports/analytics': typeof AuthenticatedReportsAnalyticsRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
+  '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/rooms/$roomNumber': typeof AuthenticatedRoomsRoomNumberRoute
   '/settings/whatsapp': typeof AuthenticatedSettingsWhatsappRoute
@@ -583,6 +591,7 @@ export interface FileRoutesByTo {
   '/reports/analytics': typeof AuthenticatedReportsAnalyticsRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
+  '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/rooms/$roomNumber': typeof AuthenticatedRoomsRoomNumberRoute
   '/settings/whatsapp': typeof AuthenticatedSettingsWhatsappRoute
@@ -654,6 +663,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/analytics': typeof AuthenticatedReportsAnalyticsRoute
   '/_authenticated/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/_authenticated/reports/gst': typeof AuthenticatedReportsGstRoute
+  '/_authenticated/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
   '/_authenticated/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/_authenticated/rooms/$roomNumber': typeof AuthenticatedRoomsRoomNumberRoute
   '/_authenticated/settings/whatsapp': typeof AuthenticatedSettingsWhatsappRoute
@@ -725,6 +735,7 @@ export interface FileRouteTypes {
     | '/reports/analytics'
     | '/reports/daily'
     | '/reports/gst'
+    | '/reports/night-audit'
     | '/reports/sales'
     | '/rooms/$roomNumber'
     | '/settings/whatsapp'
@@ -794,6 +805,7 @@ export interface FileRouteTypes {
     | '/reports/analytics'
     | '/reports/daily'
     | '/reports/gst'
+    | '/reports/night-audit'
     | '/reports/sales'
     | '/rooms/$roomNumber'
     | '/settings/whatsapp'
@@ -864,6 +876,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/analytics'
     | '/_authenticated/reports/daily'
     | '/_authenticated/reports/gst'
+    | '/_authenticated/reports/night-audit'
     | '/_authenticated/reports/sales'
     | '/_authenticated/rooms/$roomNumber'
     | '/_authenticated/settings/whatsapp'
@@ -1057,6 +1070,13 @@ declare module '@tanstack/react-router' {
       path: '/reports/sales'
       fullPath: '/reports/sales'
       preLoaderRoute: typeof AuthenticatedReportsSalesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/night-audit': {
+      id: '/_authenticated/reports/night-audit'
+      path: '/reports/night-audit'
+      fullPath: '/reports/night-audit'
+      preLoaderRoute: typeof AuthenticatedReportsNightAuditRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/reports/gst': {
@@ -1419,6 +1439,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsAnalyticsRoute: typeof AuthenticatedReportsAnalyticsRoute
   AuthenticatedReportsDailyRoute: typeof AuthenticatedReportsDailyRoute
   AuthenticatedReportsGstRoute: typeof AuthenticatedReportsGstRoute
+  AuthenticatedReportsNightAuditRoute: typeof AuthenticatedReportsNightAuditRoute
   AuthenticatedReportsSalesRoute: typeof AuthenticatedReportsSalesRoute
   AuthenticatedRoomsRoomNumberRoute: typeof AuthenticatedRoomsRoomNumberRoute
   AuthenticatedSettingsWhatsappRoute: typeof AuthenticatedSettingsWhatsappRoute
@@ -1489,6 +1510,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsAnalyticsRoute: AuthenticatedReportsAnalyticsRoute,
   AuthenticatedReportsDailyRoute: AuthenticatedReportsDailyRoute,
   AuthenticatedReportsGstRoute: AuthenticatedReportsGstRoute,
+  AuthenticatedReportsNightAuditRoute: AuthenticatedReportsNightAuditRoute,
   AuthenticatedReportsSalesRoute: AuthenticatedReportsSalesRoute,
   AuthenticatedRoomsRoomNumberRoute: AuthenticatedRoomsRoomNumberRoute,
   AuthenticatedSettingsWhatsappRoute: AuthenticatedSettingsWhatsappRoute,
