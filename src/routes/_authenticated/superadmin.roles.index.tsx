@@ -147,7 +147,13 @@ function RolesPage() {
                 {rows.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">
-                      {r.name}
+                      <Link
+                        to="/superadmin/roles/$id"
+                        params={{ id: r.id }}
+                        className="hover:underline"
+                      >
+                        {r.name}
+                      </Link>
                       {r.is_system && <Badge variant="secondary" className="ml-2">System</Badge>}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{r.description ?? "—"}</TableCell>
