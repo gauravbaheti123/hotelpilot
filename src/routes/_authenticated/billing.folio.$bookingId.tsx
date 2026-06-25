@@ -796,7 +796,7 @@ function FolioPage() {
         #invoice-content .text-gray-600 { color: #4b5563 !important; }
         #invoice-content .text-gray-700 { color: #374151 !important; }
         #invoice-content .border-gray-400 { border-color: #9ca3af !important; }
-        #invoice-doc .ring-1, #invoice-doc .ring-black\\/5 { box-shadow: none !important; }
+        #invoice-content.ring-1, #invoice-content.ring-black\\/5, #invoice-content .ring-1, #invoice-content .ring-black\\/5 { box-shadow: none !important; }
         #invoice-content table { border-collapse: collapse; width: 100%; }
         #invoice-content th, #invoice-content td { padding: 8px 10px; font-size: 12px; }
         #invoice-content .zebra tr:nth-child(even) td { background: #F7FBF9; }
@@ -929,7 +929,7 @@ function FolioPage() {
         </Card>
 
         {/* INVOICE DOCUMENT */}
-        <div id="invoice-doc" className="relative mx-auto w-full bg-white shadow-md ring-1 ring-black/5 print:shadow-none print:ring-0">
+        <div id="invoice-content" className="relative mx-auto w-full bg-white shadow-md ring-1 ring-black/5 print:shadow-none print:ring-0">
           {isSettled && (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
               <div style={{
