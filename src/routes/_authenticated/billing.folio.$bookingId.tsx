@@ -1434,6 +1434,15 @@ function FolioPage() {
         onOpenChange={setCheckoutOpen}
         onDone={() => { load(); router.navigate({ to: "/front-desk/bookings" }); }}
       />
+      <ShiftToMisDialog
+        open={misOpen}
+        onOpenChange={setMisOpen}
+        folio={folio}
+        booking={booking as any}
+        charges={charges as any}
+        preselectFoodOnly={misFoodOnly}
+        onShifted={() => load()}
+      />
     </AppShell>
   );
 }
