@@ -581,33 +581,92 @@ function FolioPage() {
     toast.success("Manager override approved — checkout unlocked");
   }
 
+  const isGst = folio.gst_mode === "gst";
+  const propAddrLine = [property?.address, property?.city, property?.state, property?.pincode]
+    .filter(Boolean).join(", ");
+  const nights = booking.booking_rooms.reduce((acc, br) => {
+    const n = Math.max(1, Math.round(
+      (new Date(br.check_out).getTime() - new Date(br.check_in).getTime()) / 86400000,
+    ));
+    return Math.max(acc, n);
+  }, 1);
+
+  // Group charges
+  const groups: Record<string, Charge[]> = { room: [], food: [], sundry: [], extra: [], discount: [] };
+  charges.forEach((c) => {
+    const key = (groups as any)[c.charge_type] ? c.charge_type : "extra";
+    (groups as any)[key].push(c);
+  });
+  const subtotalOf = (arr: Charge[]) => arr.reduce((s, c) => s + Number(c.amount), 0);
+  const subRoom = subtotalOf(groups.room);
+  const subFood = subtotalOf(groups.food);
+  const subSundry = subtotalOf(groups.sundry);
+  const subOther = subtotalOf(groups.extra) + subtotalOf(groups.discount);
+
+  async function shareOnWhatsApp() {
+    if (!folio || !booking) return;
+    const phone = booking.guests?.mobile?.replace(/\D/g, "") ?? "";
+    const lines = [
+      `*${property?.name ?? "Hotel"}*`,
+      `${isGst ? "Tax Invoice" : "Cash Bill"}: ${folio.invoice_number}`,
+      `Guest: ${booking.guests?.name ?? "—"}`,
+      `Stay: ${booking.check_in} → ${booking.check_out}`,
+      ``,
+      `Room charges: ${inr(subRoom)}`,
+      subFood > 0 ? `Food & beverage: ${inr(subFood)}` : "",
+      subSundry > 0 ? `Sundry: ${inr(subSundry)}` : "",
+      isGst ? `GST: ${inr(folio.gst_amount)}` : "",
+      `*Grand total: ${inr(folio.total_amount)}*`,
+      `Paid: ${inr(folio.paid_amount)}`,
+      `Balance: ${inr(folio.balance_amount)}`,
+      ``,
+      `Thank you for staying with us.`,
+    ].filter(Boolean).join("\n");
+    // Best-effort AiSensy fire-and-forget
+    try {
+      if (phone) {
+        const { sendWhatsApp } = await import("@/lib/whatsapp");
+        await sendWhatsApp({
+          property_id: booking.property_id,
+          phone,
+          message: lines,
+          template_key: "folio_share",
+          booking_id: booking.id,
+        } as any);
+      }
+    } catch { /* ignore — falls back to wa.me */ }
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(lines)}`;
+    window.open(url, "_blank");
+  }
+
+  async function handleVoidClick() {
+    if (!canVoid) return toast.error("Only owner or manager can void");
+    setVoidOpen(true);
+  }
+
+  async function handleCheckout() {
+    if (hasPending && !overrideApproved) {
+      return toast.error("Resolve pending food orders before checkout");
+    }
+    if (Number(folio.balance_amount) > 0.01) {
+      return toast.error(`Collect ${inr(folio.balance_amount)} before checkout`);
+    }
+    setCheckoutOpen(true);
+  }
+
   return (
     <AppShell title={`Folio ${folio.invoice_number}`}>
-      <div className="max-w-6xl space-y-4">
+      <div className="max-w-7xl space-y-4">
+        {/* Top bar */}
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => router.history.back()}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-          <Badge variant="outline" className={FOLIO_STATUS_TONE[folio.status]}>{folio.status.toUpperCase()}</Badge>
+          <Button variant="outline" size="sm" onClick={() => router.history.back()}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back
+          </Button>
+          <Badge variant="outline" className={FOLIO_STATUS_TONE[folio.status]}>
+            {folio.status.toUpperCase()}
+          </Badge>
           <div className="text-sm text-muted-foreground">
             Booking {booking.booking_number} · {booking.guests?.name ?? "—"}
-          </div>
-          <div className="flex-1" />
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={printInvoice}><Printer className="h-4 w-4 mr-1" /> Print</Button>
-            {isOpen && Number(folio.balance_amount) < 0.01 && (
-              <Button size="sm" onClick={() => setCheckoutOpen(true)}>
-                <CheckCircle2 className="h-4 w-4 mr-1" /> Settle & Checkout
-              </Button>
-            )}
-            {isOpen && Number(folio.balance_amount) >= 0.01 && (
-              <Button size="sm" onClick={() => setCheckoutOpen(true)}>
-                <CheckCircle2 className="h-4 w-4 mr-1" /> Checkout
-              </Button>
-            )}
-            {isOpen && (
-              <Button size="sm" variant="outline" className="text-destructive" onClick={() => setVoidOpen(true)}>
-                <Ban className="h-4 w-4 mr-1" /> Void
-              </Button>
-            )}
           </div>
         </div>
 
@@ -652,79 +711,155 @@ function FolioPage() {
           </Card>
         )}
 
-        <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Charges</CardTitle>
-              {isOpen && (
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={pullFoodCharges}>Pull food KOTs</Button>
-                  <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-1" /> Add</Button>
+        <div className="grid gap-5 lg:grid-cols-[3fr_2fr]">
+          {/* ============ LEFT: INVOICE ============ */}
+          <Card className="overflow-hidden border-2 shadow-sm">
+            {/* Hotel header */}
+            <div className="border-b bg-gradient-to-br from-muted/40 to-background p-6">
+              <div className="flex items-start gap-4">
+                {property?.logo_url ? (
+                  <img src={property.logo_url} alt="" className="h-16 w-16 rounded-lg object-cover ring-1 ring-border" />
+                ) : (
+                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary ring-1 ring-border">
+                    <Hotel className="h-7 w-7" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <h2 className="truncate text-2xl font-bold tracking-tight">{property?.name ?? "Hotel"}</h2>
+                  {propAddrLine && <div className="text-xs text-muted-foreground">{propAddrLine}</div>}
+                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+                    {property?.phone && <span>Phone: {property.phone}</span>}
+                    {property?.email && <span>Email: {property.email}</span>}
+                    {property?.gst_number && <span className="font-medium text-foreground">GSTIN: {property.gst_number}</span>}
+                  </div>
                 </div>
-              )}
-            </CardHeader>
-            <CardContent>
+              </div>
+            </div>
+
+            {/* Invoice title block */}
+            <div className="flex flex-wrap items-end justify-between gap-3 border-b bg-background px-6 py-4">
+              <div>
+                <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
+                  {isGst ? "Tax Invoice" : "Cash Bill / Receipt"}
+                </div>
+                <div className="flex items-center gap-2 text-lg font-semibold">
+                  {isGst ? <FileText className="h-4 w-4" /> : <Receipt className="h-4 w-4" />}
+                  {folio.invoice_number}
+                </div>
+              </div>
+              <div className="text-right text-xs text-muted-foreground">
+                <div>Date: <span className="font-medium text-foreground">{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
+                <div>Booking: <span className="font-medium text-foreground">{booking.booking_number}</span></div>
+              </div>
+            </div>
+
+            {/* Guest + Stay */}
+            <div className="grid grid-cols-1 gap-4 border-b bg-muted/20 px-6 py-4 sm:grid-cols-2">
+              <div className="space-y-0.5 text-sm">
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Guest details</div>
+                <div className="font-semibold">{booking.guests?.name ?? "—"}</div>
+                {booking.booking_rooms[0] && (
+                  <div className="text-xs text-muted-foreground">
+                    Room {booking.booking_rooms[0].rooms?.room_number} · {booking.booking_rooms[0].room_categories?.name}
+                  </div>
+                )}
+                {booking.guests?.mobile && <div className="text-xs">Mobile: {booking.guests.mobile}</div>}
+                {booking.guests?.id_proof_type && (
+                  <div className="text-xs">ID: {booking.guests.id_proof_type} {booking.guests?.id_proof_number ?? ""}</div>
+                )}
+                {isGst && folio.guest_gstin && <div className="text-xs">GSTIN: {folio.guest_gstin}</div>}
+              </div>
+              <div className="space-y-0.5 text-sm sm:text-right">
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Stay</div>
+                <div className="text-xs">Check-in: <span className="font-medium text-foreground">{new Date(booking.check_in).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
+                <div className="text-xs">Check-out: <span className="font-medium text-foreground">{new Date(booking.check_out).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
+                <div className="text-xs">{nights} night{nights > 1 ? "s" : ""} · {booking.adults ?? 1} adult{(booking.adults ?? 1) > 1 ? "s" : ""}{booking.children ? ` · ${booking.children} child` : ""}</div>
+              </div>
+            </div>
+
+            {/* Charges breakdown */}
+            <CardContent className="p-6">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Charges breakdown</h3>
+                {isOpen && (
+                  <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
+                    <Plus className="h-3.5 w-3.5 mr-1" /> Add charge
+                  </Button>
+                )}
+              </div>
+
               {charges.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No charges yet.</p>
               ) : (
-                <div className="text-sm divide-y">
-                  {charges.map((c) => (
-                    <div key={c.id} className="flex items-center gap-2 py-2">
-                      <Badge variant="outline" className="capitalize text-[10px]">{c.charge_type}</Badge>
-                      <div className="flex-1 min-w-0">
-                        <div className="truncate">{c.description}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {Number(c.qty)} × {inr(c.rate)}
-                          {folio.gst_mode === "gst" && c.charge_type !== "discount" ? ` · GST ${Number(c.gst_rate)}%` : ""}
-                        </div>
-                      </div>
-                      <div className={`w-28 text-right ${c.charge_type === "discount" ? "text-emerald-700" : ""}`}>
-                        {inr(c.amount)}
-                      </div>
-                      {isOpen && (
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeCharge(c.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+                <div className="space-y-4">
+                  <ChargeGroup title="Room Charges" rows={groups.room} subtotal={subRoom} isOpen={isOpen} onRemove={removeCharge} isGst={isGst} />
+                  {groups.food.length > 0 && (
+                    <ChargeGroup title="Food & Beverage" rows={groups.food} subtotal={subFood} isOpen={isOpen} onRemove={removeCharge} isGst={isGst} />
+                  )}
+                  {groups.sundry.length > 0 && (
+                    <ChargeGroup title="Sundry / POS" rows={groups.sundry} subtotal={subSundry} isOpen={isOpen} onRemove={removeCharge} isGst={isGst} />
+                  )}
+                  {(groups.extra.length + groups.discount.length) > 0 && (
+                    <ChargeGroup title="Other Charges" rows={[...groups.extra, ...groups.discount]} subtotal={subOther} isOpen={isOpen} onRemove={removeCharge} isGst={isGst} />
+                  )}
                 </div>
               )}
+
+              {/* GST breakup */}
+              {isGst && Number(folio.gst_amount) > 0 && (
+                <div className="mt-5 rounded-md border bg-muted/20 p-3">
+                  <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">GST breakup</div>
+                  <div className="grid grid-cols-2 gap-1 text-sm">
+                    <span>CGST</span><span className="text-right">{inr(Number(folio.gst_amount) / 2)}</span>
+                    <span>SGST</span><span className="text-right">{inr(Number(folio.gst_amount) / 2)}</span>
+                    <span className="border-t pt-1 font-semibold">Total GST</span>
+                    <span className="border-t pt-1 text-right font-semibold">{inr(folio.gst_amount)}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Grand total bar */}
+              <div className="mt-5 flex items-center justify-between rounded-md bg-primary px-4 py-3 text-primary-foreground">
+                <span className="text-sm font-semibold uppercase tracking-wider">Grand Total</span>
+                <span className="text-xl font-bold tabular-nums">{inr(folio.total_amount)}</span>
+              </div>
             </CardContent>
           </Card>
 
+          {/* ============ RIGHT: ACTIONS ============ */}
           <div className="space-y-4">
+            {/* Bill Type */}
             <Card>
-              <CardHeader><CardTitle className="text-base">Bill Type</CardTitle></CardHeader>
+              <CardHeader className="pb-3"><CardTitle className="text-sm uppercase tracking-wider">Bill type</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-2 rounded-md border p-1 bg-muted/30">
                   <button type="button" disabled={!isOpen} onClick={() => toggleMode("gst")}
                     className={`flex flex-col items-start rounded px-3 py-2 text-left text-sm transition ${
-                      folio.gst_mode === "gst" ? "bg-primary text-primary-foreground shadow" : "hover:bg-background"
+                      isGst ? "bg-primary text-primary-foreground shadow" : "hover:bg-background"
                     }`}>
                     <span className="flex items-center gap-2 font-semibold">
-                      <span className={`h-3 w-3 rounded-full border ${folio.gst_mode === "gst" ? "bg-primary-foreground border-primary-foreground" : "border-muted-foreground"}`} />
+                      <span className={`h-3 w-3 rounded-full border ${isGst ? "bg-primary-foreground border-primary-foreground" : "border-muted-foreground"}`} />
                       GST Invoice
                     </span>
-                    <span className={`text-[10px] mt-0.5 ${folio.gst_mode === "gst" ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                    <span className={`text-[10px] mt-0.5 ${isGst ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
                       Tax invoice · HSN · CGST+SGST
                     </span>
                   </button>
                   <button type="button" disabled={!isOpen} onClick={() => toggleMode("cash")}
                     className={`flex flex-col items-start rounded px-3 py-2 text-left text-sm transition ${
-                      folio.gst_mode === "cash" ? "bg-primary text-primary-foreground shadow" : "hover:bg-background"
+                      !isGst ? "bg-primary text-primary-foreground shadow" : "hover:bg-background"
                     }`}>
                     <span className="flex items-center gap-2 font-semibold">
-                      <span className={`h-3 w-3 rounded-full border ${folio.gst_mode === "cash" ? "bg-primary-foreground border-primary-foreground" : "border-muted-foreground"}`} />
+                      <span className={`h-3 w-3 rounded-full border ${!isGst ? "bg-primary-foreground border-primary-foreground" : "border-muted-foreground"}`} />
                       Cash Bill
                     </span>
-                    <span className={`text-[10px] mt-0.5 ${folio.gst_mode === "cash" ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                    <span className={`text-[10px] mt-0.5 ${!isGst ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
                       Receipt · taxes included
                     </span>
                   </button>
                 </div>
-                {folio.gst_mode === "gst" && (
-                  <div className="space-y-2">
+                {isGst && (
+                  <div className="grid grid-cols-1 gap-2">
                     <div className="space-y-1">
                       <Label className="text-xs">Guest GSTIN</Label>
                       <Input value={folio.guest_gstin ?? ""} disabled={!isOpen}
@@ -746,37 +881,96 @@ function FolioPage() {
               </CardContent>
             </Card>
 
+            {/* Summary */}
             <Card>
-              <CardHeader><CardTitle className="text-base">Totals</CardTitle></CardHeader>
-              <CardContent className="text-sm space-y-1">
-                <Row k="Sub-total" v={inr(folio.sub_total)} />
-                {Number(folio.discount_amount) > 0 && <Row k="Discount" v={`- ${inr(folio.discount_amount)}`} />}
-                {folio.gst_mode === "gst" && <Row k="GST" v={inr(folio.gst_amount)} />}
-                <div className="border-t pt-1 mt-1">
-                  <Row k="Total" v={inr(folio.total_amount)} bold />
+              <CardHeader className="pb-3"><CardTitle className="text-sm uppercase tracking-wider">Summary</CardTitle></CardHeader>
+              <CardContent className="space-y-1.5 text-sm">
+                <Row k="Room charges" v={inr(subRoom)} />
+                {subFood > 0 && <Row k="Food & beverage" v={inr(subFood)} />}
+                {subSundry > 0 && <Row k="Sundry / POS" v={inr(subSundry)} />}
+                {subOther !== 0 && <Row k="Other charges" v={inr(subOther)} />}
+                {isGst && <Row k="GST" v={inr(folio.gst_amount)} />}
+                <div className="mt-2 flex justify-between border-t pt-2 text-base font-bold">
+                  <span>Grand Total</span><span className="tabular-nums">{inr(folio.total_amount)}</span>
                 </div>
-                <Row k="Paid" v={inr(folio.paid_amount)} />
-                <Row k="Balance" v={inr(folio.balance_amount)} bold highlight={Number(folio.balance_amount) > 0} />
+                <div className="mt-3 border-t pt-2">
+                  <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Payments received</div>
+                  {payments.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No payments yet.</p>
+                  ) : (
+                    payments.map((p) => (
+                      <div key={p.id} className="flex justify-between text-xs">
+                        <span className="capitalize text-muted-foreground">{p.mode} · {new Date(p.paid_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span>
+                        <span className="tabular-nums">{inr(p.amount)}</span>
+                      </div>
+                    ))
+                  )}
+                  <div className="mt-1 flex justify-between text-sm font-medium">
+                    <span>Total paid</span><span className="tabular-nums">{inr(folio.paid_amount)}</span>
+                  </div>
+                </div>
+                <div className={`mt-2 flex items-center justify-between rounded-md px-3 py-2 text-base font-bold ${
+                  Number(folio.balance_amount) > 0.01
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                }`}>
+                  <span>Balance Due</span><span className="tabular-nums">{inr(folio.balance_amount)}</span>
+                </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">Payments</CardTitle>
-                {isOpen && <Button size="sm" onClick={() => setPayOpen(true)}><Wallet className="h-4 w-4 mr-1" /> Add</Button>}
-              </CardHeader>
-              <CardContent className="text-sm space-y-2">
-                {payments.length === 0 && <p className="text-xs text-muted-foreground">No payments yet.</p>}
-                {payments.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between border-b last:border-0 pb-1">
-                    <div>
-                      <div className="font-medium">{inr(p.amount)} <span className="text-xs text-muted-foreground uppercase">{p.mode}</span></div>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(p.paid_at).toLocaleString()}{p.reference_no ? ` · ${p.reference_no}` : ""}
-                      </div>
-                    </div>
+            {/* Collect payment inline */}
+            {isOpen && Number(folio.balance_amount) > 0.01 && (
+              <Card>
+                <CardHeader className="pb-3"><CardTitle className="text-sm uppercase tracking-wider">Collect payment</CardTitle></CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Amount</Label>
+                    <Input type="number" value={payAmount}
+                      placeholder={String(folio.balance_amount)}
+                      onFocus={() => { if (!payAmount) setPayAmount(String(folio.balance_amount)); }}
+                      onChange={(e) => setPayAmount(e.target.value)} />
                   </div>
-                ))}
+                  <div className="space-y-1">
+                    <Label className="text-xs">Mode</Label>
+                    <Select value={payMode} onValueChange={setPayMode}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_MODES.map((m) => <SelectItem key={m} value={m}>{m.toUpperCase()}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Reference</Label>
+                    <Input value={payRef} onChange={(e) => setPayRef(e.target.value)} placeholder="Txn id, last 4, etc." />
+                  </div>
+                  <Button className="w-full" onClick={addPayment}>
+                    <Plus className="h-4 w-4 mr-1" /> Add payment
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Actions */}
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-sm uppercase tracking-wider">Actions</CardTitle></CardHeader>
+              <CardContent className="grid grid-cols-1 gap-2">
+                <Button variant="outline" onClick={printInvoice}>
+                  <Printer className="h-4 w-4 mr-2" /> Print bill
+                </Button>
+                <Button variant="outline" onClick={shareOnWhatsApp}>
+                  <Send className="h-4 w-4 mr-2" /> Share on WhatsApp
+                </Button>
+                {isOpen && (
+                  <Button onClick={handleCheckout}>
+                    <CheckCircle2 className="h-4 w-4 mr-2" /> Checkout
+                  </Button>
+                )}
+                {isOpen && canVoid && (
+                  <Button variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10" onClick={handleVoidClick}>
+                    <Ban className="h-4 w-4 mr-2" /> Void folio
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>
