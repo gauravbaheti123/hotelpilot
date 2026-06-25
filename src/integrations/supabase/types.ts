@@ -132,7 +132,9 @@ export type Database = {
           created_by: string | null
           discount_amount: number
           end_time: string
+          event_bill_id: string | null
           event_date: string
+          event_name: string | null
           extra_charge: number
           fb_charge: number
           function_type: string
@@ -147,6 +149,7 @@ export type Database = {
           start_time: string
           status: string
           total_amount: number
+          total_room_charges: number
           updated_at: string
         }
         Insert: {
@@ -159,7 +162,9 @@ export type Database = {
           created_by?: string | null
           discount_amount?: number
           end_time: string
+          event_bill_id?: string | null
           event_date: string
+          event_name?: string | null
           extra_charge?: number
           fb_charge?: number
           function_type?: string
@@ -174,6 +179,7 @@ export type Database = {
           start_time: string
           status?: string
           total_amount?: number
+          total_room_charges?: number
           updated_at?: string
         }
         Update: {
@@ -186,7 +192,9 @@ export type Database = {
           created_by?: string | null
           discount_amount?: number
           end_time?: string
+          event_bill_id?: string | null
           event_date?: string
+          event_name?: string | null
           extra_charge?: number
           fb_charge?: number
           function_type?: string
@@ -201,6 +209,7 @@ export type Database = {
           start_time?: string
           status?: string
           total_amount?: number
+          total_room_charges?: number
           updated_at?: string
         }
         Relationships: [
@@ -281,6 +290,44 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bill_sequences: {
+        Row: {
+          created_at: string
+          id: string
+          last_number: number
+          prefix: string
+          property_id: string
+          sequence_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_number?: number
+          prefix: string
+          property_id: string
+          sequence_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_number?: number
+          prefix?: string
+          property_id?: string
+          sequence_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bill_sequences_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -777,6 +824,114 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_room_blocks: {
+        Row: {
+          banquet_booking_id: string
+          booking_id: string | null
+          checked_in_at: string | null
+          checked_in_by: string | null
+          checked_out_at: string | null
+          checked_out_by: string | null
+          checkin_date: string
+          checkout_date: string
+          created_at: string
+          event_name: string
+          guest_id: string | null
+          guest_mobile: string | null
+          guest_name: string | null
+          id: string
+          property_id: string
+          room_category: string | null
+          room_id: string | null
+          room_number: string | null
+          special_rate: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          banquet_booking_id: string
+          booking_id?: string | null
+          checked_in_at?: string | null
+          checked_in_by?: string | null
+          checked_out_at?: string | null
+          checked_out_by?: string | null
+          checkin_date: string
+          checkout_date: string
+          created_at?: string
+          event_name: string
+          guest_id?: string | null
+          guest_mobile?: string | null
+          guest_name?: string | null
+          id?: string
+          property_id: string
+          room_category?: string | null
+          room_id?: string | null
+          room_number?: string | null
+          special_rate?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          banquet_booking_id?: string
+          booking_id?: string | null
+          checked_in_at?: string | null
+          checked_in_by?: string | null
+          checked_out_at?: string | null
+          checked_out_by?: string | null
+          checkin_date?: string
+          checkout_date?: string
+          created_at?: string
+          event_name?: string
+          guest_id?: string | null
+          guest_mobile?: string | null
+          guest_name?: string | null
+          id?: string
+          property_id?: string
+          room_category?: string | null
+          room_id?: string | null
+          room_number?: string | null
+          special_rate?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_room_blocks_banquet_booking_id_fkey"
+            columns: ["banquet_booking_id"]
+            isOneToOne: false
+            referencedRelation: "banquet_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_room_blocks_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_room_blocks_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_room_blocks_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_room_blocks_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
             referencedColumns: ["id"]
           },
         ]
@@ -3779,6 +3934,10 @@ export type Database = {
       can_front_desk: { Args: { _user_id: string }; Returns: boolean }
       can_housekeeping: { Args: { _user_id: string }; Returns: boolean }
       can_manage_masters: { Args: { _user_id: string }; Returns: boolean }
+      get_next_bill_number: {
+        Args: { p_property_id: string; p_type: string }
+        Returns: string
+      }
       get_or_create_folio: { Args: { _booking_id: string }; Returns: string }
       get_property_secrets: {
         Args: { _property_id: string }

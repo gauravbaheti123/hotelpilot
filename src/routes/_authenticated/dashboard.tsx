@@ -16,6 +16,13 @@ import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrosse
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { RemindersBell, RemindersSection } from "@/components/Reminders";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  loadEventSummaries, checkInBlock, checkOutBlock,
+  type EventBlockSummary, type EventBlockRecord,
+} from "@/lib/eventRoomBlocks";
+import { CalendarDays } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — HotelPilot" }] }),
@@ -67,6 +74,18 @@ type OccInfo = {
   checkIn: string | null;
   checkOut: string | null;
   balance: number;
+};
+
+type RoomEventInfo = {
+  blockId: string;
+  bookingId: string;
+  banquetBookingId: string;
+  eventName: string;
+  guestName: string | null;
+  checkin: string;
+  checkout: string;
+  status: EventBlockRecord["status"];
+  pending: number;
 };
 
 function todayISO() {
@@ -159,6 +178,11 @@ function OwnerDashboard({
   const [pendingFoodRows, setPendingFoodRows] = useState<PendingFoodRow[]>([]);
   const [showPendingFood, setShowPendingFood] = useState(false);
   const [occInfoByRoom, setOccInfoByRoom] = useState<Map<string, OccInfo>>(new Map());
+  const [events, setEvents] = useState<EventBlockSummary[]>([]);
+  const [eventBlockByRoom, setEventBlockByRoom] = useState<Map<string, RoomEventInfo>>(new Map());
+  const [bulkCheckinEvent, setBulkCheckinEvent] = useState<EventBlockSummary | null>(null);
+  const [bulkCheckoutEvent, setBulkCheckoutEvent] = useState<EventBlockSummary | null>(null);
+  const [singleAssignBlock, setSingleAssignBlock] = useState<EventBlockRecord | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -271,6 +295,30 @@ function OwnerDashboard({
       });
       rows.sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }));
       setPendingFoodRows(rows);
+
+      // Event room blocks
+      try {
+        const summaries = await loadEventSummaries(propertyId);
+        setEvents(summaries);
+        const map = new Map<string, RoomEventInfo>();
+        summaries.forEach((ev) => ev.blocks.forEach((b) => {
+          if (!b.room_id) return;
+          map.set(b.room_id, {
+            blockId: b.id,
+            bookingId: b.booking_id ?? "",
+            banquetBookingId: ev.banquet_booking_id,
+            eventName: ev.event_name,
+            guestName: b.guest_name,
+            checkin: b.checkin_date,
+            checkout: b.checkout_date,
+            status: b.status,
+            pending: 0,
+          });
+        }));
+        setEventBlockByRoom(map);
+      } catch (e) {
+        console.warn("loadEventSummaries failed", e);
+      }
   }, [propertyId]);
 
   useEffect(() => { reload(); }, [reload]);
@@ -296,6 +344,36 @@ function OwnerDashboard({
           <Kpi label="Expected Departures" value={kpi.departures} icon={LogOut} />
         </div>
 
+        {events.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" /> Events
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {events.map((ev) => (
+                <div key={ev.banquet_booking_id} className="border rounded-lg p-3 space-y-2"
+                  style={{ borderLeft: "4px solid #7C3AED" }}>
+                  <div>
+                    <div className="font-semibold">{ev.event_name || "Unnamed Event"}</div>
+                    <div className="text-xs text-muted-foreground">{ev.function_type} · {ev.event_date}</div>
+                  </div>
+                  <div className="text-xs">
+                    {ev.blocked} blocked · {ev.checked_in} checked in · {ev.checked_out} checked out
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" disabled={ev.blocked === 0}
+                      onClick={() => setBulkCheckinEvent(ev)}>Bulk Check-in</Button>
+                    <Button size="sm" variant="outline" disabled={ev.checked_in === 0}
+                      onClick={() => setBulkCheckoutEvent(ev)}>Bulk Checkout</Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader className="pb-3"><CardTitle className="text-base">Room Status</CardTitle></CardHeader>
           <CardContent>
@@ -308,12 +386,22 @@ function OwnerDashboard({
                 occupiedRoomIds={occupiedRoomIds}
                 pendingFoodByRoom={pendingFoodByRoom}
                 occInfoByRoom={occInfoByRoom}
+                eventBlockByRoom={eventBlockByRoom}
                 onPick={(r) => setModalRoom(r)}
                 onPickFood={(r) => {
                   const pf = pendingFoodByRoom.get(r.id);
                   if (pf?.bookingId) navigate({ to: "/front-desk/booking/$id", params: { id: pf.bookingId } });
                 }}
                 onCheckout={(bid) => setCheckoutBookingId(bid)}
+                onAssignEvent={(blk) => setSingleAssignBlock(blk)}
+                onEventCheckIn={async (blk) => {
+                  if (!propertyId || !userId) return;
+                  try {
+                    await checkInBlock({ propertyId, block: blk, userId });
+                    toast.success(`Room ${blk.room_number} checked in`);
+                    reload();
+                  } catch (e: any) { toast.error(e.message ?? "Failed"); }
+                }}
               />
             )}
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
@@ -321,6 +409,7 @@ function OwnerDashboard({
               <LegendDot style={{ backgroundColor: "#3b82f6" }} label="Occupied" />
               <LegendDot style={{ backgroundColor: "#f59e0b" }} label="Dirty" />
               <LegendDot style={{ backgroundColor: "#ef4444" }} label="Maintenance" />
+              <LegendDot style={{ backgroundColor: "#7C3AED" }} label="Event Block" />
               <LegendDot style={{ backgroundColor: "#6b7280" }} label="Blocked" />
               <LegendDot style={{ backgroundColor: "#f59e0b" }} label="Pending food" />
             </div>
@@ -433,21 +522,43 @@ function OwnerDashboard({
         onOpenChange={(o: boolean) => { if (!o) setCheckoutBookingId(null); }}
         onDone={() => { setCheckoutBookingId(null); reload(); }}
       />
+      <BulkCheckinDialog
+        event={bulkCheckinEvent}
+        propertyId={propertyId}
+        userId={userId}
+        onClose={() => setBulkCheckinEvent(null)}
+        onDone={() => { setBulkCheckinEvent(null); reload(); }}
+      />
+      <BulkCheckoutDialog
+        event={bulkCheckoutEvent}
+        userId={userId}
+        onClose={() => setBulkCheckoutEvent(null)}
+        onDone={() => { setBulkCheckoutEvent(null); reload(); }}
+      />
+      <AssignGuestDialog
+        block={singleAssignBlock}
+        onClose={() => setSingleAssignBlock(null)}
+        onDone={() => { setSingleAssignBlock(null); reload(); }}
+      />
     </AppShell>
   );
 }
 
 function RoomGroups({
-  rooms, categories, occupiedRoomIds, pendingFoodByRoom, occInfoByRoom, onPick, onPickFood, onCheckout,
+  rooms, categories, occupiedRoomIds, pendingFoodByRoom, occInfoByRoom, eventBlockByRoom,
+  onPick, onPickFood, onCheckout, onAssignEvent, onEventCheckIn,
 }: {
   rooms: Room[];
   categories: RoomCategory[];
   occupiedRoomIds: Set<string>;
   pendingFoodByRoom: Map<string, PendingFood>;
   occInfoByRoom: Map<string, OccInfo>;
+  eventBlockByRoom: Map<string, RoomEventInfo>;
   onPick: (r: Room) => void;
   onPickFood: (r: Room) => void;
   onCheckout: (bookingId: string) => void;
+  onAssignEvent: (blk: EventBlockRecord) => void;
+  onEventCheckIn: (blk: EventBlockRecord) => void;
 }) {
   const byCat = new Map<string, Room[]>();
   const uncategorised: Room[] = [];
@@ -478,9 +589,12 @@ function RoomGroups({
                 isOccupied={occupiedRoomIds.has(r.id)}
                 pendingFood={pendingFoodByRoom.get(r.id) ?? null}
                 occ={occInfoByRoom.get(r.id) ?? null}
+                eventInfo={eventBlockByRoom.get(r.id) ?? null}
                 onPick={() => onPick(r)}
                 onPickFood={() => onPickFood(r)}
                 onCheckout={onCheckout}
+                onAssignEvent={onAssignEvent}
+                onEventCheckIn={onEventCheckIn}
               />
             ))}
           </div>
@@ -514,22 +628,82 @@ function fmtShort(dateStr: string | null) {
 }
 
 function RoomCard({
-  room, category, isOccupied, pendingFood, occ, onPick, onPickFood, onCheckout,
+  room, category, isOccupied, pendingFood, occ, eventInfo, onPick, onPickFood, onCheckout, onAssignEvent, onEventCheckIn,
 }: {
   room: Room;
   category: string;
   isOccupied: boolean;
   pendingFood: PendingFood | null;
   occ: OccInfo | null;
+  eventInfo: RoomEventInfo | null;
   onPick: () => void;
   onPickFood: () => void;
   onCheckout: (bid: string) => void;
+  onAssignEvent: (blk: EventBlockRecord) => void;
+  onEventCheckIn: (blk: EventBlockRecord) => void;
 }) {
+  const isEventBlock = !!eventInfo && eventInfo.status === "blocked";
+  const isEventCheckedIn = !!eventInfo && eventInfo.status === "checked_in";
   const kind = tileKindExt(room, isOccupied);
   const meta = STATUS_META[kind];
   const hasFood = !!pendingFood && pendingFood.amount > 0;
   const baseBalance = occ?.balance ?? 0;
   const pending = baseBalance + (hasFood ? pendingFood!.amount : 0);
+
+  if (isEventBlock || isEventCheckedIn) {
+    return (
+      <div
+        role="button" tabIndex={0} onClick={onPick}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPick(); }}
+        className="relative rounded-lg border bg-card shadow-sm hover:shadow-md transition cursor-pointer overflow-hidden"
+        style={{ borderLeft: "4px solid #7C3AED", minHeight: 120 }}
+      >
+        <div className="p-3 space-y-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="text-2xl font-bold leading-none">{room.room_number}</div>
+            <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full text-white"
+              style={{ backgroundColor: "#7C3AED" }}>
+              {isEventCheckedIn ? "Event · In" : "Event Block"}
+            </span>
+          </div>
+          <div className="text-xs text-muted-foreground">{category}</div>
+          <div className="text-sm font-semibold truncate">{eventInfo!.eventName}</div>
+          <div className={`text-xs truncate ${eventInfo!.guestName ? "" : "text-muted-foreground italic"}`}>
+            {eventInfo!.guestName ?? "Guest Unassigned"}
+          </div>
+          <div className="text-xs text-muted-foreground">{fmtShort(eventInfo!.checkin)} → {fmtShort(eventInfo!.checkout)}</div>
+          <div className="pt-1 flex flex-wrap gap-1">
+            {isEventBlock && !eventInfo!.guestName && (
+              <Button size="sm" variant="outline" className="h-7 text-xs"
+                onClick={(e) => { e.stopPropagation(); onAssignEvent({
+                  id: eventInfo!.blockId, banquet_booking_id: eventInfo!.banquetBookingId,
+                  event_name: eventInfo!.eventName, room_id: room.id,
+                  room_number: room.room_number, room_category: category,
+                  guest_name: null, guest_mobile: null,
+                  checkin_date: eventInfo!.checkin, checkout_date: eventInfo!.checkout,
+                  special_rate: null, status: "blocked", booking_id: null,
+                } as EventBlockRecord); }}>Assign Guest</Button>
+            )}
+            {isEventBlock && (
+              <Button size="sm" className="h-7 text-xs"
+                onClick={(e) => { e.stopPropagation(); onEventCheckIn({
+                  id: eventInfo!.blockId, banquet_booking_id: eventInfo!.banquetBookingId,
+                  event_name: eventInfo!.eventName, room_id: room.id,
+                  room_number: room.room_number, room_category: category,
+                  guest_name: eventInfo!.guestName, guest_mobile: null,
+                  checkin_date: eventInfo!.checkin, checkout_date: eventInfo!.checkout,
+                  special_rate: null, status: "blocked", booking_id: null,
+                } as EventBlockRecord); }}>Check In</Button>
+            )}
+            {isEventCheckedIn && eventInfo!.bookingId && (
+              <Button size="sm" className="h-7 text-xs"
+                onClick={(e) => { e.stopPropagation(); onCheckout(eventInfo!.bookingId); }}>Checkout</Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -820,5 +994,192 @@ function ScheduleCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function BulkCheckinDialog({
+  event, propertyId, userId, onClose, onDone,
+}: {
+  event: EventBlockSummary | null;
+  propertyId: string | null;
+  userId: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (event) setSelected(new Set(event.blocks.filter((b) => b.status === "blocked").map((b) => b.id)));
+  }, [event]);
+  if (!event) return null;
+  const blocked = event.blocks.filter((b) => b.status === "blocked");
+  const allSelected = blocked.every((b) => selected.has(b.id));
+  const toggle = (id: string) => {
+    setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
+  const confirm = async () => {
+    if (!propertyId) return;
+    setBusy(true);
+    try {
+      let n = 0;
+      for (const b of blocked) {
+        if (!selected.has(b.id)) continue;
+        await checkInBlock({ propertyId, block: b, userId });
+        n++;
+      }
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        logActivity({
+          property_id: propertyId, user_id: user?.id ?? "",
+          user_name: userDisplayName(user as any),
+          action_type: "BULK_CHECKIN", module: "Front Desk",
+          reference_id: event.banquet_booking_id,
+          reference_label: event.event_name,
+          details: { event_name: event.event_name, rooms_count: n },
+        });
+      } catch { /* ignore */ }
+      toast.success(`${n} rooms checked in for ${event.event_name}`);
+      onDone();
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed");
+    } finally { setBusy(false); }
+  };
+  return (
+    <Dialog open={!!event} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader><DialogTitle>Bulk Check-in — {event.event_name}</DialogTitle></DialogHeader>
+        <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+          <label className="flex items-center gap-2 text-sm font-medium">
+            <Checkbox checked={allSelected}
+              onCheckedChange={(c) => setSelected(c ? new Set(blocked.map((b) => b.id)) : new Set())} />
+            Select All
+          </label>
+          {blocked.map((b) => (
+            <label key={b.id} className="flex items-center gap-2 text-sm border-t py-2">
+              <Checkbox checked={selected.has(b.id)} onCheckedChange={() => toggle(b.id)} />
+              <span className="flex-1">
+                Room {b.room_number} · {b.guest_name ?? <span className="italic text-muted-foreground">Unassigned</span>}
+              </span>
+              <span className="text-xs text-muted-foreground">{b.checkin_date} → {b.checkout_date}</span>
+            </label>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={busy || selected.size === 0} onClick={confirm}>
+            {busy ? "Checking in…" : `Confirm Bulk Check-in (${selected.size})`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function BulkCheckoutDialog({
+  event, userId, onClose, onDone,
+}: {
+  event: EventBlockSummary | null;
+  userId: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (event) setSelected(new Set(event.blocks.filter((b) => b.status === "checked_in").map((b) => b.id)));
+  }, [event]);
+  if (!event) return null;
+  const checked = event.blocks.filter((b) => b.status === "checked_in");
+  const toggle = (id: string) => {
+    setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
+  const confirm = async () => {
+    setBusy(true);
+    try {
+      let n = 0;
+      for (const b of checked) {
+        if (!selected.has(b.id)) continue;
+        await checkOutBlock({ block: b, userId });
+        n++;
+      }
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        logActivity({
+          property_id: event.blocks[0]?.banquet_booking_id ? "" : "",
+          user_id: user?.id ?? "", user_name: userDisplayName(user as any),
+          action_type: "BULK_CHECKOUT", module: "Front Desk",
+          reference_id: event.banquet_booking_id, reference_label: event.event_name,
+          details: { event_name: event.event_name, rooms_count: n },
+        });
+      } catch { /* ignore */ }
+      toast.success(`${n} rooms checked out for ${event.event_name}`);
+      onDone();
+    } catch (e: any) { toast.error(e.message ?? "Failed"); }
+    finally { setBusy(false); }
+  };
+  return (
+    <Dialog open={!!event} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader><DialogTitle>Bulk Checkout — {event.event_name}</DialogTitle></DialogHeader>
+        <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+          {checked.map((b) => (
+            <label key={b.id} className="flex items-center gap-2 text-sm border-t py-2">
+              <Checkbox checked={selected.has(b.id)} onCheckedChange={() => toggle(b.id)} />
+              <span className="flex-1">
+                Room {b.room_number} · {b.guest_name ?? <span className="italic text-muted-foreground">Unassigned</span>}
+              </span>
+            </label>
+          ))}
+        </div>
+        <div className="text-xs text-muted-foreground border-t pt-2">
+          Combined payment is collected per booking via the standard Checkout dialog. This action releases the rooms and marks them ready for housekeeping.
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={busy || selected.size === 0} onClick={confirm}>
+            {busy ? "Checking out…" : `Confirm Bulk Checkout (${selected.size})`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AssignGuestDialog({
+  block, onClose, onDone,
+}: {
+  block: EventBlockRecord | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [mobile, setMobile] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setName(block?.guest_name ?? ""); setMobile(block?.guest_mobile ?? ""); }, [block?.id]);
+  if (!block) return null;
+  const save = async () => {
+    setBusy(true);
+    const { error } = await supabase.from("event_room_blocks").update({
+      guest_name: name.trim() || null, guest_mobile: mobile.trim() || null,
+    } as any).eq("id", block.id);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success("Guest assigned");
+    onDone();
+  };
+  return (
+    <Dialog open={!!block} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader><DialogTitle>Assign guest — Room {block.room_number}</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <div><Label className="text-xs">Guest name</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div><Label className="text-xs">Mobile</Label><Input value={mobile} onChange={(e) => setMobile(e.target.value)} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button disabled={busy} onClick={save}>{busy ? "Saving…" : "Save"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
