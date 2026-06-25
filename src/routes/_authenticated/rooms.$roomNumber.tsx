@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronLeft } from "lucide-react";
+import { ChevronDown, ChevronLeft, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { CheckoutDialog } from "@/components/CheckoutDialog";
 
 export const Route = createFileRoute("/_authenticated/rooms/$roomNumber")({
   head: () => ({ meta: [{ title: "Room Detail — HotelPilot" }] }),
@@ -73,6 +74,7 @@ function RoomDetailPage() {
   const [staffMap, setStaffMap] = useState<Record<string, string>>({});
   const [lastClean, setLastClean] = useState<{ at: string | null; by: string | null }>({ at: null, by: null });
   const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!currentId) return;
@@ -246,6 +248,11 @@ function RoomDetailPage() {
                     <Link to="/billing/folio/$bookingId" params={{ bookingId: booking.id }}>View Bill</Link>
                   </Button>
                 )}
+                {isOccupied && booking && (
+                  <Button size="sm" onClick={() => setCheckoutOpen(true)}>
+                    <LogOut className="h-4 w-4 mr-1" /> Checkout
+                  </Button>
+                )}
                 <Button size="sm" variant="outline"
                   onClick={() => setRoomField({ housekeeping_status: isDirty ? "clean" : "dirty" })}>
                   {isDirty ? "Mark Clean" : "Mark Dirty"}
@@ -401,6 +408,12 @@ function RoomDetailPage() {
           )}
         </Section>
       </div>
+      <CheckoutDialog
+        bookingId={booking?.id ?? null}
+        open={checkoutOpen}
+        onOpenChange={setCheckoutOpen}
+        onDone={() => { setCheckoutOpen(false); load(); }}
+      />
     </AppShell>
   );
 }

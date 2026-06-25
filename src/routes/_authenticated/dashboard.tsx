@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users } from "lucide-react";
+import { CheckoutDialog } from "@/components/CheckoutDialog";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — HotelPilot" }] }),
@@ -125,6 +126,7 @@ function OwnerDashboard({
   const [departures, setDepartures] = useState<ScheduleRow[]>([]);
   const [staff, setStaff] = useState<StaffOpt[]>([]);
   const [modalRoom, setModalRoom] = useState<Room | null>(null);
+  const [checkoutBookingId, setCheckoutBookingId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -260,6 +262,13 @@ function OwnerDashboard({
             search: r ? { roomId: r.id, categoryId: r.category_id ?? undefined } : undefined,
           } as any);
         }}
+        onCheckout={(bid: string) => { setModalRoom(null); setCheckoutBookingId(bid); }}
+      />
+      <CheckoutDialog
+        bookingId={checkoutBookingId}
+        open={!!checkoutBookingId}
+        onOpenChange={(o: boolean) => { if (!o) setCheckoutBookingId(null); }}
+        onDone={() => { setCheckoutBookingId(null); reload(); }}
       />
     </AppShell>
   );
@@ -353,7 +362,7 @@ function roomTileStyle(r: Room, isOccupied: boolean): { bg: string; label: strin
 }
 
 function RoomStatusModal({
-  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking,
+  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout,
 }: {
   room: Room | null;
   kind: TileKind | null;
@@ -363,6 +372,7 @@ function RoomStatusModal({
   onChanged: () => Promise<void>;
   onOpenBooking: (bookingId: string) => void;
   onNewBooking: () => void;
+  onCheckout: (bookingId: string) => void;
 }) {
   const [staffId, setStaffId] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
@@ -433,7 +443,8 @@ function RoomStatusModal({
         {kind === "occupied" && (
           <div className="grid gap-2">
             <p className="text-sm text-muted-foreground">Status change not allowed while occupied — check out guest first.</p>
-            <Button disabled={!bookingId} onClick={() => bookingId && onOpenBooking(bookingId)}>View Booking</Button>
+            <Button disabled={!bookingId} onClick={() => bookingId && onCheckout(bookingId)}>Checkout</Button>
+            <Button variant="outline" disabled={!bookingId} onClick={() => bookingId && onOpenBooking(bookingId)}>View Booking</Button>
             <Button variant="outline" disabled={!bookingId}
               onClick={() => bookingId && onOpenBooking(bookingId)}>Room Shift</Button>
           </div>

@@ -25,6 +25,7 @@ import {
 import { ArrowLeft, Plus, Printer, Trash2, Wallet, CheckCircle2, Ban } from "lucide-react";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
+import { CheckoutDialog } from "@/components/CheckoutDialog";
 
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
   head: () => ({ meta: [{ title: "Folio — HotelPilot" }] }),
@@ -101,6 +102,7 @@ function FolioPage() {
   const [mgrReason, setMgrReason] = useState("");
   const [mgrBusy, setMgrBusy] = useState(false);
   const [overrideApproved, setOverrideApproved] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -541,8 +543,13 @@ function FolioPage() {
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={printInvoice}><Printer className="h-4 w-4 mr-1" /> Print</Button>
             {isOpen && Number(folio.balance_amount) < 0.01 && (
-              <Button size="sm" onClick={settle} disabled={hasPending && !overrideApproved}>
+              <Button size="sm" onClick={() => setCheckoutOpen(true)}>
                 <CheckCircle2 className="h-4 w-4 mr-1" /> Settle & Checkout
+              </Button>
+            )}
+            {isOpen && Number(folio.balance_amount) >= 0.01 && (
+              <Button size="sm" onClick={() => setCheckoutOpen(true)}>
+                <CheckCircle2 className="h-4 w-4 mr-1" /> Checkout
               </Button>
             )}
             {isOpen && (
@@ -868,6 +875,12 @@ function FolioPage() {
           </DialogContent>
         </Dialog>
       </div>
+      <CheckoutDialog
+        bookingId={bookingId}
+        open={checkoutOpen}
+        onOpenChange={setCheckoutOpen}
+        onDone={() => { load(); router.navigate({ to: "/front-desk/bookings" }); }}
+      />
     </AppShell>
   );
 }

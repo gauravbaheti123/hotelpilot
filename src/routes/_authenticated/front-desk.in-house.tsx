@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { CheckoutDialog } from "@/components/CheckoutDialog";
+import { LogOut } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -37,6 +40,7 @@ function InHousePage() {
   const { current, loading: propLoading } = useCurrentProperty();
   const [rows, setRows] = useState<InHouseRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checkoutId, setCheckoutId] = useState<string | null>(null);
 
   async function load() {
     if (!current) return;
@@ -81,6 +85,7 @@ function InHousePage() {
                     <TableHead>Pax</TableHead>
                     <TableHead>Check-out</TableHead>
                     <TableHead>Balance</TableHead>
+                    <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -108,6 +113,11 @@ function InHousePage() {
                         <TableCell className={r.balance_amount > 0 ? "text-amber-700 dark:text-amber-300 font-medium" : ""}>
                           ₹{Number(r.balance_amount).toLocaleString("en-IN")}
                         </TableCell>
+                        <TableCell>
+                          <Button size="sm" variant="outline" onClick={() => setCheckoutId(r.id)}>
+                            <LogOut className="h-4 w-4 mr-1" /> Checkout
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -117,6 +127,12 @@ function InHousePage() {
           </CardContent>
         </Card>
       </div>
+      <CheckoutDialog
+        bookingId={checkoutId}
+        open={!!checkoutId}
+        onOpenChange={(o) => { if (!o) setCheckoutId(null); }}
+        onDone={() => { setCheckoutId(null); load(); }}
+      />
     </AppShell>
   );
 }
