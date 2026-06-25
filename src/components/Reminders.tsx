@@ -34,11 +34,13 @@ function playBeep() {
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
+    osc.type = "sine";
     osc.frequency.value = 880;
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
     osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.4);
+    osc.stop(ctx.currentTime + 0.5);
+    setTimeout(() => ctx.close(), 1000);
   } catch { /* ignore */ }
 }
 
@@ -54,7 +56,7 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
   const [title, setTitle] = useState("");
   const [when, setWhen] = useState("");
   const [notes, setNotes] = useState("");
-  const alertedRef = useRef<Set<string>>(new Set());
+  const alertedRef = useRef<Map<string, { pre: boolean; now: boolean }>>(new Map());
 
   const load = useCallback(async () => {
     if (!propertyId) { setReminders([]); return; }
@@ -76,11 +78,11 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
       const now = Date.now();
       reminders.forEach((r) => {
         if (r.is_dismissed) return;
-        if (alertedRef.current.has(r.id)) return;
+        const state = alertedRef.current.get(r.id) ?? { pre: false, now: false };
         const t = new Date(r.reminder_datetime).getTime();
         const diffMs = t - now;
-        if (diffMs > 0 && diffMs <= 15 * 60 * 1000) {
-          alertedRef.current.add(r.id);
+        if (!state.pre && diffMs > 0 && diffMs <= 15 * 60 * 1000) {
+          state.pre = true;
           const mins = Math.max(1, Math.round(diffMs / 60000));
           toast(`⏰ Reminder: ${r.title} — in ${mins} minute${mins === 1 ? "" : "s"}`, {
             description: r.notes ?? undefined,
@@ -89,6 +91,16 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
           });
           playBeep();
         }
+        if (!state.now && diffMs <= 0 && diffMs > -2 * 60 * 1000) {
+          state.now = true;
+          toast(`⏰ Reminder now: ${r.title}`, {
+            description: r.notes ?? undefined,
+            duration: 10000,
+            action: { label: "Dismiss", onClick: () => dismiss(r.id) },
+          });
+          playBeep();
+        }
+        alertedRef.current.set(r.id, state);
       });
     };
     tick();
@@ -126,10 +138,10 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" className="relative" aria-label="Reminders">
-            <Bell className="h-5 w-5" />
+          <Button variant="ghost" size="icon" className="relative h-10 w-10" aria-label="Reminders">
+            <Bell style={{ width: 24, height: 24 }} />
             {count > 0 && (
-              <span className="absolute -top-1 -right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+              <span className="absolute -top-1 -right-1 inline-flex items-center justify-center rounded-full bg-red-600 px-1 font-bold text-white" style={{ height: 18, minWidth: 18, fontSize: 11 }}>
                 {count}
               </span>
             )}

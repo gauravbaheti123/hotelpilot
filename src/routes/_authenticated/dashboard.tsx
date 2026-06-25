@@ -282,20 +282,10 @@ function OwnerDashboard({
       .then(({ data }) => setCategories((data ?? []) as RoomCategory[]));
   }, [propertyId]);
 
-  const subtitle = propertyName
-    ? `${propertyName}${propertyCity ? ` · ${propertyCity}` : ""}`
-    : isSuperadmin ? "HotelPilot Super Admin" : "";
-
   return (
     <AppShell title="Dashboard">
-      <div className="max-w-7xl space-y-6">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Welcome, {name}</h2>
-          {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
-        </div>
-
-        <div className="flex items-center justify-between -mt-2">
-          <div className="text-xs text-muted-foreground">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
+      <div className="w-full space-y-6 relative">
+        <div className="absolute right-0 -top-10 z-10">
           <RemindersBell propertyId={propertyId} userId={userId} />
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -478,7 +468,7 @@ function RoomGroups({
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {g.name} <span className="text-muted-foreground/70 font-normal">· {g.rooms.length}</span>
           </div>
-          <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 grid-cols-1 md:grid-cols-3 w-full">
             {g.rooms.map((r) => (
               <RoomCard
                 key={r.id}
