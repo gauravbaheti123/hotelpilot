@@ -765,13 +765,18 @@ export type Database = {
           bank_total: number
           business_date: string
           card_total: number
+          cash_difference: number
           cash_total: number
           closed_at: string
           closed_by: string | null
+          closing_cash_actual: number
+          closing_cash_expected: number
           created_at: string
+          expense_total: number
           gst_amount: number
           id: string
           notes: string | null
+          opening_cash: number
           other_total: number
           property_id: string
           rooms_available: number
@@ -784,13 +789,18 @@ export type Database = {
           bank_total?: number
           business_date: string
           card_total?: number
+          cash_difference?: number
           cash_total?: number
           closed_at?: string
           closed_by?: string | null
+          closing_cash_actual?: number
+          closing_cash_expected?: number
           created_at?: string
+          expense_total?: number
           gst_amount?: number
           id?: string
           notes?: string | null
+          opening_cash?: number
           other_total?: number
           property_id: string
           rooms_available?: number
@@ -803,13 +813,18 @@ export type Database = {
           bank_total?: number
           business_date?: string
           card_total?: number
+          cash_difference?: number
           cash_total?: number
           closed_at?: string
           closed_by?: string | null
+          closing_cash_actual?: number
+          closing_cash_expected?: number
           created_at?: string
+          expense_total?: number
           gst_amount?: number
           id?: string
           notes?: string | null
+          opening_cash?: number
           other_total?: number
           property_id?: string
           rooms_available?: number
@@ -2235,6 +2250,93 @@ export type Database = {
             columns: ["source_guest_id"]
             isOneToOne: false
             referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      night_audit_reports: {
+        Row: {
+          audit_date: string
+          banquet_revenue: number
+          cash_difference: number
+          closed_at: string
+          closed_by: string | null
+          closing_cash_actual: number
+          closing_cash_expected: number
+          created_at: string
+          food_revenue: number
+          id: string
+          notes: string | null
+          occupancy_count: number
+          opening_cash: number
+          other_revenue: number
+          property_id: string
+          report_data: Json | null
+          room_revenue: number
+          rooms_total: number
+          total_collections: number
+          total_expenses: number
+          total_revenue: number
+        }
+        Insert: {
+          audit_date: string
+          banquet_revenue?: number
+          cash_difference?: number
+          closed_at?: string
+          closed_by?: string | null
+          closing_cash_actual?: number
+          closing_cash_expected?: number
+          created_at?: string
+          food_revenue?: number
+          id?: string
+          notes?: string | null
+          occupancy_count?: number
+          opening_cash?: number
+          other_revenue?: number
+          property_id: string
+          report_data?: Json | null
+          room_revenue?: number
+          rooms_total?: number
+          total_collections?: number
+          total_expenses?: number
+          total_revenue?: number
+        }
+        Update: {
+          audit_date?: string
+          banquet_revenue?: number
+          cash_difference?: number
+          closed_at?: string
+          closed_by?: string | null
+          closing_cash_actual?: number
+          closing_cash_expected?: number
+          created_at?: string
+          food_revenue?: number
+          id?: string
+          notes?: string | null
+          occupancy_count?: number
+          opening_cash?: number
+          other_revenue?: number
+          property_id?: string
+          report_data?: Json | null
+          room_revenue?: number
+          rooms_total?: number
+          total_collections?: number
+          total_expenses?: number
+          total_revenue?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "night_audit_reports_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "night_audit_reports_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]
@@ -3963,6 +4065,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_day_locked: {
+        Args: { _d: string; _property_id: string }
         Returns: boolean
       }
       is_owner_or_super: { Args: { _user_id: string }; Returns: boolean }
