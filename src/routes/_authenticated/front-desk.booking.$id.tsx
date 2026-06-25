@@ -569,6 +569,109 @@ function BookingDetailPage() {
           </CardContent>
         </Card>
 
+        {/* ADDITIONAL GUESTS (Issue #6) */}
+        {extraGuests.length > 0 && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">All guests ({extraGuests.length})</CardTitle></CardHeader>
+            <CardContent>
+              <div className="text-sm divide-y">
+                {extraGuests.map((g) => (
+                  <div key={g.id} className="flex flex-wrap items-center gap-3 py-2">
+                    <Badge variant={g.is_primary ? "default" : "outline"} className="text-[10px]">
+                      {g.is_primary ? "Primary" : (g.relation_to_primary ?? "Guest")}
+                    </Badge>
+                    <div className="font-medium">{g.guests?.name ?? "—"}</div>
+                    {g.age != null && <div className="text-xs text-muted-foreground">{g.age} yrs</div>}
+                    {g.guests?.nationality && g.guests.nationality !== "Indian" && (
+                      <Badge variant="outline" className="text-[10px] border-amber-400 text-amber-700">Foreign</Badge>
+                    )}
+                    <div className="ml-auto text-xs text-muted-foreground">
+                      {g.guests?.id_proof_type
+                        ? `${g.guests.id_proof_type.toUpperCase()} · ${g.guests.id_proof_number ?? "—"}`
+                        : "No ID on file"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* ROOM SHIFT HISTORY (Issue #3a) */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Room shift history</CardTitle></CardHeader>
+          <CardContent>
+            {shifts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No room changes.</p>
+            ) : (
+              <div className="space-y-3">
+                {shifts.map((s) => (
+                  <div key={s.id} className="rounded border p-3 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 font-medium">
+                      <span>Room {s.from_room?.room_number ?? "—"}</span>
+                      <ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>Room {s.to_room?.room_number ?? "—"}</span>
+                      {s.old_rate != null && s.new_rate != null && Number(s.old_rate) !== Number(s.new_rate) && (
+                        <Badge variant="outline" className="text-[10px]">
+                          ₹{Number(s.old_rate)} → ₹{Number(s.new_rate)}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {new Date(s.shifted_at).toLocaleString()} · by {s.shifted_by_profile?.name ?? "staff"}
+                    </div>
+                    {s.reason && <div className="text-xs mt-1"><span className="text-muted-foreground">Reason:</span> {s.reason}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* FOOD BILL SUMMARY (Issue #3b) */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">Food bill summary</CardTitle></CardHeader>
+          <CardContent>
+            {kots.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No food orders for this booking.</p>
+            ) : (
+              (() => {
+                const total = kots.reduce((s, k) => s + Number(k.total_amount || 0), 0);
+                const settled = kots.filter((k) => k.status === "billed").reduce((s, k) => s + Number(k.total_amount || 0), 0);
+                const pending = total - settled;
+                return (
+                  <div className="space-y-3 text-sm">
+                    <div className="space-y-2">
+                      {kots.map((k) => (
+                        <div key={k.id} className="rounded border p-2">
+                          <div className="flex items-center justify-between font-medium">
+                            <span>
+                              {k.kot_number}
+                              <Badge variant="outline" className="ml-2 text-[10px] uppercase">{k.status}</Badge>
+                            </span>
+                            <span>₹{Number(k.total_amount).toLocaleString("en-IN")}</span>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {new Date(k.created_at).toLocaleString()}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {(k.kot_items ?? []).map((i) => `${i.qty}× ${i.item_name}`).join(", ") || "—"}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t pt-2 grid grid-cols-3 gap-2">
+                      <SummaryStat label="Total food" value={`₹${total.toLocaleString("en-IN")}`} />
+                      <SummaryStat label="Settled" value={`₹${settled.toLocaleString("en-IN")}`} />
+                      <SummaryStat label="Pending" value={`₹${pending.toLocaleString("en-IN")}`} highlight={pending > 0} />
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+          </CardContent>
+        </Card>
+
         {/* SHIFT DIALOG */}
         <Dialog open={shiftOpen} onOpenChange={setShiftOpen}>
           <DialogContent className="max-w-lg">
@@ -588,18 +691,20 @@ function BookingDetailPage() {
                     <div className="space-y-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs">Move to vacant room *</Label>
-                        <Select value={shiftToRoom} onValueChange={setShiftToRoom}>
-                          <SelectTrigger><SelectValue placeholder="Pick a room" /></SelectTrigger>
-                          <SelectContent>
-                            {rooms
-                              .filter((r) => r.status === "vacant" && !b.booking_rooms.some((bx) => bx.room_id === r.id))
-                              .map((r) => (
-                                <SelectItem key={r.id} value={r.id}>
-                                  {r.room_number}{r.room_categories?.name ? ` · ${r.room_categories.name}` : ""}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                          value={shiftToRoom}
+                          onChange={setShiftToRoom}
+                          placeholder="Pick a room"
+                          searchPlaceholder="Search by room number or category…"
+                          options={rooms
+                            .filter((r) => r.status === "vacant" && !b.booking_rooms.some((bx) => bx.room_id === r.id))
+                            .map((r) => ({
+                              value: r.id,
+                              label: `Room ${r.room_number}`,
+                              hint: r.room_categories?.name ?? undefined,
+                              keywords: r.room_categories?.name ?? "",
+                            })) as SearchableOption[]}
+                        />
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Current: Room {br?.rooms?.room_number ?? "—"} ({br?.room_categories?.name ?? "—"}) @ ₹{fromRate}/night
