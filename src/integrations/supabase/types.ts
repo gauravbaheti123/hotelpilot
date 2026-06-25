@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action_type: string
+          created_at: string
+          details: Json
+          id: string
+          module: string
+          property_id: string | null
+          reference_id: string | null
+          reference_label: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          details?: Json
+          id?: string
+          module: string
+          property_id?: string | null
+          reference_id?: string | null
+          reference_label?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          module?: string
+          property_id?: string | null
+          reference_id?: string | null
+          reference_label?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_log_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance: {
         Row: {
           attendance_date: string
