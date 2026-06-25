@@ -60,7 +60,7 @@ interface BookingCtx {
   booking_rooms: { id: string; rate: number; check_in: string; check_out: string; rooms: { room_number: string } | null; room_categories: { name: string } | null }[];
 }
 interface PropertyInfo {
-  name: string; gst_number: string | null; address: string | null;
+  name: string; gstin: string | null; address: string | null;
   city: string | null; state: string | null; pincode: string | null;
   phone: string | null; email: string | null; wa_number: string | null;
   logo_url: string | null;
@@ -129,7 +129,7 @@ function FolioPage() {
     setBooking(bk);
 
     const { data: prop } = await supabase.from("properties")
-      .select("name,gst_number,address,city,state,pincode,phone,email,wa_number,logo_url")
+      .select("name,gstin,address,city,state,pincode,phone,email,wa_number,logo_url")
       .eq("id", bk.property_id).single();
     setProperty((prop ?? null) as PropertyInfo | null);
 
@@ -465,7 +465,7 @@ function FolioPage() {
       </style></head><body>
       <h1>${title}</h1>
       <div style="text-align:center"><strong>${esc(property?.name ?? "")}</strong></div>
-      <div class="small" style="text-align:center">${esc(property?.address ?? "")}${isGst && property?.gst_number ? ` · GSTIN: ${esc(property.gst_number)}` : ""}</div>
+      <div class="small" style="text-align:center">${esc(property?.address ?? "")}${isGst && property?.gstin ? ` · GSTIN: ${esc(property.gstin)}` : ""}</div>
       <hr/>
       <div class="meta">
         <div>
@@ -921,7 +921,7 @@ function FolioPage() {
               <div className="mt-1 flex flex-wrap gap-x-4 text-xs opacity-95">
                 {property?.phone && <span>Ph: {property.phone}</span>}
                 {property?.email && <span>Email: {property.email}</span>}
-                {property?.gst_number && <span>GSTIN: {property.gst_number}</span>}
+                {property?.gstin && <span>GSTIN: {property.gstin}</span>}
               </div>
             </div>
           </div>
