@@ -28,7 +28,7 @@ const PAY_MODES = [
   { v: "cash", label: "Cash" },
   { v: "card", label: "Card" },
   { v: "upi", label: "UPI" },
-  { v: "bank", label: "Bank Transfer" },
+  { v: "bank_transfer", label: "Bank Transfer" },
   { v: "complimentary", label: "Complimentary" },
 ] as const;
 
@@ -116,6 +116,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
         .select("id,kot_number,status,total_amount,sub_total,gst_amount")
         .eq("booking_id", bookingId)
         .eq("is_wiped", false)
+        .neq("kot_copy", "restaurant_copy")
         .not("status", "in", "(billed,cancelled,void)"),
     ]);
     setFolio(f);

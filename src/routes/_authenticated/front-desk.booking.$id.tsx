@@ -192,6 +192,7 @@ function BookingDetailPage() {
           .from("kot_orders")
           .select("id, kot_number, status, created_at, total_amount, sub_total, kot_items(item_name, qty, amount)")
           .eq("booking_id", detail.id)
+          .neq("kot_copy", "restaurant_copy")
           .order("created_at", { ascending: false }),
         supabase
           .from("booking_guests")
