@@ -307,6 +307,7 @@ function FolioPage() {
   async function addCharge() {
     if (!folio) return;
     if (!addDesc.trim()) return toast.error("Description required");
+    if (!isOpen && !canEditAnyStatus) return toast.error("Only manager/owner can edit a settled bill");
     const qty = Number(addQty) || 1;
     const rate = Number(addRate) || 0;
     const amt = qty * rate;
@@ -335,7 +336,27 @@ function FolioPage() {
     setAddOpen(false);
     setAddDesc(""); setAddQty("1"); setAddRate("0"); setAddGst("0"); setAddType("extra");
     const next = await refetchCharges();
+    const prevTotal = Number(folio.total_amount);
     await persistTotals(next, payments);
+    if (!isOpen) {
+      toast.warning("Bill amount changed — payment records may need adjustment");
+      logActivity({
+        property_id: booking?.property_id ?? "",
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "BILL_EDITED",
+        module: "Billing",
+        reference_id: folio.id,
+        reference_label: folio.invoice_number,
+        details: {
+          bill_number: folio.invoice_number,
+          previous_amount: prevTotal,
+          new_amount: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst")).total_amount,
+          edited_by: userDisplayName(user as any),
+          previous_status: folio.status,
+        },
+      });
+    }
     load();
   }
 
@@ -347,10 +368,31 @@ function FolioPage() {
 
   async function removeCharge(id: string) {
     if (!folio) return;
+    if (!isOpen && !canEditAnyStatus) return toast.error("Only manager/owner can edit a settled bill");
     if (!confirm("Remove this charge?")) return;
     await supabase.from("folio_charges").delete().eq("id", id);
     const next = await refetchCharges();
+    const prevTotal = Number(folio.total_amount);
     await persistTotals(next, payments);
+    if (!isOpen) {
+      toast.warning("Bill amount changed — payment records may need adjustment");
+      logActivity({
+        property_id: booking?.property_id ?? "",
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "BILL_EDITED",
+        module: "Billing",
+        reference_id: folio.id,
+        reference_label: folio.invoice_number,
+        details: {
+          bill_number: folio.invoice_number,
+          previous_amount: prevTotal,
+          new_amount: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst")).total_amount,
+          edited_by: userDisplayName(user as any),
+          previous_status: folio.status,
+        },
+      });
+    }
     load();
   }
 
