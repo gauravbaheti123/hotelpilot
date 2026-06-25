@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import { supabase } from "@/integrations/supabase/client";
+import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import {
@@ -238,6 +239,14 @@ function BookingDetailPage() {
       await supabase.from("booking_rooms").update({ actual_check_in: now }).eq("id", br.id);
     }
     toast.success("Checked in");
+    logActivity({
+      property_id: b.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      ...ACTIVITY.CHECKIN,
+      reference_id: b.id,
+      reference_label: `${b.booking_number} — ${b.guests?.name ?? ""}`,
+    });
     fireTrigger("checkin_welcome", {
       property_id: b.property_id,
       booking_id: b.id,
@@ -282,6 +291,14 @@ function BookingDetailPage() {
       await supabase.from("booking_rooms").update({ actual_check_out: now }).eq("id", br.id);
     }
     toast.success("Checked out");
+    logActivity({
+      property_id: b.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      ...ACTIVITY.CHECKOUT,
+      reference_id: b.id,
+      reference_label: `${b.booking_number} — ${b.guests?.name ?? ""}`,
+    });
     fireTrigger("checkout_bill", {
       property_id: b.property_id,
       booking_id: b.id,

@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrossed, ChevronDown, ChevronRight, DoorOpen } from "lucide-react";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { RemindersBell, RemindersSection } from "@/components/Reminders";
+import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — HotelPilot" }] }),
@@ -675,6 +676,22 @@ function RoomStatusModal({
         }
       }
       toast.success(`Room ${room.room_number} ${successLabel}`);
+      try {
+        const { data: rRow } = await supabase.from("rooms").select("property_id").eq("id", room.id).maybeSingle();
+        const propertyId = (rRow as any)?.property_id;
+        if (propertyId) {
+          const { data: { user } } = await supabase.auth.getUser();
+          logActivity({
+            property_id: propertyId,
+            user_id: user?.id ?? "",
+            user_name: userDisplayName(user as any),
+            ...ACTIVITY.ROOM_STATUS_CHANGED,
+            reference_id: room.id,
+            reference_label: `Room ${room.room_number} → ${successLabel}`,
+            details: { patch },
+          });
+        }
+      } catch { /* ignore */ }
       await onChanged();
       onClose();
     } catch (e: any) {

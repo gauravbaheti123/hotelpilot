@@ -108,6 +108,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/reports/sales", label: "Sales", icon: FileSpreadsheet, module: "reports_sales" },
       { to: "/reports/gst", label: "GST", icon: FileText, module: "reports_gst" },
       { to: "/reports/night-audit", label: "Night Audit", icon: Moon, module: "night_audit" },
+      { to: "/reports/activity", label: "Activity Log", icon: History, module: "reports_daily" },
     ],
   },
   {
