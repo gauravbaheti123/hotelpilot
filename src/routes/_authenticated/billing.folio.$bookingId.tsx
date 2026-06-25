@@ -188,6 +188,48 @@ function FolioPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [folio?.id, booking?.id, loading]);
 
+  // Auto-pull served/billed food KOTs that haven't been added to the folio yet
+  useEffect(() => {
+    if (!folio || !booking || loading) return;
+    if (folio.status !== "open") return;
+    (async () => {
+      const { data: kots } = await supabase
+        .from("kot_orders")
+        .select("id,kot_number,sub_total,gst_amount,status")
+        .eq("booking_id", booking.id)
+        .eq("is_wiped", false)
+        .neq("kot_copy", "restaurant_copy")
+        .in("status", ["served", "billed"]);
+      if (!kots || kots.length === 0) return;
+      const existing = new Set(
+        charges.filter((c) => c.source_table === "kot_orders").map((c) => c.source_id),
+      );
+      const toAdd = (kots as any[]).filter((k) => !existing.has(k.id));
+      if (toAdd.length === 0) return;
+      const rows = toAdd.map((k) => ({
+        folio_id: folio.id,
+        charge_type: "food",
+        description: `Food · ${k.kot_number}`,
+        qty: 1,
+        rate: Number(k.sub_total),
+        amount: Number(k.sub_total),
+        gst_rate: Number(k.sub_total) > 0
+          ? Math.round((Number(k.gst_amount) / Number(k.sub_total)) * 100) : 5,
+        gst_amount: Number(k.gst_amount),
+        source_table: "kot_orders",
+        source_id: k.id,
+        created_by: user?.id ?? null,
+      }));
+      const { error } = await supabase.from("folio_charges").insert(rows as any);
+      if (error) return;
+      await supabase.from("kot_orders")
+        .update({ status: "billed", billed_at: new Date().toISOString() })
+        .in("id", toAdd.map((k: any) => k.id));
+      load();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [folio?.id, booking?.id, loading, charges.length]);
+
   async function pullFoodCharges() {
     if (!folio || !booking) return;
     const { data: kots } = await supabase
