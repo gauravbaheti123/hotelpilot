@@ -22,8 +22,9 @@ import { useAuth, hasRole } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { inr, recomputeFolio } from "@/lib/billing";
 import { fireTrigger } from "@/lib/whatsapp";
-import { AlertTriangle, Plus, Trash2, Loader2, ArrowRightLeft } from "lucide-react";
+import { AlertTriangle, Plus, Trash2, Loader2, ArrowRightLeft, SplitSquareHorizontal } from "lucide-react";
 import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
+import { SplitBillDialog } from "@/components/SplitBillDialog";
 
 const PAY_MODES = [
   { v: "cash", label: "Cash" },
@@ -64,6 +65,8 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
   const { user, roles } = useAuth();
   const canShiftMis = hasRole(roles, "manager") || hasRole(roles, "owner") || hasRole(roles, "superadmin");
   const [misOpen, setMisOpen] = useState(false);
+  const canSplit = canShiftMis; // manager / owner / superadmin only
+  const [splitOpen, setSplitOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [booking, setBooking] = useState<any>(null);
@@ -565,6 +568,11 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
                 Cancel
               </Button>
+              {canSplit && totals.grand > 0 && (
+                <Button variant="outline" onClick={() => setSplitOpen(true)} disabled={busy}>
+                  <SplitSquareHorizontal className="h-4 w-4 mr-1" /> Split Bill
+                </Button>
+              )}
               <Button onClick={collectAndCheckout} disabled={busy}>
                 {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
                 Collect &amp; Checkout
@@ -581,6 +589,18 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
         charges={charges as any}
         preselectFoodOnly
         onShifted={() => load()}
+      />
+      <SplitBillDialog
+        open={splitOpen}
+        onOpenChange={setSplitOpen}
+        folio={folio}
+        booking={booking}
+        charges={charges as any}
+        onDone={() => {
+          setSplitOpen(false);
+          onOpenChange(false);
+          onDone?.();
+        }}
       />
     </Dialog>
   );
