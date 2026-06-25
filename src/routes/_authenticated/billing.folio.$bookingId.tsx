@@ -1270,6 +1270,11 @@ function FolioPage() {
                 <Label className="text-xs">Description *</Label>
                 <Input value={addDesc} onChange={(e) => setAddDesc(e.target.value)} placeholder="e.g. Laundry, Mini-bar, Festive discount" />
               </div>
+              {addType === "discount" && !(hasRole(roles, "owner") || hasRole(roles, "superadmin")) && (
+                <div className="text-xs text-muted-foreground">
+                  Your role allows maximum {Math.max(0, Math.min(100, maxDiscPct))}% discount.
+                </div>
+              )}
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs">Qty</Label>
