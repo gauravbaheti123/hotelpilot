@@ -9,11 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
-import { Download, MessageCircle, FileSpreadsheet, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Download, MessageCircle, FileSpreadsheet, AlertTriangle, CheckCircle2, Plus } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/restaurant/")({
   head: () => ({ meta: [{ title: "Restaurant Billing — HotelPilot" }] }),
@@ -44,6 +48,7 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 
 function RestaurantPage() {
   const { current } = useCurrentProperty();
+  const { user } = useAuth();
   const [credits, setCredits] = useState<CreditRow[]>([]);
   const [enriched, setEnriched] = useState<Record<string, CreditEnrichment>>({});
   const [loading, setLoading] = useState(false);
@@ -54,6 +59,178 @@ function RestaurantPage() {
   const [restInvoice, setRestInvoice] = useState<number | "">("");
   const [settling, setSettling] = useState(false);
   const [waNumber, setWaNumber] = useState("");
+
+  // ─── Feature 1: Direct Charges ───────────────────────────────────────────
+  type DirectChargeRow = {
+    id: string; booking_id: string | null; guest_id: string | null;
+    amount: number; description: string | null; charge_date: string;
+    is_settled: boolean; created_at: string;
+  };
+  type PayableRow = {
+    id: string; charge_id: string | null; amount: number;
+    description: string | null; charge_date: string;
+    is_settled: boolean; settlement_date: string | null; settlement_notes: string | null;
+  };
+  const [directCharges, setDirectCharges] = useState<DirectChargeRow[]>([]);
+  const [directEnrich, setDirectEnrich] = useState<Record<string, { room?: string; guest?: string }>>({});
+  const [payables, setPayables] = useState<PayableRow[]>([]);
+  const [activeBookings, setActiveBookings] = useState<{ value: string; label: string; guest_id?: string | null }[]>([]);
+  const [postOpen, setPostOpen] = useState(false);
+  const [pcBooking, setPcBooking] = useState("");
+  const [pcAmount, setPcAmount] = useState<string>("");
+  const [pcDesc, setPcDesc] = useState("Restaurant Charge");
+  const [pcDate, setPcDate] = useState(new Date().toISOString().slice(0, 10));
+  const [posting, setPosting] = useState(false);
+
+  const [settleOpen, setSettleOpen] = useState(false);
+  const [settleIds, setSettleIds] = useState<string[]>([]);
+  const [settleDate, setSettleDate] = useState(new Date().toISOString().slice(0, 10));
+  const [settleNotes, setSettleNotes] = useState("");
+
+  async function loadDirect() {
+    if (!current) return;
+    const [dc, py, bk] = await Promise.all([
+      supabase
+        .from("restaurant_direct_charges" as any)
+        .select("id,booking_id,guest_id,amount,description,charge_date,is_settled,created_at")
+        .eq("property_id", current.id)
+        .order("charge_date", { ascending: false }),
+      supabase
+        .from("restaurant_payables" as any)
+        .select("id,charge_id,amount,description,charge_date,is_settled,settlement_date,settlement_notes")
+        .eq("property_id", current.id)
+        .order("charge_date", { ascending: false }),
+      supabase
+        .from("bookings")
+        .select("id,booking_number,guest_id,guests(name),booking_rooms(rooms(room_number))")
+        .eq("property_id", current.id)
+        .eq("status", "checked_in"),
+    ]);
+    const rows = (dc.data ?? []) as unknown as DirectChargeRow[];
+    setDirectCharges(rows);
+    setPayables((py.data ?? []) as unknown as PayableRow[]);
+
+    const bks = (bk.data ?? []) as any[];
+    setActiveBookings(bks.map((b) => {
+      const room = (b.booking_rooms ?? []).map((br: any) => br.rooms?.room_number).filter(Boolean).join(", ") || "—";
+      const name = b.guests?.name ?? "Guest";
+      return { value: b.id, label: `Room ${room} · ${name}`, guest_id: b.guest_id };
+    }));
+
+    // enrich charge rows w/ room+guest
+    const bIds = Array.from(new Set(rows.map((r) => r.booking_id).filter(Boolean))) as string[];
+    if (bIds.length) {
+      const { data: bdata } = await supabase
+        .from("bookings")
+        .select("id,guests(name),booking_rooms(rooms(room_number))")
+        .in("id", bIds);
+      const map: typeof directEnrich = {};
+      for (const b of (bdata ?? []) as any[]) {
+        const room = (b.booking_rooms ?? []).map((br: any) => br.rooms?.room_number).filter(Boolean).join(", ") || "—";
+        map[b.id] = { room, guest: b.guests?.name ?? "—" };
+      }
+      const enrichByCharge: typeof directEnrich = {};
+      for (const r of rows) {
+        if (r.booking_id && map[r.booking_id]) enrichByCharge[r.id] = map[r.booking_id];
+      }
+      setDirectEnrich(enrichByCharge);
+    } else setDirectEnrich({});
+  }
+
+  useEffect(() => { if (current) loadDirect(); /* eslint-disable-next-line */ }, [current?.id]);
+
+  async function postDirectCharge() {
+    if (!current) return;
+    if (!pcBooking) return toast.error("Select a booking");
+    const amt = Number(pcAmount);
+    if (!amt || amt <= 0) return toast.error("Enter a valid amount");
+    setPosting(true);
+    try {
+      const booking = activeBookings.find((b) => b.value === pcBooking);
+      // 1. Insert direct charge
+      const ins = await (supabase as any)
+        .from("restaurant_direct_charges")
+        .insert({
+          property_id: current.id,
+          booking_id: pcBooking,
+          guest_id: booking?.guest_id ?? null,
+          amount: amt,
+          description: pcDesc || "Restaurant Charge",
+          charge_date: pcDate,
+          posted_by: user?.id ?? null,
+        }).select("id").single();
+      if (ins.error) throw ins.error;
+      const chargeId = ins.data.id;
+
+      // 2. Payable
+      const py = await (supabase as any).from("restaurant_payables").insert({
+        property_id: current.id,
+        charge_id: chargeId,
+        amount: amt,
+        description: pcDesc || "Restaurant Charge",
+        charge_date: pcDate,
+      });
+      if (py.error) throw py.error;
+
+      // 3. Folio line item (no GST)
+      const folio = await (supabase as any).rpc("get_or_create_folio", { _booking_id: pcBooking });
+      if (folio.error) throw folio.error;
+      const folioId = folio.data;
+      const fc = await supabase.from("folio_charges").insert({
+        folio_id: folioId,
+        charge_type: "extra",
+        description: `Restaurant Charge — ${pcDesc || "Direct"}`,
+        qty: 1,
+        rate: amt,
+        amount: amt,
+        gst_rate: 0,
+        gst_amount: 0,
+        created_by: user?.id ?? null,
+      } as any).select("id").single();
+      if (fc.error) throw fc.error;
+
+      // Link folio charge back
+      await (supabase as any).from("restaurant_direct_charges")
+        .update({ folio_charge_id: fc.data.id }).eq("id", chargeId);
+
+      toast.success(`Charge posted to ${booking?.label ?? "guest"}`);
+      setPostOpen(false);
+      setPcAmount(""); setPcDesc("Restaurant Charge"); setPcBooking("");
+      await loadDirect();
+    } catch (e: any) {
+      toast.error(e.message ?? "Failed to post charge");
+    } finally { setPosting(false); }
+  }
+
+  const unsettledPayables = useMemo(() => payables.filter((p) => !p.is_settled), [payables]);
+  const settledPayables = useMemo(() => payables.filter((p) => p.is_settled), [payables]);
+  const payablesByMonth = useMemo(() => {
+    const m = new Map<string, PayableRow[]>();
+    for (const p of unsettledPayables) {
+      const k = p.charge_date.slice(0, 7); // YYYY-MM
+      const arr = m.get(k) ?? [];
+      arr.push(p); m.set(k, arr);
+    }
+    return Array.from(m.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [unsettledPayables]);
+  const totalPayable = useMemo(
+    () => unsettledPayables.reduce((s, p) => s + Number(p.amount), 0),
+    [unsettledPayables],
+  );
+
+  async function settlePayables() {
+    if (!current || settleIds.length === 0) return;
+    const upd = await (supabase as any).from("restaurant_payables").update({
+      is_settled: true,
+      settlement_date: settleDate,
+      settlement_notes: settleNotes || null,
+    }).in("id", settleIds);
+    if (upd.error) return toast.error(upd.error.message);
+    toast.success(`Marked ${settleIds.length} payables settled`);
+    setSettleOpen(false); setSettleIds([]); setSettleNotes("");
+    await loadDirect();
+  }
+  // ─── end Feature 1 ───────────────────────────────────────────────────────
 
   async function load() {
     if (!current) return;
@@ -290,7 +467,9 @@ function RestaurantPage() {
         <Tabs defaultValue="active">
           <TabsList>
             <TabsTrigger value="active">Active Credits</TabsTrigger>
+            <TabsTrigger value="direct">Direct Charges</TabsTrigger>
             <TabsTrigger value="settle">Month-end Settlement</TabsTrigger>
+            <TabsTrigger value="payables">Restaurant Settlement</TabsTrigger>
           </TabsList>
 
           <TabsContent value="active" className="space-y-4">
@@ -458,7 +637,188 @@ function RestaurantPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="direct" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Direct Restaurant Charges</span>
+                  <Button size="sm" onClick={() => setPostOpen(true)}>
+                    <Plus className="h-4 w-4 mr-1" /> Post Restaurant Charge
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>Date</TableHead><TableHead>Room</TableHead>
+                    <TableHead>Guest</TableHead><TableHead>Description</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {directCharges.length === 0 && (
+                      <TableRow><TableCell colSpan={6} className="text-center py-6 text-sm text-muted-foreground">
+                        No direct charges posted yet
+                      </TableCell></TableRow>
+                    )}
+                    {directCharges.map((c) => {
+                      const e = directEnrich[c.id] ?? {};
+                      return (
+                        <TableRow key={c.id}>
+                          <TableCell className="text-xs">{c.charge_date}</TableCell>
+                          <TableCell>{e.room ?? "—"}</TableCell>
+                          <TableCell>{e.guest ?? "—"}</TableCell>
+                          <TableCell className="text-xs">{c.description}</TableCell>
+                          <TableCell className="text-right font-medium">₹{Number(c.amount).toFixed(2)}</TableCell>
+                          <TableCell>
+                            {c.is_settled
+                              ? <Badge variant="secondary">Settled</Badge>
+                              : <Badge>Posted</Badge>}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="payables" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Owed to Restaurant (Direct Charges)</span>
+                  <span className="text-sm font-normal">
+                    Total outstanding: <span className="font-bold text-destructive">₹{totalPayable.toLocaleString()}</span>
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {payablesByMonth.length === 0 && (
+                  <div className="text-sm text-muted-foreground text-center py-6">No outstanding payables</div>
+                )}
+                {payablesByMonth.map(([ym, rows]) => {
+                  const total = rows.reduce((s, p) => s + Number(p.amount), 0);
+                  const ids = rows.map((r) => r.id);
+                  return (
+                    <div key={ym} className="border rounded-md p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-medium">{ym} · {rows.length} entries · ₹{total.toLocaleString()}</div>
+                        <Button size="sm" variant="outline" onClick={() => { setSettleIds(ids); setSettleOpen(true); }}>
+                          Mark as Settled
+                        </Button>
+                      </div>
+                      <Table>
+                        <TableHeader><TableRow>
+                          <TableHead>Date</TableHead><TableHead>Description</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                        </TableRow></TableHeader>
+                        <TableBody>
+                          {rows.map((p) => (
+                            <TableRow key={p.id}>
+                              <TableCell className="text-xs">{p.charge_date}</TableCell>
+                              <TableCell className="text-xs">{p.description ?? "—"}</TableCell>
+                              <TableCell className="text-right">₹{Number(p.amount).toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  );
+                })}
+
+                {settledPayables.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium mt-4 mb-2">Settlement history</div>
+                    <Table>
+                      <TableHeader><TableRow>
+                        <TableHead>Charge Date</TableHead><TableHead>Settled On</TableHead>
+                        <TableHead>Notes</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow></TableHeader>
+                      <TableBody>
+                        {settledPayables.map((p) => (
+                          <TableRow key={p.id}>
+                            <TableCell className="text-xs">{p.charge_date}</TableCell>
+                            <TableCell className="text-xs">{p.settlement_date ?? "—"}</TableCell>
+                            <TableCell className="text-xs">{p.settlement_notes ?? "—"}</TableCell>
+                            <TableCell className="text-right">₹{Number(p.amount).toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
+
+        {/* Post Charge Modal */}
+        <Dialog open={postOpen} onOpenChange={setPostOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Post Restaurant Charge</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Booking (Room · Guest)</Label>
+                <SearchableSelect
+                  options={activeBookings}
+                  value={pcBooking}
+                  onChange={setPcBooking}
+                  placeholder="Search booking…"
+                  emptyText="No active bookings"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Amount (₹)</Label>
+                  <Input type="number" value={pcAmount} onChange={(e) => setPcAmount(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Date</Label>
+                  <Input type="date" value={pcDate} onChange={(e) => setPcDate(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <Label>Description</Label>
+                <Input value={pcDesc} onChange={(e) => setPcDesc(e.target.value)} />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Posted as a line item on the guest folio (no GST) and recorded as payable to the restaurant.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPostOpen(false)}>Cancel</Button>
+              <Button onClick={postDirectCharge} disabled={posting}>
+                {posting ? "Posting…" : "Post Charge"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Settle Payables Modal */}
+        <Dialog open={settleOpen} onOpenChange={setSettleOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Mark Payables Settled</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div className="text-sm">Settling <b>{settleIds.length}</b> entries.</div>
+              <div>
+                <Label>Settlement Date</Label>
+                <Input type="date" value={settleDate} onChange={(e) => setSettleDate(e.target.value)} />
+              </div>
+              <div>
+                <Label>Notes (optional)</Label>
+                <Textarea value={settleNotes} onChange={(e) => setSettleNotes(e.target.value)} rows={3} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSettleOpen(false)}>Cancel</Button>
+              <Button onClick={settlePayables}>Confirm Settlement</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppShell>
   );
