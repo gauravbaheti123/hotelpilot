@@ -667,9 +667,44 @@ function FolioPage() {
   async function downloadPdf() {
     if (!folio || !booking) return;
     setDownloading(true);
+    const propsToSanitize = [
+      "color", "backgroundColor",
+      "borderColor", "borderTopColor",
+      "borderBottomColor", "borderLeftColor",
+      "borderRightColor", "outlineColor",
+      "textDecorationColor", "boxShadow",
+    ] as const;
+    const hasUnsupportedColor = (value: string | undefined | null) => (
+      typeof value === "string" && (
+        value.includes("oklab") ||
+        value.includes("oklch") ||
+        value.includes("color(")
+      )
+    );
+    const fallbackFor = (prop: string, value: string) => {
+      if (prop === "color" || prop === "textDecorationColor") return "#000000";
+      if (prop === "backgroundColor" && value !== "rgba(0, 0, 0, 0)" && value !== "transparent") return "#ffffff";
+      if (prop === "boxShadow") return "none";
+      return "#1D9E75";
+    };
+    const originalStyles: Array<Record<string, string>> = [];
+    let elementsToRestore: HTMLElement[] = [];
     try {
-      const node = document.getElementById("invoice-doc");
+      const node = document.getElementById("invoice-content");
       if (!node) throw new Error("Invoice element not found");
+      elementsToRestore = [node as HTMLElement, ...Array.from(node.querySelectorAll<HTMLElement>("*"))];
+      elementsToRestore.forEach((el, index) => {
+        const computed = window.getComputedStyle(el);
+        originalStyles[index] = {};
+        propsToSanitize.forEach((prop) => {
+          const val = computed[prop];
+          const inlineVal = (el.style as any)[prop] as string | undefined;
+          if (hasUnsupportedColor(val) || hasUnsupportedColor(inlineVal)) {
+            originalStyles[index][prop] = inlineVal ?? "";
+            (el.style as any)[prop] = fallbackFor(prop, val || inlineVal || "");
+          }
+        });
+      });
       const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
         import("html2canvas"),
         import("jspdf"),
@@ -678,42 +713,8 @@ function FolioPage() {
         scale: 2,
         backgroundColor: "#ffffff",
         useCORS: true,
-        allowTaint: true,
-        onclone: (clonedDoc) => {
-          // html2canvas cannot parse oklch() values emitted by Tailwind v4.
-          // Walk every element in the clone and replace any computed style
-          // containing oklch with a safe hex fallback before rasterizing.
-          const FALLBACKS: Record<string, string> = {
-            color: "#111111",
-            backgroundColor: "#ffffff",
-            background: "#ffffff",
-            borderColor: "#e5e7eb",
-            borderTopColor: "#e5e7eb",
-            borderRightColor: "#e5e7eb",
-            borderBottomColor: "#e5e7eb",
-            borderLeftColor: "#e5e7eb",
-            outlineColor: "#e5e7eb",
-            textDecorationColor: "#111111",
-            fill: "#111111",
-            stroke: "#111111",
-            boxShadow: "none",
-          };
-          const all = clonedDoc.querySelectorAll<HTMLElement>("*");
-          all.forEach((el) => {
-            const cs = clonedDoc.defaultView?.getComputedStyle(el);
-            if (!cs) return;
-            for (const [prop, fallback] of Object.entries(FALLBACKS)) {
-              const val = (cs as any)[prop] as string | undefined;
-              if (typeof val === "string" && val.includes("oklch")) {
-                (el.style as any)[prop] = fallback;
-              }
-              const inline = (el.style as any)[prop] as string | undefined;
-              if (typeof inline === "string" && inline.includes("oklch")) {
-                (el.style as any)[prop] = fallback;
-              }
-            }
-          });
-        },
+        allowTaint: false,
+        logging: false,
       });
       const img = canvas.toDataURL("image/jpeg", 0.95);
       const pdf = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
@@ -736,6 +737,11 @@ function FolioPage() {
     } catch (e: any) {
       toast.error(e.message ?? "Could not generate PDF");
     } finally {
+      elementsToRestore.forEach((el, index) => {
+        Object.keys(originalStyles[index] || {}).forEach((prop) => {
+          (el.style as any)[prop] = originalStyles[index][prop];
+        });
+      });
       setDownloading(false);
     }
   }
@@ -775,25 +781,25 @@ function FolioPage() {
       <style>{`
         @media print {
           body * { visibility: hidden !important; }
-          #invoice-doc, #invoice-doc * { visibility: visible !important; }
-          #invoice-doc { position: absolute !important; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; }
+          #invoice-content, #invoice-content * { visibility: visible !important; }
+          #invoice-content { position: absolute !important; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; }
           @page { size: A4; margin: 12mm; }
         }
         /* Force hex colors inside the invoice — html2canvas (PDF export)
            cannot parse Tailwind v4 oklch() values. Keep this in sync. */
-        #invoice-doc { color: #111111; background-color: #ffffff; }
-        #invoice-doc * { border-color: #e5e7eb; }
-        #invoice-doc .bg-white { background-color: #ffffff !important; }
-        #invoice-doc .text-muted-foreground { color: #6b7280 !important; }
-        #invoice-doc .text-gray-400 { color: #9ca3af !important; }
-        #invoice-doc .text-gray-500 { color: #6b7280 !important; }
-        #invoice-doc .text-gray-600 { color: #4b5563 !important; }
-        #invoice-doc .text-gray-700 { color: #374151 !important; }
-        #invoice-doc .border-gray-400 { border-color: #9ca3af !important; }
-        #invoice-doc .ring-1, #invoice-doc .ring-black\\/5 { box-shadow: none !important; }
-        #invoice-doc table { border-collapse: collapse; width: 100%; }
-        #invoice-doc th, #invoice-doc td { padding: 8px 10px; font-size: 12px; }
-        #invoice-doc .zebra tr:nth-child(even) td { background: #F7FBF9; }
+        #invoice-content { color: #111111; background-color: #ffffff; }
+        #invoice-content * { border-color: #e5e7eb; }
+        #invoice-content .bg-white { background-color: #ffffff !important; }
+        #invoice-content .text-muted-foreground { color: #6b7280 !important; }
+        #invoice-content .text-gray-400 { color: #9ca3af !important; }
+        #invoice-content .text-gray-500 { color: #6b7280 !important; }
+        #invoice-content .text-gray-600 { color: #4b5563 !important; }
+        #invoice-content .text-gray-700 { color: #374151 !important; }
+        #invoice-content .border-gray-400 { border-color: #9ca3af !important; }
+        #invoice-content.ring-1, #invoice-content.ring-black\\/5, #invoice-content .ring-1, #invoice-content .ring-black\\/5 { box-shadow: none !important; }
+        #invoice-content table { border-collapse: collapse; width: 100%; }
+        #invoice-content th, #invoice-content td { padding: 8px 10px; font-size: 12px; }
+        #invoice-content .zebra tr:nth-child(even) td { background: #F7FBF9; }
       `}</style>
       <div className="max-w-5xl space-y-4">
         {/* Top bar */}
@@ -923,7 +929,7 @@ function FolioPage() {
         </Card>
 
         {/* INVOICE DOCUMENT */}
-        <div id="invoice-doc" className="relative mx-auto w-full bg-white shadow-md ring-1 ring-black/5 print:shadow-none print:ring-0">
+        <div id="invoice-content" className="relative mx-auto w-full bg-white shadow-md ring-1 ring-black/5 print:shadow-none print:ring-0">
           {isSettled && (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
               <div style={{
