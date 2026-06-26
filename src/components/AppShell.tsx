@@ -47,6 +47,9 @@ import {
   MessageCircle,
   ChevronDown,
   ChevronRight,
+  Eye,
+  KeyRound,
+  ScrollText,
 } from "lucide-react";
 import { ShieldAlert } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -55,6 +58,7 @@ import { PropertySelector } from "./PropertySelector";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { RemindersBell } from "./Reminders";
+import { useSuperadminView } from "@/lib/superadmin-view";
 
 interface NavItem {
   to: string;
@@ -123,6 +127,20 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/banquet/bookings", label: "Banquet", icon: PartyPopper, module: "masters_halls" },
       { to: "/masters", label: "Master Data", icon: LayoutGrid, module: "masters_rooms" },
       { to: "/settings", label: "Settings", icon: Settings, requireManagerOrAbove: true },
+    ],
+  },
+];
+
+const SUPERADMIN_NAV: NavGroup[] = [
+  {
+    items: [
+      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/properties", label: "Properties", icon: Building2 },
+      { to: "/superadmin/users", label: "Users", icon: Users },
+      { to: "/superadmin/roles", label: "Roles & Permissions", icon: KeyRound },
+      { to: "/security", label: "Security Dashboard", icon: ShieldCheck },
+      { to: "/reports/activity", label: "System Logs", icon: ScrollText },
+      { to: "/settings", label: "Settings", icon: Settings },
     ],
   },
 ];
@@ -201,6 +219,11 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
   const router = useRouter();
   const { user, roles } = useAuth();
   const isSuperadmin = roles.includes("superadmin");
+  const isPlatformSuper =
+    isSuperadmin ||
+    (user?.email ?? "").toLowerCase() === "growth@hotelpilot.in";
+  const { isViewing, exit } = useSuperadminView();
+  const inAdminMode = isPlatformSuper && !isViewing;
   const isOwner = roles.includes("owner") || isSuperadmin;
   const isManagerOrAbove = roles.includes("manager") || isOwner;
   const currentPath = router.state.location.pathname;
@@ -216,21 +239,28 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
     router.navigate({ to: "/login" });
   }
 
-  const visibleGroups = NAV_GROUPS
-    .map((g) => ({
-      ...g,
-      items: g.items.filter(
-        (n) =>
-          (!n.requireSuperadmin || isSuperadmin) &&
-          (!n.requireOwner || isOwner) &&
-          (!n.requireManagerOrAbove || isManagerOrAbove) &&
-          // If user has a custom-role permission map, gate by module 'view'.
-          // If no module declared, always show (legacy items).
-          // If no role assignment at all, fall back to legacy app-role visibility.
-          (!n.module || !hasAnyAssignment || permsLoading || can(n.module, "view")),
-      ),
-    }))
-    .filter((g) => g.items.length > 0);
+  const visibleGroups = inAdminMode
+    ? SUPERADMIN_NAV
+    : NAV_GROUPS
+        .map((g) => ({
+          ...g,
+          items: g.items.filter(
+            (n) =>
+              (!n.requireSuperadmin || isSuperadmin) &&
+              (!n.requireOwner || isOwner) &&
+              (!n.requireManagerOrAbove || isManagerOrAbove) &&
+              (!n.module || !hasAnyAssignment || permsLoading || can(n.module, "view")),
+          ),
+        }))
+        .filter((g) => g.items.length > 0);
+
+  const headerTitle = inAdminMode ? "HotelPilot Admin" : title;
+
+  function backToAdmin() {
+    exit();
+    router.navigate({ to: "/dashboard" });
+    setTimeout(() => window.location.reload(), 50);
+  }
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -275,16 +305,40 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
+        {isPlatformSuper && isViewing && (
+          <div
+            className="flex items-center justify-between gap-3 px-4 py-2 text-white text-sm"
+            style={{ backgroundColor: "#b45309" }}
+          >
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4" />
+              <span>
+                Viewing as: <strong>{current?.name ?? "—"}</strong>
+                {current?.city ? ` · ${current.city}` : ""}
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-7"
+              onClick={backToAdmin}
+            >
+              ← Back to Admin Dashboard
+            </Button>
+          </div>
+        )}
         <header className="h-14 border-b bg-card flex items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
             <div className="md:hidden"><Logo size={28} /></div>
-            <h1 className="text-base sm:text-lg font-semibold">{title}</h1>
+            <h1 className="text-base sm:text-lg font-semibold">{headerTitle}</h1>
           </div>
           <div className="flex items-center gap-4">
             {user?.id && (
               <RemindersBell propertyId={propertyId} userId={user.id} />
             )}
-            <div className="hidden sm:block"><PropertySelector /></div>
+            {!inAdminMode && (
+              <div className="hidden sm:block"><PropertySelector /></div>
+            )}
             <div className="text-xs text-muted-foreground hidden lg:block">
               Support: 8007444464
             </div>
