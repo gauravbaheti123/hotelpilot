@@ -1,5 +1,4 @@
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -18,65 +17,54 @@ export const Route = createFileRoute("/_authenticated/superadmin/roles/$id")({
   component: EditRolePage,
 });
 
-const MODULE_LABELS: Record<string, string> = {
-  dashboard: "Dashboard",
-  bookings: "Bookings",
-  calendar: "Calendar",
-  inhouse: "In-house",
-  food_kot: "Food & KOT",
-  pos_sundry: "POS / Sundry",
-  invoices: "Invoices",
-  restaurant_billing: "Restaurant Billing",
-  reports_daily: "Reports — Daily",
-  reports_analytics: "Reports — Analytics",
-  reports_sales: "Reports — Sales",
-  reports_gst: "Reports — GST",
-  night_audit: "Night Audit",
-  room_board: "Room Board",
-  housekeeping_tasks: "Housekeeping Tasks",
-  guest_crm: "Guest CRM",
-  communications: "Communications",
-  whatsapp_inbox: "WhatsApp Inbox",
-  inventory: "Inventory",
-  masters_rooms: "Masters — Rooms",
-  masters_tariff: "Masters — Tariff",
-  masters_menu: "Masters — Menu",
-  masters_halls: "Masters — Halls",
-  masters_staff: "Masters — Staff",
-  masters_printers: "Masters — Printers",
-  masters_expense_categories: "Masters — Expenses",
-  masters_ota_channels: "Masters — OTA Channels",
-  masters_sundry_items: "Masters — Sundry Items",
-  channel_manager: "Channel Manager",
-  properties: "Properties",
-  staff_hr: "Staff HR",
-  payroll: "Payroll",
-  security_wipe: "Security",
-  settings_whatsapp: "Settings — WhatsApp",
-  superadmin_panel: "Superadmin Panel",
-};
-
-const SECTIONS: { title: string; modules: string[] }[] = [
-  { title: "Front Desk", modules: ["dashboard", "bookings", "calendar", "inhouse"] },
-  { title: "Food & KOT", modules: ["food_kot", "pos_sundry"] },
-  { title: "Billing", modules: ["invoices", "restaurant_billing"] },
-  { title: "Reports", modules: ["reports_daily", "reports_analytics", "reports_sales", "reports_gst", "night_audit"] },
-  { title: "Housekeeping", modules: ["room_board", "housekeeping_tasks"] },
-  { title: "Guests", modules: ["guest_crm", "communications", "whatsapp_inbox"] },
-  { title: "Inventory", modules: ["inventory"] },
-  { title: "Masters", modules: ["masters_rooms", "masters_tariff", "masters_menu", "masters_halls", "masters_staff", "masters_printers", "masters_expense_categories", "masters_ota_channels", "masters_sundry_items"] },
-  { title: "Admin", modules: ["channel_manager", "properties", "staff_hr", "payroll", "security_wipe", "settings_whatsapp", "superadmin_panel"] },
+const SECTIONS: { title: string; modules: { key: string; label: string }[] }[] = [
+  { title: "Front Desk", modules: [
+    { key: "dashboard", label: "Dashboard" },
+    { key: "bookings", label: "Bookings" },
+    { key: "calendar", label: "Calendar" },
+    { key: "inhouse", label: "In-house" },
+  ]},
+  { title: "Food & KOT", modules: [
+    { key: "food_dashboard", label: "Food Dashboard" },
+    { key: "all_kots", label: "All KOTs" },
+    { key: "new_kot", label: "New KOT" },
+    { key: "pending_bills", label: "Pending Bills" },
+  ]},
+  { title: "Billing", modules: [
+    { key: "pos", label: "POS" },
+    { key: "restaurant_billing", label: "Restaurant Billing" },
+    { key: "invoices", label: "Invoices" },
+    { key: "mis_ac", label: "MIS A/c" },
+  ]},
+  { title: "Reports", modules: [
+    { key: "reports", label: "Reports" },
+    { key: "day_close", label: "Day Close" },
+  ]},
+  { title: "Housekeeping", modules: [
+    { key: "room_board", label: "Room Board" },
+    { key: "tasks", label: "Tasks" },
+  ]},
+  { title: "Guest CRM", modules: [{ key: "guest_crm", label: "Guest CRM" }] },
+  { title: "Inventory", modules: [{ key: "inventory", label: "Inventory" }] },
+  { title: "Expenses", modules: [{ key: "expenses", label: "Expenses" }] },
+  { title: "Staff HR", modules: [{ key: "staff_hr", label: "Staff HR" }] },
+  { title: "Banquet", modules: [{ key: "banquet", label: "Banquet/Events" }] },
+  { title: "Master Data", modules: [{ key: "master_data", label: "Master Data" }] },
+  { title: "Settings & Admin", modules: [
+    { key: "settings_business", label: "Settings - Business" },
+    { key: "settings_whatsapp", label: "Settings - WhatsApp" },
+    { key: "settings_invoice", label: "Settings - Invoice" },
+    { key: "roles_permissions", label: "Roles & Permissions" },
+    { key: "user_management", label: "User Management" },
+    { key: "security_wipe", label: "Security / Wipe" },
+  ]},
 ];
 
 const ACTIONS = ["view", "create", "edit", "delete"] as const;
-const ALL_MODULES = SECTIONS.flatMap((s) => s.modules);
+const ALL_MODULES = SECTIONS.flatMap((s) => s.modules.map((m) => m.key));
 type Action = (typeof ACTIONS)[number];
 
-interface Perm {
-  id: string;
-  module: string;
-  action: Action;
-}
+interface Perm { id: string; module: string; action: Action }
 
 function EditRolePage() {
   const { id } = useParams({ from: "/_authenticated/superadmin/roles/$id" });
@@ -90,6 +78,9 @@ function EditRolePage() {
   const [allowed, setAllowed] = useState<Record<string, boolean>>({});
   const [maxDiscount, setMaxDiscount] = useState<string>("0");
   const [saving, setSaving] = useState(false);
+
+  // Owner's own permission set — used to gray out modules they themselves lack.
+  const [ownerCan, setOwnerCan] = useState<Record<string, Record<Action, boolean>>>({});
 
   useEffect(() => {
     if (!loading && !canAccess) {
@@ -107,7 +98,6 @@ function EditRolePage() {
         supabase.from("role_permissions").select("permission_id,allowed").eq("role_id", id),
       ]);
       const roleRow = (r as any) ?? null;
-      // Owners cannot view/edit privileged role templates.
       if (roleRow && !isSuperadmin && /^(owner|superadmin)$/i.test(roleRow.name)) {
         toast.error("Access denied");
         navigate({ to: "/superadmin/roles", replace: true });
@@ -122,16 +112,43 @@ function EditRolePage() {
     })();
   }, [id, canAccess, isSuperadmin, navigate]);
 
-  const readOnly =
-    !isSuperadmin &&
-    !!role &&
-    (role.is_system === true || /^(owner|superadmin)$/i.test(role.name));
+  // Load owner's own effective permissions to enforce: owners cannot grant what they don't have.
+  useEffect(() => {
+    if (isSuperadmin || !isOwner) return;
+    (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u.user?.id;
+      if (!uid) return;
+      const { data: ur } = await supabase.from("user_roles").select("role_id").eq("user_id", uid).not("role_id", "is", null);
+      const roleIds = (ur ?? []).map((x: any) => x.role_id).filter(Boolean);
+      if (roleIds.length === 0) { setOwnerCan({}); return; }
+      const { data: rps } = await supabase
+        .from("role_permissions").select("allowed, permissions(module,action)")
+        .in("role_id", roleIds).eq("allowed", true);
+      const m: Record<string, Record<Action, boolean>> = {};
+      for (const row of (rps ?? []) as any[]) {
+        const p = row.permissions; if (!p) continue;
+        if (!m[p.module]) m[p.module] = { view: false, create: false, edit: false, delete: false };
+        m[p.module][p.action as Action] = true;
+      }
+      setOwnerCan(m);
+    })();
+  }, [isOwner, isSuperadmin]);
+
+  const readOnly = !isSuperadmin && !!role && /^(owner|superadmin)$/i.test(role.name);
 
   const byKey = useMemo(() => {
     const m: Record<string, Perm> = {};
     for (const p of perms) m[`${p.module}:${p.action}`] = p;
     return m;
   }, [perms]);
+
+  function canOwnerToggle(module: string, action: Action) {
+    if (isSuperadmin) return true;
+    // Owner is treated as having everything (their app role grants all).
+    if (appRoles.includes("owner")) return true;
+    return !!ownerCan[module]?.[action];
+  }
 
   function toggle(permId: string, value: boolean) {
     setAllowed((s) => ({ ...s, [permId]: value }));
@@ -142,7 +159,7 @@ function EditRolePage() {
       const next = { ...s };
       for (const a of ACTIONS) {
         const p = byKey[`${module}:${a}`];
-        if (p) next[p.id] = value;
+        if (p && canOwnerToggle(module, a)) next[p.id] = value;
       }
       return next;
     });
@@ -153,7 +170,7 @@ function EditRolePage() {
       const next = { ...s };
       for (const m of ALL_MODULES) {
         const p = byKey[`${m}:${action}`];
-        if (p) next[p.id] = value;
+        if (p && canOwnerToggle(m, action)) next[p.id] = value;
       }
       return next;
     });
@@ -168,24 +185,12 @@ function EditRolePage() {
   async function save() {
     if (readOnly) { toast.error("This role is read only"); return; }
     setSaving(true);
-    // upsert each permission row
-    const rows = perms.map((p) => ({
-      role_id: id,
-      permission_id: p.id,
-      allowed: !!allowed[p.id],
-    }));
-    const { error } = await supabase
-      .from("role_permissions")
-      .upsert(rows, { onConflict: "role_id,permission_id" });
+    const rows = perms.map((p) => ({ role_id: id, permission_id: p.id, allowed: !!allowed[p.id] }));
+    const { error } = await supabase.from("role_permissions").upsert(rows, { onConflict: "role_id,permission_id" });
     if (error) { setSaving(false); return toast.error(error.message); }
-    // Persist max discount % (skip for Owner — unlimited)
-    const isOwner = /owner/i.test(role?.name ?? "");
-    if (!isOwner) {
+    if (!/owner/i.test(role?.name ?? "")) {
       const pct = Math.max(0, Math.min(100, Number(maxDiscount) || 0));
-      const { error: rErr } = await supabase
-        .from("roles")
-        .update({ max_discount_pct: pct } as any)
-        .eq("id", id);
+      const { error: rErr } = await supabase.from("roles").update({ max_discount_pct: pct } as any).eq("id", id);
       if (rErr) { setSaving(false); return toast.error(rErr.message); }
     }
     setSaving(false);
@@ -194,17 +199,11 @@ function EditRolePage() {
   }
 
   if (loading) return <AppShell title="Edit Role"><div className="text-muted-foreground">Loading…</div></AppShell>;
-
   if (!canAccess) {
     return (
       <AppShell title="Edit Role">
         <Card className="max-w-md">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 text-destructive" />
-              <CardTitle>Access denied</CardTitle>
-            </div>
-          </CardHeader>
+          <CardHeader><div className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-destructive" /><CardTitle>Access denied</CardTitle></div></CardHeader>
         </Card>
       </AppShell>
     );
@@ -218,84 +217,77 @@ function EditRolePage() {
         </Button>
         <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-background/95 backdrop-blur border-b flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight">
-              Edit Permissions — {role?.name ?? "Role"}
-            </h2>
-            {role?.description ? (
-              <p className="text-sm text-muted-foreground">{role.description}</p>
-            ) : null}
+            <h2 className="text-2xl font-semibold tracking-tight">Edit Permissions — {role?.name ?? "Role"}</h2>
+            {role?.description ? <p className="text-sm text-muted-foreground">{role.description}</p> : null}
           </div>
-          {!readOnly && (
-            <Button onClick={save} disabled={saving}>
-              {saving ? "Saving…" : "Save Permissions"}
-            </Button>
-          )}
-          {readOnly && (
-            <span className="text-xs text-muted-foreground">Read only — system role</span>
+          {!readOnly ? (
+            <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save Permissions"}</Button>
+          ) : (
+            <span className="text-xs text-muted-foreground">Read only — protected role</span>
           )}
         </div>
+
+        {!readOnly && !/owner/i.test(role?.name ?? "") && (
+          <Card>
+            <CardContent className="py-3 flex items-center gap-3">
+              <span className="text-sm">Max discount %</span>
+              <Input
+                type="number" min={0} max={100}
+                value={maxDiscount}
+                onChange={(e) => setMaxDiscount(e.target.value)}
+                className="w-24"
+              />
+              <span className="text-xs text-muted-foreground">Cap applied when users with this role apply discounts.</span>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardContent className="p-0">
             <Table style={{ tableLayout: "fixed" }} className="w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead style={{ width: "35%" }}>Module</TableHead>
+                  <TableHead style={{ width: "32%" }}>Module</TableHead>
                   {ACTIONS.map((a) => (
                     <TableHead key={a} style={{ width: "13%" }} className="text-center capitalize">
                       <div className="flex flex-col items-center justify-center gap-1">
                         <span>{a}</span>
-                        <Checkbox
-                          checked={columnAll(a)}
-                          onCheckedChange={(v) => toggleColumn(a, !!v)}
-                          aria-label={`Select all ${a}`}
-                          disabled={readOnly}
-                        />
+                        <Checkbox checked={columnAll(a)} onCheckedChange={(v) => toggleColumn(a, !!v)} disabled={readOnly} aria-label={`Select all ${a}`} />
                       </div>
                     </TableHead>
                   ))}
-                  <TableHead style={{ width: "13%" }} className="text-center">All</TableHead>
+                  <TableHead style={{ width: "16%" }} className="text-center">All</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {SECTIONS.map((section) => (
-                  <Fragment key={section.title}>
-                    <TableRow className="bg-muted/40 hover:bg-muted/40">
-                      <TableCell colSpan={ACTIONS.length + 2} className="font-semibold text-xs uppercase tracking-wider text-muted-foreground py-2">
-                        {section.title}
-                      </TableCell>
+                {SECTIONS.map((sec) => (
+                  <Fragment key={sec.title}>
+                    <TableRow className="bg-muted/40">
+                      <TableCell colSpan={6} className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">{sec.title}</TableCell>
                     </TableRow>
-                    {section.modules.map((mKey) => {
+                    {sec.modules.map((m) => {
                       const rowAll = ACTIONS.every((a) => {
-                        const p = byKey[`${mKey}:${a}`];
+                        const p = byKey[`${m.key}:${a}`];
                         return p ? !!allowed[p.id] : true;
                       });
                       return (
-                        <TableRow key={mKey}>
-                          <TableCell className="font-medium">{MODULE_LABELS[mKey] ?? mKey}</TableCell>
+                        <TableRow key={m.key}>
+                          <TableCell>{m.label}</TableCell>
                           {ACTIONS.map((a) => {
-                            const p = byKey[`${mKey}:${a}`];
+                            const p = byKey[`${m.key}:${a}`];
+                            const enabled = canOwnerToggle(m.key, a);
                             return (
                               <TableCell key={a} className="text-center">
-                                <div className="flex justify-center">
-                                  {p ? (
-                                    <Checkbox
-                                      checked={!!allowed[p.id]}
-                                      onCheckedChange={(v) => toggle(p.id, !!v)}
-                                      disabled={readOnly}
-                                    />
-                                  ) : null}
-                                </div>
+                                <Checkbox
+                                  checked={p ? !!allowed[p.id] : false}
+                                  onCheckedChange={(v) => p && toggle(p.id, !!v)}
+                                  disabled={readOnly || !p || !enabled}
+                                />
                               </TableCell>
                             );
                           })}
                           <TableCell className="text-center">
-                            <div className="flex justify-center">
-                              <Checkbox
-                                checked={rowAll}
-                                onCheckedChange={(v) => toggleRow(mKey, !!v)}
-                                disabled={readOnly}
-                              />
-                            </div>
+                            <Checkbox checked={rowAll} onCheckedChange={(v) => toggleRow(m.key, !!v)} disabled={readOnly} />
                           </TableCell>
                         </TableRow>
                       );
@@ -304,34 +296,6 @@ function EditRolePage() {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Discount Settings</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {/owner/i.test(role?.name ?? "") ? (
-              <p className="text-sm text-muted-foreground">
-                Owner role has <span className="font-medium">unlimited</span> discount ability — no cap applies.
-              </p>
-            ) : (
-              <div className="max-w-xs space-y-1.5">
-                <Label className="text-xs">Max Discount Allowed (%)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={maxDiscount}
-                  onChange={(e) => setMaxDiscount(e.target.value)}
-                  disabled={readOnly}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Users with this role cannot apply a discount above this percentage of the bill.
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
