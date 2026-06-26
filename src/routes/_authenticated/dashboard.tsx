@@ -437,6 +437,7 @@ function OwnerDashboard({
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
               <LegendDot style={{ backgroundColor: "#16a34a" }} label="Vacant" />
               <LegendDot style={{ backgroundColor: "#dc2626" }} label="Occupied" />
+              <LegendDot style={{ backgroundColor: "#b45309" }} label="Overdue" />
               <LegendDot style={{ backgroundColor: "#d97706" }} label="Dirty" />
               <LegendDot style={{ backgroundColor: "#6b7280" }} label="Maintenance" />
               <LegendDot style={{ backgroundColor: "#7c3aed" }} label="Event Block" />
@@ -673,6 +674,7 @@ const STATUS_META: Record<string, { label: string; bg: string }> = {
   dirty:       { label: "Dirty",       bg: "#d97706" },
   maintenance: { label: "Maintenance", bg: "#6b7280" },
   blocked:     { label: "Blocked",     bg: "#6b7280" },
+  overdue:     { label: "OVERDUE",     bg: "#b45309" },
 };
 const EVENT_BLOCK_BG = "#7c3aed";
 const EVENT_IN_BG = "#6d28d9";
@@ -715,7 +717,10 @@ function RoomCard({
 }) {
   const isEventBlock = !!eventInfo && eventInfo.status === "blocked";
   const isEventCheckedIn = !!eventInfo && eventInfo.status === "checked_in";
-  const kind = tileKindExt(room, isOccupied);
+  const baseKind = tileKindExt(room, isOccupied);
+  const todayStr = todayISO();
+  const isOverdue = baseKind === "occupied" && !!occ?.checkOut && occ.checkOut < todayStr;
+  const kind = isOverdue ? "overdue" : baseKind;
   const meta = STATUS_META[kind];
   const hasFood = !!pendingFood && pendingFood.amount > 0;
   const baseBalance = occ?.balance ?? 0;
@@ -813,31 +818,44 @@ function RoomCard({
           <span style={{ color: "#ffffff", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
           <span
             className="font-semibold uppercase tracking-wide rounded-full"
-            style={{ backgroundColor: "rgba(255,255,255,0.25)", color: "#ffffff", fontSize: 10, padding: "2px 7px" }}
+            style={{
+              backgroundColor: kind === "overdue" ? "#dc2626" : "rgba(255,255,255,0.25)",
+              color: "#ffffff", fontSize: 10, padding: "2px 7px",
+            }}
           >
             {meta.label}
           </span>
         </div>
         <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, marginTop: 1 }}>{category}</div>
 
-        {kind === "occupied" && occ && (
+        {(kind === "occupied" || kind === "overdue") && occ && (
           <>
             <div className="truncate" style={{ color: "#ffffff", fontSize: 13, fontWeight: 700, marginTop: 2 }}>
               {occ.guestName ?? "Guest"}
             </div>
-            <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 11 }}>
-              {fmtShort(occ.checkIn)} → {fmtShort(occ.checkOut)}
-            </div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: pending > 0 ? "#fbbf24" : "rgba(255,255,255,0.9)" }}>
+            {kind === "overdue" ? (
+              <div style={{ color: "#fecaca", fontSize: 11, fontWeight: 600 }}>
+                Due: {fmtShort(occ.checkOut)} ⚠️
+              </div>
+            ) : (
+              <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 11 }}>
+                {fmtShort(occ.checkIn)} → {fmtShort(occ.checkOut)}
+              </div>
+            )}
+            <div style={{ fontSize: 12, fontWeight: 700, color: kind === "overdue" ? "#fecaca" : (pending > 0 ? "#fbbf24" : "rgba(255,255,255,0.9)") }}>
               {pending > 0 ? `₹${pending.toLocaleString("en-IN")} pending` : "Balance ₹0"}
             </div>
             <div className="mt-auto pt-1">
               <button
                 type="button"
-                style={{ backgroundColor: "#ffffff", color: meta.bg, borderRadius: 4, padding: "3px 10px", fontSize: 11, fontWeight: 600, border: "none" }}
+                style={{
+                  backgroundColor: kind === "overdue" ? "#dc2626" : "#ffffff",
+                  color: kind === "overdue" ? "#ffffff" : meta.bg,
+                  borderRadius: 4, padding: "3px 10px", fontSize: 11, fontWeight: 700, border: "none",
+                }}
                 onClick={(e) => { e.stopPropagation(); onCheckout(occ.bookingId); }}
               >
-                Checkout
+                {kind === "overdue" ? "Checkout Now" : "Checkout"}
               </button>
             </div>
           </>
@@ -850,7 +868,7 @@ function RoomCard({
         )}
       </div>
 
-      {hasFood && kind === "occupied" && (
+      {hasFood && (kind === "occupied" || kind === "overdue") && (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onPickFood(); }}

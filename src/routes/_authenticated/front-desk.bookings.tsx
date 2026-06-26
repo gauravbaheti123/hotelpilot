@@ -155,9 +155,13 @@ function BookingsPage() {
                         ₹{Number(r.balance_amount).toLocaleString("en-IN")}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={BOOKING_STATUS_TONE[r.status]}>
-                          {BOOKING_STATUS_LABEL[r.status] ?? r.status}
-                        </Badge>
+                        {r.status === "checked_in" && r.check_out < new Date().toISOString().slice(0,10) ? (
+                          <Badge className="bg-[#b45309] text-white border-transparent font-bold">OVERDUE</Badge>
+                        ) : (
+                          <Badge variant="outline" className={BOOKING_STATUS_TONE[r.status]}>
+                            {BOOKING_STATUS_LABEL[r.status] ?? r.status}
+                          </Badge>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
