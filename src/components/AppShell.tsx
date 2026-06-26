@@ -218,10 +218,11 @@ function NavEntry({ item, currentPath }: { item: NavItem; currentPath: string })
 function AppShellInner({ title, children }: { title: string; children: ReactNode }) {
   const router = useRouter();
   const { user, roles } = useAuth();
-  const isSuperadmin = roles.includes("superadmin");
+  // Superadmin sidebar is reserved for the platform owner email ONLY.
+  // Do NOT derive this from role names, permission counts, or property_id.
   const isPlatformSuper =
-    isSuperadmin ||
     (user?.email ?? "").toLowerCase() === "growth@hotelpilot.in";
+  const isSuperadmin = isPlatformSuper;
   const { isViewing, exit } = useSuperadminView();
   const inAdminMode = isPlatformSuper && !isViewing;
   const isOwner = roles.includes("owner") || isSuperadmin;
