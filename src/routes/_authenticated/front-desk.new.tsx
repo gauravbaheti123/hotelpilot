@@ -145,6 +145,14 @@ function NewBookingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search?.roomId, rooms.length]);
 
+  // Pre-fill stay dates from search params (event flow)
+  useEffect(() => {
+    if (search?.checkIn) setCheckIn(search.checkIn);
+    if (search?.checkOut) setCheckOut(search.checkOut);
+    if (search?.eventId && source === "walk_in") setSource("event");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search?.checkIn, search?.checkOut, search?.eventId]);
+
   // Debounced guest search
   const debounceRef = useRef<number | null>(null);
   useEffect(() => {
