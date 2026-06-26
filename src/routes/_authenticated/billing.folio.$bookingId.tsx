@@ -693,86 +693,13 @@ function FolioPage() {
     setCheckoutOpen(true);
   }
 
-  async function downloadPdf() {
+  function handleDownloadPDF() {
     if (!folio || !booking) return;
-    setDownloading(true);
-    const propsToSanitize = [
-      "color", "backgroundColor",
-      "borderColor", "borderTopColor",
-      "borderBottomColor", "borderLeftColor",
-      "borderRightColor", "outlineColor",
-      "textDecorationColor", "boxShadow",
-    ] as const;
-    const hasUnsupportedColor = (value: string | undefined | null) => (
-      typeof value === "string" && (
-        value.includes("oklab") ||
-        value.includes("oklch") ||
-        value.includes("color(")
-      )
-    );
-    const fallbackFor = (prop: string, value: string) => {
-      if (prop === "color" || prop === "textDecorationColor") return "#000000";
-      if (prop === "backgroundColor" && value !== "rgba(0, 0, 0, 0)" && value !== "transparent") return "#ffffff";
-      if (prop === "boxShadow") return "none";
-      return "#1D9E75";
-    };
-    const originalStyles: Array<Record<string, string>> = [];
-    let elementsToRestore: HTMLElement[] = [];
-    try {
-      const node = document.getElementById("invoice-content");
-      if (!node) throw new Error("Invoice element not found");
-      elementsToRestore = [node as HTMLElement, ...Array.from(node.querySelectorAll<HTMLElement>("*"))];
-      elementsToRestore.forEach((el, index) => {
-        const computed = window.getComputedStyle(el);
-        originalStyles[index] = {};
-        propsToSanitize.forEach((prop) => {
-          const val = computed[prop];
-          const inlineVal = (el.style as any)[prop] as string | undefined;
-          if (hasUnsupportedColor(val) || hasUnsupportedColor(inlineVal)) {
-            originalStyles[index][prop] = inlineVal ?? "";
-            (el.style as any)[prop] = fallbackFor(prop, val || inlineVal || "");
-          }
-        });
-      });
-      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-        import("html2canvas"),
-        import("jspdf"),
-      ]);
-      const canvas = await html2canvas(node, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
-      });
-      const img = canvas.toDataURL("image/jpeg", 0.95);
-      const pdf = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const imgW = pageW;
-      const imgH = (canvas.height * imgW) / canvas.width;
-      let heightLeft = imgH;
-      let position = 0;
-      pdf.addImage(img, "JPEG", 0, position, imgW, imgH);
-      heightLeft -= pageH;
-      while (heightLeft > 0) {
-        position = heightLeft - imgH;
-        pdf.addPage();
-        pdf.addImage(img, "JPEG", 0, position, imgW, imgH);
-        heightLeft -= pageH;
-      }
-      const safeName = (booking.guests?.name ?? "guest").replace(/[^\w]+/g, "");
-      pdf.save(`${folio.invoice_number}-${safeName}.pdf`);
-    } catch (e: any) {
-      toast.error(e.message ?? "Could not generate PDF");
-    } finally {
-      elementsToRestore.forEach((el, index) => {
-        Object.keys(originalStyles[index] || {}).forEach((prop) => {
-          (el.style as any)[prop] = originalStyles[index][prop];
-        });
-      });
-      setDownloading(false);
-    }
+    const prevTitle = document.title;
+    const safeName = (booking.guests?.name ?? "guest").replace(/[^\w]+/g, "");
+    document.title = `INV-${folio.invoice_number}-${safeName}`;
+    window.print();
+    setTimeout(() => { document.title = prevTitle; }, 500);
   }
 
   function openEmail() {
