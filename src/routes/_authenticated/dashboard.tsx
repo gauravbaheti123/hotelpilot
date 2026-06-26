@@ -24,6 +24,7 @@ import {
 } from "@/lib/eventRoomBlocks";
 import { CalendarDays } from "lucide-react";
 import { SuperadminDashboard as PlatformSuperadminDashboard } from "@/components/SuperadminDashboard";
+import { useSuperadminView } from "@/lib/superadmin-view";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — HotelPilot" }] }),
@@ -32,11 +33,13 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function DashboardRouter() {
   const { user, roles, loading } = useAuth();
+  const { isViewing } = useSuperadminView();
   if (loading) return null;
   const isSuper =
     roles.includes("superadmin") ||
     (user?.email ?? "").toLowerCase() === "growth@hotelpilot.in";
-  return isSuper ? <PlatformSuperadminDashboard /> : <DashboardPage />;
+  if (isSuper && !isViewing) return <PlatformSuperadminDashboard />;
+  return <DashboardPage />;
 }
 
 type Room = {
