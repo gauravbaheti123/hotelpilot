@@ -256,57 +256,9 @@ function BookingDetailPage() {
     load();
   }
 
-  async function checkOut() {
-    if (!b) return;
-    // Phase 4: checkout lock — block while any KOT is open/printed/served
-    const { data: openKots, error: kErr } = await supabase
-      .from("kot_orders")
-      .select("id,kot_number,status")
-      .eq("booking_id", b.id)
-      .in("status", ["open", "printed", "served"]);
-    if (kErr) return toast.error(kErr.message);
-    if (openKots && openKots.length > 0) {
-      toast.error(
-        `Cannot check out — ${openKots.length} KOT pending (${openKots.map((k: any) => k.kot_number).join(", ")}). Mark them billed or void first.`,
-      );
-      return;
-    }
-    if (b.balance_amount > 0) {
-      if (!confirm(`Balance of ₹${b.balance_amount} is pending. Check out anyway?`)) return;
-    }
-    const now = new Date().toISOString();
-    const { error } = await supabase.from("bookings").update({
-      status: "checked_out" as any,
-      checked_out_at: now,
-      checked_out_by: user?.id ?? null,
-    }).eq("id", b.id);
-    if (error) return toast.error(error.message);
-    for (const br of b.booking_rooms) {
-      if (br.room_id) {
-        await supabase.from("rooms").update({
-          status: "vacant" as any,
-          housekeeping_status: "dirty" as any,
-        }).eq("id", br.room_id);
-      }
-      await supabase.from("booking_rooms").update({ actual_check_out: now }).eq("id", br.id);
-    }
-    toast.success("Checked out");
-    logActivity({
-      property_id: b.property_id,
-      user_id: user?.id ?? "",
-      user_name: userDisplayName(user as any),
-      ...ACTIVITY.CHECKOUT,
-      reference_id: b.id,
-      reference_label: `${b.booking_number} — ${b.guests?.name ?? ""}`,
-    });
-    fireTrigger("checkout_bill", {
-      property_id: b.property_id,
-      booking_id: b.id,
-      guest_id: b.guests?.id ?? null,
-      phone: b.guests?.mobile ?? null,
-    });
-    load();
-  }
+  // Lightweight checkOut() removed: all checkouts MUST flow through
+  // <CheckoutDialog/>, which reads live folio balance (not the stale
+  // bookings.balance_amount) and enforces the pending-KOT lock.
 
   function openShift(brId: string) {
     setShiftBrId(brId);
@@ -479,6 +431,57 @@ function BookingDetailPage() {
     for (const r of b.booking_rooms) {
       await supabase.from("booking_rooms").update({ check_out: newCheckOut }).eq("id", r.id);
     }
+
+    // === Recalculate folio room charges for the new night count ===
+    try {
+      const { data: folioId } = await supabase.rpc("get_or_create_folio", { _booking_id: b.id });
+      const fId = folioId as unknown as string;
+      // Delete existing auto-seeded room charge rows
+      await supabase
+        .from("folio_charges")
+        .delete()
+        .eq("folio_id", fId)
+        .eq("charge_type", "room")
+        .eq("source_table", "booking_rooms");
+      // Reinsert room charges for new night count
+      const rows = b.booking_rooms.map((br) => {
+        const n = Math.max(
+          1,
+          Math.round(
+            (new Date(newCheckOut).getTime() - new Date(br.check_in).getTime()) / 86400000,
+          ),
+        );
+        const amt = n * Number(br.rate);
+        return {
+          folio_id: fId,
+          charge_type: "room",
+          description: `Room ${br.rooms?.room_number ?? ""} · ${br.room_categories?.name ?? ""} · ${n} night(s)`,
+          qty: n,
+          rate: Number(br.rate),
+          amount: amt,
+          gst_rate: 12,
+          gst_amount: Math.round(amt * 12) / 100,
+          source_table: "booking_rooms",
+          source_id: br.id,
+          created_by: user?.id ?? null,
+        };
+      });
+      if (rows.length > 0) {
+        await supabase.from("folio_charges").insert(rows as any);
+      }
+      // Recompute folio totals
+      const { data: allCharges } = await supabase.from("folio_charges").select("*").eq("folio_id", fId);
+      const { data: folio } = await supabase.from("folios").select("gst_mode,paid_amount").eq("id", fId).single();
+      const mode = ((folio as any)?.gst_mode ?? "cash") as "cash" | "gst";
+      const t = recomputeFolio((allCharges ?? []) as any, mode);
+      const paid = Number((folio as any)?.paid_amount ?? 0);
+      await supabase.from("folios").update({
+        ...t, balance_amount: Math.max(0, t.total_amount - paid),
+      }).eq("id", fId);
+    } catch (e) {
+      console.warn("folio extend-stay recalculation failed", e);
+    }
+
     toast.success("Dates updated");
     setDateOpen(false);
     load();

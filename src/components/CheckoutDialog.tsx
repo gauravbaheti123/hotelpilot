@@ -446,18 +446,20 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
 
             <div className="rounded border p-3 space-y-1">
               <div className="text-xs font-medium text-muted-foreground uppercase">Payment Received</div>
-              {advance > 0 && (
-                <div className="flex justify-between"><span>Advance at check-in</span><span>{inr(advance)}</span></div>
-              )}
+              {/* Advance is already inserted into `payments` at check-in, so it shows in the
+                  list below. Do NOT render a separate advance row here (avoid double count). */}
               {payments
                 .filter((p) => Number(p.amount) > 0)
                 .map((p) => (
                   <div key={p.id} className="flex justify-between">
-                    <span className="capitalize">{p.mode}</span>
+                    <span className="capitalize">
+                      {p.mode}
+                      {p.notes ? ` · ${p.notes}` : ""}
+                    </span>
                     <span>{inr(p.amount)}</span>
                   </div>
                 ))}
-              {payments.length === 0 && advance === 0 && (
+              {payments.length === 0 && (
                 <div className="text-xs text-muted-foreground">No payments yet</div>
               )}
               <div className="flex justify-between border-t pt-2 font-semibold">

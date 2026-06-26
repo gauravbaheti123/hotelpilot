@@ -200,7 +200,7 @@ function OwnerDashboard({
       supabase.from("bookings").select("id, booking_number, balance_amount, guest_id, guests:guest_id(name), booking_rooms(rooms(room_number))")
         .eq("property_id", propertyId).in("status", ["reserved", "checked_in"]).eq("check_in", date),
       supabase.from("bookings").select("id, booking_number, balance_amount, guest_id, guests:guest_id(name), booking_rooms(rooms(room_number))")
-        .eq("property_id", propertyId).in("status", ["checked_in", "checked_out"]).eq("check_out", date),
+        .eq("property_id", propertyId).eq("status", "checked_in").eq("check_out", date),
       supabase.from("payments").select("amount").eq("property_id", propertyId)
         .gte("paid_at", `${date}T00:00:00`).lte("paid_at", `${date}T23:59:59`),
       supabase.from("rooms").select("id, room_number, status, housekeeping_status, category_id")
@@ -375,7 +375,22 @@ function OwnerDashboard({
         </Card>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Kpi label="Occupied Rooms" value={kpi.occupied} icon={BedDouble} />
-          <Kpi label="Available Rooms" value={Math.max(0, rooms.length - kpi.occupied)} icon={DoorOpen} />
+          <Kpi
+            label="Available Rooms"
+            value={Math.max(
+              0,
+              rooms.length -
+                kpi.occupied -
+                rooms.filter(
+                  (r) =>
+                    r.status === "maintenance" ||
+                    r.status === "blocked" ||
+                    r.housekeeping_status === "dirty" ||
+                    r.housekeeping_status === "out_of_order",
+                ).length,
+            )}
+            icon={DoorOpen}
+          />
           <Kpi label="Expected Arrivals" value={kpi.arrivals} icon={LogIn} />
           <Kpi label="Expected Departures" value={kpi.departures} icon={LogOut} />
         </div>
