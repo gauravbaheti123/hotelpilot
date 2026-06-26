@@ -404,12 +404,18 @@ export type Database = {
           check_out: string
           children: number
           created_at: string
+          end_date: string | null
           extra_beds: number
           id: string
           meal_plan: Database["public"]["Enums"]["meal_plan"]
           property_id: string
           rate: number
           room_id: string | null
+          shifted_at: string | null
+          shifted_by: string | null
+          shifted_to_room_id: string | null
+          start_date: string
+          status: string
           tariff_id: string | null
           updated_at: string
         }
@@ -423,12 +429,18 @@ export type Database = {
           check_out: string
           children?: number
           created_at?: string
+          end_date?: string | null
           extra_beds?: number
           id?: string
           meal_plan?: Database["public"]["Enums"]["meal_plan"]
           property_id: string
           rate?: number
           room_id?: string | null
+          shifted_at?: string | null
+          shifted_by?: string | null
+          shifted_to_room_id?: string | null
+          start_date?: string
+          status?: string
           tariff_id?: string | null
           updated_at?: string
         }
@@ -442,12 +454,18 @@ export type Database = {
           check_out?: string
           children?: number
           created_at?: string
+          end_date?: string | null
           extra_beds?: number
           id?: string
           meal_plan?: Database["public"]["Enums"]["meal_plan"]
           property_id?: string
           rate?: number
           room_id?: string | null
+          shifted_at?: string | null
+          shifted_by?: string | null
+          shifted_to_room_id?: string | null
+          start_date?: string
+          status?: string
           tariff_id?: string | null
           updated_at?: string
         }
@@ -476,6 +494,13 @@ export type Database = {
           {
             foreignKeyName: "booking_rooms_room_id_fkey"
             columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_rooms_shifted_to_room_id_fkey"
+            columns: ["shifted_to_room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
             referencedColumns: ["id"]
@@ -3783,6 +3808,33 @@ export type Database = {
           },
         ]
       }
+      system_logs: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          message: string | null
+          payload: Json | null
+          property_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          message?: string | null
+          payload?: Json | null
+          property_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          message?: string | null
+          payload?: Json | null
+          property_id?: string | null
+        }
+        Relationships: []
+      }
       tariff_plans: {
         Row: {
           category_id: string | null
@@ -4128,6 +4180,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_cancel_incomplete_bookings: { Args: never; Returns: number }
       can_billing: { Args: { _user_id: string }; Returns: boolean }
       can_food: { Args: { _user_id: string }; Returns: boolean }
       can_front_desk: { Args: { _user_id: string }; Returns: boolean }
