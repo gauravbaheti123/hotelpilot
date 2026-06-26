@@ -706,8 +706,18 @@ function RoomCard({
   if (isEventBlock || isEventCheckedIn) {
     return (
       <div
-        role="button" tabIndex={0} onClick={onPick}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPick(); }}
+        // Event-checked-in rooms also live in `occupiedRoomIds`, so clicking
+        // their tile opens the occupied modal via the normal path. Event-block
+        // (no guest yet) tiles handle all actions through the inline buttons,
+        // so we deliberately do NOT bind a background click — opening the
+        // generic vacant modal here would offer "New Booking", which the spec
+        // forbids for event-blocked rooms.
+        role={isEventCheckedIn ? "button" : undefined}
+        tabIndex={isEventCheckedIn ? 0 : -1}
+        onClick={isEventCheckedIn ? onPick : undefined}
+        onKeyDown={isEventCheckedIn
+          ? (e) => { if (e.key === "Enter" || e.key === " ") onPick(); }
+          : undefined}
         className="relative rounded-lg shadow-sm hover:shadow-md transition cursor-pointer overflow-hidden"
         style={{ backgroundColor: EVENT_BG, color: "#ffffff", minHeight: 120 }}
       >
