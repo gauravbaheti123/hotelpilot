@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { ShieldAlert, UserPlus, KeyRound, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { createStaffUser, resetStaffPassword, deleteStaffUser } from "@/lib/staff-users.functions";
@@ -22,12 +23,13 @@ export const Route = createFileRoute("/_authenticated/superadmin/users")({
 });
 
 interface Property { id: string; name: string }
-interface RoleOption { id: string; name: string }
+interface RoleOption { id: string; name: string; property_id: string | null }
 interface AssignRow {
   ur_id: string;
   user_id: string;
   email: string;
   name: string;
+  is_active: boolean;
   property_id: string | null;
   property_name: string;
   role_id: string | null;
@@ -74,20 +76,37 @@ function UsersPage() {
   }, [loading, canAccess, navigate]);
 
   async function load() {
+    let urQuery = supabase.from("user_roles").select("id,user_id,role_id,property_id,role");
+    if (!isSuperadmin && currentPropertyId) {
+      urQuery = urQuery.eq("property_id", currentPropertyId);
+    }
+    let roleQuery = supabase.from("roles").select("id,name,property_id").order("name");
+    if (currentPropertyId) {
+      roleQuery = roleQuery.or(`property_id.is.null,property_id.eq.${currentPropertyId}`);
+    }
     const [{ data: props }, { data: rs }, { data: urs }] = await Promise.all([
       supabase.from("properties").select("id,name").order("name"),
-      supabase.from("roles").select("id,name").order("name"),
-      supabase.from("user_roles").select("id,user_id,role_id,property_id,role"),
+      roleQuery,
+      urQuery,
     ]);
     setProperties((props ?? []) as Property[]);
-    setRoleOptions((rs ?? []) as RoleOption[]);
+    // Exclude Owner/Superadmin templates from assignable list
+    setRoleOptions(((rs ?? []) as RoleOption[]).filter(
+      (r) => !/^(owner|superadmin)$/i.test(r.name)
+    ));
 
     const userIds = Array.from(new Set((urs ?? []).map((u: any) => u.user_id)));
     const emails: Record<string, string> = {};
     const names: Record<string, string> = {};
+    const actives: Record<string, boolean> = {};
     if (userIds.length) {
-      const { data: profs } = await supabase.from("profiles").select("id,email,name").in("id", userIds);
-      for (const p of profs ?? []) { emails[p.id] = p.email ?? ""; names[p.id] = (p as any).name ?? ""; }
+      const { data: profs } = await supabase
+        .from("profiles").select("id,email,name,is_active").in("id", userIds);
+      for (const p of profs ?? []) {
+        emails[p.id] = (p as any).email ?? "";
+        names[p.id] = (p as any).name ?? "";
+        actives[p.id] = (p as any).is_active ?? true;
+      }
     }
     const propsMap: Record<string, string> = {};
     for (const p of props ?? []) propsMap[p.id] = p.name;
@@ -96,8 +115,9 @@ function UsersPage() {
       (urs ?? []).map((u: any) => ({
         ur_id: u.id,
         user_id: u.user_id,
-        email: emails[u.user_id] ?? u.user_id,
+        email: emails[u.user_id] || "—",
         name: names[u.user_id] ?? "",
+        is_active: actives[u.user_id] ?? true,
         property_id: u.property_id,
         property_name: u.property_id ? (propsMap[u.property_id] ?? "—") : "All (global)",
         role_id: u.role_id,
@@ -106,7 +126,7 @@ function UsersPage() {
     );
   }
 
-  useEffect(() => { if (canAccess) load(); }, [canAccess]);
+  useEffect(() => { if (canAccess) load(); }, [canAccess, currentPropertyId]);
 
   // Owners only see/manage assignments scoped to a property they belong to and below their level.
   const visibleRows = useMemo(() => {
@@ -122,7 +142,16 @@ function UsersPage() {
   async function assign(ur_id: string, role_id: string) {
     const { error } = await supabase.from("user_roles").update({ role_id: role_id || null }).eq("id", ur_id);
     if (error) return toast.error(error.message);
-    toast.success("Role assigned");
+    const r = rows.find((x) => x.ur_id === ur_id);
+    toast.success(`Role updated${r?.name ? ` for ${r.name}` : ""}`);
+    load();
+  }
+
+  async function toggleActive(r: AssignRow) {
+    const { error } = await supabase
+      .from("profiles").update({ is_active: !r.is_active }).eq("id", r.user_id);
+    if (error) return toast.error(error.message);
+    toast.success(!r.is_active ? "User activated" : "User deactivated");
     load();
   }
 
@@ -192,8 +221,8 @@ function UsersPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Property</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Template</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -208,8 +237,12 @@ function UsersPage() {
                   <TableRow key={r.ur_id}>
                     <TableCell className="font-medium">{r.name || "—"}</TableCell>
                     <TableCell>{r.email}</TableCell>
-                    <TableCell>{r.property_name}</TableCell>
                     <TableCell className="capitalize">{r.role}</TableCell>
+                    <TableCell>
+                      {r.is_active
+                        ? <Badge className="bg-green-600 hover:bg-green-600">Active</Badge>
+                        : <Badge variant="secondary">Inactive</Badge>}
+                    </TableCell>
                     <TableCell>
                       <Select value={r.role_id ?? ""} onValueChange={(v) => assign(r.ur_id, v)} disabled={!editable}>
                         <SelectTrigger className="w-52"><SelectValue placeholder="Select template…" /></SelectTrigger>
@@ -224,6 +257,9 @@ function UsersPage() {
                       <Button size="sm" variant="outline" disabled={!editable}
                         onClick={() => { setResetTarget(r); setResetPw(randomPassword()); }}>
                         <KeyRound className="h-3.5 w-3.5 mr-1" /> Reset
+                      </Button>
+                      <Button size="sm" variant="outline" disabled={!editable} onClick={() => toggleActive(r)}>
+                        {r.is_active ? "Deactivate" : "Activate"}
                       </Button>
                       <Button size="sm" variant="destructive" disabled={!editable} onClick={() => onDelete(r)}>
                         <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
