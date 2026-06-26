@@ -653,13 +653,17 @@ function RoomGroups({
   );
 }
 
-const STATUS_META: Record<string, { label: string; bar: string; badgeBg: string; badgeText: string }> = {
-  vacant:      { label: "Vacant",      bar: "#22c55e", badgeBg: "#dcfce7", badgeText: "#166534" },
-  occupied:    { label: "Occupied",    bar: "#3b82f6", badgeBg: "#dbeafe", badgeText: "#1e40af" },
-  dirty:       { label: "Dirty",       bar: "#f59e0b", badgeBg: "#fef3c7", badgeText: "#92400e" },
-  maintenance: { label: "Maintenance", bar: "#ef4444", badgeBg: "#fee2e2", badgeText: "#991b1b" },
-  blocked:     { label: "Blocked",     bar: "#6b7280", badgeBg: "#e5e7eb", badgeText: "#374151" },
+// === Batch 2: solid-colour room tiles. Each kind paints its full background.
+// Hex only — these values are read directly by inline style so we never depend
+// on Tailwind color utilities (and we keep the same palette the user signed off).
+const STATUS_META: Record<string, { label: string; bg: string }> = {
+  vacant:      { label: "Vacant",      bg: "#16a34a" },
+  occupied:    { label: "Occupied",    bg: "#dc2626" },
+  dirty:       { label: "Dirty",       bg: "#d97706" },
+  maintenance: { label: "Maintenance", bg: "#6b7280" },
+  blocked:     { label: "Blocked",     bg: "#6b7280" },
 };
+const EVENT_BG = "#7c3aed";
 
 function tileKindExt(r: Room, isOccupied: boolean): keyof typeof STATUS_META {
   if (isOccupied || r.status === "occupied") return "occupied";
@@ -702,28 +706,39 @@ function RoomCard({
   if (isEventBlock || isEventCheckedIn) {
     return (
       <div
-        role="button" tabIndex={0} onClick={onPick}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPick(); }}
-        className="relative rounded-lg border bg-card shadow-sm hover:shadow-md transition cursor-pointer overflow-hidden"
-        style={{ borderLeft: "4px solid #7C3AED", minHeight: 120 }}
+        // Event-checked-in rooms also live in `occupiedRoomIds`, so clicking
+        // their tile opens the occupied modal via the normal path. Event-block
+        // (no guest yet) tiles handle all actions through the inline buttons,
+        // so we deliberately do NOT bind a background click — opening the
+        // generic vacant modal here would offer "New Booking", which the spec
+        // forbids for event-blocked rooms.
+        role={isEventCheckedIn ? "button" : undefined}
+        tabIndex={isEventCheckedIn ? 0 : -1}
+        onClick={isEventCheckedIn ? onPick : undefined}
+        onKeyDown={isEventCheckedIn
+          ? (e) => { if (e.key === "Enter" || e.key === " ") onPick(); }
+          : undefined}
+        className="relative rounded-lg shadow-sm hover:shadow-md transition cursor-pointer overflow-hidden"
+        style={{ backgroundColor: EVENT_BG, color: "#ffffff", minHeight: 120 }}
       >
         <div className="p-3 space-y-1">
           <div className="flex items-start justify-between gap-2">
-            <div className="text-2xl font-bold leading-none">{room.room_number}</div>
-            <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full text-white"
-              style={{ backgroundColor: "#7C3AED" }}>
+            <div className="text-2xl font-bold leading-none" style={{ color: "#ffffff" }}>{room.room_number}</div>
+            <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: "rgba(255,255,255,0.18)", color: "#ffffff" }}>
               {isEventCheckedIn ? "Event · In" : "Event Block"}
             </span>
           </div>
-          <div className="text-xs text-muted-foreground">{category}</div>
-          <div className="text-sm font-semibold truncate">{eventInfo!.eventName}</div>
-          <div className={`text-xs truncate ${eventInfo!.guestName ? "" : "text-muted-foreground italic"}`}>
+          <div className="text-xs" style={{ color: "rgba(255,255,255,0.85)" }}>{category}</div>
+          <div className="text-sm font-semibold truncate" style={{ color: "#ffffff" }}>{eventInfo!.eventName}</div>
+          <div className="text-xs truncate" style={{ color: eventInfo!.guestName ? "#ffffff" : "rgba(255,255,255,0.75)", fontStyle: eventInfo!.guestName ? "normal" : "italic" }}>
             {eventInfo!.guestName ?? "Guest Unassigned"}
           </div>
-          <div className="text-xs text-muted-foreground">{fmtShort(eventInfo!.checkin)} → {fmtShort(eventInfo!.checkout)}</div>
+          <div className="text-xs" style={{ color: "rgba(255,255,255,0.85)" }}>{fmtShort(eventInfo!.checkin)} → {fmtShort(eventInfo!.checkout)}</div>
           <div className="pt-1 flex flex-wrap gap-1">
             {isEventBlock && !eventInfo!.guestName && (
               <Button size="sm" variant="outline" className="h-7 text-xs"
+                style={{ backgroundColor: "#ffffff", color: EVENT_BG, borderColor: "#ffffff" }}
                 onClick={(e) => { e.stopPropagation(); onAssignEvent({
                   id: eventInfo!.blockId, banquet_booking_id: eventInfo!.banquetBookingId,
                   event_name: eventInfo!.eventName, room_id: room.id,
@@ -735,6 +750,7 @@ function RoomCard({
             )}
             {isEventBlock && (
               <Button size="sm" className="h-7 text-xs"
+                style={{ backgroundColor: "#ffffff", color: EVENT_BG }}
                 onClick={(e) => { e.stopPropagation(); onEventCheckIn({
                   id: eventInfo!.blockId, banquet_booking_id: eventInfo!.banquetBookingId,
                   event_name: eventInfo!.eventName, room_id: room.id,
@@ -746,6 +762,7 @@ function RoomCard({
             )}
             {isEventCheckedIn && eventInfo!.bookingId && (
               <Button size="sm" className="h-7 text-xs"
+                style={{ backgroundColor: "#ffffff", color: EVENT_BG }}
                 onClick={(e) => { e.stopPropagation(); onCheckout(eventInfo!.bookingId); }}>Checkout</Button>
             )}
           </div>
@@ -760,18 +777,18 @@ function RoomCard({
       tabIndex={0}
       onClick={onPick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPick(); }}
-      className="relative rounded-lg border bg-card shadow-sm hover:shadow-md transition cursor-pointer overflow-hidden"
-      style={{ borderLeft: `4px solid ${meta.bar}`, minHeight: 120 }}
+      className="relative rounded-lg shadow-sm hover:shadow-md transition cursor-pointer overflow-hidden"
+      style={{ backgroundColor: meta.bg, color: "#ffffff", minHeight: 120 }}
     >
-      <div className="p-3">
+      <div className="p-3 pb-2">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <div className="text-2xl font-bold leading-none">{room.room_number}</div>
-            <div className="text-xs text-muted-foreground mt-1">{category}</div>
+            <div className="text-2xl font-bold leading-none" style={{ color: "#ffffff" }}>{room.room_number}</div>
+            <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.85)" }}>{category}</div>
           </div>
           <span
             className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: meta.badgeBg, color: meta.badgeText }}
+            style={{ backgroundColor: "rgba(255,255,255,0.20)", color: "#ffffff" }}
           >
             {meta.label}
           </span>
@@ -779,31 +796,21 @@ function RoomCard({
 
         {kind === "occupied" && occ && (
           <div className="mt-3 space-y-1">
-            <div className="text-sm font-medium truncate">{occ.guestName ?? "Guest"}</div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-sm font-semibold truncate" style={{ color: "#ffffff" }}>{occ.guestName ?? "Guest"}</div>
+            <div className="text-xs" style={{ color: "rgba(255,255,255,0.9)" }}>
               {fmtShort(occ.checkIn)} → {fmtShort(occ.checkOut)}
             </div>
-            <div className="flex items-center gap-2 flex-wrap mt-1">
-              {pending > 0 && (
-                <span className="text-xs font-semibold text-red-600">
-                  ₹{pending.toLocaleString("en-IN")} pending
-                </span>
-              )}
-              {hasFood && (
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onPickFood(); }}
-                  className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 hover:bg-amber-200"
-                  title="View pending food orders"
-                >
-                  <UtensilsCrossed className="h-3 w-3" /> Food
-                </button>
-              )}
+            <div className="text-xs font-semibold"
+              style={{ color: pending > 0 ? "#fde047" : "#ffffff" }}>
+              {pending > 0
+                ? `₹${pending.toLocaleString("en-IN")} pending`
+                : "Balance ₹0"}
             </div>
             <div className="pt-2">
               <Button
                 size="sm"
                 className="h-7 text-xs"
+                style={{ backgroundColor: "#ffffff", color: meta.bg }}
                 onClick={(e) => { e.stopPropagation(); onCheckout(occ.bookingId); }}
               >
                 Checkout
@@ -812,6 +819,22 @@ function RoomCard({
           </div>
         )}
       </div>
+
+      {/* Batch 2 #8 — pending food strip at the bottom of the tile.
+          Click opens the KOT list scoped to this room. */}
+      {hasFood && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onPickFood(); }}
+          className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-semibold"
+          style={{ backgroundColor: "#fbbf24", color: "#78350f" }}
+          title="View pending food orders"
+        >
+          <UtensilsCrossed className="h-3.5 w-3.5" />
+          ₹{pendingFood!.amount.toLocaleString("en-IN")}
+          <span style={{ opacity: 0.75, fontWeight: 500 }}>· {pendingFood!.count} KOT{pendingFood!.count === 1 ? "" : "s"}</span>
+        </button>
+      )}
     </div>
   );
 }
