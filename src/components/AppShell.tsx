@@ -189,6 +189,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Settings",
     items: [
+      { to: "/settings/hotel", label: "Hotel / Business", icon: Settings, requireOwner: true },
       { to: "/settings/whatsapp", label: "WhatsApp / AiSensy", icon: Settings, module: "settings_whatsapp" },
     ],
   },
