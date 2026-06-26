@@ -741,7 +741,7 @@ function NewBookingPage() {
                 </SelectContent>
               </Select>
             </F>
-            <F label="Rate / night (₹)"><Input type="number" value={rate} onChange={(e) => setRate(Number(e.target.value))} /></F>
+            <F label="Rate / night (₹)"><Input type="number" value={rate} onChange={(e) => { setRate(Number(e.target.value)); setRateManuallySet(true); }} /></F>
             <F label="Source">
               <Select value={source} onValueChange={setSource}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
