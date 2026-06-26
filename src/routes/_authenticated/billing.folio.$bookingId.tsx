@@ -1009,6 +1009,7 @@ function FolioPage() {
           )}
 
           {/* Title bar */}
+          {!isPremium && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-y px-8 py-3" style={{ background: "#F0FAF6" }}>
             <div className="text-lg font-bold tracking-wide" style={{ color: TEAL_DARK }}>
               {isGst ? "TAX INVOICE" : "CASH BILL / RECEIPT"}
@@ -1019,6 +1020,7 @@ function FolioPage() {
               <div><span className="text-muted-foreground">Booking:</span> <span className="font-semibold">{booking.booking_number}</span></div>
             </div>
           </div>
+          )}
 
           {/* Bill To + Stay */}
           <div className="grid grid-cols-1 gap-0 border-b sm:grid-cols-2">
