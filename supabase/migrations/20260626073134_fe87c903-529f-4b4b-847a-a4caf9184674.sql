@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.tg_bump_guest_visit_count() FROM anon, public;
