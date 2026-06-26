@@ -23,11 +23,21 @@ import {
   type EventBlockSummary, type EventBlockRecord,
 } from "@/lib/eventRoomBlocks";
 import { CalendarDays } from "lucide-react";
+import { SuperadminDashboard } from "@/components/SuperadminDashboard";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — HotelPilot" }] }),
-  component: DashboardPage,
+  component: DashboardRouter,
 });
+
+function DashboardRouter() {
+  const { user, roles, loading } = useAuth();
+  if (loading) return null;
+  const isSuper =
+    roles.includes("superadmin") ||
+    (user?.email ?? "").toLowerCase() === "growth@hotelpilot.in";
+  return isSuper ? <SuperadminDashboard /> : <DashboardPage />;
+}
 
 type Room = {
   id: string;
