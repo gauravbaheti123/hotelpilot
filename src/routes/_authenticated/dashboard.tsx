@@ -373,6 +373,54 @@ function OwnerDashboard({
 
   useEffect(() => { reload(); }, [reload]);
 
+  async function addPendingFoodToBill(bookingId: string) {
+    try {
+      const { data: folioId, error: fErr } = await supabase.rpc("get_or_create_folio", { _booking_id: bookingId });
+      if (fErr || !folioId) throw fErr ?? new Error("Folio not created");
+      const { data: kots, error: kErr } = await supabase
+        .from("kot_orders")
+        .select("id,kot_number,sub_total,gst_amount,total_amount")
+        .eq("booking_id", bookingId)
+        .eq("kot_copy", "hotel_copy")
+        .not("status", "in", "(billed,cancelled,void)");
+      if (kErr) throw kErr;
+      if (!kots || kots.length === 0) { toast.info("No pending KOTs"); return; }
+      const { data: existingCharges } = await supabase
+        .from("folio_charges")
+        .select("source_id")
+        .eq("folio_id", folioId as any)
+        .eq("source_table", "kot_orders");
+      const existing = new Set((existingCharges ?? []).map((c: any) => c.source_id));
+      const toAdd = (kots as any[]).filter((k) => !existing.has(k.id));
+      if (toAdd.length > 0) {
+        const rows = toAdd.map((k) => ({
+          folio_id: folioId,
+          charge_type: "food",
+          description: `Food · ${k.kot_number}`,
+          qty: 1,
+          rate: Number(k.sub_total),
+          amount: Number(k.sub_total),
+          gst_rate: Number(k.sub_total) > 0 ? Math.round((Number(k.gst_amount) / Number(k.sub_total)) * 100) : 5,
+          gst_amount: Number(k.gst_amount),
+          source_table: "kot_orders",
+          source_id: k.id,
+          created_by: userId || null,
+        }));
+        const { error: iErr } = await supabase.from("folio_charges").insert(rows as any);
+        if (iErr) throw iErr;
+      }
+      const { error: uErr } = await supabase
+        .from("kot_orders")
+        .update({ status: "billed", billed_at: new Date().toISOString() } as any)
+        .in("id", (kots as any[]).map((k) => k.id));
+      if (uErr) throw uErr;
+      toast.success(`Added ${kots.length} KOT(s) to bill`);
+      reload();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to add to bill");
+    }
+  }
+
   useEffect(() => {
     if (!propertyId) return;
     supabase.from("staff").select("id, name").eq("property_id", propertyId).eq("is_active", true).order("name")
