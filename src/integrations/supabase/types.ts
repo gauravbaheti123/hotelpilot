@@ -1451,6 +1451,7 @@ export type Database = {
           state: string | null
           tags: string[]
           updated_at: string
+          visit_count: number
           wipe_log_id: string | null
           wiped_at: string | null
         }
@@ -1483,6 +1484,7 @@ export type Database = {
           state?: string | null
           tags?: string[]
           updated_at?: string
+          visit_count?: number
           wipe_log_id?: string | null
           wiped_at?: string | null
         }
@@ -1515,6 +1517,7 @@ export type Database = {
           state?: string | null
           tags?: string[]
           updated_at?: string
+          visit_count?: number
           wipe_log_id?: string | null
           wiped_at?: string | null
         }
@@ -1846,6 +1849,7 @@ export type Database = {
         Row: {
           billed_at: string | null
           booking_id: string | null
+          client_ref: string | null
           created_at: string
           created_by: string | null
           gst_amount: number
@@ -1874,6 +1878,7 @@ export type Database = {
         Insert: {
           billed_at?: string | null
           booking_id?: string | null
+          client_ref?: string | null
           created_at?: string
           created_by?: string | null
           gst_amount?: number
@@ -1902,6 +1907,7 @@ export type Database = {
         Update: {
           billed_at?: string | null
           booking_id?: string | null
+          client_ref?: string | null
           created_at?: string
           created_by?: string | null
           gst_amount?: number
@@ -3337,6 +3343,7 @@ export type Database = {
           created_at: string
           description: string | null
           extra_bed_rate: number
+          gst_rate: number
           hsn_code: string | null
           id: string
           is_active: boolean
@@ -3351,6 +3358,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           extra_bed_rate?: number
+          gst_rate?: number
           hsn_code?: string | null
           id?: string
           is_active?: boolean
@@ -3365,6 +3373,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           extra_bed_rate?: number
+          gst_rate?: number
           hsn_code?: string | null
           id?: string
           is_active?: boolean

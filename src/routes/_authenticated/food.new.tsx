@@ -63,6 +63,15 @@ function NewKotPage() {
   const [notes, setNotes] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [saving, setSaving] = useState(false);
+  // Idempotency: a per-form UUID is sent as `client_ref`. A unique index on
+  // (property_id, client_ref) guarantees that double-clicking Save will not
+  // create a duplicate KOT — the second insert hits 23505 and we recover the
+  // first row instead of inserting again.
+  const [clientRef, setClientRef] = useState<string>(() =>
+    (typeof crypto !== "undefined" && "randomUUID" in crypto)
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
 
   useEffect(() => {
     if (!propertyId) return;
@@ -138,10 +147,30 @@ function NewKotPage() {
         printed_at: printNow ? new Date().toISOString() : null,
         created_by: user?.id ?? null,
         kot_copy: "hotel_copy",
+        client_ref: clientRef,
       };
-      const { data: kot, error } = await supabase
+      let kot: { id: string } | null = null;
+      const { data: kotData, error } = await supabase
         .from("kot_orders").insert(insertPayload as any).select("id").single();
-      if (error) throw error;
+      if (error) {
+        // 23505 = unique_violation on (property_id, client_ref). Treat as
+        // "already created" and return the existing row instead of failing.
+        if ((error as any).code === "23505") {
+          const { data: existing } = await supabase
+            .from("kot_orders")
+            .select("id")
+            .eq("property_id", propertyId)
+            .eq("client_ref", clientRef)
+            .maybeSingle();
+          if (existing) {
+            toast.info("KOT already saved — opening existing copy");
+            router.navigate({ to: "/food/kot/$id", params: { id: existing.id } });
+            return;
+          }
+        }
+        throw error;
+      }
+      kot = kotData;
       const lines = cart.map((c) => ({
         kot_id: kot!.id,
         menu_item_id: c.menu_item_id,
@@ -201,6 +230,12 @@ function NewKotPage() {
       }
 
       toast.success(printNow ? "KOT printed" : "KOT saved");
+      // Rotate the client_ref so the same form can be reused for the next KOT.
+      setClientRef(
+        (typeof crypto !== "undefined" && "randomUUID" in crypto)
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      );
       logActivity({
         property_id: propertyId!,
         user_id: user?.id ?? "",
