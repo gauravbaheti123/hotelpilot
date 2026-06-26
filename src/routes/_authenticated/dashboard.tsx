@@ -641,10 +641,12 @@ function RoomGroups({
     <div className="space-y-4">
       {ordered.map((g) => (
         <div key={g.name} className="space-y-2">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            {g.name} <span className="text-muted-foreground/70 font-normal">· {g.rooms.length}</span>
+          <div className="pb-1.5 border-b border-border/60">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              {g.name} <span className="text-muted-foreground/60 font-normal">· {g.rooms.length}</span>
+            </div>
           </div>
-          <div className="grid gap-3 grid-cols-1 md:grid-cols-3 w-full">
+          <div className="grid gap-2.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 w-full">
             {g.rooms.map((r) => (
               <RoomCard
                 key={r.id}
