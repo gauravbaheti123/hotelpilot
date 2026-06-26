@@ -30,6 +30,7 @@ import { Route as AuthenticatedStaffPayrollRouteImport } from './routes/_authent
 import { Route as AuthenticatedStaffAttendanceHistoryRouteImport } from './routes/_authenticated/staff.attendance-history'
 import { Route as AuthenticatedStaffAttendanceRouteImport } from './routes/_authenticated/staff.attendance'
 import { Route as AuthenticatedSettingsWhatsappRouteImport } from './routes/_authenticated/settings.whatsapp'
+import { Route as AuthenticatedSettingsHotelRouteImport } from './routes/_authenticated/settings.hotel'
 import { Route as AuthenticatedRoomsRoomNumberRouteImport } from './routes/_authenticated/rooms.$roomNumber'
 import { Route as AuthenticatedReportsSalesRouteImport } from './routes/_authenticated/reports.sales'
 import { Route as AuthenticatedReportsRoomWiseRouteImport } from './routes/_authenticated/reports.room-wise'
@@ -204,6 +205,12 @@ const AuthenticatedSettingsWhatsappRoute =
   AuthenticatedSettingsWhatsappRouteImport.update({
     id: '/settings/whatsapp',
     path: '/settings/whatsapp',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSettingsHotelRoute =
+  AuthenticatedSettingsHotelRouteImport.update({
+    id: '/settings/hotel',
+    path: '/settings/hotel',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedRoomsRoomNumberRoute =
@@ -602,6 +609,7 @@ export interface FileRoutesByFullPath {
   '/reports/room-wise': typeof AuthenticatedReportsRoomWiseRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/rooms/$roomNumber': typeof AuthenticatedRoomsRoomNumberRoute
+  '/settings/hotel': typeof AuthenticatedSettingsHotelRoute
   '/settings/whatsapp': typeof AuthenticatedSettingsWhatsappRoute
   '/staff/attendance': typeof AuthenticatedStaffAttendanceRoute
   '/staff/attendance-history': typeof AuthenticatedStaffAttendanceHistoryRoute
@@ -682,6 +690,7 @@ export interface FileRoutesByTo {
   '/reports/room-wise': typeof AuthenticatedReportsRoomWiseRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/rooms/$roomNumber': typeof AuthenticatedRoomsRoomNumberRoute
+  '/settings/hotel': typeof AuthenticatedSettingsHotelRoute
   '/settings/whatsapp': typeof AuthenticatedSettingsWhatsappRoute
   '/staff/attendance': typeof AuthenticatedStaffAttendanceRoute
   '/staff/attendance-history': typeof AuthenticatedStaffAttendanceHistoryRoute
@@ -764,6 +773,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/room-wise': typeof AuthenticatedReportsRoomWiseRoute
   '/_authenticated/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/_authenticated/rooms/$roomNumber': typeof AuthenticatedRoomsRoomNumberRoute
+  '/_authenticated/settings/hotel': typeof AuthenticatedSettingsHotelRoute
   '/_authenticated/settings/whatsapp': typeof AuthenticatedSettingsWhatsappRoute
   '/_authenticated/staff/attendance': typeof AuthenticatedStaffAttendanceRoute
   '/_authenticated/staff/attendance-history': typeof AuthenticatedStaffAttendanceHistoryRoute
@@ -846,6 +856,7 @@ export interface FileRouteTypes {
     | '/reports/room-wise'
     | '/reports/sales'
     | '/rooms/$roomNumber'
+    | '/settings/hotel'
     | '/settings/whatsapp'
     | '/staff/attendance'
     | '/staff/attendance-history'
@@ -926,6 +937,7 @@ export interface FileRouteTypes {
     | '/reports/room-wise'
     | '/reports/sales'
     | '/rooms/$roomNumber'
+    | '/settings/hotel'
     | '/settings/whatsapp'
     | '/staff/attendance'
     | '/staff/attendance-history'
@@ -1007,6 +1019,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/room-wise'
     | '/_authenticated/reports/sales'
     | '/_authenticated/rooms/$roomNumber'
+    | '/_authenticated/settings/hotel'
     | '/_authenticated/settings/whatsapp'
     | '/_authenticated/staff/attendance'
     | '/_authenticated/staff/attendance-history'
@@ -1185,6 +1198,13 @@ declare module '@tanstack/react-router' {
       path: '/settings/whatsapp'
       fullPath: '/settings/whatsapp'
       preLoaderRoute: typeof AuthenticatedSettingsWhatsappRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings/hotel': {
+      id: '/_authenticated/settings/hotel'
+      path: '/settings/hotel'
+      fullPath: '/settings/hotel'
+      preLoaderRoute: typeof AuthenticatedSettingsHotelRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/rooms/$roomNumber': {
@@ -1650,6 +1670,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsRoomWiseRoute: typeof AuthenticatedReportsRoomWiseRoute
   AuthenticatedReportsSalesRoute: typeof AuthenticatedReportsSalesRoute
   AuthenticatedRoomsRoomNumberRoute: typeof AuthenticatedRoomsRoomNumberRoute
+  AuthenticatedSettingsHotelRoute: typeof AuthenticatedSettingsHotelRoute
   AuthenticatedSettingsWhatsappRoute: typeof AuthenticatedSettingsWhatsappRoute
   AuthenticatedStaffAttendanceRoute: typeof AuthenticatedStaffAttendanceRoute
   AuthenticatedStaffAttendanceHistoryRoute: typeof AuthenticatedStaffAttendanceHistoryRoute
@@ -1733,6 +1754,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsRoomWiseRoute: AuthenticatedReportsRoomWiseRoute,
   AuthenticatedReportsSalesRoute: AuthenticatedReportsSalesRoute,
   AuthenticatedRoomsRoomNumberRoute: AuthenticatedRoomsRoomNumberRoute,
+  AuthenticatedSettingsHotelRoute: AuthenticatedSettingsHotelRoute,
   AuthenticatedSettingsWhatsappRoute: AuthenticatedSettingsWhatsappRoute,
   AuthenticatedStaffAttendanceRoute: AuthenticatedStaffAttendanceRoute,
   AuthenticatedStaffAttendanceHistoryRoute:
