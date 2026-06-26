@@ -313,23 +313,41 @@ function BookingDetailPage() {
     const fromRoomId = br.room_id;
     setShiftBusy(true);
 
+    // Mark old booking_room as shifted (audit trail), then create a new active row for the new room.
+    const nowIso = new Date().toISOString();
     const { error: e1 } = await supabase.from("booking_rooms")
-      .update({ room_id: shiftToRoom, rate: newRate, category_id: target?.category_id ?? br.category_id }).eq("id", br.id);
+      .update({
+        status: "shifted",
+        end_date: nowIso,
+        shifted_to_room_id: shiftToRoom,
+        shifted_at: nowIso,
+        shifted_by: user?.id ?? null,
+        actual_check_out: br.actual_check_out ?? nowIso,
+      } as any)
+      .eq("id", br.id);
     if (e1) { setShiftBusy(false); return toast.error(e1.message); }
 
-    // Update folio room charges (if any) for this booking_room to reflect new rate
+    const { data: newBr, error: e1b } = await supabase.from("booking_rooms").insert({
+      booking_id: b.id,
+      room_id: shiftToRoom,
+      category_id: target?.category_id ?? br.category_id,
+      rate: newRate,
+      meal_plan: br.meal_plan,
+      adults: br.adults,
+      children: br.children,
+      check_in: br.check_in,
+      check_out: br.check_out,
+      actual_check_in: nowIso,
+      status: "active",
+      start_date: nowIso,
+    } as any).select("id").single();
+    if (e1b) { setShiftBusy(false); return toast.error(e1b.message); }
+    const newBrId = (newBr as any)?.id as string | undefined;
+
+    // Recompute folio totals at new rate for any still-unposted future nights (existing historical charges remain).
     try {
       const { data: folioId } = await supabase.rpc("get_or_create_folio", { _booking_id: b.id });
       const fId = folioId as unknown as string;
-      const { data: roomCharges } = await supabase.from("folio_charges").select("*")
-        .eq("folio_id", fId).eq("source_table", "booking_rooms").eq("source_id", br.id);
-      for (const rc of (roomCharges ?? []) as any[]) {
-        const qty = Number(rc.qty) || 1;
-        const amount = qty * newRate;
-        const gstAmt = Math.round(amount * Number(rc.gst_rate || 0)) / 100;
-        await supabase.from("folio_charges")
-          .update({ rate: newRate, amount, gst_amount: gstAmt }).eq("id", rc.id);
-      }
       const { data: allCharges } = await supabase.from("folio_charges").select("*").eq("folio_id", fId);
       const { data: folio } = await supabase.from("folios").select("gst_mode,paid_amount").eq("id", fId).single();
       const mode = ((folio as any)?.gst_mode ?? "cash") as "cash" | "gst";
@@ -351,6 +369,7 @@ function BookingDetailPage() {
       tariff_choice: tariffChoice,
       shifted_by: user?.id ?? null,
     } as any);
+    void newBrId;
 
     if (b.status === "checked_in") {
       if (fromRoomId) {
