@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { deleteProperty } from "@/lib/admin-properties.functions";
 import { useServerFn } from "@tanstack/react-start";
+import { enterViewMode } from "@/lib/superadmin-view";
 
 type Prop = {
   id: string;
@@ -167,11 +168,13 @@ export function SuperadminDashboard() {
     load();
   }
 
-  async function viewAs(p: PropRow) {
-    try {
-      localStorage.setItem("hp:current-property", p.id);
-    } catch { /* ignore */ }
-    toast.success(`Viewing as ${p.name}`);
+  const [viewTarget, setViewTarget] = useState<PropRow | null>(null);
+
+  function confirmView() {
+    if (!viewTarget) return;
+    enterViewMode(viewTarget.id);
+    toast.success(`Viewing as ${viewTarget.name}`);
+    setViewTarget(null);
     navigate({ to: "/dashboard" });
     setTimeout(() => window.location.reload(), 50);
   }
@@ -262,7 +265,7 @@ export function SuperadminDashboard() {
                       <TableCell className="text-right">{r.bookings}</TableCell>
                       <TableCell className="text-right">{fmtINR(r.revenue)}</TableCell>
                       <TableCell className="text-right space-x-1">
-                        <Button size="sm" variant="ghost" onClick={() => viewAs(r)} title="View as">
+                        <Button size="sm" variant="ghost" onClick={() => setViewTarget(r)} title="View Hotel">
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button
@@ -362,6 +365,24 @@ export function SuperadminDashboard() {
             <Button variant="ghost" onClick={() => setDelTarget(null)}>Cancel</Button>
             <Button variant="destructive" onClick={confirmDelete} disabled={delConfirm !== delTarget?.name}>
               Delete forever
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!viewTarget} onOpenChange={(o) => { if (!o) setViewTarget(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Switch to {viewTarget?.name} view?</DialogTitle>
+            <DialogDescription>
+              You will see this hotel's dashboard and all data. A banner will let
+              you return to the Admin Dashboard at any time.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setViewTarget(null)}>Cancel</Button>
+            <Button onClick={confirmView}>
+              <Eye className="h-4 w-4 mr-2" /> View Hotel
             </Button>
           </DialogFooter>
         </DialogContent>
