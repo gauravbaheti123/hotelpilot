@@ -207,16 +207,13 @@ function BanquetEventPage() {
   }
 
   async function doCheckIn(block: EventBlockRecord) {
-    if (!b || !user) return;
-    if (!block.guest_name || !block.guest_mobile) return toast.error("Assign a guest first");
-    try {
-      const bookingId = await checkInBlock({ propertyId: b.property_id, block, userId: user.id });
-      toast.success("Checked in");
-      router.navigate({ to: "/front-desk/booking/$id", params: { id: bookingId } });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Check-in failed");
-      load();
-    }
+    if (!b) return;
+    // Open the full New Booking form pre-wired to this event + block,
+    // so the receptionist completes guest, ID, advance, tariff.
+    router.navigate({
+      to: "/front-desk/new",
+      search: { eventId: b.id, blockId: block.id } as any,
+    });
   }
 
   async function doCheckOut(block: EventBlockRecord) {
