@@ -727,8 +727,19 @@ function FolioPage() {
     toast.success("Opening email client — please attach the downloaded PDF before sending");
   }
 
-  const TEAL = "#1D9E75";
-  const TEAL_DARK = "#157A5A";
+  const TEAL = (property as any)?.invoice_primary_color || "#1D9E75";
+  // simple darken: drop hex by ~15%
+  const darken = (hex: string, amt = 0.15) => {
+    const h = hex.replace("#", "");
+    if (h.length !== 6) return hex;
+    const num = parseInt(h, 16);
+    const r = Math.max(0, Math.floor(((num >> 16) & 0xff) * (1 - amt)));
+    const g = Math.max(0, Math.floor(((num >> 8) & 0xff) * (1 - amt)));
+    const b = Math.max(0, Math.floor((num & 0xff) * (1 - amt)));
+    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+  };
+  const TEAL_DARK = darken(TEAL, 0.18);
+  const isPremium = (property as any)?.invoice_template === "premium";
   const isSettled = folio.status === "settled";
   const isVoid = folio.status === "void";
 
