@@ -7,6 +7,7 @@ import { inr } from "@/lib/billing";
 export interface InvoiceProperty {
   name: string;
   legal_entity_name?: string | null;
+  tagline?: string | null;
   gstin?: string | null;
   pan_number?: string | null;
   state?: string | null;
@@ -174,13 +175,20 @@ function headerBlock(ctx: InvoiceContext): string {
   const { property, logoDataUrl } = ctx;
   const logo = logoDataUrl ? `<img class="logo" src="${esc(logoDataUrl)}" alt="logo"/>` : "";
   const color = property.invoice_primary_color || "#1D9E75";
+  const tagline = (property.tagline ?? "").trim();
+  const addressBits = [
+    esc(fullAddress(property)),
+    property.phone ? `Ph: ${esc(property.phone)}` : "",
+    property.email ? `Email: ${esc(property.email)}` : "",
+    property.gstin ? `GSTIN: ${esc(property.gstin)}` : "",
+  ].filter(Boolean).join("  |  ");
   // Premium header — full-width colored band + address bar
   return `
     <div style="background:${color};color:#fff;padding:20px 24px;display:flex;align-items:center;gap:18px">
       ${logoDataUrl ? `<div style="background:#fff;padding:6px;">${logo}</div>` : ""}
       <div style="flex:1;min-width:0">
         <h1 style="color:#fff;font-size:22px;letter-spacing:0.5px">${esc(property.name)}</h1>
-        <div style="font-size:10px;opacity:.9">Hospitality · Experience · Comfort</div>
+        ${tagline ? `<div style="font-size:10px;opacity:.9">${esc(tagline)}</div>` : ""}
       </div>
       <div style="text-align:right">
         <div style="font-size:22px;font-weight:800;letter-spacing:3px">INVOICE</div>
@@ -188,8 +196,7 @@ function headerBlock(ctx: InvoiceContext): string {
       </div>
     </div>
     <div style="background:#f1f3f5;color:#495057;font-size:10px;padding:6px 24px;border-bottom:1px solid #dee2e6">
-      ${[esc(fullAddress(property)), property.phone ? `Ph: ${esc(property.phone)}` : "",
-         property.email ? `Email: ${esc(property.email)}` : ""].filter(Boolean).join("  |  ")}
+      ${addressBits}
     </div>
   `;
 }
@@ -328,12 +335,18 @@ function footerBlock(ctx: InvoiceContext): string {
   const footer = property.invoice_footer ?? "Thank you for staying with us!";
 
   return `
-    ${showSig ? `<div class="sig-row">
-      <div>Guest Signature</div>
-      <div style="text-align:right">For <strong>${esc(property.legal_entity_name || property.name)}</strong><br/>Authorised Signatory</div>
-    </div>` : ""}
+    ${showSig ? `
+      <div style="margin-top:40px;display:flex;justify-content:space-between;gap:32px">
+        <div style="text-align:center;width:200px">
+          <div style="border-top:1px solid #000;padding-top:8px;font-size:12px">Received by</div>
+        </div>
+        <div style="text-align:center;width:200px">
+          <div style="border-top:1px solid #000;padding-top:8px;font-size:12px">Guest Signature</div>
+        </div>
+      </div>
+    ` : ""}
     <p class="center small" style="margin-top:18px">${esc(footer)}</p>
-    ${showPower ? `<div class="powered">Powered by HotelPilot</div>` : ""}
+    ${showPower ? `<div style="text-align:center;font-size:11px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:8px;margin-top:16px">Powered by HotelPilot.in</div>` : ""}
   `;
 }
 

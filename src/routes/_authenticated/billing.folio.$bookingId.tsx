@@ -142,7 +142,7 @@ function FolioPage() {
     setBooking(bk);
 
     const { data: prop } = await supabase.from("properties")
-      .select(`name,legal_entity_name,gstin,pan_number,state,state_code,
+      .select(`name,legal_entity_name,tagline,gstin,pan_number,state,state_code,
         address_line1,address_line2,city,pin_code,phone,email,website,wa_number,logo_url,
         invoice_prefix,invoice_footer,invoice_primary_color,invoice_template,
         invoice_show_hsn,invoice_show_gst_breakup,invoice_show_signature,invoice_show_powered_by,

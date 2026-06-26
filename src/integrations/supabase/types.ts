@@ -2977,6 +2977,7 @@ export type Database = {
           state_code: string | null
           status: string
           sundry_gst_rate: number
+          tagline: string | null
           total_floors: number | null
           total_rooms: number | null
           updated_at: string
@@ -3032,6 +3033,7 @@ export type Database = {
           state_code?: string | null
           status?: string
           sundry_gst_rate?: number
+          tagline?: string | null
           total_floors?: number | null
           total_rooms?: number | null
           updated_at?: string
@@ -3087,6 +3089,7 @@ export type Database = {
           state_code?: string | null
           status?: string
           sundry_gst_rate?: number
+          tagline?: string | null
           total_floors?: number | null
           total_rooms?: number | null
           updated_at?: string

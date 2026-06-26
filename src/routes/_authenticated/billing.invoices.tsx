@@ -140,7 +140,7 @@ function InvoicesPage() {
           {filtered.map((r) => {
             const voided = !!r.is_deleted;
             return (
-              <div key={r.id} className={`flex items-center gap-3 px-4 py-3 ${voided ? "bg-rose-50/30" : "hover:bg-accent"}`}>
+              <div key={r.id} className={`flex items-center gap-3 px-4 py-3 cursor-pointer ${voided ? "bg-rose-50/30" : "hover:bg-muted/50"}`}>
                 <Link to="/billing/folio/$bookingId" params={{ bookingId: r.booking_id }} className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <div className={`font-medium text-sm ${voided ? "line-through text-destructive" : ""}`}>{r.invoice_number}</div>
