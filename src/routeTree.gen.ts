@@ -95,6 +95,7 @@ import { Route as AuthenticatedFoodKotIdRouteImport } from './routes/_authentica
 import { Route as AuthenticatedBillingFolioBookingIdRouteImport } from './routes/_authenticated/billing.folio.$bookingId'
 import { Route as AuthenticatedBanquetEventIdRouteImport } from './routes/_authenticated/banquet.event.$id'
 import { Route as AuthenticatedBanquetBillIdRouteImport } from './routes/_authenticated/banquet.bill.$id'
+import { Route as AuthenticatedBanquetEventRouteImport } from './routes/_authenticated/banquet.event.'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -592,6 +593,12 @@ const AuthenticatedBanquetBillIdRoute =
     path: '/banquet/bill/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedBanquetEventRoute =
+  AuthenticatedBanquetEventRouteImport.update({
+    id: '/banquet/event/',
+    path: '/banquet/event/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -672,6 +679,7 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/staff/': typeof AuthenticatedStaffIndexRoute
   '/whatsapp/': typeof AuthenticatedWhatsappIndexRoute
+  '/banquet/event/': typeof AuthenticatedBanquetEventRoute
   '/banquet/bill/$id': typeof AuthenticatedBanquetBillIdRoute
   '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
@@ -759,6 +767,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/staff': typeof AuthenticatedStaffIndexRoute
   '/whatsapp': typeof AuthenticatedWhatsappIndexRoute
+  '/banquet/event': typeof AuthenticatedBanquetEventRoute
   '/banquet/bill/$id': typeof AuthenticatedBanquetBillIdRoute
   '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
@@ -848,6 +857,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/staff/': typeof AuthenticatedStaffIndexRoute
   '/_authenticated/whatsapp/': typeof AuthenticatedWhatsappIndexRoute
+  '/_authenticated/banquet/event/': typeof AuthenticatedBanquetEventRoute
   '/_authenticated/banquet/bill/$id': typeof AuthenticatedBanquetBillIdRoute
   '/_authenticated/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
   '/_authenticated/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
@@ -937,6 +947,7 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/staff/'
     | '/whatsapp/'
+    | '/banquet/event/'
     | '/banquet/bill/$id'
     | '/banquet/event/$id'
     | '/billing/folio/$bookingId'
@@ -1024,6 +1035,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/staff'
     | '/whatsapp'
+    | '/banquet/event'
     | '/banquet/bill/$id'
     | '/banquet/event/$id'
     | '/billing/folio/$bookingId'
@@ -1112,6 +1124,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/'
     | '/_authenticated/staff/'
     | '/_authenticated/whatsapp/'
+    | '/_authenticated/banquet/event/'
     | '/_authenticated/banquet/bill/$id'
     | '/_authenticated/banquet/event/$id'
     | '/_authenticated/billing/folio/$bookingId'
@@ -1732,6 +1745,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBanquetBillIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/banquet/event/': {
+      id: '/_authenticated/banquet/event/'
+      path: '/banquet/event'
+      fullPath: '/banquet/event/'
+      preLoaderRoute: typeof AuthenticatedBanquetEventRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -1811,6 +1831,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
   AuthenticatedStaffIndexRoute: typeof AuthenticatedStaffIndexRoute
   AuthenticatedWhatsappIndexRoute: typeof AuthenticatedWhatsappIndexRoute
+  AuthenticatedBanquetEventRoute: typeof AuthenticatedBanquetEventRoute
   AuthenticatedBanquetBillIdRoute: typeof AuthenticatedBanquetBillIdRoute
   AuthenticatedBanquetEventIdRoute: typeof AuthenticatedBanquetEventIdRoute
   AuthenticatedBillingFolioBookingIdRoute: typeof AuthenticatedBillingFolioBookingIdRoute
@@ -1902,6 +1923,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
   AuthenticatedStaffIndexRoute: AuthenticatedStaffIndexRoute,
   AuthenticatedWhatsappIndexRoute: AuthenticatedWhatsappIndexRoute,
+  AuthenticatedBanquetEventRoute: AuthenticatedBanquetEventRoute,
   AuthenticatedBanquetBillIdRoute: AuthenticatedBanquetBillIdRoute,
   AuthenticatedBanquetEventIdRoute: AuthenticatedBanquetEventIdRoute,
   AuthenticatedBillingFolioBookingIdRoute:
