@@ -2796,83 +2796,158 @@ export type Database = {
       properties: {
         Row: {
           address: string | null
+          address_line1: string | null
+          address_line2: string | null
           aisensy_api_key: string | null
           checkin_time: string | null
           checkout_time: string | null
           city: string | null
           created_at: string
           currency: string | null
+          default_bill_type: string | null
+          default_checkin_time: string | null
+          default_checkout_time: string | null
           early_checkin_charge: number | null
+          early_checkin_charge_per_hour: number | null
           email: string | null
           fiscal_year_start: string | null
           fssai: string | null
           gstin: string | null
           id: string
+          invoice_footer: string | null
+          invoice_prefix: string | null
+          invoice_primary_color: string | null
+          invoice_show_gst_breakup: boolean | null
+          invoice_show_hsn: boolean | null
+          invoice_show_powered_by: boolean | null
+          invoice_show_signature: boolean | null
+          invoice_start_number: number | null
+          invoice_template: string | null
           is_active: boolean
           late_checkout_charge: number | null
+          late_checkout_charge_per_hour: number | null
+          legal_entity_name: string | null
           logo_url: string | null
           name: string
           pan: string | null
+          pan_number: string | null
           phone: string | null
+          pin_code: string | null
           pincode: string | null
+          short_code: string | null
+          star_rating: number | null
           state: string | null
+          state_code: string | null
           status: string
+          total_floors: number | null
+          total_rooms: number | null
           updated_at: string
           wa_number: string | null
+          website: string | null
           wifi_password: string | null
         }
         Insert: {
           address?: string | null
+          address_line1?: string | null
+          address_line2?: string | null
           aisensy_api_key?: string | null
           checkin_time?: string | null
           checkout_time?: string | null
           city?: string | null
           created_at?: string
           currency?: string | null
+          default_bill_type?: string | null
+          default_checkin_time?: string | null
+          default_checkout_time?: string | null
           early_checkin_charge?: number | null
+          early_checkin_charge_per_hour?: number | null
           email?: string | null
           fiscal_year_start?: string | null
           fssai?: string | null
           gstin?: string | null
           id?: string
+          invoice_footer?: string | null
+          invoice_prefix?: string | null
+          invoice_primary_color?: string | null
+          invoice_show_gst_breakup?: boolean | null
+          invoice_show_hsn?: boolean | null
+          invoice_show_powered_by?: boolean | null
+          invoice_show_signature?: boolean | null
+          invoice_start_number?: number | null
+          invoice_template?: string | null
           is_active?: boolean
           late_checkout_charge?: number | null
+          late_checkout_charge_per_hour?: number | null
+          legal_entity_name?: string | null
           logo_url?: string | null
           name: string
           pan?: string | null
+          pan_number?: string | null
           phone?: string | null
+          pin_code?: string | null
           pincode?: string | null
+          short_code?: string | null
+          star_rating?: number | null
           state?: string | null
+          state_code?: string | null
           status?: string
+          total_floors?: number | null
+          total_rooms?: number | null
           updated_at?: string
           wa_number?: string | null
+          website?: string | null
           wifi_password?: string | null
         }
         Update: {
           address?: string | null
+          address_line1?: string | null
+          address_line2?: string | null
           aisensy_api_key?: string | null
           checkin_time?: string | null
           checkout_time?: string | null
           city?: string | null
           created_at?: string
           currency?: string | null
+          default_bill_type?: string | null
+          default_checkin_time?: string | null
+          default_checkout_time?: string | null
           early_checkin_charge?: number | null
+          early_checkin_charge_per_hour?: number | null
           email?: string | null
           fiscal_year_start?: string | null
           fssai?: string | null
           gstin?: string | null
           id?: string
+          invoice_footer?: string | null
+          invoice_prefix?: string | null
+          invoice_primary_color?: string | null
+          invoice_show_gst_breakup?: boolean | null
+          invoice_show_hsn?: boolean | null
+          invoice_show_powered_by?: boolean | null
+          invoice_show_signature?: boolean | null
+          invoice_start_number?: number | null
+          invoice_template?: string | null
           is_active?: boolean
           late_checkout_charge?: number | null
+          late_checkout_charge_per_hour?: number | null
+          legal_entity_name?: string | null
           logo_url?: string | null
           name?: string
           pan?: string | null
+          pan_number?: string | null
           phone?: string | null
+          pin_code?: string | null
           pincode?: string | null
+          short_code?: string | null
+          star_rating?: number | null
           state?: string | null
+          state_code?: string | null
           status?: string
+          total_floors?: number | null
+          total_rooms?: number | null
           updated_at?: string
           wa_number?: string | null
+          website?: string | null
           wifi_password?: string | null
         }
         Relationships: []

@@ -60,6 +60,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   requireSuperadmin?: boolean;
   requireOwner?: boolean;
+  requireManagerOrAbove?: boolean;
   module?: string;
 }
 
@@ -189,6 +190,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Settings",
     items: [
+      { to: "/settings/hotel", label: "Hotel / Business", icon: Settings, requireManagerOrAbove: true },
       { to: "/settings/whatsapp", label: "WhatsApp / AiSensy", icon: Settings, module: "settings_whatsapp" },
     ],
   },
@@ -208,6 +210,7 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
   const { user, roles } = useAuth();
   const isSuperadmin = roles.includes("superadmin");
   const isOwner = roles.includes("owner") || isSuperadmin;
+  const isManagerOrAbove = roles.includes("manager") || isOwner;
   const currentPath = router.state.location.pathname;
   const { can, loading: permsLoading, isSuperadmin: permSuper, map } = usePermissions();
   const hasAnyAssignment = permSuper || Object.keys(map).length > 0;
@@ -228,6 +231,7 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
         (n) =>
           (!n.requireSuperadmin || isSuperadmin) &&
           (!n.requireOwner || isOwner) &&
+          (!n.requireManagerOrAbove || isManagerOrAbove) &&
           // If user has a custom-role permission map, gate by module 'view'.
           // If no module declared, always show (legacy items).
           // If no role assignment at all, fall back to legacy app-role visibility.
