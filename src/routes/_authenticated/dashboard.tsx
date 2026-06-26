@@ -680,7 +680,10 @@ const STATUS_META: Record<string, { label: string; bg: string }> = {
   maintenance: { label: "Maintenance", bg: "#6b7280" },
   blocked:     { label: "Blocked",     bg: "#6b7280" },
 };
-const EVENT_BG = "#7c3aed";
+const EVENT_BLOCK_BG = "#7c3aed";
+const EVENT_IN_BG = "#6d28d9";
+// Back-compat alias used elsewhere in this file.
+const EVENT_BG = EVENT_BLOCK_BG;
 
 function tileKindExt(r: Room, isOccupied: boolean): keyof typeof STATUS_META {
   // Only treat as occupied when an actual active booking covers this room
