@@ -772,15 +772,15 @@ function FolioPage() {
           <div className="text-sm text-muted-foreground">
             Booking {booking.booking_number} · {booking.guests?.name ?? "—"}
           </div>
-          <div className="ml-auto flex flex-wrap gap-2">
+          <div className="ml-auto flex flex-wrap gap-2 no-print">
             <Button variant="outline" size="sm" onClick={printDraft}>
               <Printer className="h-4 w-4 mr-1" /> Print Draft
             </Button>
-            <Button variant="outline" size="sm" onClick={printInvoice}>
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
               <Printer className="h-4 w-4 mr-1" /> Print
             </Button>
-            <Button variant="outline" size="sm" onClick={downloadPdf} disabled={downloading}>
-              <Download className="h-4 w-4 mr-1" /> {downloading ? "Generating…" : "Download PDF"}
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
+              <Download className="h-4 w-4 mr-1" /> Download PDF
             </Button>
             <Button variant="outline" size="sm" onClick={openEmail}>
               <Mail className="h-4 w-4 mr-1" /> Email
