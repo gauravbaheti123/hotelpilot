@@ -531,6 +531,7 @@ export type Database = {
           children: number
           created_at: string
           created_by: string | null
+          event_id: string | null
           guest_id: string | null
           id: string
           is_wiped: boolean
@@ -560,6 +561,7 @@ export type Database = {
           children?: number
           created_at?: string
           created_by?: string | null
+          event_id?: string | null
           guest_id?: string | null
           id?: string
           is_wiped?: boolean
@@ -589,6 +591,7 @@ export type Database = {
           children?: number
           created_at?: string
           created_by?: string | null
+          event_id?: string | null
           guest_id?: string | null
           id?: string
           is_wiped?: boolean
@@ -603,6 +606,13 @@ export type Database = {
           wiped_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "banquet_bookings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookings_guest_id_fkey"
             columns: ["guest_id"]
