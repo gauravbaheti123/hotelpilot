@@ -147,6 +147,7 @@ function FolioPage() {
         invoice_prefix,invoice_footer,invoice_primary_color,invoice_template,
         invoice_show_hsn,invoice_show_gst_breakup,invoice_show_signature,invoice_show_powered_by,
         default_checkin_time,default_checkout_time,
+        food_gst_rate,sundry_gst_rate,
         address,pincode`)
       .eq("id", bk.property_id).single();
     setProperty((prop ?? null) as PropertyInfo | null);
