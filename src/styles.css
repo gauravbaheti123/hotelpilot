@@ -149,3 +149,32 @@
     -webkit-font-smoothing: antialiased;
   }
 }
+
+/* ------------------------------------------------------------------
+   Global invoice / event-bill PRINT rules.
+   Any page that exposes an element with id="invoice-print-area"
+   will print ONLY that element on an A4 portrait page.
+   ------------------------------------------------------------------ */
+@media print {
+  body * { visibility: hidden !important; }
+  #invoice-print-area,
+  #invoice-print-area * { visibility: visible !important; }
+  #invoice-print-area {
+    position: fixed !important;
+    top: 0; left: 0;
+    width: 100%;
+    background: #ffffff;
+    padding: 12mm;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .no-print,
+  [data-no-print],
+  nav, header, aside { display: none !important; visibility: hidden !important; }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  @page { size: A4 portrait; margin: 0; }
+}

@@ -739,7 +739,8 @@ function FolioPage() {
     return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
   };
   const TEAL_DARK = darken(TEAL, 0.18);
-  const isPremium = (property as any)?.invoice_template === "premium";
+  // Premium is the only template now.
+  const isPremium = true;
   const isSettled = folio.status === "settled";
   const isVoid = folio.status === "void";
 

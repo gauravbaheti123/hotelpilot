@@ -170,65 +170,26 @@ function commonStyles(color: string, draft: boolean): string {
   `;
 }
 
-function headerBlock(ctx: InvoiceContext, variant: "classic" | "modern" | "minimal"): string {
+function headerBlock(ctx: InvoiceContext): string {
   const { property, logoDataUrl } = ctx;
   const logo = logoDataUrl ? `<img class="logo" src="${esc(logoDataUrl)}" alt="logo"/>` : "";
-  const legal = property.legal_entity_name && property.legal_entity_name !== property.name
-    ? `<div class="small">${esc(property.legal_entity_name)}</div>` : "";
-  const addr = `<div class="small">${esc(fullAddress(property))}</div>`;
-  const contact = `<div class="small">${[
-    property.phone ? `Tel: ${esc(property.phone)}` : "",
-    property.email ? `Email: ${esc(property.email)}` : "",
-    property.website ? esc(property.website) : "",
-  ].filter(Boolean).join(" · ")}</div>`;
-  const reg = `<div class="small">${[
-    property.gstin ? `GSTIN: ${esc(property.gstin)}` : "",
-    property.pan_number ? `PAN: ${esc(property.pan_number)}` : "",
-    property.state && property.state_code ? `State: ${esc(property.state)} (${esc(property.state_code)})` : "",
-  ].filter(Boolean).join(" · ")}</div>`;
-
-  if (variant === "modern") {
-    return `
-      <div class="bg-accent" style="padding:16px 20px;border-radius:8px;margin-bottom:18px;display:flex;align-items:center;gap:16px">
-        ${logoDataUrl ? `<div style="background:#fff;padding:6px 10px;border-radius:6px">${logo}</div>` : ""}
-        <div style="flex:1">
-          <h1 style="color:#fff;font-size:20px">${esc(property.name)}</h1>
-          <div style="color:rgba(255,255,255,.85);font-size:10px">${esc(fullAddress(property))}</div>
-        </div>
-        <div style="text-align:right;color:#fff">
-          ${property.gstin ? `<div style="font-size:10px;opacity:.9">GSTIN</div><div style="font-size:11px;font-weight:600">${esc(property.gstin)}</div>` : ""}
-        </div>
-      </div>
-      <div class="small" style="margin-top:-8px;padding:0 4px">${[property.phone ? `Tel: ${esc(property.phone)}` : "",
-        property.email ? `Email: ${esc(property.email)}` : "",
-        property.website ? esc(property.website) : ""].filter(Boolean).join(" · ")}</div>
-    `;
-  }
-  if (variant === "minimal") {
-    return `
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;padding-bottom:8px;border-bottom:2px solid ${property.invoice_primary_color || "#111"};margin-bottom:14px">
-        <div>
-          <h1 style="font-size:18px;letter-spacing:1px;text-transform:uppercase">${esc(property.name)}</h1>
-          ${legal}
-          ${addr}
-        </div>
-        ${logo ? `<div>${logo}</div>` : ""}
-      </div>
-      ${contact}
-      ${reg}
-    `;
-  }
-  // classic
+  const color = property.invoice_primary_color || "#1D9E75";
+  // Premium header — full-width colored band + address bar
   return `
-    <div style="display:flex;gap:18px;align-items:center;border-bottom:3px double ${property.invoice_primary_color || "#111"};padding-bottom:10px;margin-bottom:14px">
-      ${logo ? `<div>${logo}</div>` : ""}
-      <div style="flex:1;text-align:center">
-        <h1 style="font-size:22px;letter-spacing:2px;text-transform:uppercase">${esc(property.name)}</h1>
-        ${legal}
-        ${addr}
-        ${contact}
-        ${reg}
+    <div style="background:${color};color:#fff;padding:20px 24px;display:flex;align-items:center;gap:18px">
+      ${logoDataUrl ? `<div style="background:#fff;padding:6px;">${logo}</div>` : ""}
+      <div style="flex:1;min-width:0">
+        <h1 style="color:#fff;font-size:22px;letter-spacing:0.5px">${esc(property.name)}</h1>
+        <div style="font-size:10px;opacity:.9">Hospitality · Experience · Comfort</div>
       </div>
+      <div style="text-align:right">
+        <div style="font-size:22px;font-weight:800;letter-spacing:3px">INVOICE</div>
+        ${property.gstin ? `<div style="font-size:10px;opacity:.9">GSTIN: ${esc(property.gstin)}</div>` : ""}
+      </div>
+    </div>
+    <div style="background:#f1f3f5;color:#495057;font-size:10px;padding:6px 24px;border-bottom:1px solid #dee2e6">
+      ${[esc(fullAddress(property)), property.phone ? `Ph: ${esc(property.phone)}` : "",
+         property.email ? `Email: ${esc(property.email)}` : ""].filter(Boolean).join("  |  ")}
     </div>
   `;
 }
@@ -377,7 +338,6 @@ function footerBlock(ctx: InvoiceContext): string {
 }
 
 export function renderInvoiceHtml(ctx: InvoiceContext): string {
-  const variant = (ctx.property.invoice_template as "classic" | "modern" | "minimal") || "classic";
   const color = ctx.property.invoice_primary_color || "#1D9E75";
   const draft = !!ctx.draft;
   const watermark = draft
@@ -387,7 +347,7 @@ export function renderInvoiceHtml(ctx: InvoiceContext): string {
     <style>${commonStyles(color, draft)}</style>
     </head><body><div class="invoice">
       ${watermark}
-      ${headerBlock(ctx, variant)}
+      ${headerBlock(ctx)}
       ${metaBlock(ctx)}
       ${chargesTable(ctx)}
       ${totalsBlock(ctx)}
