@@ -372,7 +372,10 @@ function NewBookingPage() {
           total_amount: total,
           advance_amount: advance,
           balance_amount: balance,
-          notes: notes || null,
+          notes: search?.eventName
+            ? `Event: ${search.eventName}${notes ? "\n" + notes : ""}`
+            : (notes || null),
+          event_id: search?.eventId ?? null,
           created_by: user?.id ?? null,
           checked_in_at: checkInNow ? new Date().toISOString() : null,
           checked_in_by: checkInNow ? (user?.id ?? null) : null,
@@ -401,6 +404,20 @@ function NewBookingPage() {
       // 4) If checked in, mark room occupied
       if (checkInNow) {
         await supabase.from("rooms").update({ status: "occupied" }).eq("id", roomId);
+      }
+
+      // 4b) If this booking originated from an event block, sync that block.
+      if (search?.blockId) {
+        await supabase.from("event_room_blocks").update({
+          status: checkInNow ? "checked_in" : "blocked",
+          booking_id: booking!.id,
+          guest_id: guestId!,
+          guest_name: name.trim(),
+          guest_mobile: mobile || null,
+          checked_in_at: checkInNow ? new Date().toISOString() : null,
+          checked_in_by: checkInNow ? (user?.id ?? null) : null,
+          updated_at: new Date().toISOString(),
+        } as any).eq("id", search.blockId);
       }
 
       // 5) Primary guest link
