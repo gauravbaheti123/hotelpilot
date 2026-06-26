@@ -681,7 +681,11 @@ const STATUS_META: Record<string, { label: string; bg: string }> = {
 const EVENT_BG = "#7c3aed";
 
 function tileKindExt(r: Room, isOccupied: boolean): keyof typeof STATUS_META {
-  if (isOccupied || r.status === "occupied") return "occupied";
+  // Only treat as occupied when an actual active booking covers this room
+  // for the selected date. The rooms.status flag can go stale (ghost tiles),
+  // so we deliberately ignore it here — the self-heal in reload() will fix
+  // the underlying row.
+  if (isOccupied) return "occupied";
   if (r.status === "blocked") return "blocked";
   if (r.status === "maintenance" || r.housekeeping_status === "out_of_order") return "maintenance";
   if (r.housekeeping_status === "dirty") return "dirty";
