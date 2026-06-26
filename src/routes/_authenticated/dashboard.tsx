@@ -716,7 +716,10 @@ function RoomCard({
 }) {
   const isEventBlock = !!eventInfo && eventInfo.status === "blocked";
   const isEventCheckedIn = !!eventInfo && eventInfo.status === "checked_in";
-  const kind = tileKindExt(room, isOccupied);
+  const baseKind = tileKindExt(room, isOccupied);
+  const todayStr = todayISO();
+  const isOverdue = baseKind === "occupied" && !!occ?.checkOut && occ.checkOut < todayStr;
+  const kind = isOverdue ? "overdue" : baseKind;
   const meta = STATUS_META[kind];
   const hasFood = !!pendingFood && pendingFood.amount > 0;
   const baseBalance = occ?.balance ?? 0;
