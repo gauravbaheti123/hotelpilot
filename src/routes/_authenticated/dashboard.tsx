@@ -233,6 +233,21 @@ function OwnerDashboard({
       setOccupiedRoomIds(occSet);
       setBookingByRoom(bMap);
       setOccInfoByRoom(oMap);
+
+      // Self-heal Issue 2: rooms flagged occupied in the rooms table but with
+      // no active booking_room covering today are stale "ghost" tiles. Reset
+      // them to vacant so the dashboard reflects reality.
+      if (isToday) {
+        const ghosts = (rms.data ?? [])
+          .filter((r: any) => r.status === "occupied" && !occSet.has(r.id))
+          .map((r: any) => r.id);
+        if (ghosts.length > 0) {
+          supabase.from("rooms")
+            .update({ status: "vacant" as any, housekeeping_status: "dirty" as any })
+            .in("id", ghosts)
+            .then(({ error }) => { if (error) console.warn("ghost cleanup failed", error); });
+        }
+      }
       setKpi({
         occupied: occSet.size,
         arrivals: arr.data?.length ?? 0,
@@ -666,7 +681,11 @@ const STATUS_META: Record<string, { label: string; bg: string }> = {
 const EVENT_BG = "#7c3aed";
 
 function tileKindExt(r: Room, isOccupied: boolean): keyof typeof STATUS_META {
-  if (isOccupied || r.status === "occupied") return "occupied";
+  // Only treat as occupied when an actual active booking covers this room
+  // for the selected date. The rooms.status flag can go stale (ghost tiles),
+  // so we deliberately ignore it here — the self-heal in reload() will fix
+  // the underlying row.
+  if (isOccupied) return "occupied";
   if (r.status === "blocked") return "blocked";
   if (r.status === "maintenance" || r.housekeeping_status === "out_of_order") return "maintenance";
   if (r.housekeeping_status === "dirty") return "dirty";
@@ -750,8 +769,14 @@ function RoomCard({
             )}
             {isEventBlock && (
               <Button size="sm" className="h-7 text-xs"
-                style={{ backgroundColor: "#ffffff", color: EVENT_BG }}
-                onClick={(e) => { e.stopPropagation(); onEventCheckIn({
+                disabled={!eventInfo!.guestName}
+                title={eventInfo!.guestName ? "Check in this guest" : "Assign guest first"}
+                style={{
+                  backgroundColor: eventInfo!.guestName ? "#ffffff" : "rgba(255,255,255,0.4)",
+                  color: EVENT_BG,
+                  cursor: eventInfo!.guestName ? "pointer" : "not-allowed",
+                }}
+                onClick={(e) => { e.stopPropagation(); if (!eventInfo!.guestName) return; onEventCheckIn({
                   id: eventInfo!.blockId, banquet_booking_id: eventInfo!.banquetBookingId,
                   event_name: eventInfo!.eventName, room_id: room.id,
                   room_number: room.room_number, room_category: category,
@@ -861,7 +886,7 @@ function LegendDot({ className, style, label }: { className?: string; style?: Re
 }
 
 function tileKind(r: Room, isOccupied: boolean): TileKind {
-  if (isOccupied || r.status === "occupied") return "occupied";
+  if (isOccupied) return "occupied";
   if (r.status === "maintenance" || r.housekeeping_status === "out_of_order") return "maintenance";
   if (r.housekeeping_status === "dirty") return "dirty";
   return "vacant";
