@@ -817,7 +817,10 @@ function RoomCard({
           <span style={{ color: "#ffffff", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
           <span
             className="font-semibold uppercase tracking-wide rounded-full"
-            style={{ backgroundColor: "rgba(255,255,255,0.25)", color: "#ffffff", fontSize: 10, padding: "2px 7px" }}
+            style={{
+              backgroundColor: kind === "overdue" ? "#dc2626" : "rgba(255,255,255,0.25)",
+              color: "#ffffff", fontSize: 10, padding: "2px 7px",
+            }}
           >
             {meta.label}
           </span>
@@ -864,7 +867,7 @@ function RoomCard({
         )}
       </div>
 
-      {hasFood && kind === "occupied" && (
+      {hasFood && (kind === "occupied" || kind === "overdue") && (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onPickFood(); }}
