@@ -127,7 +127,7 @@ function FolioPage() {
   const [emailTo, setEmailTo] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
-  const [downloading, setDownloading] = useState(false);
+  // PDF download uses browser print dialog — no async state needed.
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -147,6 +147,7 @@ function FolioPage() {
         invoice_prefix,invoice_footer,invoice_primary_color,invoice_template,
         invoice_show_hsn,invoice_show_gst_breakup,invoice_show_signature,invoice_show_powered_by,
         default_checkin_time,default_checkout_time,
+        food_gst_rate,sundry_gst_rate,
         address,pincode`)
       .eq("id", bk.property_id).single();
     setProperty((prop ?? null) as PropertyInfo | null);
@@ -692,86 +693,13 @@ function FolioPage() {
     setCheckoutOpen(true);
   }
 
-  async function downloadPdf() {
+  function handleDownloadPDF() {
     if (!folio || !booking) return;
-    setDownloading(true);
-    const propsToSanitize = [
-      "color", "backgroundColor",
-      "borderColor", "borderTopColor",
-      "borderBottomColor", "borderLeftColor",
-      "borderRightColor", "outlineColor",
-      "textDecorationColor", "boxShadow",
-    ] as const;
-    const hasUnsupportedColor = (value: string | undefined | null) => (
-      typeof value === "string" && (
-        value.includes("oklab") ||
-        value.includes("oklch") ||
-        value.includes("color(")
-      )
-    );
-    const fallbackFor = (prop: string, value: string) => {
-      if (prop === "color" || prop === "textDecorationColor") return "#000000";
-      if (prop === "backgroundColor" && value !== "rgba(0, 0, 0, 0)" && value !== "transparent") return "#ffffff";
-      if (prop === "boxShadow") return "none";
-      return "#1D9E75";
-    };
-    const originalStyles: Array<Record<string, string>> = [];
-    let elementsToRestore: HTMLElement[] = [];
-    try {
-      const node = document.getElementById("invoice-content");
-      if (!node) throw new Error("Invoice element not found");
-      elementsToRestore = [node as HTMLElement, ...Array.from(node.querySelectorAll<HTMLElement>("*"))];
-      elementsToRestore.forEach((el, index) => {
-        const computed = window.getComputedStyle(el);
-        originalStyles[index] = {};
-        propsToSanitize.forEach((prop) => {
-          const val = computed[prop];
-          const inlineVal = (el.style as any)[prop] as string | undefined;
-          if (hasUnsupportedColor(val) || hasUnsupportedColor(inlineVal)) {
-            originalStyles[index][prop] = inlineVal ?? "";
-            (el.style as any)[prop] = fallbackFor(prop, val || inlineVal || "");
-          }
-        });
-      });
-      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-        import("html2canvas"),
-        import("jspdf"),
-      ]);
-      const canvas = await html2canvas(node, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
-        allowTaint: false,
-        logging: false,
-      });
-      const img = canvas.toDataURL("image/jpeg", 0.95);
-      const pdf = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const imgW = pageW;
-      const imgH = (canvas.height * imgW) / canvas.width;
-      let heightLeft = imgH;
-      let position = 0;
-      pdf.addImage(img, "JPEG", 0, position, imgW, imgH);
-      heightLeft -= pageH;
-      while (heightLeft > 0) {
-        position = heightLeft - imgH;
-        pdf.addPage();
-        pdf.addImage(img, "JPEG", 0, position, imgW, imgH);
-        heightLeft -= pageH;
-      }
-      const safeName = (booking.guests?.name ?? "guest").replace(/[^\w]+/g, "");
-      pdf.save(`${folio.invoice_number}-${safeName}.pdf`);
-    } catch (e: any) {
-      toast.error(e.message ?? "Could not generate PDF");
-    } finally {
-      elementsToRestore.forEach((el, index) => {
-        Object.keys(originalStyles[index] || {}).forEach((prop) => {
-          (el.style as any)[prop] = originalStyles[index][prop];
-        });
-      });
-      setDownloading(false);
-    }
+    const prevTitle = document.title;
+    const safeName = (booking.guests?.name ?? "guest").replace(/[^\w]+/g, "");
+    document.title = `INV-${folio.invoice_number}-${safeName}`;
+    window.print();
+    setTimeout(() => { document.title = prevTitle; }, 500);
   }
 
   function openEmail() {
@@ -799,8 +727,19 @@ function FolioPage() {
     toast.success("Opening email client — please attach the downloaded PDF before sending");
   }
 
-  const TEAL = "#1D9E75";
-  const TEAL_DARK = "#157A5A";
+  const TEAL = (property as any)?.invoice_primary_color || "#1D9E75";
+  // simple darken: drop hex by ~15%
+  const darken = (hex: string, amt = 0.15) => {
+    const h = hex.replace("#", "");
+    if (h.length !== 6) return hex;
+    const num = parseInt(h, 16);
+    const r = Math.max(0, Math.floor(((num >> 16) & 0xff) * (1 - amt)));
+    const g = Math.max(0, Math.floor(((num >> 8) & 0xff) * (1 - amt)));
+    const b = Math.max(0, Math.floor((num & 0xff) * (1 - amt)));
+    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+  };
+  const TEAL_DARK = darken(TEAL, 0.18);
+  const isPremium = (property as any)?.invoice_template === "premium";
   const isSettled = folio.status === "settled";
   const isVoid = folio.status === "void";
 
@@ -809,25 +748,35 @@ function FolioPage() {
       <style>{`
         @media print {
           body * { visibility: hidden !important; }
-          #invoice-content, #invoice-content * { visibility: visible !important; }
-          #invoice-content { position: absolute !important; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; }
-          @page { size: A4; margin: 12mm; }
+          #invoice-print-area, #invoice-print-area * { visibility: visible !important; }
+          #invoice-print-area {
+            position: fixed !important; top: 0; left: 0; width: 100%;
+            background: white; box-shadow: none !important; border: none !important;
+          }
+          .no-print, [data-no-print], .sidebar, nav, header {
+            display: none !important; visibility: hidden !important;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          @page { size: A4 portrait; margin: 0mm; }
         }
         /* Force hex colors inside the invoice — html2canvas (PDF export)
            cannot parse Tailwind v4 oklch() values. Keep this in sync. */
-        #invoice-content { color: #111111; background-color: #ffffff; }
-        #invoice-content * { border-color: #e5e7eb; }
-        #invoice-content .bg-white { background-color: #ffffff !important; }
-        #invoice-content .text-muted-foreground { color: #6b7280 !important; }
-        #invoice-content .text-gray-400 { color: #9ca3af !important; }
-        #invoice-content .text-gray-500 { color: #6b7280 !important; }
-        #invoice-content .text-gray-600 { color: #4b5563 !important; }
-        #invoice-content .text-gray-700 { color: #374151 !important; }
-        #invoice-content .border-gray-400 { border-color: #9ca3af !important; }
-        #invoice-content.ring-1, #invoice-content.ring-black\\/5, #invoice-content .ring-1, #invoice-content .ring-black\\/5 { box-shadow: none !important; }
-        #invoice-content table { border-collapse: collapse; width: 100%; }
-        #invoice-content th, #invoice-content td { padding: 8px 10px; font-size: 12px; }
-        #invoice-content .zebra tr:nth-child(even) td { background: #F7FBF9; }
+        #invoice-print-area { color: #111111; background-color: #ffffff; }
+        #invoice-print-area * { border-color: #e5e7eb; }
+        #invoice-print-area .bg-white { background-color: #ffffff !important; }
+        #invoice-print-area .text-muted-foreground { color: #6b7280 !important; }
+        #invoice-print-area .text-gray-400 { color: #9ca3af !important; }
+        #invoice-print-area .text-gray-500 { color: #6b7280 !important; }
+        #invoice-print-area .text-gray-600 { color: #4b5563 !important; }
+        #invoice-print-area .text-gray-700 { color: #374151 !important; }
+        #invoice-print-area .border-gray-400 { border-color: #9ca3af !important; }
+        #invoice-print-area table { border-collapse: collapse; width: 100%; }
+        #invoice-print-area th, #invoice-print-area td { padding: 8px 10px; font-size: 12px; }
+        #invoice-print-area .zebra tr:nth-child(even) td { background: #F7FBF9; }
       `}</style>
       <div className="max-w-5xl space-y-4">
         {/* Top bar */}
@@ -844,15 +793,15 @@ function FolioPage() {
           <div className="text-sm text-muted-foreground">
             Booking {booking.booking_number} · {booking.guests?.name ?? "—"}
           </div>
-          <div className="ml-auto flex flex-wrap gap-2">
+          <div className="ml-auto flex flex-wrap gap-2 no-print">
             <Button variant="outline" size="sm" onClick={printDraft}>
               <Printer className="h-4 w-4 mr-1" /> Print Draft
             </Button>
-            <Button variant="outline" size="sm" onClick={printInvoice}>
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
               <Printer className="h-4 w-4 mr-1" /> Print
             </Button>
-            <Button variant="outline" size="sm" onClick={downloadPdf} disabled={downloading}>
-              <Download className="h-4 w-4 mr-1" /> {downloading ? "Generating…" : "Download PDF"}
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
+              <Download className="h-4 w-4 mr-1" /> Download PDF
             </Button>
             <Button variant="outline" size="sm" onClick={openEmail}>
               <Mail className="h-4 w-4 mr-1" /> Email
@@ -905,7 +854,7 @@ function FolioPage() {
         )}
 
         {/* Bill Type controls (screen only) */}
-        <Card className="print:hidden">
+        <Card className="print:hidden no-print">
           <CardContent className="flex flex-wrap items-end gap-3 p-4">
             <div className="flex gap-2 rounded-md border p-1 bg-muted/30">
               <button type="button" disabled={!isOpen} onClick={() => toggleMode("gst")}
@@ -965,7 +914,7 @@ function FolioPage() {
         </Card>
 
         {/* INVOICE DOCUMENT */}
-        <div id="invoice-content" className="relative mx-auto w-full bg-white shadow-md ring-1 ring-black/5 print:shadow-none print:ring-0">
+        <div id="invoice-print-area" className="relative mx-auto w-full bg-white shadow-md ring-1 ring-black/5 print:shadow-none print:ring-0">
           {isSettled && (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
               <div style={{
@@ -998,28 +947,69 @@ function FolioPage() {
           )}
 
           {/* Header */}
-          <div style={{ background: TEAL, color: "#fff" }} className="flex items-center gap-5 px-8 py-6">
-            {property?.logo_url ? (
-              <img src={property.logo_url} alt="" className="h-20 w-20 rounded-md object-cover ring-2 ring-white/40" />
-            ) : (
-              <div className="grid h-20 w-20 shrink-0 place-items-center rounded-md bg-white/15 ring-2 ring-white/40">
-                <span className="text-2xl font-extrabold tracking-wider">
-                  {(property?.name ?? "HP").split(/\s+/).slice(0, 2).map(s => s[0]).join("").toUpperCase()}
-                </span>
+          {isPremium ? (
+            <>
+              <div className="invoice-header-bg flex items-center justify-between gap-6 px-10 py-7"
+                   style={{ background: TEAL, color: "#ffffff", borderRadius: 0 }}>
+                <div className="flex items-center gap-4 min-w-0">
+                  {property?.logo_url ? (
+                    <div style={{ background: "#ffffff", padding: 6, borderRadius: 0 }}>
+                      <img src={property.logo_url} alt="" style={{ height: 64, width: 64, objectFit: "contain", display: "block" }} />
+                    </div>
+                  ) : (
+                    <div style={{ background: "#ffffff", color: TEAL_DARK, height: 76, width: 76, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 26, letterSpacing: 2 }}>
+                      {(property?.name ?? "HP").split(/\s+/).slice(0, 2).map(s => s[0]).join("").toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: 0.3, color: "#ffffff", lineHeight: 1.1 }}>
+                      {property?.name ?? "Hotel"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#ffffff", opacity: 0.85, marginTop: 4 }}>
+                      Hospitality · Experience · Comfort
+                    </div>
+                  </div>
+                </div>
+                <div style={{ textAlign: "right", color: "#ffffff" }}>
+                  <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: 3, lineHeight: 1 }}>
+                    {isGst ? "TAX INVOICE" : "CASH BILL"}
+                  </div>
+                  <div style={{ fontSize: 12, marginTop: 8 }}>No: <b>{folio.invoice_number}</b></div>
+                  <div style={{ fontSize: 12 }}>Date: <b>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b></div>
+                  <div style={{ fontSize: 12 }}>Booking: <b>{booking.booking_number}</b></div>
+                </div>
               </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <h1 className="truncate text-3xl font-extrabold tracking-tight">{property?.name ?? "Hotel"}</h1>
-              {propAddrLine && <div className="text-sm opacity-95">{propAddrLine}</div>}
-              <div className="mt-1 flex flex-wrap gap-x-4 text-xs opacity-95">
-                {property?.phone && <span>Ph: {property.phone}</span>}
-                {property?.email && <span>Email: {property.email}</span>}
-                {property?.gstin && <span>GSTIN: {property.gstin}</span>}
+              {/* Address bar */}
+              <div style={{ background: "#f1f3f5", color: "#495057", fontSize: 11, padding: "8px 40px", borderBottom: "1px solid #dee2e6" }}>
+                {[propAddrLine, property?.gstin ? `GSTIN: ${property.gstin}` : null, property?.phone ? `Ph: ${property.phone}` : null, property?.email ?? null]
+                  .filter(Boolean).join("  |  ")}
+              </div>
+            </>
+          ) : (
+            <div style={{ background: TEAL, color: "#fff" }} className="flex items-center gap-5 px-8 py-6">
+              {property?.logo_url ? (
+                <img src={property.logo_url} alt="" className="h-20 w-20 rounded-md object-cover ring-2 ring-white/40" />
+              ) : (
+                <div className="grid h-20 w-20 shrink-0 place-items-center rounded-md bg-white/15 ring-2 ring-white/40">
+                  <span className="text-2xl font-extrabold tracking-wider">
+                    {(property?.name ?? "HP").split(/\s+/).slice(0, 2).map(s => s[0]).join("").toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <h1 className="truncate text-3xl font-extrabold tracking-tight">{property?.name ?? "Hotel"}</h1>
+                {propAddrLine && <div className="text-sm opacity-95">{propAddrLine}</div>}
+                <div className="mt-1 flex flex-wrap gap-x-4 text-xs opacity-95">
+                  {property?.phone && <span>Ph: {property.phone}</span>}
+                  {property?.email && <span>Email: {property.email}</span>}
+                  {property?.gstin && <span>GSTIN: {property.gstin}</span>}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Title bar */}
+          {!isPremium && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-y px-8 py-3" style={{ background: "#F0FAF6" }}>
             <div className="text-lg font-bold tracking-wide" style={{ color: TEAL_DARK }}>
               {isGst ? "TAX INVOICE" : "CASH BILL / RECEIPT"}
@@ -1030,6 +1020,7 @@ function FolioPage() {
               <div><span className="text-muted-foreground">Booking:</span> <span className="font-semibold">{booking.booking_number}</span></div>
             </div>
           </div>
+          )}
 
           {/* Bill To + Stay */}
           <div className="grid grid-cols-1 gap-0 border-b sm:grid-cols-2">
@@ -1200,6 +1191,11 @@ function FolioPage() {
               Powered by HotelPilot.in
             </div>
           </div>
+          {isPremium && (
+            <div style={{ background: "#f1f3f5", color: "#495057", fontSize: 11, padding: "8px 40px", textAlign: "center", borderTop: "1px solid #dee2e6" }}>
+              {[property?.name, property?.email, (property as any)?.website, property?.phone].filter(Boolean).join("  |  ")}
+            </div>
+          )}
         </div>
 
         {/* Collect payment (screen only) */}

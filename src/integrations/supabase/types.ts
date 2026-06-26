@@ -2852,6 +2852,7 @@ export type Database = {
           early_checkin_charge_per_hour: number | null
           email: string | null
           fiscal_year_start: string | null
+          food_gst_rate: number
           fssai: string | null
           gstin: string | null
           id: string
@@ -2880,6 +2881,7 @@ export type Database = {
           state: string | null
           state_code: string | null
           status: string
+          sundry_gst_rate: number
           total_floors: number | null
           total_rooms: number | null
           updated_at: string
@@ -2904,6 +2906,7 @@ export type Database = {
           early_checkin_charge_per_hour?: number | null
           email?: string | null
           fiscal_year_start?: string | null
+          food_gst_rate?: number
           fssai?: string | null
           gstin?: string | null
           id?: string
@@ -2932,6 +2935,7 @@ export type Database = {
           state?: string | null
           state_code?: string | null
           status?: string
+          sundry_gst_rate?: number
           total_floors?: number | null
           total_rooms?: number | null
           updated_at?: string
@@ -2956,6 +2960,7 @@ export type Database = {
           early_checkin_charge_per_hour?: number | null
           email?: string | null
           fiscal_year_start?: string | null
+          food_gst_rate?: number
           fssai?: string | null
           gstin?: string | null
           id?: string
@@ -2984,6 +2989,7 @@ export type Database = {
           state?: string | null
           state_code?: string | null
           status?: string
+          sundry_gst_rate?: number
           total_floors?: number | null
           total_rooms?: number | null
           updated_at?: string
