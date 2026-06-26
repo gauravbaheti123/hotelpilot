@@ -16,9 +16,14 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedWhatsappIndexRouteImport } from './routes/_authenticated/whatsapp.index'
+import { Route as AuthenticatedStaffIndexRouteImport } from './routes/_authenticated/staff.index'
+import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
 import { Route as AuthenticatedSecurityIndexRouteImport } from './routes/_authenticated/security.index'
 import { Route as AuthenticatedRestaurantIndexRouteImport } from './routes/_authenticated/restaurant.index'
+import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports.index'
 import { Route as AuthenticatedPosIndexRouteImport } from './routes/_authenticated/pos.index'
+import { Route as AuthenticatedMastersIndexRouteImport } from './routes/_authenticated/masters.index'
+import { Route as AuthenticatedInventoryIndexRouteImport } from './routes/_authenticated/inventory.index'
 import { Route as AuthenticatedGuestsIndexRouteImport } from './routes/_authenticated/guests.index'
 import { Route as AuthenticatedFeedbackIndexRouteImport } from './routes/_authenticated/feedback.index'
 import { Route as AuthenticatedExpensesIndexRouteImport } from './routes/_authenticated/expenses.index'
@@ -125,6 +130,17 @@ const AuthenticatedWhatsappIndexRoute =
     path: '/whatsapp/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedStaffIndexRoute = AuthenticatedStaffIndexRouteImport.update({
+  id: '/staff/',
+  path: '/staff/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSettingsIndexRoute =
+  AuthenticatedSettingsIndexRouteImport.update({
+    id: '/settings/',
+    path: '/settings/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSecurityIndexRoute =
   AuthenticatedSecurityIndexRouteImport.update({
     id: '/security/',
@@ -137,11 +153,29 @@ const AuthenticatedRestaurantIndexRoute =
     path: '/restaurant/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedReportsIndexRoute =
+  AuthenticatedReportsIndexRouteImport.update({
+    id: '/reports/',
+    path: '/reports/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedPosIndexRoute = AuthenticatedPosIndexRouteImport.update({
   id: '/pos/',
   path: '/pos/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMastersIndexRoute =
+  AuthenticatedMastersIndexRouteImport.update({
+    id: '/masters/',
+    path: '/masters/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInventoryIndexRoute =
+  AuthenticatedInventoryIndexRouteImport.update({
+    id: '/inventory/',
+    path: '/inventory/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedGuestsIndexRoute =
   AuthenticatedGuestsIndexRouteImport.update({
     id: '/guests/',
@@ -621,9 +655,14 @@ export interface FileRoutesByFullPath {
   '/expenses/': typeof AuthenticatedExpensesIndexRoute
   '/feedback/': typeof AuthenticatedFeedbackIndexRoute
   '/guests/': typeof AuthenticatedGuestsIndexRoute
+  '/inventory/': typeof AuthenticatedInventoryIndexRoute
+  '/masters/': typeof AuthenticatedMastersIndexRoute
   '/pos/': typeof AuthenticatedPosIndexRoute
+  '/reports/': typeof AuthenticatedReportsIndexRoute
   '/restaurant/': typeof AuthenticatedRestaurantIndexRoute
   '/security/': typeof AuthenticatedSecurityIndexRoute
+  '/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/staff/': typeof AuthenticatedStaffIndexRoute
   '/whatsapp/': typeof AuthenticatedWhatsappIndexRoute
   '/banquet/bill/$id': typeof AuthenticatedBanquetBillIdRoute
   '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
@@ -702,9 +741,14 @@ export interface FileRoutesByTo {
   '/expenses': typeof AuthenticatedExpensesIndexRoute
   '/feedback': typeof AuthenticatedFeedbackIndexRoute
   '/guests': typeof AuthenticatedGuestsIndexRoute
+  '/inventory': typeof AuthenticatedInventoryIndexRoute
+  '/masters': typeof AuthenticatedMastersIndexRoute
   '/pos': typeof AuthenticatedPosIndexRoute
+  '/reports': typeof AuthenticatedReportsIndexRoute
   '/restaurant': typeof AuthenticatedRestaurantIndexRoute
   '/security': typeof AuthenticatedSecurityIndexRoute
+  '/settings': typeof AuthenticatedSettingsIndexRoute
+  '/staff': typeof AuthenticatedStaffIndexRoute
   '/whatsapp': typeof AuthenticatedWhatsappIndexRoute
   '/banquet/bill/$id': typeof AuthenticatedBanquetBillIdRoute
   '/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
@@ -785,9 +829,14 @@ export interface FileRoutesById {
   '/_authenticated/expenses/': typeof AuthenticatedExpensesIndexRoute
   '/_authenticated/feedback/': typeof AuthenticatedFeedbackIndexRoute
   '/_authenticated/guests/': typeof AuthenticatedGuestsIndexRoute
+  '/_authenticated/inventory/': typeof AuthenticatedInventoryIndexRoute
+  '/_authenticated/masters/': typeof AuthenticatedMastersIndexRoute
   '/_authenticated/pos/': typeof AuthenticatedPosIndexRoute
+  '/_authenticated/reports/': typeof AuthenticatedReportsIndexRoute
   '/_authenticated/restaurant/': typeof AuthenticatedRestaurantIndexRoute
   '/_authenticated/security/': typeof AuthenticatedSecurityIndexRoute
+  '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/_authenticated/staff/': typeof AuthenticatedStaffIndexRoute
   '/_authenticated/whatsapp/': typeof AuthenticatedWhatsappIndexRoute
   '/_authenticated/banquet/bill/$id': typeof AuthenticatedBanquetBillIdRoute
   '/_authenticated/banquet/event/$id': typeof AuthenticatedBanquetEventIdRoute
@@ -868,9 +917,14 @@ export interface FileRouteTypes {
     | '/expenses/'
     | '/feedback/'
     | '/guests/'
+    | '/inventory/'
+    | '/masters/'
     | '/pos/'
+    | '/reports/'
     | '/restaurant/'
     | '/security/'
+    | '/settings/'
+    | '/staff/'
     | '/whatsapp/'
     | '/banquet/bill/$id'
     | '/banquet/event/$id'
@@ -949,9 +1003,14 @@ export interface FileRouteTypes {
     | '/expenses'
     | '/feedback'
     | '/guests'
+    | '/inventory'
+    | '/masters'
     | '/pos'
+    | '/reports'
     | '/restaurant'
     | '/security'
+    | '/settings'
+    | '/staff'
     | '/whatsapp'
     | '/banquet/bill/$id'
     | '/banquet/event/$id'
@@ -1031,9 +1090,14 @@ export interface FileRouteTypes {
     | '/_authenticated/expenses/'
     | '/_authenticated/feedback/'
     | '/_authenticated/guests/'
+    | '/_authenticated/inventory/'
+    | '/_authenticated/masters/'
     | '/_authenticated/pos/'
+    | '/_authenticated/reports/'
     | '/_authenticated/restaurant/'
     | '/_authenticated/security/'
+    | '/_authenticated/settings/'
+    | '/_authenticated/staff/'
     | '/_authenticated/whatsapp/'
     | '/_authenticated/banquet/bill/$id'
     | '/_authenticated/banquet/event/$id'
@@ -1102,6 +1166,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWhatsappIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/staff/': {
+      id: '/_authenticated/staff/'
+      path: '/staff'
+      fullPath: '/staff/'
+      preLoaderRoute: typeof AuthenticatedStaffIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings/': {
+      id: '/_authenticated/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/security/': {
       id: '/_authenticated/security/'
       path: '/security'
@@ -1116,11 +1194,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRestaurantIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/reports/': {
+      id: '/_authenticated/reports/'
+      path: '/reports'
+      fullPath: '/reports/'
+      preLoaderRoute: typeof AuthenticatedReportsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/pos/': {
       id: '/_authenticated/pos/'
       path: '/pos'
       fullPath: '/pos/'
       preLoaderRoute: typeof AuthenticatedPosIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/': {
+      id: '/_authenticated/masters/'
+      path: '/masters'
+      fullPath: '/masters/'
+      preLoaderRoute: typeof AuthenticatedMastersIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/inventory/': {
+      id: '/_authenticated/inventory/'
+      path: '/inventory'
+      fullPath: '/inventory/'
+      preLoaderRoute: typeof AuthenticatedInventoryIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/guests/': {
@@ -1682,9 +1781,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedExpensesIndexRoute: typeof AuthenticatedExpensesIndexRoute
   AuthenticatedFeedbackIndexRoute: typeof AuthenticatedFeedbackIndexRoute
   AuthenticatedGuestsIndexRoute: typeof AuthenticatedGuestsIndexRoute
+  AuthenticatedInventoryIndexRoute: typeof AuthenticatedInventoryIndexRoute
+  AuthenticatedMastersIndexRoute: typeof AuthenticatedMastersIndexRoute
   AuthenticatedPosIndexRoute: typeof AuthenticatedPosIndexRoute
+  AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
   AuthenticatedRestaurantIndexRoute: typeof AuthenticatedRestaurantIndexRoute
   AuthenticatedSecurityIndexRoute: typeof AuthenticatedSecurityIndexRoute
+  AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
+  AuthenticatedStaffIndexRoute: typeof AuthenticatedStaffIndexRoute
   AuthenticatedWhatsappIndexRoute: typeof AuthenticatedWhatsappIndexRoute
   AuthenticatedBanquetBillIdRoute: typeof AuthenticatedBanquetBillIdRoute
   AuthenticatedBanquetEventIdRoute: typeof AuthenticatedBanquetEventIdRoute
@@ -1767,9 +1871,14 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedExpensesIndexRoute: AuthenticatedExpensesIndexRoute,
   AuthenticatedFeedbackIndexRoute: AuthenticatedFeedbackIndexRoute,
   AuthenticatedGuestsIndexRoute: AuthenticatedGuestsIndexRoute,
+  AuthenticatedInventoryIndexRoute: AuthenticatedInventoryIndexRoute,
+  AuthenticatedMastersIndexRoute: AuthenticatedMastersIndexRoute,
   AuthenticatedPosIndexRoute: AuthenticatedPosIndexRoute,
+  AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
   AuthenticatedRestaurantIndexRoute: AuthenticatedRestaurantIndexRoute,
   AuthenticatedSecurityIndexRoute: AuthenticatedSecurityIndexRoute,
+  AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
+  AuthenticatedStaffIndexRoute: AuthenticatedStaffIndexRoute,
   AuthenticatedWhatsappIndexRoute: AuthenticatedWhatsappIndexRoute,
   AuthenticatedBanquetBillIdRoute: AuthenticatedBanquetBillIdRoute,
   AuthenticatedBanquetEventIdRoute: AuthenticatedBanquetEventIdRoute,

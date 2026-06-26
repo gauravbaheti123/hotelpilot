@@ -73,134 +73,19 @@ const NAV_GROUPS: NavGroup[] = [
   {
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, module: "dashboard" },
-      { to: "/properties", label: "Properties", icon: Building2, requireSuperadmin: true },
-    ],
-  },
-  {
-    label: "Front Desk",
-    items: [
-      { to: "/front-desk/new", label: "New Booking", icon: PlusCircle, module: "bookings" },
-      { to: "/front-desk/bookings", label: "Bookings", icon: ListChecks, module: "bookings" },
-      { to: "/front-desk/calendar", label: "Calendar", icon: CalendarRange, module: "calendar" },
-      { to: "/front-desk/rate-calendar", label: "Rate Calendar", icon: TrendingUp, module: "calendar" },
-      { to: "/front-desk/in-house", label: "In-house", icon: CalendarCheck, module: "inhouse" },
-    ],
-  },
-  {
-    label: "Food & KOT",
-    items: [
-      { to: "/food/dashboard", label: "Food Dashboard", icon: ChefHat, module: "food_kot" },
-      { to: "/food/kots", label: "All KOTs", icon: ClipboardList, module: "food_kot" },
-    ],
-  },
-  {
-    label: "Billing",
-    items: [
-      { to: "/pos", label: "POS / Sundry", icon: ShoppingCart, module: "pos_sundry" },
-      { to: "/billing/invoices", label: "Invoices", icon: Receipt, module: "invoices" },
-      { to: "/restaurant", label: "Restaurant Billing", icon: UtensilsCrossed, module: "restaurant_billing" },
-      { to: "/billing/mis", label: "MIS Account", icon: ShieldAlert, requireOwner: true },
-    ],
-  },
-  {
-    label: "Reports",
-    items: [
-      { to: "/reports/daily", label: "Daily Report", icon: BarChart3, module: "reports_daily" },
-      { to: "/reports/bill-wise", label: "Bill-Wise Report", icon: FileSpreadsheet, module: "reports_sales" },
-      { to: "/reports/cash-collection", label: "Cash Collection", icon: FileSpreadsheet, module: "reports_sales" },
-      { to: "/reports/gst", label: "GST Report", icon: FileText, module: "reports_gst" },
-      { to: "/reports/date-wise-revenue", label: "Date-Wise Revenue", icon: BarChart3, module: "reports_sales" },
-      { to: "/reports/room-wise", label: "Room-Wise Report", icon: FileSpreadsheet, module: "reports_sales" },
-      { to: "/reports/food-kot", label: "Food / KOT Report", icon: FileSpreadsheet, module: "reports_sales" },
-      { to: "/reports/banquet", label: "Banquet Report", icon: FileSpreadsheet, module: "reports_sales" },
-      { to: "/reports/guest-wise", label: "Guest-Wise Report", icon: FileSpreadsheet, module: "reports_sales" },
-      { to: "/reports/expenses", label: "Expense Report", icon: FileSpreadsheet, module: "reports_sales" },
-      { to: "/reports/mis", label: "MIS Report", icon: ShieldAlert, requireOwner: true },
-      { to: "/reports/analytics", label: "Analytics", icon: BarChart3, module: "reports_analytics" },
-      { to: "/reports/night-audit", label: "Night Audit", icon: Moon, module: "night_audit" },
-      { to: "/reports/activity", label: "Activity Log", icon: History, module: "reports_daily" },
-    ],
-  },
-  {
-    label: "Housekeeping",
-    items: [
-      { to: "/housekeeping/board", label: "Room Board", icon: LayoutGrid, module: "room_board" },
-      { to: "/housekeeping/tasks", label: "Tasks", icon: Sparkles, module: "housekeeping_tasks" },
-    ],
-  },
-  {
-    label: "Communications",
-    items: [
+      { to: "/front-desk/bookings", label: "Front Desk", icon: ListChecks, module: "bookings" },
+      { to: "/food/dashboard", label: "Food & KOT", icon: ChefHat, module: "food_kot" },
+      { to: "/pos", label: "Billing", icon: Receipt, module: "pos_sundry" },
+      { to: "/reports", label: "Reports", icon: BarChart3, module: "reports_daily" },
+      { to: "/housekeeping/board", label: "Housekeeping", icon: LayoutGrid, module: "room_board" },
       { to: "/guests", label: "Guest CRM", icon: UserCircle2, module: "guest_crm" },
       { to: "/comms", label: "Communications", icon: MessagesSquare, module: "communications" },
-      { to: "/whatsapp", label: "WhatsApp Inbox", icon: MessageCircle, module: "whatsapp_inbox" },
-    ],
-  },
-  {
-    label: "Inventory",
-    items: [
-      { to: "/inventory/stock", label: "Current Stock", icon: Boxes, module: "inventory" },
-      { to: "/inventory/movements", label: "Stock Movements", icon: ArrowLeftRight, module: "inventory" },
-      { to: "/inventory/items", label: "Items", icon: Package, module: "inventory" },
-      { to: "/inventory/vendors", label: "Vendors", icon: Truck, module: "inventory" },
-    ],
-  },
-  {
-    label: "Expenses",
-    items: [
+      { to: "/inventory", label: "Inventory", icon: Package, module: "inventory" },
       { to: "/expenses", label: "Expenses", icon: Wallet, module: "masters_expense_categories" },
-    ],
-  },
-  {
-    label: "Staff HR",
-    items: [
-      { to: "/staff/attendance", label: "Attendance", icon: CalendarDays, module: "staff_hr" },
-      { to: "/staff/attendance-history", label: "History", icon: History, module: "staff_hr" },
-      { to: "/staff/payroll", label: "Payroll", icon: Banknote, module: "payroll" },
-    ],
-  },
-  {
-    label: "Banquet",
-    items: [
-      { to: "/banquet/bookings", label: "Events", icon: CalendarRange, module: "masters_halls" },
-    ],
-  },
-  {
-    label: "Master Data",
-    items: [
-      { to: "/masters/rooms", label: "Rooms & Categories", icon: BedDouble, module: "masters_rooms" },
-      { to: "/masters/tariff", label: "Tariff Plans", icon: IndianRupee, module: "masters_tariff" },
-      { to: "/masters/rate-seasons", label: "Rate Seasons", icon: TrendingUp, module: "masters_tariff" },
-      { to: "/masters/menu", label: "Menu", icon: UtensilsCrossed, module: "masters_menu" },
-      { to: "/masters/halls", label: "Halls", icon: PartyPopper, module: "masters_halls" },
-      { to: "/masters/staff", label: "Staff", icon: Users, module: "masters_staff" },
-      { to: "/masters/printers", label: "Printers", icon: Printer, module: "masters_printers" },
-      { to: "/masters/expense-categories", label: "Expense Categories", icon: Tags, module: "masters_expense_categories" },
-      { to: "/masters/message-templates", label: "Message Templates", icon: MessageSquare, module: "masters_staff" },
-      { to: "/masters/sundry-items", label: "Sundry Items", icon: ShoppingCart, module: "masters_sundry_items" },
-      { to: "/masters/channels", label: "OTA Channels", icon: Cloud, module: "masters_ota_channels" },
-    ],
-  },
-  {
-    label: "Channel Manager",
-    items: [
-      { to: "/channels", label: "Distribution", icon: Cloud, module: "channel_manager" },
-    ],
-  },
-  {
-    label: "Settings",
-    items: [
-      { to: "/settings/hotel", label: "Hotel / Business", icon: Settings, requireManagerOrAbove: true },
-      { to: "/settings/whatsapp", label: "WhatsApp / AiSensy", icon: Settings, module: "settings_whatsapp" },
-    ],
-  },
-  {
-    label: "Admin",
-    items: [
-      { to: "/superadmin/dashboard", label: "Superadmin", icon: ShieldCheck, requireSuperadmin: true },
-      { to: "/superadmin/roles", label: "Roles & Permissions", icon: ShieldCheck, requireSuperadmin: true },
-      { to: "/superadmin/users", label: "User Role Assignments", icon: Users, requireSuperadmin: true },
-      { to: "/security", label: "Security / Wipe", icon: ShieldAlert, requireOwner: true },
+      { to: "/staff", label: "Staff HR", icon: Users, module: "staff_hr" },
+      { to: "/banquet/bookings", label: "Banquet", icon: PartyPopper, module: "masters_halls" },
+      { to: "/masters", label: "Master Data", icon: LayoutGrid, module: "masters_rooms" },
+      { to: "/settings", label: "Settings", icon: Settings, requireManagerOrAbove: true },
     ],
   },
 ];
