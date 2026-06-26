@@ -17,6 +17,7 @@ import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authentic
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedWhatsappIndexRouteImport } from './routes/_authenticated/whatsapp.index'
 import { Route as AuthenticatedStaffIndexRouteImport } from './routes/_authenticated/staff.index'
+import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
 import { Route as AuthenticatedSecurityIndexRouteImport } from './routes/_authenticated/security.index'
 import { Route as AuthenticatedRestaurantIndexRouteImport } from './routes/_authenticated/restaurant.index'
 import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports.index'
@@ -134,6 +135,12 @@ const AuthenticatedStaffIndexRoute = AuthenticatedStaffIndexRouteImport.update({
   path: '/staff/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSettingsIndexRoute =
+  AuthenticatedSettingsIndexRouteImport.update({
+    id: '/settings/',
+    path: '/settings/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSecurityIndexRoute =
   AuthenticatedSecurityIndexRouteImport.update({
     id: '/security/',
@@ -654,6 +661,7 @@ export interface FileRoutesByFullPath {
   '/reports/': typeof AuthenticatedReportsIndexRoute
   '/restaurant/': typeof AuthenticatedRestaurantIndexRoute
   '/security/': typeof AuthenticatedSecurityIndexRoute
+  '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/staff/': typeof AuthenticatedStaffIndexRoute
   '/whatsapp/': typeof AuthenticatedWhatsappIndexRoute
   '/banquet/bill/$id': typeof AuthenticatedBanquetBillIdRoute
@@ -739,6 +747,7 @@ export interface FileRoutesByTo {
   '/reports': typeof AuthenticatedReportsIndexRoute
   '/restaurant': typeof AuthenticatedRestaurantIndexRoute
   '/security': typeof AuthenticatedSecurityIndexRoute
+  '/settings': typeof AuthenticatedSettingsIndexRoute
   '/staff': typeof AuthenticatedStaffIndexRoute
   '/whatsapp': typeof AuthenticatedWhatsappIndexRoute
   '/banquet/bill/$id': typeof AuthenticatedBanquetBillIdRoute
@@ -826,6 +835,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/': typeof AuthenticatedReportsIndexRoute
   '/_authenticated/restaurant/': typeof AuthenticatedRestaurantIndexRoute
   '/_authenticated/security/': typeof AuthenticatedSecurityIndexRoute
+  '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/staff/': typeof AuthenticatedStaffIndexRoute
   '/_authenticated/whatsapp/': typeof AuthenticatedWhatsappIndexRoute
   '/_authenticated/banquet/bill/$id': typeof AuthenticatedBanquetBillIdRoute
@@ -913,6 +923,7 @@ export interface FileRouteTypes {
     | '/reports/'
     | '/restaurant/'
     | '/security/'
+    | '/settings/'
     | '/staff/'
     | '/whatsapp/'
     | '/banquet/bill/$id'
@@ -998,6 +1009,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/restaurant'
     | '/security'
+    | '/settings'
     | '/staff'
     | '/whatsapp'
     | '/banquet/bill/$id'
@@ -1084,6 +1096,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/'
     | '/_authenticated/restaurant/'
     | '/_authenticated/security/'
+    | '/_authenticated/settings/'
     | '/_authenticated/staff/'
     | '/_authenticated/whatsapp/'
     | '/_authenticated/banquet/bill/$id'
@@ -1158,6 +1171,13 @@ declare module '@tanstack/react-router' {
       path: '/staff'
       fullPath: '/staff/'
       preLoaderRoute: typeof AuthenticatedStaffIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings/': {
+      id: '/_authenticated/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/security/': {
@@ -1767,6 +1787,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
   AuthenticatedRestaurantIndexRoute: typeof AuthenticatedRestaurantIndexRoute
   AuthenticatedSecurityIndexRoute: typeof AuthenticatedSecurityIndexRoute
+  AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
   AuthenticatedStaffIndexRoute: typeof AuthenticatedStaffIndexRoute
   AuthenticatedWhatsappIndexRoute: typeof AuthenticatedWhatsappIndexRoute
   AuthenticatedBanquetBillIdRoute: typeof AuthenticatedBanquetBillIdRoute
@@ -1856,6 +1877,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
   AuthenticatedRestaurantIndexRoute: AuthenticatedRestaurantIndexRoute,
   AuthenticatedSecurityIndexRoute: AuthenticatedSecurityIndexRoute,
+  AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
   AuthenticatedStaffIndexRoute: AuthenticatedStaffIndexRoute,
   AuthenticatedWhatsappIndexRoute: AuthenticatedWhatsappIndexRoute,
   AuthenticatedBanquetBillIdRoute: AuthenticatedBanquetBillIdRoute,
