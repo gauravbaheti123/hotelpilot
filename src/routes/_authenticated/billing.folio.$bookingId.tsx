@@ -843,7 +843,7 @@ function FolioPage() {
         )}
 
         {/* Bill Type controls (screen only) */}
-        <Card className="print:hidden">
+        <Card className="print:hidden no-print">
           <CardContent className="flex flex-wrap items-end gap-3 p-4">
             <div className="flex gap-2 rounded-md border p-1 bg-muted/30">
               <button type="button" disabled={!isOpen} onClick={() => toggleMode("gst")}
@@ -903,7 +903,7 @@ function FolioPage() {
         </Card>
 
         {/* INVOICE DOCUMENT */}
-        <div id="invoice-content" className="relative mx-auto w-full bg-white shadow-md ring-1 ring-black/5 print:shadow-none print:ring-0">
+        <div id="invoice-print-area" className="relative mx-auto w-full bg-white shadow-md ring-1 ring-black/5 print:shadow-none print:ring-0">
           {isSettled && (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
               <div style={{
