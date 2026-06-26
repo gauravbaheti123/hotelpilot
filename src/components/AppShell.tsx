@@ -225,7 +225,8 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
   const isSuperadmin = isPlatformSuper;
   const { isViewing, exit } = useSuperadminView();
   const inAdminMode = isPlatformSuper && !isViewing;
-  const isOwner = roles.includes("owner") || isSuperadmin;
+  const normalizedRoles = roles.map((role) => role.toLowerCase());
+  const isOwner = normalizedRoles.includes("owner") || isSuperadmin;
   const isManagerOrAbove = roles.includes("manager") || isOwner;
   const currentPath = router.state.location.pathname;
   const { can, loading: permsLoading, isSuperadmin: permSuper, map } = usePermissions();
@@ -250,7 +251,7 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
               (!n.requireSuperadmin || isSuperadmin) &&
               (!n.requireOwner || isOwner) &&
               (!n.requireManagerOrAbove || isManagerOrAbove) &&
-              (!n.module || !hasAnyAssignment || permsLoading || can(n.module, "view")),
+              (!n.module || isOwner || !hasAnyAssignment || permsLoading || can(n.module, "view")),
           ),
         }))
         .filter((g) => g.items.length > 0);
