@@ -79,7 +79,7 @@ export function SuperadminDashboard() {
       supabase.from("profiles").select("id", { count: "exact", head: true }),
       supabase.from("bookings").select("id,property_id", { count: "exact" }).gte("created_at", monthStart),
       supabase.from("kot_orders").select("id", { count: "exact", head: true }).gte("created_at", monthStart),
-      supabase.from("activity_log").select("id,created_at,action,user_email,property_id").order("created_at", { ascending: false }).limit(10),
+      supabase.from("activity_log").select("id,created_at,action_type,module,user_name,property_id").order("created_at", { ascending: false }).limit(10),
     ]);
 
     const propsList = (props ?? []) as Prop[];
@@ -122,11 +122,11 @@ export function SuperadminDashboard() {
       revenue: revByProp[p.id] ?? 0,
     }));
 
-    const activityRows: ActivityRow[] = ((act ?? []) as Array<{ id: string; created_at: string; action: string; user_email: string | null; property_id: string | null }>).map((a) => ({
+    const activityRows: ActivityRow[] = ((act ?? []) as Array<{ id: string; created_at: string; action_type: string; module: string | null; user_name: string | null; property_id: string | null }>).map((a) => ({
       id: a.id,
       created_at: a.created_at,
-      action: a.action,
-      user_email: a.user_email,
+      action: `${a.module ? a.module + " · " : ""}${a.action_type}`,
+      user_email: a.user_name,
       property_name: a.property_id ? propMap.get(a.property_id) ?? null : null,
     }));
 
