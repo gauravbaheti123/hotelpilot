@@ -36,7 +36,16 @@ interface AssignRow {
   role: string;
 }
 
-const ASSIGNABLE_ROLES = ["manager", "receptionist", "housekeeping", "kitchen"] as const;
+const APP_ROLE_ENUM = ["manager", "receptionist", "housekeeping", "kitchen"] as const;
+type AppRoleEnum = (typeof APP_ROLE_ENUM)[number];
+
+function deriveAppRole(roleName: string): AppRoleEnum {
+  const n = roleName.toLowerCase();
+  if (n.includes("kitchen") || n.includes("chef") || n.includes("food")) return "kitchen";
+  if (n.includes("housekeep")) return "housekeeping";
+  if (n.includes("recept") || n.includes("front")) return "receptionist";
+  return "manager";
+}
 
 function randomPassword() {
   const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
@@ -58,7 +67,7 @@ function UsersPage() {
   const [rows, setRows] = useState<AssignRow[]>([]);
 
   const [showNew, setShowNew] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: randomPassword(), role: "receptionist" as (typeof ASSIGNABLE_ROLES)[number], role_id: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: randomPassword(), role_id: "" });
   const [busy, setBusy] = useState(false);
 
   const [resetTarget, setResetTarget] = useState<AssignRow | null>(null);
@@ -159,15 +168,18 @@ function UsersPage() {
     if (!form.email || !form.password) return toast.error("Email and password required");
     const property_id = isSuperadmin ? (currentPropertyId ?? properties[0]?.id) : currentPropertyId;
     if (!property_id) return toast.error("Select a property first");
+    if (!form.role_id) return toast.error("Select a role");
+    const chosen = roleOptions.find((r) => r.id === form.role_id);
+    const appRole = deriveAppRole(chosen?.name ?? "");
     setBusy(true);
     try {
       await createFn({ data: {
         name: form.name, email: form.email, password: form.password,
-        role: form.role, property_id, role_id: form.role_id || null,
+        role: appRole, property_id, role_id: form.role_id,
       } });
       toast.success("Staff user created");
       setShowNew(false);
-      setForm({ name: "", email: "", password: randomPassword(), role: "receptionist", role_id: "" });
+      setForm({ name: "", email: "", password: randomPassword(), role_id: "" });
       load();
     } catch (e: any) { toast.error(e?.message ?? "Failed"); }
     finally { setBusy(false); }
@@ -290,25 +302,17 @@ function UsersPage() {
             </div>
             <div>
               <Label>Role</Label>
-              <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as any })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {ASSIGNABLE_ROLES.map((r) => (
-                    <SelectItem key={r} value={r} className="capitalize">{r}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Permission template (optional)</Label>
               <Select value={form.role_id} onValueChange={(v) => setForm({ ...form, role_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Use role defaults…" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select role…" /></SelectTrigger>
                 <SelectContent>
                   {roleOptions.map((o) => (
                     <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                System roles and custom roles for this property. Manage them in Roles & Permissions.
+              </p>
             </div>
           </div>
           <DialogFooter>
