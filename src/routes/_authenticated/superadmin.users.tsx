@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/use-auth";
@@ -30,6 +30,13 @@ function UsersPage() {
   const isSuperadmin = appRoles.includes("superadmin");
   const isOwner = appRoles.includes("owner");
   const canAccess = isSuperadmin || isOwner;
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!loading && !canAccess) {
+      toast.error("Access denied");
+      navigate({ to: "/dashboard", replace: true });
+    }
+  }, [loading, canAccess, navigate]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [rows, setRows] = useState<AssignRow[]>([]);
