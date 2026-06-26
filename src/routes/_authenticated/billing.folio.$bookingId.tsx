@@ -1191,6 +1191,11 @@ function FolioPage() {
               Powered by HotelPilot.in
             </div>
           </div>
+          {isPremium && (
+            <div style={{ background: "#f1f3f5", color: "#495057", fontSize: 11, padding: "8px 40px", textAlign: "center", borderTop: "1px solid #dee2e6" }}>
+              {[property?.name, property?.email, (property as any)?.website, property?.phone].filter(Boolean).join("  |  ")}
+            </div>
+          )}
         </div>
 
         {/* Collect payment (screen only) */}
