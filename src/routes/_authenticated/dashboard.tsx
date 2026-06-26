@@ -673,6 +673,7 @@ const STATUS_META: Record<string, { label: string; bg: string }> = {
   dirty:       { label: "Dirty",       bg: "#d97706" },
   maintenance: { label: "Maintenance", bg: "#6b7280" },
   blocked:     { label: "Blocked",     bg: "#6b7280" },
+  overdue:     { label: "OVERDUE",     bg: "#b45309" },
 };
 const EVENT_BLOCK_BG = "#7c3aed";
 const EVENT_IN_BG = "#6d28d9";
