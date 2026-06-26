@@ -60,6 +60,7 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   requireSuperadmin?: boolean;
   requireOwner?: boolean;
+  requireManagerOrAbove?: boolean;
   module?: string;
 }
 
