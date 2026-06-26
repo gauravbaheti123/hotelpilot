@@ -217,7 +217,7 @@ function NavEntry({ item, currentPath }: { item: NavItem; currentPath: string })
 
 function AppShellInner({ title, children }: { title: string; children: ReactNode }) {
   const router = useRouter();
-  const { user, roles } = useAuth();
+  const { user, roles, loading: authLoading } = useAuth();
   // Superadmin sidebar is reserved for the platform owner email ONLY.
   // Do NOT derive this from role names, permission counts, or property_id.
   const isPlatformSuper =
@@ -231,6 +231,11 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
   const currentPath = router.state.location.pathname;
   const { can, loading: permsLoading, isSuperadmin: permSuper, map } = usePermissions();
   const hasAnyAssignment = permSuper || Object.keys(map).length > 0;
+  // Filter the sidebar by permissions only AFTER auth + perms have settled,
+  // and never for Owners / Superadmin. This prevents the "full menu shrinks
+  // to short menu" flicker right after sign-in.
+  const skipPermissionFilter =
+    isOwner || isSuperadmin || authLoading || permsLoading || !hasAnyAssignment;
   const { current } = useCurrentProperty();
   const propertyPaused = current?.status === "paused";
   const propertyId = current?.id ?? null;
@@ -251,7 +256,7 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
               (!n.requireSuperadmin || isSuperadmin) &&
               (!n.requireOwner || isOwner) &&
               (!n.requireManagerOrAbove || isManagerOrAbove) &&
-              (!n.module || isOwner || !hasAnyAssignment || permsLoading || can(n.module, "view")),
+              (!n.module || skipPermissionFilter || can(n.module, "view")),
           ),
         }))
         .filter((g) => g.items.length > 0);
