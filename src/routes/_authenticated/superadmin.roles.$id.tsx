@@ -9,11 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ShieldAlert, ArrowLeft } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ShieldAlert, ArrowLeft, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/superadmin/roles/$id")({
-  head: () => ({ meta: [{ title: "Edit Role — HotelPilot" }] }),
+  head: () => ({ meta: [{ title: "Edit Permissions — HotelPilot" }] }),
   component: EditRolePage,
 });
 
@@ -66,6 +67,17 @@ type Action = (typeof ACTIONS)[number];
 
 interface Perm { id: string; module: string; action: Action }
 
+// System default permission sets keyed by role name (lowercased).
+const DEFAULTS: Record<string, Partial<Record<string, Action[]>>> = {
+  manager: Object.fromEntries(ALL_MODULES.map((m) => [m, [...ACTIONS]])),
+  receptionist: {
+    dashboard: ["view"], bookings: ["view","create","edit"], calendar: ["view"], inhouse: ["view","edit"],
+    food_dashboard: ["view"], all_kots: ["view"], new_kot: ["view","create","edit"], pending_bills: ["view"],
+    pos: ["view","create","edit"], restaurant_billing: ["view"], invoices: ["view","create"],
+    room_board: ["view"], tasks: ["view","edit"], guest_crm: ["view","create","edit"],
+  },
+};
+
 function EditRolePage() {
   const { id } = useParams({ from: "/_authenticated/superadmin/roles/$id" });
   const { roles: appRoles, loading } = useAuth();
@@ -73,13 +85,16 @@ function EditRolePage() {
   const isOwner = appRoles.includes("owner");
   const canAccess = isSuperadmin || isOwner;
   const navigate = useNavigate();
+
   const [role, setRole] = useState<{ id: string; name: string; description: string | null; is_system?: boolean; max_discount_pct?: number | null } | null>(null);
   const [perms, setPerms] = useState<Perm[]>([]);
+  const [savedAllowed, setSavedAllowed] = useState<Record<string, boolean>>({});
   const [allowed, setAllowed] = useState<Record<string, boolean>>({});
   const [maxDiscount, setMaxDiscount] = useState<string>("0");
+  const [savedMaxDiscount, setSavedMaxDiscount] = useState<string>("0");
   const [saving, setSaving] = useState(false);
 
-  // Owner's own permission set — used to gray out modules they themselves lack.
+  // Owner's own effective permissions — used to gate what they can grant.
   const [ownerCan, setOwnerCan] = useState<Record<string, Record<Action, boolean>>>({});
 
   useEffect(() => {
@@ -89,30 +104,30 @@ function EditRolePage() {
     }
   }, [loading, canAccess, navigate]);
 
-  useEffect(() => {
-    if (!canAccess) return;
-    (async () => {
-      const [{ data: r }, { data: ps }, { data: rps }] = await Promise.all([
-        supabase.from("roles").select("id,name,description,is_system,max_discount_pct").eq("id", id).maybeSingle(),
-        supabase.from("permissions").select("id,module,action"),
-        supabase.from("role_permissions").select("permission_id,allowed").eq("role_id", id),
-      ]);
-      const roleRow = (r as any) ?? null;
-      if (roleRow && !isSuperadmin && /^(owner|superadmin)$/i.test(roleRow.name)) {
-        toast.error("Access denied");
-        navigate({ to: "/superadmin/roles", replace: true });
-        return;
-      }
-      setRole(roleRow);
-      setMaxDiscount(String((r as any)?.max_discount_pct ?? 0));
-      setPerms((ps ?? []) as Perm[]);
-      const next: Record<string, boolean> = {};
-      for (const rp of rps ?? []) next[rp.permission_id as string] = !!rp.allowed;
-      setAllowed(next);
-    })();
-  }, [id, canAccess, isSuperadmin, navigate]);
+  async function loadAll() {
+    const [{ data: r }, { data: ps }, { data: rps }] = await Promise.all([
+      supabase.from("roles").select("id,name,description,is_system,max_discount_pct").eq("id", id).maybeSingle(),
+      supabase.from("permissions").select("id,module,action"),
+      supabase.from("role_permissions").select("permission_id,allowed").eq("role_id", id),
+    ]);
+    const roleRow = (r as any) ?? null;
+    if (roleRow && !isSuperadmin && /^(owner|superadmin)$/i.test(roleRow.name)) {
+      toast.error("Access denied");
+      navigate({ to: "/superadmin/roles", replace: true });
+      return;
+    }
+    setRole(roleRow);
+    const md = String((r as any)?.max_discount_pct ?? 0);
+    setMaxDiscount(md); setSavedMaxDiscount(md);
+    setPerms((ps ?? []) as Perm[]);
+    const next: Record<string, boolean> = {};
+    for (const rp of rps ?? []) next[rp.permission_id as string] = !!rp.allowed;
+    setAllowed(next);
+    setSavedAllowed(next);
+  }
 
-  // Load owner's own effective permissions to enforce: owners cannot grant what they don't have.
+  useEffect(() => { if (canAccess) loadAll(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id, canAccess]);
+
   useEffect(() => {
     if (isSuperadmin || !isOwner) return;
     (async () => {
@@ -145,7 +160,6 @@ function EditRolePage() {
 
   function canOwnerToggle(module: string, action: Action) {
     if (isSuperadmin) return true;
-    // Owner is treated as having everything (their app role grants all).
     if (appRoles.includes("owner")) return true;
     return !!ownerCan[module]?.[action];
   }
@@ -160,6 +174,17 @@ function EditRolePage() {
       for (const a of ACTIONS) {
         const p = byKey[`${module}:${a}`];
         if (p && canOwnerToggle(module, a)) next[p.id] = value;
+      }
+      return next;
+    });
+  }
+
+  function toggleSection(modules: string[], value: boolean) {
+    setAllowed((s) => {
+      const next = { ...s };
+      for (const m of modules) for (const a of ACTIONS) {
+        const p = byKey[`${m}:${a}`];
+        if (p && canOwnerToggle(m, a)) next[p.id] = value;
       }
       return next;
     });
@@ -182,6 +207,37 @@ function EditRolePage() {
       return p ? !!allowed[p.id] : true;
     });
 
+  const sectionAll = (modules: string[]) =>
+    modules.every((m) => ACTIONS.every((a) => {
+      const p = byKey[`${m}:${a}`];
+      return p ? !!allowed[p.id] : true;
+    }));
+
+  const isDirty = (permId: string) => !!allowed[permId] !== !!savedAllowed[permId];
+  const hasUnsaved = useMemo(
+    () => perms.some((p) => isDirty(p.id)) || maxDiscount !== savedMaxDiscount,
+    [perms, allowed, savedAllowed, maxDiscount, savedMaxDiscount],
+  );
+
+  function resetToDefaults() {
+    const key = (role?.name ?? "").toLowerCase();
+    const def = DEFAULTS[key];
+    if (!def) {
+      // Fall back to "revert unsaved changes"
+      setAllowed(savedAllowed);
+      setMaxDiscount(savedMaxDiscount);
+      toast.success("Reverted unsaved changes");
+      return;
+    }
+    const next: Record<string, boolean> = {};
+    for (const p of perms) {
+      const actions = def[p.module] ?? [];
+      next[p.id] = actions.includes(p.action);
+    }
+    setAllowed(next);
+    toast.success("Reset to system defaults — click Save to apply");
+  }
+
   async function save() {
     if (readOnly) { toast.error("This role is read only"); return; }
     setSaving(true);
@@ -195,13 +251,15 @@ function EditRolePage() {
     }
     setSaving(false);
     invalidatePermissions();
+    setSavedAllowed({ ...allowed });
+    setSavedMaxDiscount(maxDiscount);
     toast.success("Permissions saved");
   }
 
-  if (loading) return <AppShell title="Edit Role"><div className="text-muted-foreground">Loading…</div></AppShell>;
+  if (loading) return <AppShell title="Edit Permissions"><div className="text-muted-foreground">Loading…</div></AppShell>;
   if (!canAccess) {
     return (
-      <AppShell title="Edit Role">
+      <AppShell title="Edit Permissions">
         <Card className="max-w-md">
           <CardHeader><div className="flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-destructive" /><CardTitle>Access denied</CardTitle></div></CardHeader>
         </Card>
@@ -211,94 +269,134 @@ function EditRolePage() {
 
   return (
     <AppShell title="Edit Permissions">
-      <div className="max-w-6xl space-y-4">
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/superadmin/roles"><ArrowLeft className="h-4 w-4 mr-1" /> Back to roles</Link>
-        </Button>
-        <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-background/95 backdrop-blur border-b flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight">Edit Permissions — {role?.name ?? "Role"}</h2>
-            {role?.description ? <p className="text-sm text-muted-foreground">{role.description}</p> : null}
+      <TooltipProvider>
+        <div className="max-w-6xl space-y-4">
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/superadmin/roles"><ArrowLeft className="h-4 w-4 mr-1" /> Back to roles</Link>
+          </Button>
+
+          <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-background/95 backdrop-blur border-b flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight">Edit Permissions — {role?.name ?? "Role"}</h2>
+              {role?.description ? <p className="text-sm text-muted-foreground">{role.description}</p> : null}
+              {hasUnsaved && !readOnly && (
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">You have unsaved changes</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {!readOnly && (
+                <Button variant="outline" size="sm" onClick={resetToDefaults}>
+                  <RotateCcw className="h-4 w-4 mr-1" /> Reset to Default
+                </Button>
+              )}
+              {!readOnly ? (
+                <Button onClick={save} disabled={saving || !hasUnsaved}>
+                  {saving ? "Saving…" : "Save Permissions"}
+                </Button>
+              ) : (
+                <span className="text-xs text-muted-foreground">Read only — protected role</span>
+              )}
+            </div>
           </div>
-          {!readOnly ? (
-            <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save Permissions"}</Button>
-          ) : (
-            <span className="text-xs text-muted-foreground">Read only — protected role</span>
+
+          {!readOnly && !/owner/i.test(role?.name ?? "") && (
+            <Card>
+              <CardContent className="py-3 flex items-center gap-3">
+                <span className="text-sm">Max discount %</span>
+                <Input
+                  type="number" min={0} max={100}
+                  value={maxDiscount}
+                  onChange={(e) => setMaxDiscount(e.target.value)}
+                  className={`w-24 ${maxDiscount !== savedMaxDiscount ? "bg-amber-100 dark:bg-amber-950/40" : ""}`}
+                />
+                <span className="text-xs text-muted-foreground">Cap applied when users with this role apply discounts.</span>
+              </CardContent>
+            </Card>
           )}
-        </div>
 
-        {!readOnly && !/owner/i.test(role?.name ?? "") && (
           <Card>
-            <CardContent className="py-3 flex items-center gap-3">
-              <span className="text-sm">Max discount %</span>
-              <Input
-                type="number" min={0} max={100}
-                value={maxDiscount}
-                onChange={(e) => setMaxDiscount(e.target.value)}
-                className="w-24"
-              />
-              <span className="text-xs text-muted-foreground">Cap applied when users with this role apply discounts.</span>
-            </CardContent>
-          </Card>
-        )}
-
-        <Card>
-          <CardContent className="p-0">
-            <Table style={{ tableLayout: "fixed" }} className="w-full">
-              <TableHeader>
-                <TableRow>
-                  <TableHead style={{ width: "32%" }}>Module</TableHead>
-                  {ACTIONS.map((a) => (
-                    <TableHead key={a} style={{ width: "13%" }} className="text-center capitalize">
-                      <div className="flex flex-col items-center justify-center gap-1">
-                        <span>{a}</span>
-                        <Checkbox checked={columnAll(a)} onCheckedChange={(v) => toggleColumn(a, !!v)} disabled={readOnly} aria-label={`Select all ${a}`} />
-                      </div>
-                    </TableHead>
-                  ))}
-                  <TableHead style={{ width: "16%" }} className="text-center">All</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {SECTIONS.map((sec) => (
-                  <Fragment key={sec.title}>
-                    <TableRow className="bg-muted/40">
-                      <TableCell colSpan={6} className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">{sec.title}</TableCell>
-                    </TableRow>
-                    {sec.modules.map((m) => {
-                      const rowAll = ACTIONS.every((a) => {
-                        const p = byKey[`${m.key}:${a}`];
-                        return p ? !!allowed[p.id] : true;
-                      });
-                      return (
-                        <TableRow key={m.key}>
-                          <TableCell>{m.label}</TableCell>
-                          {ACTIONS.map((a) => {
-                            const p = byKey[`${m.key}:${a}`];
-                            const enabled = canOwnerToggle(m.key, a);
-                            return (
-                              <TableCell key={a} className="text-center">
-                                <Checkbox
-                                  checked={p ? !!allowed[p.id] : false}
-                                  onCheckedChange={(v) => p && toggle(p.id, !!v)}
-                                  disabled={readOnly || !p || !enabled}
-                                />
-                              </TableCell>
-                            );
-                          })}
+            <CardContent className="p-0">
+              <Table style={{ tableLayout: "fixed" }} className="w-full">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead style={{ width: "32%" }}>Module</TableHead>
+                    {ACTIONS.map((a) => (
+                      <TableHead key={a} style={{ width: "13%" }} className="text-center capitalize">
+                        <div className="flex flex-col items-center justify-center gap-1">
+                          <span>{a}</span>
+                          <Checkbox checked={columnAll(a)} onCheckedChange={(v) => toggleColumn(a, !!v)} disabled={readOnly} aria-label={`Select all ${a}`} />
+                        </div>
+                      </TableHead>
+                    ))}
+                    <TableHead style={{ width: "16%" }} className="text-center">All</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {SECTIONS.map((sec) => {
+                    const modKeys = sec.modules.map((m) => m.key);
+                    const allOn = sectionAll(modKeys);
+                    return (
+                      <Fragment key={sec.title}>
+                        <TableRow className="bg-muted/50">
+                          <TableCell colSpan={5} className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">
+                            {sec.title}
+                          </TableCell>
                           <TableCell className="text-center">
-                            <Checkbox checked={rowAll} onCheckedChange={(v) => toggleRow(m.key, !!v)} disabled={readOnly} />
+                            <div className="flex items-center justify-center gap-2">
+                              <span className="text-[10px] text-muted-foreground">Section</span>
+                              <Checkbox checked={allOn} onCheckedChange={(v) => toggleSection(modKeys, !!v)} disabled={readOnly} />
+                            </div>
                           </TableCell>
                         </TableRow>
-                      );
-                    })}
-                  </Fragment>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
+                        {sec.modules.map((m) => {
+                          const rowAll = ACTIONS.every((a) => {
+                            const p = byKey[`${m.key}:${a}`];
+                            return p ? !!allowed[p.id] : true;
+                          });
+                          return (
+                            <TableRow key={m.key}>
+                              <TableCell>{m.label}</TableCell>
+                              {ACTIONS.map((a) => {
+                                const p = byKey[`${m.key}:${a}`];
+                                const enabled = canOwnerToggle(m.key, a);
+                                const dirty = p ? isDirty(p.id) : false;
+                                const cell = (
+                                  <TableCell
+                                    key={a}
+                                    className={`text-center ${dirty ? "bg-amber-100 dark:bg-amber-950/40" : ""} ${!enabled ? "opacity-50" : ""}`}
+                                  >
+                                    <Checkbox
+                                      checked={p ? !!allowed[p.id] : false}
+                                      onCheckedChange={(v) => p && toggle(p.id, !!v)}
+                                      disabled={readOnly || !p || !enabled}
+                                    />
+                                  </TableCell>
+                                );
+                                if (!enabled) {
+                                  return (
+                                    <Tooltip key={a}>
+                                      <TooltipTrigger asChild><div className="contents">{cell}</div></TooltipTrigger>
+                                      <TooltipContent>You don&apos;t have this permission</TooltipContent>
+                                    </Tooltip>
+                                  );
+                                }
+                                return cell;
+                              })}
+                              <TableCell className="text-center">
+                                <Checkbox checked={rowAll} onCheckedChange={(v) => toggleRow(m.key, !!v)} disabled={readOnly} />
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </Fragment>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+      </TooltipProvider>
     </AppShell>
   );
 }
