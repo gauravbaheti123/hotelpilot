@@ -233,6 +233,21 @@ function OwnerDashboard({
       setOccupiedRoomIds(occSet);
       setBookingByRoom(bMap);
       setOccInfoByRoom(oMap);
+
+      // Self-heal Issue 2: rooms flagged occupied in the rooms table but with
+      // no active booking_room covering today are stale "ghost" tiles. Reset
+      // them to vacant so the dashboard reflects reality.
+      if (isToday) {
+        const ghosts = (rms.data ?? [])
+          .filter((r: any) => r.status === "occupied" && !occSet.has(r.id))
+          .map((r: any) => r.id);
+        if (ghosts.length > 0) {
+          supabase.from("rooms")
+            .update({ status: "vacant" as any, housekeeping_status: "dirty" as any })
+            .in("id", ghosts)
+            .then(({ error }) => { if (error) console.warn("ghost cleanup failed", error); });
+        }
+      }
       setKpi({
         occupied: occSet.size,
         arrivals: arr.data?.length ?? 0,
