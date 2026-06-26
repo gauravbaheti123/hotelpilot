@@ -137,6 +137,7 @@ function NewKotPage() {
         notes: notes || null,
         printed_at: printNow ? new Date().toISOString() : null,
         created_by: user?.id ?? null,
+        kot_copy: "hotel_copy",
       };
       const { data: kot, error } = await supabase
         .from("kot_orders").insert(insertPayload as any).select("id").single();

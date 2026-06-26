@@ -102,6 +102,7 @@ function NewBookingPage() {
   const [roomId, setRoomId] = useState<string>("");
   const [tariffId, setTariffId] = useState<string>("");
   const [rate, setRate] = useState(0);
+  const [rateManuallySet, setRateManuallySet] = useState(false);
   const [mealPlan, setMealPlan] = useState("EP");
   const [source, setSource] = useState("walk_in");
   const [advance, setAdvance] = useState(0);
@@ -237,8 +238,9 @@ function NewBookingPage() {
   function pickCategory(id: string) {
     setCategoryId(id);
     setRoomId("");
+    // Always refresh rate from category/tariff on category change unless the
+    // user explicitly edited it (rateManuallySet).
     const cat = cats.find((c) => c.id === id);
-    if (cat && rate === 0) setRate(cat.base_rate);
     // Prefer "Rack Rate" tariff (case-insensitive name match), else first matching tariff.
     const catTariffs = tariffs.filter((t) => t.category_id === id);
     const t =
@@ -248,10 +250,11 @@ function NewBookingPage() {
       tariffs[0];
     if (t) {
       setTariffId(t.id);
-      setRate(t.rate);
+      if (!rateManuallySet) setRate(t.rate);
       setMealPlan(t.meal_plan);
     } else {
       setTariffId("");
+      if (!rateManuallySet && cat) setRate(cat.base_rate);
     }
   }
 
@@ -259,7 +262,7 @@ function NewBookingPage() {
     setTariffId(id);
     const t = tariffs.find((t) => t.id === id);
     if (t) {
-      setRate(t.rate);
+      if (!rateManuallySet) setRate(t.rate);
       setMealPlan(t.meal_plan);
     }
   }
@@ -292,7 +295,8 @@ function NewBookingPage() {
             notes: guestNotes || null,
             tags,
           })
-          .eq("id", guestId);
+          .eq("id", guestId)
+          .eq("property_id", current.id);
         if (uErr) throw uErr;
       } else {
         const { data: g, error: gErr } = await supabase
@@ -737,7 +741,7 @@ function NewBookingPage() {
                 </SelectContent>
               </Select>
             </F>
-            <F label="Rate / night (₹)"><Input type="number" value={rate} onChange={(e) => setRate(Number(e.target.value))} /></F>
+            <F label="Rate / night (₹)"><Input type="number" value={rate} onChange={(e) => { setRate(Number(e.target.value)); setRateManuallySet(true); }} /></F>
             <F label="Source">
               <Select value={source} onValueChange={setSource}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

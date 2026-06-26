@@ -170,7 +170,8 @@ function FolioPage() {
       .select("id,kot_number,status,total_amount,sub_total,kot_items(id,item_name,qty,rate)")
       .eq("booking_id", bookingId)
       .eq("is_wiped", false)
-      .not("status", "in", "(served,billed,cancelled)");
+      .neq("kot_copy", "restaurant_copy")
+      .not("status", "in", "(billed,cancelled,void)");
     setPendingKots(((pk ?? []) as unknown as PendingKot[]));
 
     setLoading(false);

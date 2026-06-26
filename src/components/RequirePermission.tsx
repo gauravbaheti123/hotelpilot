@@ -19,8 +19,9 @@ export function RequirePermission({
 }) {
   const navigate = useNavigate();
   const { can, loading, isSuperadmin, map } = usePermissions();
-  const hasAnyAssignment = isSuperadmin || Object.keys(map).length > 0;
-  const allowed = isSuperadmin || !hasAnyAssignment || can(module, action);
+  // A user with zero assignments must NOT be allowed past the guard.
+  // Only superadmins bypass; everyone else must have an explicit allow.
+  const allowed = isSuperadmin || can(module, action);
 
   useEffect(() => {
     if (loading) return;
