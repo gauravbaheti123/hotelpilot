@@ -824,24 +824,34 @@ function RoomCard({
         </div>
         <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, marginTop: 1 }}>{category}</div>
 
-        {kind === "occupied" && occ && (
+        {(kind === "occupied" || kind === "overdue") && occ && (
           <>
             <div className="truncate" style={{ color: "#ffffff", fontSize: 13, fontWeight: 700, marginTop: 2 }}>
               {occ.guestName ?? "Guest"}
             </div>
-            <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 11 }}>
-              {fmtShort(occ.checkIn)} → {fmtShort(occ.checkOut)}
-            </div>
-            <div style={{ fontSize: 12, fontWeight: 600, color: pending > 0 ? "#fbbf24" : "rgba(255,255,255,0.9)" }}>
+            {kind === "overdue" ? (
+              <div style={{ color: "#fecaca", fontSize: 11, fontWeight: 600 }}>
+                Due: {fmtShort(occ.checkOut)} ⚠️
+              </div>
+            ) : (
+              <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 11 }}>
+                {fmtShort(occ.checkIn)} → {fmtShort(occ.checkOut)}
+              </div>
+            )}
+            <div style={{ fontSize: 12, fontWeight: 700, color: kind === "overdue" ? "#fecaca" : (pending > 0 ? "#fbbf24" : "rgba(255,255,255,0.9)") }}>
               {pending > 0 ? `₹${pending.toLocaleString("en-IN")} pending` : "Balance ₹0"}
             </div>
             <div className="mt-auto pt-1">
               <button
                 type="button"
-                style={{ backgroundColor: "#ffffff", color: meta.bg, borderRadius: 4, padding: "3px 10px", fontSize: 11, fontWeight: 600, border: "none" }}
+                style={{
+                  backgroundColor: kind === "overdue" ? "#dc2626" : "#ffffff",
+                  color: kind === "overdue" ? "#ffffff" : meta.bg,
+                  borderRadius: 4, padding: "3px 10px", fontSize: 11, fontWeight: 700, border: "none",
+                }}
                 onClick={(e) => { e.stopPropagation(); onCheckout(occ.bookingId); }}
               >
-                Checkout
+                {kind === "overdue" ? "Checkout Now" : "Checkout"}
               </button>
             </div>
           </>
