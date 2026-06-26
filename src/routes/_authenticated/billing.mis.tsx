@@ -17,7 +17,8 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { inr } from "@/lib/billing";
 import { toast } from "sonner";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
-import { Lock, Trash2, AlertTriangle } from "lucide-react";
+import { Lock, Trash2, AlertTriangle, Pencil, Download } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/billing/mis")({
   head: () => ({ meta: [{ title: "MIS Account — HotelPilot" }] }),
@@ -52,6 +53,69 @@ function MISPage() {
   const [delStep, setDelStep] = useState<1 | 2>(1);
   const [delTyped, setDelTyped] = useState("");
   const [delBusy, setDelBusy] = useState(false);
+
+  // edit flow
+  const isManager = hasRole(roles, "manager") || hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const [editRow, setEditRow] = useState<Row | null>(null);
+  const [editGuest, setEditGuest] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editAmount, setEditAmount] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editBusy, setEditBusy] = useState(false);
+
+  function openEdit(r: Row) {
+    setEditRow(r);
+    setEditGuest(r.source_guest_name ?? "");
+    setEditDesc(r.description ?? "");
+    setEditAmount(String(r.amount));
+    setEditNotes("");
+  }
+
+  async function saveEdit() {
+    if (!editRow || !propertyId) return;
+    setEditBusy(true);
+    const { error } = await supabase.from("mis_ledger" as any).update({
+      source_guest_name: editGuest || null,
+      description: editDesc || null,
+      amount: Number(editAmount),
+    } as any).eq("id", editRow.id);
+    setEditBusy(false);
+    if (error) return toast.error(error.message);
+    logActivity({
+      property_id: propertyId, user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      action_type: "MIS_EDITED", module: "MIS",
+      reference_id: editRow.id,
+      reference_label: `${editRow.source_bill_number ?? "—"} · ${editGuest}`,
+      details: { notes: editNotes, before: editRow, after: { editGuest, editDesc, editAmount } },
+    });
+    toast.success("MIS entry updated");
+    setEditRow(null);
+    load();
+  }
+
+  function exportCsv() {
+    const header = ["Date", "Bill", "Room", "Guest", "Items", "Amount", "By"];
+    const lines = [header.join(",")];
+    for (const r of filtered) {
+      const items = (r.line_items ?? []).map((i) => `${i.name} ${i.amount}`).join("; ");
+      const row = [
+        new Date(r.shifted_at).toLocaleString("en-IN"),
+        r.source_bill_number ?? "",
+        r.source_room_number ?? "",
+        r.source_guest_name ?? "",
+        items,
+        String(r.amount),
+        r.shifted_by_name ?? "",
+      ].map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",");
+      lines.push(row);
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `MIS-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  }
 
   const load = useCallback(async () => {
     if (!propertyId) return;
@@ -145,6 +209,9 @@ function MISPage() {
           <Badge variant="outline" className="text-sm px-3 py-1.5">
             Total in MIS: <span className="ml-1 font-bold">{inr(total)}</span>
           </Badge>
+          <Button variant="outline" size="sm" onClick={exportCsv} disabled={filtered.length === 0}>
+            <Download className="h-4 w-4 mr-1" /> Export CSV
+          </Button>
         </div>
 
         <Card>
@@ -179,10 +246,19 @@ function MISPage() {
                     <td className="px-3 py-2 text-right font-semibold tabular-nums">{inr(r.amount)}</td>
                     <td className="px-3 py-2 text-xs">{r.shifted_by_name ?? "—"}</td>
                     <td className="px-3 py-2 text-right">
-                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
-                        onClick={() => openDelete(r)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        {isManager && (
+                          <Button size="sm" variant="ghost" onClick={() => openEdit(r)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {isOwner && (
+                          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
+                            onClick={() => openDelete(r)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
