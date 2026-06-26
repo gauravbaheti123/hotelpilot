@@ -124,6 +124,7 @@ export type Database = {
       banquet_bookings: {
         Row: {
           advance_amount: number
+          advance_payment_mode: string | null
           balance_amount: number
           banquet_number: string
           bill_type: string
@@ -137,6 +138,7 @@ export type Database = {
           event_date: string
           event_name: string | null
           extra_charge: number
+          extra_charge_description: string | null
           fb_charge: number
           function_type: string
           guest_id: string | null
@@ -155,6 +157,7 @@ export type Database = {
         }
         Insert: {
           advance_amount?: number
+          advance_payment_mode?: string | null
           balance_amount?: number
           banquet_number?: string
           bill_type?: string
@@ -168,6 +171,7 @@ export type Database = {
           event_date: string
           event_name?: string | null
           extra_charge?: number
+          extra_charge_description?: string | null
           fb_charge?: number
           function_type?: string
           guest_id?: string | null
@@ -186,6 +190,7 @@ export type Database = {
         }
         Update: {
           advance_amount?: number
+          advance_payment_mode?: string | null
           balance_amount?: number
           banquet_number?: string
           bill_type?: string
@@ -199,6 +204,7 @@ export type Database = {
           event_date?: string
           event_name?: string | null
           extra_charge?: number
+          extra_charge_description?: string | null
           fb_charge?: number
           function_type?: string
           guest_id?: string | null
