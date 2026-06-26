@@ -880,7 +880,7 @@ function LegendDot({ className, style, label }: { className?: string; style?: Re
 }
 
 function tileKind(r: Room, isOccupied: boolean): TileKind {
-  if (isOccupied || r.status === "occupied") return "occupied";
+  if (isOccupied) return "occupied";
   if (r.status === "maintenance" || r.housekeeping_status === "out_of_order") return "maintenance";
   if (r.housekeeping_status === "dirty") return "dirty";
   return "vacant";
