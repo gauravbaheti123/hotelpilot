@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Logo } from "./Logo";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,6 +45,8 @@ import {
   Cloud,
   Settings,
   MessageCircle,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { ShieldAlert } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -62,6 +64,7 @@ interface NavItem {
   requireOwner?: boolean;
   requireManagerOrAbove?: boolean;
   module?: string;
+  children?: NavItem[];
 }
 
 interface NavGroup {
@@ -73,13 +76,47 @@ const NAV_GROUPS: NavGroup[] = [
   {
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, module: "dashboard" },
-      { to: "/front-desk/bookings", label: "Front Desk", icon: ListChecks, module: "bookings" },
-      { to: "/food/dashboard", label: "Food & KOT", icon: ChefHat, module: "food_kot" },
-      { to: "/pos", label: "Billing", icon: Receipt, module: "pos_sundry" },
-      { to: "/reports", label: "Reports", icon: BarChart3, module: "reports_daily" },
-      { to: "/housekeeping/board", label: "Housekeeping", icon: LayoutGrid, module: "room_board" },
+      {
+        to: "/front-desk/bookings", label: "Front Desk", icon: ListChecks, module: "bookings",
+        children: [
+          { to: "/front-desk/bookings", label: "Bookings", icon: ListChecks },
+          { to: "/front-desk/calendar", label: "Calendar", icon: CalendarRange },
+          { to: "/front-desk/in-house", label: "In-house", icon: BedDouble },
+        ],
+      },
+      {
+        to: "/food/dashboard", label: "Food & KOT", icon: ChefHat, module: "food_kot",
+        children: [
+          { to: "/food/dashboard", label: "Food Dashboard", icon: LayoutDashboard },
+          { to: "/food/kots", label: "All KOTs", icon: ClipboardList },
+          { to: "/food/new", label: "New KOT", icon: PlusCircle },
+          { to: "/food/pending-bills", label: "Pending Bills", icon: Receipt },
+        ],
+      },
+      {
+        to: "/pos", label: "Billing", icon: Receipt, module: "pos_sundry",
+        children: [
+          { to: "/pos", label: "POS", icon: ShoppingCart },
+          { to: "/restaurant", label: "Restaurant Billing", icon: UtensilsCrossed },
+          { to: "/billing/invoices", label: "Invoices", icon: FileText },
+          { to: "/billing/mis", label: "MIS A/c", icon: Banknote },
+        ],
+      },
+      {
+        to: "/reports", label: "Reports", icon: BarChart3, module: "reports_daily",
+        children: [
+          { to: "/reports", label: "Reports", icon: BarChart3 },
+          { to: "/reports/night-audit", label: "Day Close", icon: Moon },
+        ],
+      },
+      {
+        to: "/housekeeping/board", label: "Housekeeping", icon: LayoutGrid, module: "room_board",
+        children: [
+          { to: "/housekeeping/board", label: "Room Board", icon: LayoutGrid },
+          { to: "/housekeeping/tasks", label: "Tasks", icon: ClipboardList },
+        ],
+      },
       { to: "/guests", label: "Guest CRM", icon: UserCircle2, module: "guest_crm" },
-      { to: "/comms", label: "Communications", icon: MessagesSquare, module: "communications" },
       { to: "/inventory", label: "Inventory", icon: Package, module: "inventory" },
       { to: "/expenses", label: "Expenses", icon: Wallet, module: "masters_expense_categories" },
       { to: "/staff", label: "Staff HR", icon: Users, module: "staff_hr" },
@@ -143,25 +180,9 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
                   {group.label}
                 </div>
               )}
-              {group.items.map((item) => {
-                const active =
-                  currentPath === item.to || currentPath.startsWith(item.to + "/");
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
-                      active
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                );
-              })}
+              {group.items.map((item) => (
+                <NavEntry key={item.to} item={item} currentPath={currentPath} />
+              ))}
             </div>
           ))}
         </nav>

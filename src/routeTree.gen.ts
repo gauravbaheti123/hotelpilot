@@ -77,6 +77,7 @@ import { Route as AuthenticatedFrontDeskNewRouteImport } from './routes/_authent
 import { Route as AuthenticatedFrontDeskInHouseRouteImport } from './routes/_authenticated/front-desk.in-house'
 import { Route as AuthenticatedFrontDeskCalendarRouteImport } from './routes/_authenticated/front-desk.calendar'
 import { Route as AuthenticatedFrontDeskBookingsRouteImport } from './routes/_authenticated/front-desk.bookings'
+import { Route as AuthenticatedFoodPendingBillsRouteImport } from './routes/_authenticated/food.pending-bills'
 import { Route as AuthenticatedFoodNewRouteImport } from './routes/_authenticated/food.new'
 import { Route as AuthenticatedFoodKotsRouteImport } from './routes/_authenticated/food.kots'
 import { Route as AuthenticatedFoodDashboardRouteImport } from './routes/_authenticated/food.dashboard'
@@ -489,6 +490,12 @@ const AuthenticatedFrontDeskBookingsRoute =
     path: '/front-desk/bookings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFoodPendingBillsRoute =
+  AuthenticatedFoodPendingBillsRouteImport.update({
+    id: '/food/pending-bills',
+    path: '/food/pending-bills',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFoodNewRoute = AuthenticatedFoodNewRouteImport.update({
   id: '/food/new',
   path: '/food/new',
@@ -602,6 +609,7 @@ export interface FileRoutesByFullPath {
   '/food/dashboard': typeof AuthenticatedFoodDashboardRoute
   '/food/kots': typeof AuthenticatedFoodKotsRoute
   '/food/new': typeof AuthenticatedFoodNewRoute
+  '/food/pending-bills': typeof AuthenticatedFoodPendingBillsRoute
   '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
@@ -688,6 +696,7 @@ export interface FileRoutesByTo {
   '/food/dashboard': typeof AuthenticatedFoodDashboardRoute
   '/food/kots': typeof AuthenticatedFoodKotsRoute
   '/food/new': typeof AuthenticatedFoodNewRoute
+  '/food/pending-bills': typeof AuthenticatedFoodPendingBillsRoute
   '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
@@ -776,6 +785,7 @@ export interface FileRoutesById {
   '/_authenticated/food/dashboard': typeof AuthenticatedFoodDashboardRoute
   '/_authenticated/food/kots': typeof AuthenticatedFoodKotsRoute
   '/_authenticated/food/new': typeof AuthenticatedFoodNewRoute
+  '/_authenticated/food/pending-bills': typeof AuthenticatedFoodPendingBillsRoute
   '/_authenticated/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/_authenticated/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/_authenticated/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
@@ -864,6 +874,7 @@ export interface FileRouteTypes {
     | '/food/dashboard'
     | '/food/kots'
     | '/food/new'
+    | '/food/pending-bills'
     | '/front-desk/bookings'
     | '/front-desk/calendar'
     | '/front-desk/in-house'
@@ -950,6 +961,7 @@ export interface FileRouteTypes {
     | '/food/dashboard'
     | '/food/kots'
     | '/food/new'
+    | '/food/pending-bills'
     | '/front-desk/bookings'
     | '/front-desk/calendar'
     | '/front-desk/in-house'
@@ -1037,6 +1049,7 @@ export interface FileRouteTypes {
     | '/_authenticated/food/dashboard'
     | '/_authenticated/food/kots'
     | '/_authenticated/food/new'
+    | '/_authenticated/food/pending-bills'
     | '/_authenticated/front-desk/bookings'
     | '/_authenticated/front-desk/calendar'
     | '/_authenticated/front-desk/in-house'
@@ -1593,6 +1606,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrontDeskBookingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/food/pending-bills': {
+      id: '/_authenticated/food/pending-bills'
+      path: '/food/pending-bills'
+      fullPath: '/food/pending-bills'
+      preLoaderRoute: typeof AuthenticatedFoodPendingBillsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/food/new': {
       id: '/_authenticated/food/new'
       path: '/food/new'
@@ -1728,6 +1748,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFoodDashboardRoute: typeof AuthenticatedFoodDashboardRoute
   AuthenticatedFoodKotsRoute: typeof AuthenticatedFoodKotsRoute
   AuthenticatedFoodNewRoute: typeof AuthenticatedFoodNewRoute
+  AuthenticatedFoodPendingBillsRoute: typeof AuthenticatedFoodPendingBillsRoute
   AuthenticatedFrontDeskBookingsRoute: typeof AuthenticatedFrontDeskBookingsRoute
   AuthenticatedFrontDeskCalendarRoute: typeof AuthenticatedFrontDeskCalendarRoute
   AuthenticatedFrontDeskInHouseRoute: typeof AuthenticatedFrontDeskInHouseRoute
@@ -1812,6 +1833,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFoodDashboardRoute: AuthenticatedFoodDashboardRoute,
   AuthenticatedFoodKotsRoute: AuthenticatedFoodKotsRoute,
   AuthenticatedFoodNewRoute: AuthenticatedFoodNewRoute,
+  AuthenticatedFoodPendingBillsRoute: AuthenticatedFoodPendingBillsRoute,
   AuthenticatedFrontDeskBookingsRoute: AuthenticatedFrontDeskBookingsRoute,
   AuthenticatedFrontDeskCalendarRoute: AuthenticatedFrontDeskCalendarRoute,
   AuthenticatedFrontDeskInHouseRoute: AuthenticatedFrontDeskInHouseRoute,
