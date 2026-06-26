@@ -28,6 +28,12 @@ import { verifyManagerPassword } from "@/lib/manager-verify";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
+import {
+  renderInvoiceHtml,
+  openInvoiceWindow,
+  resolveLogoUrl,
+  type InvoiceProperty,
+} from "@/lib/invoiceTemplates";
 
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
   head: () => ({ meta: [{ title: "Folio — HotelPilot" }] }),
@@ -65,12 +71,10 @@ interface BookingCtx {
     room_categories: { name: string; gst_rate: number | null } | null;
   }[];
 }
-interface PropertyInfo {
-  name: string; gstin: string | null; address: string | null;
-  city: string | null; state: string | null; pincode: string | null;
-  phone: string | null; email: string | null; wa_number: string | null;
-  logo_url: string | null;
-}
+type PropertyInfo = InvoiceProperty & {
+  address?: string | null; // legacy
+  pincode?: string | null; // legacy
+};
 interface PendingKot {
   id: string; kot_number: string; status: string;
   total_amount: number; sub_total: number;
@@ -138,7 +142,12 @@ function FolioPage() {
     setBooking(bk);
 
     const { data: prop } = await supabase.from("properties")
-      .select("name,gstin,address,city,state,pincode,phone,email,wa_number,logo_url")
+      .select(`name,legal_entity_name,gstin,pan_number,state,state_code,
+        address_line1,address_line2,city,pin_code,phone,email,website,wa_number,logo_url,
+        invoice_prefix,invoice_footer,invoice_primary_color,invoice_template,
+        invoice_show_hsn,invoice_show_gst_breakup,invoice_show_signature,invoice_show_powered_by,
+        default_checkin_time,default_checkout_time,
+        address,pincode`)
       .eq("id", bk.property_id).single();
     setProperty((prop ?? null) as PropertyInfo | null);
 
