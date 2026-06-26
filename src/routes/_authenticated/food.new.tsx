@@ -81,9 +81,11 @@ function NewKotPage() {
           .eq("property_id", propertyId).eq("is_available", true).order("name"),
         supabase.from("menu_categories").select("id,name").eq("property_id", propertyId).order("name"),
         supabase.from("booking_rooms")
-          .select("id,booking_id,room_id,rooms(room_number),bookings!inner(id,booking_number,status,guests(name))")
+          .select("id,booking_id,room_id,status,rooms!booking_rooms_room_id_fkey(room_number),bookings!inner(id,booking_number,status,guests(name,mobile))")
           .eq("property_id", propertyId)
-          .eq("bookings.status", "checked_in"),
+          .eq("status", "active")
+          .eq("bookings.status", "checked_in")
+          .order("room_id"),
       ]);
       setItems((mi.data ?? []) as MenuItem[]);
       setCats((mc.data ?? []) as MenuCategory[]);
@@ -329,14 +331,18 @@ function NewKotPage() {
                 <div className="space-y-1.5">
                   <Label className="text-xs">In-house booking *</Label>
                   <Select value={bookingId} onValueChange={setBookingId}>
-                    <SelectTrigger><SelectValue placeholder="Pick guest" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder={inhouse.length === 0 ? "No guests currently checked in" : "Pick room / guest"} />
+                    </SelectTrigger>
                     <SelectContent>
                       {inhouse.map((r) => (
                         <SelectItem key={r.id} value={r.booking_id}>
-                          Room {r.rooms?.room_number ?? "—"} · {r.bookings?.guests?.name ?? "—"} · {r.bookings?.booking_number}
+                          Room {r.rooms?.room_number ?? "—"} — {r.bookings?.guests?.name ?? "Guest"}
                         </SelectItem>
                       ))}
-                      {inhouse.length === 0 && <div className="px-2 py-1 text-xs text-muted-foreground">No in-house guests.</div>}
+                      {inhouse.length === 0 && (
+                        <div className="px-2 py-2 text-xs text-muted-foreground">No guests currently checked in</div>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
