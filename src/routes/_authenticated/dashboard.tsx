@@ -401,14 +401,32 @@ function OwnerDashboard({
                   if (pf?.bookingId) navigate({ to: "/front-desk/booking/$id", params: { id: pf.bookingId } });
                 }}
                 onCheckout={(bid) => setCheckoutBookingId(bid)}
-                onAssignEvent={(blk) => setSingleAssignBlock(blk)}
-                onEventCheckIn={async (blk) => {
-                  if (!propertyId || !userId) return;
-                  try {
-                    await checkInBlock({ propertyId, block: blk, userId });
-                    toast.success(`Room ${blk.room_number} checked in`);
-                    reload();
-                  } catch (e: any) { toast.error(e.message ?? "Failed"); }
+                onAssignEvent={(blk) => {
+                  // Route the event-block assign through the regular New Booking form
+                  navigate({
+                    to: "/front-desk/new",
+                    search: {
+                      roomId: blk.room_id ?? undefined,
+                      eventId: blk.banquet_booking_id,
+                      blockId: blk.id,
+                      eventName: blk.event_name,
+                      checkIn: blk.checkin_date,
+                      checkOut: blk.checkout_date,
+                    } as any,
+                  });
+                }}
+                onEventCheckIn={(blk) => {
+                  navigate({
+                    to: "/front-desk/new",
+                    search: {
+                      roomId: blk.room_id ?? undefined,
+                      eventId: blk.banquet_booking_id,
+                      blockId: blk.id,
+                      eventName: blk.event_name,
+                      checkIn: blk.checkin_date,
+                      checkOut: blk.checkout_date,
+                    } as any,
+                  });
                 }}
               />
             )}
