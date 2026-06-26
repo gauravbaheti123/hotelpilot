@@ -792,7 +792,7 @@ function RoomCard({
   }
 
   const isCompact = kind !== "occupied";
-  const cardHeight = isCompact ? 100 : 140;
+  const cardHeight = 140;
   const hintText =
     kind === "dirty" ? "🧹 Needs cleaning"
     : kind === "maintenance" ? "🔧 Under repair"
@@ -843,7 +843,7 @@ function RoomCard({
           </>
         )}
 
-        {isCompact && hintText && (
+        {hintText && (
           <div className="mt-auto" style={{ color: "rgba(255,255,255,0.7)", fontSize: 11 }}>
             {hintText}
           </div>
