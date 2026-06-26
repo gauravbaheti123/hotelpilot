@@ -166,6 +166,7 @@ function EditRolePage() {
     });
 
   async function save() {
+    if (readOnly) { toast.error("This role is read only"); return; }
     setSaving(true);
     // upsert each permission row
     const rows = perms.map((p) => ({
@@ -224,9 +225,14 @@ function EditRolePage() {
               <p className="text-sm text-muted-foreground">{role.description}</p>
             ) : null}
           </div>
-          <Button onClick={save} disabled={saving}>
-            {saving ? "Saving…" : "Save Permissions"}
-          </Button>
+          {!readOnly && (
+            <Button onClick={save} disabled={saving}>
+              {saving ? "Saving…" : "Save Permissions"}
+            </Button>
+          )}
+          {readOnly && (
+            <span className="text-xs text-muted-foreground">Read only — system role</span>
+          )}
         </div>
         <Card>
           <CardContent className="p-0">
@@ -242,6 +248,7 @@ function EditRolePage() {
                           checked={columnAll(a)}
                           onCheckedChange={(v) => toggleColumn(a, !!v)}
                           aria-label={`Select all ${a}`}
+                          disabled={readOnly}
                         />
                       </div>
                     </TableHead>
@@ -274,6 +281,7 @@ function EditRolePage() {
                                     <Checkbox
                                       checked={!!allowed[p.id]}
                                       onCheckedChange={(v) => toggle(p.id, !!v)}
+                                      disabled={readOnly}
                                     />
                                   ) : null}
                                 </div>
@@ -285,6 +293,7 @@ function EditRolePage() {
                               <Checkbox
                                 checked={rowAll}
                                 onCheckedChange={(v) => toggleRow(mKey, !!v)}
+                                disabled={readOnly}
                               />
                             </div>
                           </TableCell>
@@ -316,6 +325,7 @@ function EditRolePage() {
                   max={100}
                   value={maxDiscount}
                   onChange={(e) => setMaxDiscount(e.target.value)}
+                  disabled={readOnly}
                 />
                 <p className="text-xs text-muted-foreground">
                   Users with this role cannot apply a discount above this percentage of the bill.
