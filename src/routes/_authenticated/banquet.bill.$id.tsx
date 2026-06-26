@@ -5,7 +5,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ArrowLeft, Printer, Download, MessageCircle } from "lucide-react";
+import { ArrowLeft, Printer, Download, MessageCircle, Plus, Trash2, ArrowRightLeft } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAuth, hasRole } from "@/hooks/use-auth";
+import { userDisplayName } from "@/lib/activityLog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { inr } from "@/lib/billing";
@@ -38,15 +44,34 @@ interface PropertyInfo {
 }
 
 const TEAL = "#1D9E75";
+const PAY_MODES = ["cash","card","upi","bank_transfer","cheque","complimentary"];
+
+interface EventPayment {
+  id: string; amount: number; payment_mode: string; reference: string | null;
+  paid_at: string; notes: string | null;
+}
 
 function BanquetBillPage() {
   const { id } = Route.useParams();
   const router = useRouter();
+  const { user, roles } = useAuth();
   const [b, setB] = useState<Bq | null>(null);
   const [bulk, setBulk] = useState<Bulk[]>([]);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
   const [billType, setBillType] = useState<"gst_invoice" | "cash_bill">("gst_invoice");
   const [loading, setLoading] = useState(true);
+  const [pays, setPays] = useState<EventPayment[]>([]);
+  // payment-collection state
+  const [payMode, setPayMode] = useState("cash");
+  const [payAmt, setPayAmt] = useState("");
+  const [payRef, setPayRef] = useState("");
+  const [splitOn, setSplitOn] = useState(false);
+  const [splitRows, setSplitRows] = useState<Array<{ mode: string; amount: string; reference: string }>>([
+    { mode: "cash", amount: "", reference: "" },
+    { mode: "upi", amount: "", reference: "" },
+  ]);
+  const [misOpen, setMisOpen] = useState(false);
+  const [misBusy, setMisBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,6 +96,10 @@ function BanquetBillPage() {
     ]);
     setBulk(((br ?? []) as unknown) as Bulk[]);
     setProperty((p ?? null) as PropertyInfo | null);
+    const { data: pp } = await supabase.from("event_payments" as any)
+      .select("id,amount,payment_mode,reference,paid_at,notes")
+      .eq("event_id", id).order("paid_at", { ascending: false });
+    setPays(((pp as any) ?? []) as EventPayment[]);
     setLoading(false);
   }, [id]);
 
@@ -98,9 +127,20 @@ function BanquetBillPage() {
   const sgst = cgst;
   const total = Math.round((taxable + (isGst ? cgst + sgst : 0)) * 100) / 100;
   const advance = Number(b.advance_amount || 0);
-  const balance = Math.max(0, total - advance);
+  const paidViaEventPayments = pays.reduce((s, p) => s + Number(p.amount || 0), 0);
+  const totalPaid = advance + paidViaEventPayments;
+  const balance = Math.max(0, total - totalPaid);
+  const isSettled = balance < 0.01;
+  const canShiftMis = hasRole(roles, "owner") || hasRole(roles, "manager") || hasRole(roles, "superadmin");
 
-  function printInvoice() { window.print(); }
+  function handlePrint() {
+    if (!b) return;
+    const prev = document.title;
+    const safe = (b.guests?.name ?? b.event_name ?? b.banquet_number).replace(/[^\w]+/g, "");
+    document.title = `INV-${b.banquet_number}-${safe}`;
+    window.print();
+    setTimeout(() => { document.title = prev; }, 500);
+  }
 
   function printDraft() {
     if (!b) return;
@@ -169,34 +209,59 @@ function BanquetBillPage() {
     w.document.write(html); w.document.close(); w.focus(); w.print();
   }
 
-  async function downloadPdf() {
+  async function collectPayment() {
     if (!b) return;
+    const rows = splitOn
+      ? splitRows.filter((r) => Number(r.amount) > 0).map((r) => ({
+          mode: r.mode, amount: Number(r.amount), reference: r.reference,
+        }))
+      : [{ mode: payMode, amount: Number(payAmt), reference: payRef }];
+    const valid = rows.filter((r) => Number.isFinite(r.amount) && r.amount > 0);
+    if (valid.length === 0) return toast.error("Enter a valid amount");
+    const inserts = valid.map((r) => ({
+      event_id: b.id, property_id: b.property_id,
+      amount: r.amount, payment_mode: r.mode, reference: r.reference || null,
+      created_by: user?.id ?? null,
+    }));
+    const { error } = await supabase.from("event_payments" as any).insert(inserts as any);
+    if (error) return toast.error(error.message);
+    toast.success("Payment recorded");
+    setPayAmt(""); setPayRef("");
+    setSplitRows([{ mode: "cash", amount: "", reference: "" }, { mode: "upi", amount: "", reference: "" }]);
+    load();
+  }
+
+  async function confirmShiftMis() {
+    if (!b) return;
+    setMisBusy(true);
     try {
-      const node = document.getElementById("event-bill-content");
-      if (!node) throw new Error("Bill element not found");
-      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-        import("html2canvas"), import("jspdf"),
-      ]);
-      const canvas = await html2canvas(node, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false });
-      const img = canvas.toDataURL("image/jpeg", 0.95);
-      const pdf = new jsPDF({ unit: "pt", format: "a4", orientation: "portrait" });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const imgH = (canvas.height * pageW) / canvas.width;
-      let heightLeft = imgH; let position = 0;
-      pdf.addImage(img, "JPEG", 0, position, pageW, imgH);
-      heightLeft -= pageH;
-      while (heightLeft > 0) {
-        position = heightLeft - imgH;
-        pdf.addPage();
-        pdf.addImage(img, "JPEG", 0, position, pageW, imgH);
-        heightLeft -= pageH;
-      }
-      const safe = (b.event_name ?? b.banquet_number).replace(/[^\w]+/g, "");
-      pdf.save(`${b.banquet_number}-${safe}.pdf`);
+      const { error } = await supabase.from("mis_ledger" as any).insert({
+        property_id: b.property_id,
+        source_type: "event",
+        source_id: b.id,
+        source_bill_number: b.banquet_number,
+        source_room_number: b.halls?.name ?? null,
+        source_guest_name: b.guests?.name ?? null,
+        amount: balance,
+        description: `Event: ${b.event_name ?? b.function_type}`,
+        line_items: [{ name: `Event ${b.event_name ?? b.function_type}`, amount: balance }],
+        shifted_by_name: userDisplayName(user as any),
+        shifted_at: new Date().toISOString(),
+      } as any);
+      if (error) throw error;
+      // mark event paid via offsetting payment
+      await supabase.from("event_payments" as any).insert({
+        event_id: b.id, property_id: b.property_id,
+        amount: balance, payment_mode: "mis_shift",
+        reference: "Shifted to MIS A/c",
+        created_by: user?.id ?? null,
+      } as any);
+      toast.success("Shifted to MIS");
+      setMisOpen(false);
+      load();
     } catch (e: any) {
-      toast.error(e.message ?? "Could not generate PDF");
-    }
+      toast.error(e.message ?? "Could not shift to MIS");
+    } finally { setMisBusy(false); }
   }
 
   async function whatsappToHost() {
@@ -234,21 +299,15 @@ function BanquetBillPage() {
   return (
     <AppShell title={`Event Bill ${b.banquet_number}`}>
       <style>{`
-        @media print {
-          body * { visibility: hidden !important; }
-          #event-bill-content, #event-bill-content * { visibility: visible !important; }
-          #event-bill-content { position: absolute !important; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; }
-          @page { size: A4; margin: 12mm; }
-        }
-        #event-bill-content { color: #111111; background-color: #ffffff; }
-        #event-bill-content * { border-color: #e5e7eb; }
-        #event-bill-content table { border-collapse: collapse; width: 100%; }
-        #event-bill-content th, #event-bill-content td { padding: 8px 10px; font-size: 12px; }
-        #event-bill-content .zebra tr:nth-child(even) td { background: #F7FBF9; }
+        #invoice-print-area { color: #111111; background-color: #ffffff; }
+        #invoice-print-area * { border-color: #e5e7eb; }
+        #invoice-print-area table { border-collapse: collapse; width: 100%; }
+        #invoice-print-area th, #invoice-print-area td { padding: 8px 10px; font-size: 12px; }
+        #invoice-print-area .zebra tr:nth-child(even) td { background: #F7FBF9; }
       `}</style>
 
       <div className="max-w-5xl space-y-4">
-        <div className="flex flex-wrap items-center gap-3 print:hidden">
+        <div className="flex flex-wrap items-center gap-3 no-print">
           <Button variant="outline" size="sm" onClick={() => router.history.back()}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
@@ -267,21 +326,36 @@ function BanquetBillPage() {
             <Button variant="outline" size="sm" onClick={printDraft}>
               <Printer className="h-4 w-4 mr-1" /> Print Draft
             </Button>
-            <Button variant="outline" size="sm" onClick={printInvoice}>
+            <Button variant="outline" size="sm" onClick={handlePrint}>
               <Printer className="h-4 w-4 mr-1" /> Print
             </Button>
-            <Button variant="outline" size="sm" onClick={downloadPdf}>
+            <Button variant="outline" size="sm" onClick={handlePrint}>
               <Download className="h-4 w-4 mr-1" /> Download PDF
             </Button>
             <Button variant="outline" size="sm" onClick={whatsappToHost}>
               <MessageCircle className="h-4 w-4 mr-1" /> WhatsApp to Host
             </Button>
+            {balance > 0.01 && canShiftMis && (
+              <Button variant="outline" size="sm" onClick={() => setMisOpen(true)}>
+                <ArrowRightLeft className="h-4 w-4 mr-1" /> Shift to MIS
+              </Button>
+            )}
+            {isSettled && <Badge style={{ background: "#1D9E75", color: "#fff" }} className="border-0">PAID</Badge>}
           </div>
         </div>
 
         <Card>
           <CardContent className="p-0">
-            <div id="event-bill-content" className="p-8 bg-white">
+            <div id="invoice-print-area" className="relative p-8 bg-white">
+              {isSettled && (
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                  <div style={{
+                    transform: "rotate(-25deg)", border: `8px solid ${TEAL}`, color: TEAL,
+                    padding: "12px 48px", fontSize: 64, fontWeight: 900, letterSpacing: 8,
+                    opacity: 0.18, borderRadius: 12,
+                  }}>SETTLED</div>
+                </div>
+              )}
               {/* Header */}
               <div className="flex justify-between items-start border-b pb-4 mb-4" style={{ borderColor: TEAL }}>
                 <div>
@@ -362,6 +436,9 @@ function BanquetBillPage() {
                 </>)}
                 <SummaryRow label="Total" value={inr(total)} bold />
                 {advance > 0 && <SummaryRow label="Advance Received" value={`- ${inr(advance)}`} />}
+                {paidViaEventPayments > 0 && (
+                  <SummaryRow label="Payments Received" value={`- ${inr(paidViaEventPayments)}`} />
+                )}
                 <SummaryRow
                   label="Balance Due"
                   value={inr(balance)}
@@ -383,6 +460,138 @@ function BanquetBillPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* COLLECT PAYMENT */}
+        {balance > 0.01 && (
+          <Card className="no-print">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold uppercase tracking-wider">Collect Payment</div>
+                <label className="flex items-center gap-2 text-xs">
+                  <input type="checkbox" checked={splitOn}
+                    onChange={(e) => setSplitOn(e.target.checked)} />
+                  Split payment
+                </label>
+              </div>
+              {!splitOn ? (
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Amount</Label>
+                    <Input type="number" value={payAmt}
+                      onFocus={() => { if (!payAmt) setPayAmt(String(balance)); }}
+                      onChange={(e) => setPayAmt(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Mode</Label>
+                    <Select value={payMode} onValueChange={setPayMode}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {PAY_MODES.map((m) => <SelectItem key={m} value={m}>{m.toUpperCase().replace(/_/g, " ")}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Reference</Label>
+                    <Input value={payRef} onChange={(e) => setPayRef(e.target.value)} />
+                  </div>
+                  <div className="flex items-end">
+                    <Button className="w-full" onClick={collectPayment} style={{ background: TEAL, color: "#fff" }}>
+                      Collect Payment
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {splitRows.map((r, i) => (
+                    <div key={i} className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                      <Select value={r.mode} onValueChange={(v) =>
+                        setSplitRows((arr) => arr.map((x, idx) => idx === i ? { ...x, mode: v } : x))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {PAY_MODES.map((m) => <SelectItem key={m} value={m}>{m.toUpperCase().replace(/_/g, " ")}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Input type="number" placeholder="Amount" value={r.amount}
+                        onChange={(e) => setSplitRows((arr) => arr.map((x, idx) => idx === i ? { ...x, amount: e.target.value } : x))} />
+                      <Input placeholder="Reference" value={r.reference}
+                        onChange={(e) => setSplitRows((arr) => arr.map((x, idx) => idx === i ? { ...x, reference: e.target.value } : x))} />
+                      <Button size="icon" variant="ghost"
+                        onClick={() => setSplitRows((arr) => arr.filter((_, idx) => idx !== i))}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline"
+                      onClick={() => setSplitRows((arr) => [...arr, { mode: "cash", amount: "", reference: "" }])}>
+                      <Plus className="h-4 w-4 mr-1" /> Add row
+                    </Button>
+                    <Button size="sm" onClick={collectPayment} style={{ background: TEAL, color: "#fff" }}>
+                      Collect Payment
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* PAYMENT HISTORY */}
+        {pays.length > 0 && (
+          <Card className="no-print">
+            <CardContent className="p-4">
+              <div className="text-sm font-semibold uppercase tracking-wider mb-3">Payment History</div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-xs uppercase tracking-wider text-muted-foreground">
+                    <th className="text-left py-1">Date</th>
+                    <th className="text-left py-1">Mode</th>
+                    <th className="text-left py-1">Reference</th>
+                    <th className="text-right py-1">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pays.map((p) => (
+                    <tr key={p.id} className="border-b">
+                      <td className="py-1">{new Date(p.paid_at).toLocaleString("en-IN")}</td>
+                      <td className="py-1 uppercase">{p.payment_mode.replace(/_/g, " ")}</td>
+                      <td className="py-1 text-xs text-muted-foreground">{p.reference ?? "—"}</td>
+                      <td className="py-1 text-right tabular-nums">{inr(p.amount)}</td>
+                    </tr>
+                  ))}
+                  <tr className="font-semibold">
+                    <td colSpan={3} className="py-2 text-right">Total Paid</td>
+                    <td className="py-2 text-right tabular-nums">{inr(totalPaid)}</td>
+                  </tr>
+                  <tr>
+                    <td colSpan={3} className="py-1 text-right font-semibold"
+                      style={{ color: balance > 0.01 ? "#dc2626" : TEAL }}>Balance Due</td>
+                    <td className="py-1 text-right font-semibold tabular-nums"
+                      style={{ color: balance > 0.01 ? "#dc2626" : TEAL }}>{inr(balance)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* SHIFT TO MIS DIALOG */}
+        <Dialog open={misOpen} onOpenChange={setMisOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Shift to MIS Account?</DialogTitle></DialogHeader>
+            <div className="text-sm text-muted-foreground">
+              Shift <b>{inr(balance)}</b> for event <b>{b.banquet_number}</b> to MIS A/c?
+              This marks the event balance as internally absorbed.
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setMisOpen(false)}>Cancel</Button>
+              <Button onClick={confirmShiftMis} disabled={misBusy}
+                style={{ background: TEAL, color: "#fff" }}>
+                {misBusy ? "Shifting…" : "Confirm Shift"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppShell>
   );

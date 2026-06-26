@@ -887,6 +887,60 @@ export type Database = {
           },
         ]
       }
+      event_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          event_id: string
+          id: string
+          notes: string | null
+          paid_at: string
+          payment_mode: string
+          property_id: string
+          reference: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          event_id: string
+          id?: string
+          notes?: string | null
+          paid_at?: string
+          payment_mode?: string
+          property_id: string
+          reference?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          event_id?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string
+          payment_mode?: string
+          property_id?: string
+          reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_payments_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "banquet_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_payments_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_room_blocks: {
         Row: {
           banquet_booking_id: string
@@ -1293,6 +1347,47 @@ export type Database = {
           },
           {
             foreignKeyName: "folios_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gst_slabs: {
+        Row: {
+          active: boolean
+          created_at: string
+          from_amount: number
+          gst_rate: number
+          id: string
+          property_id: string
+          to_amount: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          from_amount?: number
+          gst_rate?: number
+          id?: string
+          property_id: string
+          to_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          from_amount?: number
+          gst_rate?: number
+          id?: string
+          property_id?: string
+          to_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gst_slabs_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
@@ -2885,6 +2980,7 @@ export type Database = {
           total_floors: number | null
           total_rooms: number | null
           updated_at: string
+          use_gst_slabs: boolean
           wa_number: string | null
           website: string | null
           wifi_password: string | null
@@ -2939,6 +3035,7 @@ export type Database = {
           total_floors?: number | null
           total_rooms?: number | null
           updated_at?: string
+          use_gst_slabs?: boolean
           wa_number?: string | null
           website?: string | null
           wifi_password?: string | null
@@ -2993,6 +3090,7 @@ export type Database = {
           total_floors?: number | null
           total_rooms?: number | null
           updated_at?: string
+          use_gst_slabs?: boolean
           wa_number?: string | null
           website?: string | null
           wifi_password?: string | null

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -116,6 +117,7 @@ function HotelSettingsForm({
   const [uploading, setUploading] = useState(false);
   const [logoSignedUrl, setLogoSignedUrl] = useState<string | null>(null);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; rate_per_night: number | null; gst_rate: number | null }>>([]);
+  const [slabs, setSlabs] = useState<Array<{ id?: string; from_amount: number; to_amount: number; gst_rate: number }>>([]);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
@@ -138,6 +140,11 @@ function HotelSettingsForm({
         .eq("property_id", propertyId)
         .order("name");
       setCategories((cats ?? []) as any);
+      const { data: sl } = await supabase.from("gst_slabs" as any)
+        .select("id,from_amount,to_amount,gst_rate")
+        .eq("property_id", propertyId)
+        .order("from_amount");
+      setSlabs(((sl as any) ?? []) as any);
       setLoaded(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -226,7 +233,7 @@ function HotelSettingsForm({
         default_bill_type: form.default_bill_type || "cash",
         invoice_footer: form.invoice_footer || null,
         invoice_primary_color: form.invoice_primary_color || "#1D9E75",
-        invoice_template: form.invoice_template || "classic",
+        invoice_template: "premium",
         invoice_show_hsn: !!form.invoice_show_hsn,
         invoice_show_gst_breakup: !!form.invoice_show_gst_breakup,
         invoice_show_signature: !!form.invoice_show_signature,
@@ -247,6 +254,28 @@ function HotelSettingsForm({
           .update({ gst_rate: c.gst_rate ?? 0 })
           .eq("id", c.id);
         if (error) throw error;
+      }
+
+      // GST slabs persistence
+      await supabase.from("properties").update({
+        use_gst_slabs: !!form.use_gst_slabs,
+      } as any).eq("id", propertyId);
+      if (form.use_gst_slabs) {
+        // wipe & reinsert slabs (simple, small N)
+        await supabase.from("gst_slabs" as any).delete().eq("property_id", propertyId);
+        const valid = (slabs ?? []).filter((s) =>
+          Number.isFinite(Number(s.from_amount)) && Number.isFinite(Number(s.to_amount)));
+        if (valid.length > 0) {
+          await supabase.from("gst_slabs" as any).insert(
+            valid.map((s) => ({
+              property_id: propertyId,
+              from_amount: Number(s.from_amount),
+              to_amount: Number(s.to_amount),
+              gst_rate: Number(s.gst_rate),
+              active: true,
+            })),
+          );
+        }
       }
 
       toast.success("Settings saved successfully");
@@ -422,6 +451,73 @@ function HotelSettingsForm({
                 onChange={(e) => set("sundry_gst_rate", e.target.value)} />
             </Field>
           </div>
+          {/* CUSTOM GST SLABS */}
+          <div className="mt-6 pt-4 border-t space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold">Custom GST Slabs</div>
+                <p className="text-xs text-muted-foreground">
+                  When ON, room GST is looked up by per-night rate instead of using the category GST.
+                </p>
+              </div>
+              <Switch
+                disabled={dis}
+                checked={!!form.use_gst_slabs}
+                onCheckedChange={(v) => {
+                  set("use_gst_slabs", v);
+                  if (v && slabs.length === 0) {
+                    setSlabs([
+                      { from_amount: 0, to_amount: 1000, gst_rate: 0 },
+                      { from_amount: 1001, to_amount: 7500, gst_rate: 12 },
+                      { from_amount: 7501, to_amount: 99999, gst_rate: 18 },
+                    ]);
+                  }
+                }}
+              />
+            </div>
+            {form.use_gst_slabs && (
+              <div className="space-y-2">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>From (₹)</TableHead>
+                      <TableHead>To (₹)</TableHead>
+                      <TableHead className="w-28">GST %</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {slabs.map((s, i) => (
+                      <TableRow key={i}>
+                        <TableCell>
+                          <Input type="number" min={0} disabled={dis} value={s.from_amount}
+                            onChange={(e) => setSlabs((arr) => arr.map((x, idx) => idx === i ? { ...x, from_amount: Number(e.target.value) } : x))} />
+                        </TableCell>
+                        <TableCell>
+                          <Input type="number" min={0} disabled={dis} value={s.to_amount}
+                            onChange={(e) => setSlabs((arr) => arr.map((x, idx) => idx === i ? { ...x, to_amount: Number(e.target.value) } : x))} />
+                        </TableCell>
+                        <TableCell>
+                          <Input type="number" min={0} max={28} step={0.5} disabled={dis} value={s.gst_rate}
+                            onChange={(e) => setSlabs((arr) => arr.map((x, idx) => idx === i ? { ...x, gst_rate: Number(e.target.value) } : x))} />
+                        </TableCell>
+                        <TableCell>
+                          <Button size="icon" variant="ghost" disabled={dis}
+                            onClick={() => setSlabs((arr) => arr.filter((_, idx) => idx !== i))}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <Button size="sm" variant="outline" disabled={dis || slabs.length >= 5}
+                  onClick={() => setSlabs((arr) => [...arr, { from_amount: 0, to_amount: 0, gst_rate: 0 }])}>
+                  + Add Slab
+                </Button>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -474,33 +570,12 @@ function HotelSettingsForm({
 
           <div className="md:col-span-2">
             <Label className="text-xs">Invoice Template</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-2">
-              {[
-                { id: "classic", title: "Classic", desc: "Traditional layout" },
-                { id: "modern", title: "Modern", desc: "Bold header" },
-                { id: "minimal", title: "Minimal", desc: "Clean B&W" },
-                { id: "premium", title: "Premium", desc: "Full-width color header" },
-              ].map((t) => {
-                const sel = (form.invoice_template ?? "classic") === t.id;
-                return (
-                  <button
-                    type="button" key={t.id} disabled={dis}
-                    onClick={() => set("invoice_template", t.id)}
-                    className={`border rounded-lg p-3 text-left transition ${sel ? "border-primary ring-2 ring-primary/30 bg-primary/5" : "hover:bg-muted/50"}`}
-                  >
-                    <div className="h-20 rounded bg-muted mb-2 flex items-center justify-center text-xs text-muted-foreground">
-                      {t.title} preview
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-sm">{t.title}</div>
-                        <div className="text-xs text-muted-foreground">{t.desc}</div>
-                      </div>
-                      <div className={`h-3 w-3 rounded-full border ${sel ? "bg-primary border-primary" : ""}`} />
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="border rounded-lg p-3 mt-2 flex items-center justify-between bg-primary/5">
+              <div>
+                <div className="font-medium text-sm">Premium</div>
+                <div className="text-xs text-muted-foreground">Full-width colored header, address bar, A4 print-ready.</div>
+              </div>
+              <Badge variant="secondary">Active</Badge>
             </div>
           </div>
 
