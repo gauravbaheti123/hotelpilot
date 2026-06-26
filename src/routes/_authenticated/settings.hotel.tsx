@@ -235,6 +235,8 @@ function HotelSettingsForm({
         default_checkout_time: form.default_checkout_time || "11:00",
         early_checkin_charge_per_hour: Number(form.early_checkin_charge_per_hour ?? 0),
         late_checkout_charge_per_hour: Number(form.late_checkout_charge_per_hour ?? 0),
+        food_gst_rate: Number(form.food_gst_rate ?? 5),
+        sundry_gst_rate: Number(form.sundry_gst_rate ?? 18),
       };
       const { error: propErr } = await supabase.from("properties").update(updates).eq("id", propertyId);
       if (propErr) throw propErr;
@@ -408,6 +410,18 @@ function HotelSettingsForm({
           <p className="text-xs text-muted-foreground mt-3">
             GST slabs as per Indian law: ₹0–₹1000/night → 0% &nbsp;|&nbsp; ₹1001–₹7500 → 12% &nbsp;|&nbsp; Above ₹7500 → 18%
           </p>
+          <div className="grid md:grid-cols-2 gap-4 mt-5 pt-4 border-t">
+            <Field label="Food & Beverage GST %" hint="Default for food charges. Menu items may override.">
+              <Input type="number" min={0} max={28} step={0.5} disabled={dis}
+                value={form.food_gst_rate ?? 5}
+                onChange={(e) => set("food_gst_rate", e.target.value)} />
+            </Field>
+            <Field label="Sundry / Other Charges GST %" hint="Default for sundry / extra charges.">
+              <Input type="number" min={0} max={28} step={0.5} disabled={dis}
+                value={form.sundry_gst_rate ?? 18}
+                onChange={(e) => set("sundry_gst_rate", e.target.value)} />
+            </Field>
+          </div>
         </CardContent>
       </Card>
 
@@ -460,11 +474,12 @@ function HotelSettingsForm({
 
           <div className="md:col-span-2">
             <Label className="text-xs">Invoice Template</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-2">
               {[
                 { id: "classic", title: "Classic", desc: "Traditional layout" },
                 { id: "modern", title: "Modern", desc: "Bold header" },
                 { id: "minimal", title: "Minimal", desc: "Clean B&W" },
+                { id: "premium", title: "Premium", desc: "Full-width color header" },
               ].map((t) => {
                 const sel = (form.invoice_template ?? "classic") === t.id;
                 return (
