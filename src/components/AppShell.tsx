@@ -128,6 +128,76 @@ const NAV_GROUPS: NavGroup[] = [
 ];
 
 export function AppShell({ title, children }: { title: string; children: ReactNode }) {
+  return <AppShellInner title={title}>{children}</AppShellInner>;
+}
+
+function NavEntry({ item, currentPath }: { item: NavItem; currentPath: string }) {
+  const Icon = item.icon;
+  const hasChildren = !!item.children?.length;
+  const childActive = hasChildren && item.children!.some(
+    (c) => currentPath === c.to || currentPath.startsWith(c.to + "/"),
+  );
+  const selfActive = currentPath === item.to || currentPath.startsWith(item.to + "/");
+  const [open, setOpen] = useState<boolean>(childActive || selfActive);
+
+  if (!hasChildren) {
+    return (
+      <Link
+        to={item.to}
+        className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+          selfActive
+            ? "bg-sidebar-primary text-sidebar-primary-foreground"
+            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        }`}
+      >
+        <Icon className="h-4 w-4" />
+        {item.label}
+      </Link>
+    );
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors ${
+          childActive
+            ? "bg-sidebar-primary text-sidebar-primary-foreground"
+            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        }`}
+      >
+        <Icon className="h-4 w-4" />
+        <span className="flex-1 text-left">{item.label}</span>
+        {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+      </button>
+      {open && (
+        <div className="ml-6 mt-1 space-y-0.5 border-l border-sidebar-border/60 pl-2">
+          {item.children!.map((c) => {
+            const ca = currentPath === c.to || currentPath.startsWith(c.to + "/");
+            const CIcon = c.icon;
+            return (
+              <Link
+                key={c.to}
+                to={c.to}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs transition-colors ${
+                  ca
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                }`}
+              >
+                <CIcon className="h-3.5 w-3.5" />
+                {c.label}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AppShellInner({ title, children }: { title: string; children: ReactNode }) {
   const router = useRouter();
   const { user, roles } = useAuth();
   const isSuperadmin = roles.includes("superadmin");
