@@ -197,9 +197,9 @@ function OwnerDashboard({
     const date = viewDate;
     const isToday = date === todayISO();
     const [arr, dep, pay, rms, activeBR] = await Promise.all([
-      supabase.from("bookings").select("id, booking_number, balance_amount, guest_id, guests:guest_id(name), booking_rooms(rooms(room_number))")
+      supabase.from("bookings").select("id, booking_number, balance_amount, guest_id, guests:guest_id(name), booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))")
         .eq("property_id", propertyId).in("status", ["reserved", "checked_in"]).eq("check_in", date),
-      supabase.from("bookings").select("id, booking_number, balance_amount, guest_id, guests:guest_id(name), booking_rooms(rooms(room_number))")
+      supabase.from("bookings").select("id, booking_number, balance_amount, guest_id, guests:guest_id(name), booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))")
         .eq("property_id", propertyId).eq("status", "checked_in").eq("check_out", date),
       supabase.from("payments").select("amount").eq("property_id", propertyId)
         .gte("paid_at", `${date}T00:00:00`).lte("paid_at", `${date}T23:59:59`),

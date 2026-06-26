@@ -135,7 +135,7 @@ function FolioPage() {
       .from("bookings")
       .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,
         guests(name,mobile,gst_number,company,id_proof_type,id_proof_number,nationality),
-        booking_rooms(id,rate,check_in,check_out,rooms(room_number),room_categories(name,gst_rate))`)
+        booking_rooms(id,rate,check_in,check_out,rooms!booking_rooms_room_id_fkey(room_number),room_categories(name,gst_rate))`)
       .eq("id", bookingId).single();
     if (be) { toast.error(be.message); setLoading(false); return; }
     const bk = b as unknown as BookingCtx;

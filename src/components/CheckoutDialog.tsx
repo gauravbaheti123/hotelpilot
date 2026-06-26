@@ -93,7 +93,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       .select(
         `id,booking_number,status,check_in,check_out,property_id,advance_amount,
          guests(name,mobile),
-         booking_rooms(id,rate,check_in,check_out,rooms(id,room_number),room_categories(name))`,
+         booking_rooms(id,rate,check_in,check_out,rooms!booking_rooms_room_id_fkey(id,room_number),room_categories(name))`,
       )
       .eq("id", bookingId)
       .single();

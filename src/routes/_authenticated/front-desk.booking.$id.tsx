@@ -168,7 +168,7 @@ function BookingDetailPage() {
         total_amount,advance_amount,balance_amount,notes,checked_in_at,checked_out_at,property_id,
         guests(id,name,mobile,email,address,id_proof_type,id_proof_number),
         booking_rooms(id,room_id,category_id,rate,meal_plan,adults,children,check_in,check_out,actual_check_in,actual_check_out,
-          rooms(room_number),
+          rooms!booking_rooms_room_id_fkey(room_number),
           room_categories(name))
       `)
       .eq("id", id)
