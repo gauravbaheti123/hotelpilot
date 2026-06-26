@@ -18,7 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { BANQUET_STATUS_TONE, computeBanquetTotal, FUNCTION_TYPES } from "@/lib/banquet";
 import { ArrowLeft, BedDouble, Trash2, CheckCircle2, Ban, Plus, FileText, Pencil, Save, LogIn, LogOut, UserPlus, Eye } from "lucide-react";
-import { checkInBlock, checkOutBlock, type EventBlockRecord } from "@/lib/eventRoomBlocks";
+import { checkOutBlock, type EventBlockRecord } from "@/lib/eventRoomBlocks";
 
 export const Route = createFileRoute("/_authenticated/banquet/event/$id")({
   head: () => ({ meta: [{ title: "Banquet Event — HotelPilot" }] }),
