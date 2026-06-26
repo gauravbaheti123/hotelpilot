@@ -947,26 +947,66 @@ function FolioPage() {
           )}
 
           {/* Header */}
-          <div style={{ background: TEAL, color: "#fff" }} className="flex items-center gap-5 px-8 py-6">
-            {property?.logo_url ? (
-              <img src={property.logo_url} alt="" className="h-20 w-20 rounded-md object-cover ring-2 ring-white/40" />
-            ) : (
-              <div className="grid h-20 w-20 shrink-0 place-items-center rounded-md bg-white/15 ring-2 ring-white/40">
-                <span className="text-2xl font-extrabold tracking-wider">
-                  {(property?.name ?? "HP").split(/\s+/).slice(0, 2).map(s => s[0]).join("").toUpperCase()}
-                </span>
+          {isPremium ? (
+            <>
+              <div className="invoice-header-bg flex items-center justify-between gap-6 px-10 py-7"
+                   style={{ background: TEAL, color: "#ffffff", borderRadius: 0 }}>
+                <div className="flex items-center gap-4 min-w-0">
+                  {property?.logo_url ? (
+                    <div style={{ background: "#ffffff", padding: 6, borderRadius: 0 }}>
+                      <img src={property.logo_url} alt="" style={{ height: 64, width: 64, objectFit: "contain", display: "block" }} />
+                    </div>
+                  ) : (
+                    <div style={{ background: "#ffffff", color: TEAL_DARK, height: 76, width: 76, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 26, letterSpacing: 2 }}>
+                      {(property?.name ?? "HP").split(/\s+/).slice(0, 2).map(s => s[0]).join("").toUpperCase()}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: 0.3, color: "#ffffff", lineHeight: 1.1 }}>
+                      {property?.name ?? "Hotel"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "#ffffff", opacity: 0.85, marginTop: 4 }}>
+                      Hospitality · Experience · Comfort
+                    </div>
+                  </div>
+                </div>
+                <div style={{ textAlign: "right", color: "#ffffff" }}>
+                  <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: 3, lineHeight: 1 }}>
+                    {isGst ? "TAX INVOICE" : "CASH BILL"}
+                  </div>
+                  <div style={{ fontSize: 12, marginTop: 8 }}>No: <b>{folio.invoice_number}</b></div>
+                  <div style={{ fontSize: 12 }}>Date: <b>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b></div>
+                  <div style={{ fontSize: 12 }}>Booking: <b>{booking.booking_number}</b></div>
+                </div>
               </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <h1 className="truncate text-3xl font-extrabold tracking-tight">{property?.name ?? "Hotel"}</h1>
-              {propAddrLine && <div className="text-sm opacity-95">{propAddrLine}</div>}
-              <div className="mt-1 flex flex-wrap gap-x-4 text-xs opacity-95">
-                {property?.phone && <span>Ph: {property.phone}</span>}
-                {property?.email && <span>Email: {property.email}</span>}
-                {property?.gstin && <span>GSTIN: {property.gstin}</span>}
+              {/* Address bar */}
+              <div style={{ background: "#f1f3f5", color: "#495057", fontSize: 11, padding: "8px 40px", borderBottom: "1px solid #dee2e6" }}>
+                {[propAddrLine, property?.gstin ? `GSTIN: ${property.gstin}` : null, property?.phone ? `Ph: ${property.phone}` : null, property?.email ?? null]
+                  .filter(Boolean).join("  |  ")}
+              </div>
+            </>
+          ) : (
+            <div style={{ background: TEAL, color: "#fff" }} className="flex items-center gap-5 px-8 py-6">
+              {property?.logo_url ? (
+                <img src={property.logo_url} alt="" className="h-20 w-20 rounded-md object-cover ring-2 ring-white/40" />
+              ) : (
+                <div className="grid h-20 w-20 shrink-0 place-items-center rounded-md bg-white/15 ring-2 ring-white/40">
+                  <span className="text-2xl font-extrabold tracking-wider">
+                    {(property?.name ?? "HP").split(/\s+/).slice(0, 2).map(s => s[0]).join("").toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <h1 className="truncate text-3xl font-extrabold tracking-tight">{property?.name ?? "Hotel"}</h1>
+                {propAddrLine && <div className="text-sm opacity-95">{propAddrLine}</div>}
+                <div className="mt-1 flex flex-wrap gap-x-4 text-xs opacity-95">
+                  {property?.phone && <span>Ph: {property.phone}</span>}
+                  {property?.email && <span>Email: {property.email}</span>}
+                  {property?.gstin && <span>GSTIN: {property.gstin}</span>}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Title bar */}
           <div className="flex flex-wrap items-center justify-between gap-2 border-y px-8 py-3" style={{ background: "#F0FAF6" }}>
