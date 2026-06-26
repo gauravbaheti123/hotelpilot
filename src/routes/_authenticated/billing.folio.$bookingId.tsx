@@ -737,25 +737,35 @@ function FolioPage() {
       <style>{`
         @media print {
           body * { visibility: hidden !important; }
-          #invoice-content, #invoice-content * { visibility: visible !important; }
-          #invoice-content { position: absolute !important; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; }
-          @page { size: A4; margin: 12mm; }
+          #invoice-print-area, #invoice-print-area * { visibility: visible !important; }
+          #invoice-print-area {
+            position: fixed !important; top: 0; left: 0; width: 100%;
+            background: white; box-shadow: none !important; border: none !important;
+          }
+          .no-print, [data-no-print], .sidebar, nav, header {
+            display: none !important; visibility: hidden !important;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          @page { size: A4 portrait; margin: 0mm; }
         }
         /* Force hex colors inside the invoice — html2canvas (PDF export)
            cannot parse Tailwind v4 oklch() values. Keep this in sync. */
-        #invoice-content { color: #111111; background-color: #ffffff; }
-        #invoice-content * { border-color: #e5e7eb; }
-        #invoice-content .bg-white { background-color: #ffffff !important; }
-        #invoice-content .text-muted-foreground { color: #6b7280 !important; }
-        #invoice-content .text-gray-400 { color: #9ca3af !important; }
-        #invoice-content .text-gray-500 { color: #6b7280 !important; }
-        #invoice-content .text-gray-600 { color: #4b5563 !important; }
-        #invoice-content .text-gray-700 { color: #374151 !important; }
-        #invoice-content .border-gray-400 { border-color: #9ca3af !important; }
-        #invoice-content.ring-1, #invoice-content.ring-black\\/5, #invoice-content .ring-1, #invoice-content .ring-black\\/5 { box-shadow: none !important; }
-        #invoice-content table { border-collapse: collapse; width: 100%; }
-        #invoice-content th, #invoice-content td { padding: 8px 10px; font-size: 12px; }
-        #invoice-content .zebra tr:nth-child(even) td { background: #F7FBF9; }
+        #invoice-print-area { color: #111111; background-color: #ffffff; }
+        #invoice-print-area * { border-color: #e5e7eb; }
+        #invoice-print-area .bg-white { background-color: #ffffff !important; }
+        #invoice-print-area .text-muted-foreground { color: #6b7280 !important; }
+        #invoice-print-area .text-gray-400 { color: #9ca3af !important; }
+        #invoice-print-area .text-gray-500 { color: #6b7280 !important; }
+        #invoice-print-area .text-gray-600 { color: #4b5563 !important; }
+        #invoice-print-area .text-gray-700 { color: #374151 !important; }
+        #invoice-print-area .border-gray-400 { border-color: #9ca3af !important; }
+        #invoice-print-area table { border-collapse: collapse; width: 100%; }
+        #invoice-print-area th, #invoice-print-area td { padding: 8px 10px; font-size: 12px; }
+        #invoice-print-area .zebra tr:nth-child(even) td { background: #F7FBF9; }
       `}</style>
       <div className="max-w-5xl space-y-4">
         {/* Top bar */}
