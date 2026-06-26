@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,11 +29,21 @@ interface RoleRow {
 function RolesPage() {
   const { roles: appRoles, loading } = useAuth();
   const isSuperadmin = appRoles.includes("superadmin");
+  const isOwner = appRoles.includes("owner");
+  const canAccess = isSuperadmin || isOwner;
+  const navigate = useNavigate();
   const [rows, setRows] = useState<RoleRow[]>([]);
   const [showNew, setShowNew] = useState(false);
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !canAccess) {
+      toast.error("Access denied");
+      navigate({ to: "/dashboard", replace: true });
+    }
+  }, [loading, canAccess, navigate]);
 
   async function load() {
     const { data: roleData, error } = await supabase
@@ -62,8 +72,8 @@ function RolesPage() {
   }
 
   useEffect(() => {
-    if (isSuperadmin) load();
-  }, [isSuperadmin]);
+    if (canAccess) load();
+  }, [canAccess]);
 
   async function createRole() {
     if (!name.trim()) return toast.error("Name required");
@@ -82,7 +92,7 @@ function RolesPage() {
 
   if (loading) return <AppShell title="Roles & Permissions"><div className="text-muted-foreground">Loading…</div></AppShell>;
 
-  if (!isSuperadmin) {
+  if (!canAccess) {
     return (
       <AppShell title="Roles & Permissions">
         <Card className="max-w-md">
@@ -93,7 +103,7 @@ function RolesPage() {
             </div>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Only superadmins can manage roles.
+            Only superadmins and owners can manage roles.
           </CardContent>
         </Card>
       </AppShell>
@@ -144,7 +154,11 @@ function RolesPage() {
                 {rows.length === 0 && (
                   <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-6">No roles yet.</TableCell></TableRow>
                 )}
-                {rows.map((r) => (
+                {rows.map((r) => {
+                  const isProtectedRole = /^(owner|superadmin)$/i.test(r.name);
+                  const readOnly = !isSuperadmin && (r.is_system || isProtectedRole);
+                  if (isOwner && !isSuperadmin && isProtectedRole) return null;
+                  return (
                   <TableRow key={r.id}>
                     <TableCell className="font-medium">
                       <Link
@@ -155,18 +169,20 @@ function RolesPage() {
                         {r.name}
                       </Link>
                       {r.is_system && <Badge variant="secondary" className="ml-2">System</Badge>}
+                      {readOnly && <Badge variant="outline" className="ml-2">Read only</Badge>}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{r.description ?? "—"}</TableCell>
                     <TableCell className="text-center">{r.user_count}</TableCell>
                     <TableCell className="text-right">
                       <Button asChild size="sm" variant="outline">
                         <Link to="/superadmin/roles/$id" params={{ id: r.id }}>
-                          <Pencil className="h-3.5 w-3.5 mr-1" /> Edit Permissions
+                          <Pencil className="h-3.5 w-3.5 mr-1" /> {readOnly ? "View" : "Edit Permissions"}
                         </Link>
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>

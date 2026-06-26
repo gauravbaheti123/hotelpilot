@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/use-auth";
@@ -28,6 +28,15 @@ interface AssignRow {
 function UsersPage() {
   const { roles: appRoles, loading } = useAuth();
   const isSuperadmin = appRoles.includes("superadmin");
+  const isOwner = appRoles.includes("owner");
+  const canAccess = isSuperadmin || isOwner;
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!loading && !canAccess) {
+      toast.error("Access denied");
+      navigate({ to: "/dashboard", replace: true });
+    }
+  }, [loading, canAccess, navigate]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [rows, setRows] = useState<AssignRow[]>([]);
@@ -63,8 +72,8 @@ function UsersPage() {
   }
 
   useEffect(() => {
-    if (isSuperadmin) load();
-  }, [isSuperadmin]);
+    if (canAccess) load();
+  }, [canAccess]);
 
   async function assign(ur_id: string, role_id: string) {
     const { error } = await supabase
@@ -78,7 +87,7 @@ function UsersPage() {
 
   if (loading) return <AppShell title="User Roles"><div className="text-muted-foreground">Loading…</div></AppShell>;
 
-  if (!isSuperadmin) {
+  if (!canAccess) {
     return (
       <AppShell title="User Roles">
         <Card className="max-w-md">

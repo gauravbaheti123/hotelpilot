@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Building2, MessageCircle, Cloud, Receipt, ShieldCheck, Users, ShieldAlert,
   Lock,
@@ -12,18 +13,21 @@ export const Route = createFileRoute("/_authenticated/settings/")({
   component: SettingsIndex,
 });
 
-const ITEMS: Array<{ to: string; label: string; icon: any; desc: string; soon?: boolean }> = [
+const ITEMS: Array<{ to: string; label: string; icon: any; desc: string; soon?: boolean; ownerOnly?: boolean }> = [
   { to: "/settings/hotel", label: "Business (Hotel, Logo, GST)", icon: Building2, desc: "Property profile & branding" },
   { to: "/settings/whatsapp", label: "WhatsApp / AiSensy", icon: MessageCircle, desc: "Messaging integration" },
   { to: "/channels", label: "Channel Manager", icon: Cloud, desc: "OTA distribution", soon: true },
   { to: "/settings/hotel", label: "Invoice Settings", icon: Receipt, desc: "Numbering, layout, footer" },
-  { to: "/superadmin/roles", label: "Roles & Permissions", icon: ShieldCheck, desc: "Define role access" },
-  { to: "/superadmin/users", label: "User Management", icon: Users, desc: "Assign roles to users" },
+  { to: "/superadmin/roles", label: "Roles & Permissions", icon: ShieldCheck, desc: "Define role access", ownerOnly: true },
+  { to: "/superadmin/users", label: "User Management", icon: Users, desc: "Assign roles to users", ownerOnly: true },
   { to: "/properties", label: "Properties", icon: Building2, desc: "Manage properties" },
   { to: "/security", label: "Security / Wipe", icon: ShieldAlert, desc: "Raid protection" },
 ];
 
 function SettingsIndex() {
+  const { roles } = useAuth();
+  const canManageRoles = roles.includes("superadmin") || roles.includes("owner");
+  const items = ITEMS.filter((it) => !it.ownerOnly || canManageRoles);
   return (
     <AppShell title="Settings">
       <div className="mb-6 rounded-lg border border-dashed bg-muted/40 p-5 flex items-start gap-3">
@@ -39,7 +43,7 @@ function SettingsIndex() {
         </div>
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {ITEMS.map((it, idx) => (
+        {items.map((it, idx) => (
           <Link key={idx} to={it.to}>
             <Card className="hover:shadow-md hover:border-primary/40 transition-all h-full">
               <CardContent className="p-5 flex items-start gap-3">

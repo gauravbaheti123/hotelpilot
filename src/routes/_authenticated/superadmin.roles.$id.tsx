@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/use-auth";
@@ -82,28 +82,50 @@ function EditRolePage() {
   const { id } = useParams({ from: "/_authenticated/superadmin/roles/$id" });
   const { roles: appRoles, loading } = useAuth();
   const isSuperadmin = appRoles.includes("superadmin");
-  const [role, setRole] = useState<{ id: string; name: string; description: string | null; max_discount_pct?: number | null } | null>(null);
+  const isOwner = appRoles.includes("owner");
+  const canAccess = isSuperadmin || isOwner;
+  const navigate = useNavigate();
+  const [role, setRole] = useState<{ id: string; name: string; description: string | null; is_system?: boolean; max_discount_pct?: number | null } | null>(null);
   const [perms, setPerms] = useState<Perm[]>([]);
   const [allowed, setAllowed] = useState<Record<string, boolean>>({});
   const [maxDiscount, setMaxDiscount] = useState<string>("0");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!isSuperadmin) return;
+    if (!loading && !canAccess) {
+      toast.error("Access denied");
+      navigate({ to: "/dashboard", replace: true });
+    }
+  }, [loading, canAccess, navigate]);
+
+  useEffect(() => {
+    if (!canAccess) return;
     (async () => {
       const [{ data: r }, { data: ps }, { data: rps }] = await Promise.all([
-        supabase.from("roles").select("id,name,description,max_discount_pct").eq("id", id).maybeSingle(),
+        supabase.from("roles").select("id,name,description,is_system,max_discount_pct").eq("id", id).maybeSingle(),
         supabase.from("permissions").select("id,module,action"),
         supabase.from("role_permissions").select("permission_id,allowed").eq("role_id", id),
       ]);
-      setRole((r as any) ?? null);
+      const roleRow = (r as any) ?? null;
+      // Owners cannot view/edit privileged role templates.
+      if (roleRow && !isSuperadmin && /^(owner|superadmin)$/i.test(roleRow.name)) {
+        toast.error("Access denied");
+        navigate({ to: "/superadmin/roles", replace: true });
+        return;
+      }
+      setRole(roleRow);
       setMaxDiscount(String((r as any)?.max_discount_pct ?? 0));
       setPerms((ps ?? []) as Perm[]);
       const next: Record<string, boolean> = {};
       for (const rp of rps ?? []) next[rp.permission_id as string] = !!rp.allowed;
       setAllowed(next);
     })();
-  }, [id, isSuperadmin]);
+  }, [id, canAccess, isSuperadmin, navigate]);
+
+  const readOnly =
+    !isSuperadmin &&
+    !!role &&
+    (role.is_system === true || /^(owner|superadmin)$/i.test(role.name));
 
   const byKey = useMemo(() => {
     const m: Record<string, Perm> = {};
@@ -144,6 +166,7 @@ function EditRolePage() {
     });
 
   async function save() {
+    if (readOnly) { toast.error("This role is read only"); return; }
     setSaving(true);
     // upsert each permission row
     const rows = perms.map((p) => ({
@@ -172,7 +195,7 @@ function EditRolePage() {
 
   if (loading) return <AppShell title="Edit Role"><div className="text-muted-foreground">Loading…</div></AppShell>;
 
-  if (!isSuperadmin) {
+  if (!canAccess) {
     return (
       <AppShell title="Edit Role">
         <Card className="max-w-md">
@@ -202,9 +225,14 @@ function EditRolePage() {
               <p className="text-sm text-muted-foreground">{role.description}</p>
             ) : null}
           </div>
-          <Button onClick={save} disabled={saving}>
-            {saving ? "Saving…" : "Save Permissions"}
-          </Button>
+          {!readOnly && (
+            <Button onClick={save} disabled={saving}>
+              {saving ? "Saving…" : "Save Permissions"}
+            </Button>
+          )}
+          {readOnly && (
+            <span className="text-xs text-muted-foreground">Read only — system role</span>
+          )}
         </div>
         <Card>
           <CardContent className="p-0">
@@ -220,6 +248,7 @@ function EditRolePage() {
                           checked={columnAll(a)}
                           onCheckedChange={(v) => toggleColumn(a, !!v)}
                           aria-label={`Select all ${a}`}
+                          disabled={readOnly}
                         />
                       </div>
                     </TableHead>
@@ -252,6 +281,7 @@ function EditRolePage() {
                                     <Checkbox
                                       checked={!!allowed[p.id]}
                                       onCheckedChange={(v) => toggle(p.id, !!v)}
+                                      disabled={readOnly}
                                     />
                                   ) : null}
                                 </div>
@@ -263,6 +293,7 @@ function EditRolePage() {
                               <Checkbox
                                 checked={rowAll}
                                 onCheckedChange={(v) => toggleRow(mKey, !!v)}
+                                disabled={readOnly}
                               />
                             </div>
                           </TableCell>
@@ -294,6 +325,7 @@ function EditRolePage() {
                   max={100}
                   value={maxDiscount}
                   onChange={(e) => setMaxDiscount(e.target.value)}
+                  disabled={readOnly}
                 />
                 <p className="text-xs text-muted-foreground">
                   Users with this role cannot apply a discount above this percentage of the bill.
