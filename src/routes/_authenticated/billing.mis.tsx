@@ -277,10 +277,6 @@ function MISPage() {
         </Card>
       </div>
 
-      <Dialog open={!!delRow} onOpenChange={(o) => !o && setDelRow(null)}>
-        {/* placeholder */}
-      </Dialog>
-
       <Dialog open={!!editRow} onOpenChange={(o) => !o && setEditRow(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit MIS Entry</DialogTitle></DialogHeader>
@@ -314,7 +310,7 @@ function MISPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={false}>
+      <Dialog open={!!delRow} onOpenChange={(o) => !o && setDelRow(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
