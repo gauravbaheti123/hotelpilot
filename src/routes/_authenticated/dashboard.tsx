@@ -367,28 +367,6 @@ function OwnerDashboard({
   return (
     <AppShell title="Dashboard">
       <div className="w-full space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi label="Occupied Rooms" value={kpi.occupied} icon={BedDouble} />
-          <Kpi
-            label="Available Rooms"
-            value={Math.max(
-              0,
-              rooms.length -
-                kpi.occupied -
-                rooms.filter(
-                  (r) =>
-                    r.status === "maintenance" ||
-                    r.status === "blocked" ||
-                    r.housekeeping_status === "dirty" ||
-                    r.housekeeping_status === "out_of_order",
-                ).length,
-            )}
-            icon={DoorOpen}
-          />
-          <Kpi label="Expected Arrivals" value={kpi.arrivals} icon={LogIn} />
-          <Kpi label="Expected Departures" value={kpi.departures} icon={LogOut} />
-        </div>
-
         <Card>
           <CardHeader className="pb-3 flex flex-row items-center justify-between gap-4 flex-wrap">
             <CardTitle className="text-base">Room Status</CardTitle>
@@ -446,6 +424,28 @@ function OwnerDashboard({
             </div>
           </CardContent>
         </Card>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Kpi label="Occupied Rooms" value={kpi.occupied} icon={BedDouble} />
+          <Kpi
+            label="Available Rooms"
+            value={Math.max(
+              0,
+              rooms.length -
+                kpi.occupied -
+                rooms.filter(
+                  (r) =>
+                    r.status === "maintenance" ||
+                    r.status === "blocked" ||
+                    r.housekeeping_status === "dirty" ||
+                    r.housekeeping_status === "out_of_order",
+                ).length,
+            )}
+            icon={DoorOpen}
+          />
+          <Kpi label="Expected Arrivals" value={kpi.arrivals} icon={LogIn} />
+          <Kpi label="Expected Departures" value={kpi.departures} icon={LogOut} />
+        </div>
 
         <Card>
           <CardHeader className="pb-3">
