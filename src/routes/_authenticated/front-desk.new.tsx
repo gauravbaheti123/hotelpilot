@@ -280,6 +280,29 @@ function NewBookingPage() {
       // 1) Guest — update existing or create new
       const tags = guestType === "regular" ? [] : [guestType];
       let guestId = selectedGuestId;
+      // Duplicate-mobile guard: when creating a brand-new guest, check whether
+      // the mobile already belongs to a guest on this property. If so, ask
+      // the user whether to reuse the existing guest record.
+      if (!guestId && mobile.trim()) {
+        const { data: dup } = await supabase
+          .from("guests")
+          .select("id,name,mobile")
+          .eq("property_id", current.id)
+          .eq("mobile", mobile.trim())
+          .eq("is_wiped", false)
+          .limit(1)
+          .maybeSingle();
+        if (dup) {
+          const reuse = confirm(
+            `A guest with mobile ${mobile} already exists: "${dup.name}".\n\n` +
+              `OK   → Use the existing guest profile (recommended)\n` +
+              `Cancel → Create a new guest anyway`,
+          );
+          if (reuse) {
+            guestId = dup.id;
+          }
+        }
+      }
       if (guestId) {
         const { error: uErr } = await supabase
           .from("guests")

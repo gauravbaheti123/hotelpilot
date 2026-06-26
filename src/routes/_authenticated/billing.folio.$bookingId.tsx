@@ -59,7 +59,11 @@ interface BookingCtx {
     name: string; mobile: string | null; gst_number: string | null; company: string | null;
     id_proof_type: string | null; id_proof_number: string | null; nationality: string | null;
   } | null;
-  booking_rooms: { id: string; rate: number; check_in: string; check_out: string; rooms: { room_number: string } | null; room_categories: { name: string } | null }[];
+  booking_rooms: {
+    id: string; rate: number; check_in: string; check_out: string;
+    rooms: { room_number: string } | null;
+    room_categories: { name: string; gst_rate: number | null } | null;
+  }[];
 }
 interface PropertyInfo {
   name: string; gstin: string | null; address: string | null;
@@ -127,7 +131,7 @@ function FolioPage() {
       .from("bookings")
       .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,
         guests(name,mobile,gst_number,company,id_proof_type,id_proof_number,nationality),
-        booking_rooms(id,rate,check_in,check_out,rooms(room_number),room_categories(name))`)
+        booking_rooms(id,rate,check_in,check_out,rooms(room_number),room_categories(name,gst_rate))`)
       .eq("id", bookingId).single();
     if (be) { toast.error(be.message); setLoading(false); return; }
     const bk = b as unknown as BookingCtx;
@@ -190,6 +194,7 @@ function FolioPage() {
           (new Date(br.check_out).getTime() - new Date(br.check_in).getTime()) / 86400000,
         ));
         const amt = nights * Number(br.rate);
+        const gstR = Number(br.room_categories?.gst_rate ?? 12);
         return {
           folio_id: folio.id,
           charge_type: "room",
@@ -197,8 +202,8 @@ function FolioPage() {
           qty: nights,
           rate: Number(br.rate),
           amount: amt,
-          gst_rate: 12,
-          gst_amount: Math.round(amt * 12) / 100,
+          gst_rate: gstR,
+          gst_amount: Math.round(amt * gstR) / 100,
           source_table: "booking_rooms",
           source_id: br.id,
           created_by: user?.id ?? null,

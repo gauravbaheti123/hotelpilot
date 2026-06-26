@@ -452,6 +452,7 @@ function BookingDetailPage() {
           ),
         );
         const amt = n * Number(br.rate);
+        const gstR = Number((br as any).room_categories?.gst_rate ?? 12);
         return {
           folio_id: fId,
           charge_type: "room",
@@ -459,8 +460,8 @@ function BookingDetailPage() {
           qty: n,
           rate: Number(br.rate),
           amount: amt,
-          gst_rate: 12,
-          gst_amount: Math.round(amt * 12) / 100,
+          gst_rate: gstR,
+          gst_amount: Math.round(amt * gstR) / 100,
           source_table: "booking_rooms",
           source_id: br.id,
           created_by: user?.id ?? null,
