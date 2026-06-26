@@ -471,13 +471,13 @@ function OwnerDashboard({
               />
             )}
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
-              <LegendDot style={{ backgroundColor: "#22c55e" }} label="Vacant" />
-              <LegendDot style={{ backgroundColor: "#3b82f6" }} label="Occupied" />
-              <LegendDot style={{ backgroundColor: "#f59e0b" }} label="Dirty" />
-              <LegendDot style={{ backgroundColor: "#ef4444" }} label="Maintenance" />
-              <LegendDot style={{ backgroundColor: "#7C3AED" }} label="Event Block" />
-              <LegendDot style={{ backgroundColor: "#6b7280" }} label="Blocked" />
-              <LegendDot style={{ backgroundColor: "#f59e0b" }} label="Pending food" />
+              <LegendDot style={{ backgroundColor: "#16a34a" }} label="Vacant" />
+              <LegendDot style={{ backgroundColor: "#dc2626" }} label="Occupied" />
+              <LegendDot style={{ backgroundColor: "#d97706" }} label="Dirty" />
+              <LegendDot style={{ backgroundColor: "#6b7280" }} label="Maintenance" />
+              <LegendDot style={{ backgroundColor: "#7c3aed" }} label="Event Block" />
+              <LegendDot style={{ backgroundColor: "#6d28d9" }} label="Event·In" />
+              <LegendDot style={{ backgroundColor: "#fbbf24" }} label="Pending food" />
             </div>
           </CardContent>
         </Card>
