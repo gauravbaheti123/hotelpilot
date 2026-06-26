@@ -278,6 +278,43 @@ function MISPage() {
       </div>
 
       <Dialog open={!!delRow} onOpenChange={(o) => !o && setDelRow(null)}>
+        {/* placeholder */}
+      </Dialog>
+
+      <Dialog open={!!editRow} onOpenChange={(o) => !o && setEditRow(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit MIS Entry</DialogTitle></DialogHeader>
+          {editRow && (
+            <div className="space-y-3 text-sm">
+              <div className="text-xs text-muted-foreground">Bill {editRow.source_bill_number}</div>
+              <div className="space-y-1">
+                <Label className="text-xs">Guest name</Label>
+                <Input value={editGuest} onChange={(e) => setEditGuest(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Items / Description</Label>
+                <Textarea rows={3} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Amount</Label>
+                <Input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Notes (audit trail)</Label>
+                <Textarea rows={2} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditRow(null)}>Cancel</Button>
+            <Button onClick={saveEdit} disabled={editBusy || !editAmount}>
+              {editBusy ? "Saving…" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={false}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
