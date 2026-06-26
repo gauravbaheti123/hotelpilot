@@ -196,7 +196,7 @@ function OwnerDashboard({
     if (!propertyId) return;
     const date = viewDate;
     const isToday = date === todayISO();
-    const [arr, dep, pay, rms, activeBR] = await Promise.all([
+    const [arr, dep, pay, rms, activeBR, kotsRes] = await Promise.all([
       supabase.from("bookings").select("id, booking_number, balance_amount, guest_id, guests:guest_id(name), booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))")
         .eq("property_id", propertyId).in("status", ["reserved", "checked_in"]).eq("check_in", date),
       supabase.from("bookings").select("id, booking_number, balance_amount, guest_id, guests:guest_id(name), booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))")
@@ -211,6 +211,15 @@ function OwnerDashboard({
         .lte("bookings.check_in", date)
         .gt("bookings.check_out", date)
         .in("bookings.status", ["reserved", "checked_in"]),
+      // Pending food KOTs (hotel copy only) — only fetched for today
+      isToday
+        ? supabase
+            .from("kot_orders")
+            .select("id, booking_id, room_id, total_amount, created_at, status, kot_items(item_name, qty)")
+            .eq("property_id", propertyId)
+            .eq("kot_copy", "hotel_copy")
+            .in("status", ["open", "printed", "served"])
+        : Promise.resolve({ data: [] as any[] } as any),
     ]);
       const revenue = (pay.data ?? []).reduce((a, x: any) => a + Number(x.amount || 0), 0);
       const occSet = new Set<string>(
@@ -266,12 +275,7 @@ function OwnerDashboard({
       setRooms((rms.data ?? []) as Room[]);
 
       // Pending food per room (open/printed/served, hotel copy only) — only meaningful today
-      const { data: kots } = isToday ? await supabase
-        .from("kot_orders")
-        .select("id, booking_id, room_id, total_amount, created_at, status, kot_items(item_name, qty)")
-        .eq("property_id", propertyId)
-        .eq("kot_copy", "hotel_copy")
-        .in("status", ["open", "printed", "served"]) : { data: [] as any[] };
+      const kots = (kotsRes as any)?.data ?? [];
       const pfMap = new Map<string, PendingFood>();
       (kots ?? []).forEach((k: any) => {
         if (!k.room_id || !k.booking_id) return;
