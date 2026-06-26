@@ -632,8 +632,8 @@ function OwnerDashboard({
                             {r.lastAt ? new Date(r.lastAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "—"}
                           </td>
                           <td className="py-2 pr-3 text-right">
-                            <Button asChild size="sm" variant="outline">
-                              <Link to="/front-desk/booking/$id" params={{ id: r.bookingId }}>Add to Bill</Link>
+                            <Button size="sm" onClick={() => addPendingFoodToBill(r.bookingId)}>
+                              Add to Bill
                             </Button>
                           </td>
                         </tr>
