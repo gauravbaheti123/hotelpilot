@@ -149,7 +149,6 @@ function NewBookingPage() {
   useEffect(() => {
     if (search?.checkIn) setCheckIn(search.checkIn);
     if (search?.checkOut) setCheckOut(search.checkOut);
-    if (search?.eventId && source === "walk_in") setSource("event");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search?.checkIn, search?.checkOut, search?.eventId]);
 
