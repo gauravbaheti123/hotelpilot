@@ -364,12 +364,65 @@ function OwnerDashboard({
       .then(({ data }) => setCategories((data ?? []) as RoomCategory[]));
   }, [propertyId]);
 
+  // Live updates: Realtime subscription + 60s polling fallback
+  const [liveStatus, setLiveStatus] = useState<"connecting" | "live" | "polling">("connecting");
+  useEffect(() => {
+    if (!propertyId) return;
+    let cancelled = false;
+    const filter = `property_id=eq.${propertyId}`;
+    const debouncedReload = (() => {
+      let t: ReturnType<typeof setTimeout> | null = null;
+      return () => {
+        if (cancelled) return;
+        if (t) clearTimeout(t);
+        t = setTimeout(() => { if (!cancelled) reload(); }, 400);
+      };
+    })();
+    const channel = supabase
+      .channel(`dashboard-live-${propertyId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "rooms", filter }, debouncedReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "bookings", filter }, debouncedReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "booking_rooms" }, debouncedReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "kot_orders", filter }, debouncedReload)
+      .on("postgres_changes", { event: "*", schema: "public", table: "event_room_blocks", filter }, debouncedReload)
+      .subscribe((status) => {
+        if (cancelled) return;
+        if (status === "SUBSCRIBED") setLiveStatus("live");
+        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") setLiveStatus("polling");
+      });
+    const interval = setInterval(() => { if (!cancelled) reload(); }, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [propertyId, reload]);
+
   return (
     <AppShell title="Dashboard">
       <div className="w-full space-y-6">
         <Card>
           <CardHeader className="pb-3 flex flex-row items-center justify-between gap-4 flex-wrap">
-            <CardTitle className="text-base">Room Status</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              Room Status
+              <span
+                title={
+                  liveStatus === "live" ? "Live — updates in real time"
+                  : liveStatus === "polling" ? "Polling — refreshing every 60s"
+                  : "Connecting…"
+                }
+                className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${
+                    liveStatus === "live" ? "bg-emerald-500 animate-pulse"
+                    : liveStatus === "polling" ? "bg-slate-400"
+                    : "bg-amber-400 animate-pulse"
+                  }`}
+                />
+                {liveStatus === "live" ? "Live" : liveStatus === "polling" ? "Polling" : "…"}
+              </span>
+            </CardTitle>
             <div className="flex items-center gap-2">
               <Input
                 type="date"
