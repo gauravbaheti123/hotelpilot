@@ -28,6 +28,8 @@ interface AssignRow {
 function UsersPage() {
   const { roles: appRoles, loading } = useAuth();
   const isSuperadmin = appRoles.includes("superadmin");
+  const isOwner = appRoles.includes("owner");
+  const canAccess = isSuperadmin || isOwner;
   const [properties, setProperties] = useState<Property[]>([]);
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [rows, setRows] = useState<AssignRow[]>([]);
@@ -63,8 +65,8 @@ function UsersPage() {
   }
 
   useEffect(() => {
-    if (isSuperadmin) load();
-  }, [isSuperadmin]);
+    if (canAccess) load();
+  }, [canAccess]);
 
   async function assign(ur_id: string, role_id: string) {
     const { error } = await supabase
@@ -78,7 +80,7 @@ function UsersPage() {
 
   if (loading) return <AppShell title="User Roles"><div className="text-muted-foreground">Loading…</div></AppShell>;
 
-  if (!isSuperadmin) {
+  if (!canAccess) {
     return (
       <AppShell title="User Roles">
         <Card className="max-w-md">
