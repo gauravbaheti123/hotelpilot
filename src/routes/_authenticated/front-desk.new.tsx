@@ -31,6 +31,11 @@ export const Route = createFileRoute("/_authenticated/front-desk/new")({
   validateSearch: (s: Record<string, unknown>) => ({
     roomId: typeof s.roomId === "string" ? s.roomId : undefined,
     categoryId: typeof s.categoryId === "string" ? s.categoryId : undefined,
+    eventId: typeof s.eventId === "string" ? s.eventId : undefined,
+    blockId: typeof s.blockId === "string" ? s.blockId : undefined,
+    eventName: typeof s.eventName === "string" ? s.eventName : undefined,
+    checkIn: typeof s.checkIn === "string" ? s.checkIn : undefined,
+    checkOut: typeof s.checkOut === "string" ? s.checkOut : undefined,
   }),
   component: NewBookingPage,
 });
