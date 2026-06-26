@@ -806,7 +806,7 @@ function RoomCard({
       onClick={onPick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPick(); }}
       className="relative transition cursor-pointer overflow-hidden flex flex-col"
-      style={{ backgroundColor: meta.bg, color: "#ffffff", height: cardHeight, borderRadius: 10 }}
+      style={{ backgroundColor: meta.bg, color: "#ffffff", minHeight: 140, borderRadius: 10 }}
     >
       <div className="px-2.5 pt-2 pb-1.5 flex-1 min-h-0 flex flex-col">
         <div className="flex items-start justify-between gap-2">
