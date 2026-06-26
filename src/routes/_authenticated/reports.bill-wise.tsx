@@ -46,7 +46,7 @@ function Page() {
     const toIso = `${to}T23:59:59`;
     let q = supabase.from("folios").select(`
       id,invoice_number,created_at,sub_total,gst_amount,discount_amount,total_amount,bill_type,status,
-      bookings(booking_rooms(rooms(room_number)),guests(name))
+      bookings(booking_rooms(rooms!booking_rooms_room_id_fkey(room_number)),guests(name))
     `).eq("property_id", propertyId).gte("created_at", fromIso).lte("created_at", toIso)
       .order("created_at", { ascending: false });
     if (billType !== "all") q = q.eq("bill_type", billType);

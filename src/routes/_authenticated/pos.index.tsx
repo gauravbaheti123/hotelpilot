@@ -60,7 +60,7 @@ function PosPage() {
   useEffect(() => {
     if (!current) return;
     Promise.all([
-      supabase.from("bookings").select("id,booking_number,status,check_in,check_out,guests(name),booking_rooms(rooms(room_number))").eq("property_id", current.id).in("status", ["checked_in", "reserved"]).order("check_in", { ascending: false }).limit(100),
+      supabase.from("bookings").select("id,booking_number,status,check_in,check_out,guests(name),booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))").eq("property_id", current.id).in("status", ["checked_in", "reserved"]).order("check_in", { ascending: false }).limit(100),
       supabase.from("sundry_items").select("id,name,category,rate,gst_rate,unit").eq("property_id", current.id).eq("is_active", true).order("name"),
     ]).then(([b, i]) => {
       setBookings((b.data ?? []) as unknown as Booking[]);
