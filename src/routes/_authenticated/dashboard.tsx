@@ -367,27 +367,6 @@ function OwnerDashboard({
   return (
     <AppShell title="Dashboard">
       <div className="w-full space-y-6">
-        <Card>
-          <CardContent className="pt-6 flex flex-wrap items-end gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Viewing Rooms For</Label>
-              <Input
-                type="date"
-                value={viewDate}
-                onChange={(e) => setViewDate(e.target.value || todayISO())}
-                className="w-48"
-              />
-            </div>
-            {viewDate !== todayISO() && (
-              <Button size="sm" variant="outline" onClick={() => setViewDate(todayISO())}>
-                Reset To Today
-              </Button>
-            )}
-            <div className="ml-auto text-xs text-muted-foreground">
-              Showing status for <span className="font-semibold">{viewDate}</span>
-            </div>
-          </CardContent>
-        </Card>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Kpi label="Occupied Rooms" value={kpi.occupied} icon={BedDouble} />
           <Kpi
@@ -410,38 +389,23 @@ function OwnerDashboard({
           <Kpi label="Expected Departures" value={kpi.departures} icon={LogOut} />
         </div>
 
-        {events.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <CalendarDays className="h-4 w-4" /> Events
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {events.map((ev) => (
-                <div key={ev.banquet_booking_id} className="border rounded-lg p-3 space-y-2"
-                  style={{ borderLeft: "4px solid #7C3AED" }}>
-                  <div>
-                    <div className="font-semibold">{ev.event_name || "Unnamed Event"}</div>
-                    <div className="text-xs text-muted-foreground">{ev.function_type} · {ev.event_date}</div>
-                  </div>
-                  <div className="text-xs">
-                    {ev.blocked} blocked · {ev.checked_in} checked in · {ev.checked_out} checked out
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" disabled={ev.blocked === 0}
-                      onClick={() => setBulkCheckinEvent(ev)}>Bulk Check-in</Button>
-                    <Button size="sm" variant="outline" disabled={ev.checked_in === 0}
-                      onClick={() => setBulkCheckoutEvent(ev)}>Bulk Checkout</Button>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
         <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-base">Room Status</CardTitle></CardHeader>
+          <CardHeader className="pb-3 flex flex-row items-center justify-between gap-4 flex-wrap">
+            <CardTitle className="text-base">Room Status</CardTitle>
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                value={viewDate}
+                onChange={(e) => setViewDate(e.target.value || todayISO())}
+                className="w-40 h-8 text-xs py-1 bg-background"
+              />
+              {viewDate !== todayISO() && (
+                <Button size="sm" variant="outline" className="h-8 text-xs px-2 py-1" onClick={() => setViewDate(todayISO())}>
+                  Today
+                </Button>
+              )}
+            </div>
+          </CardHeader>
           <CardContent>
             {rooms.length === 0 ? (
               <div className="text-sm text-muted-foreground">No rooms configured.</div>
@@ -510,7 +474,7 @@ function OwnerDashboard({
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead>
+                     <thead>
                       <tr className="text-left text-xs uppercase text-muted-foreground">
                         <th className="py-2 pr-3">Room</th>
                         <th className="py-2 pr-3">Guest</th>
@@ -544,6 +508,36 @@ function OwnerDashboard({
             </CardContent>
           )}
         </Card>
+
+        {events.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CalendarDays className="h-4 w-4" /> Events
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {events.map((ev) => (
+                <div key={ev.banquet_booking_id} className="border rounded-lg p-3 space-y-2"
+                  style={{ borderLeft: "4px solid #7C3AED" }}>
+                  <div>
+                    <div className="font-semibold">{ev.event_name || "Unnamed Event"}</div>
+                    <div className="text-xs text-muted-foreground">{ev.function_type} · {ev.event_date}</div>
+                  </div>
+                  <div className="text-xs">
+                    {ev.blocked} blocked · {ev.checked_in} checked in · {ev.checked_out} checked out
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" disabled={ev.blocked === 0}
+                      onClick={() => setBulkCheckinEvent(ev)}>Bulk Check-in</Button>
+                    <Button size="sm" variant="outline" disabled={ev.checked_in === 0}
+                      onClick={() => setBulkCheckoutEvent(ev)}>Bulk Checkout</Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid gap-4 lg:grid-cols-2">
           <ScheduleCard
