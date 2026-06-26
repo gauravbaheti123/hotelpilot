@@ -213,6 +213,7 @@ function HotelSettingsForm({
       const updates: any = {
         name: form.name,
         short_code: form.short_code?.toUpperCase() || null,
+        tagline: form.tagline?.trim() || null,
         star_rating: form.star_rating ?? null,
         total_floors: form.total_floors ? Number(form.total_floors) : null,
         total_rooms: form.total_rooms ? Number(form.total_rooms) : null,
@@ -301,6 +302,12 @@ function HotelSettingsForm({
         <CardContent className="grid md:grid-cols-2 gap-4">
           <Field label="Hotel Name *"><Input disabled={dis} value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} /></Field>
           <Field label="Short Code (≤5)"><Input disabled={dis} maxLength={5} value={form.short_code ?? ""} onChange={(e) => set("short_code", e.target.value.toUpperCase())} /></Field>
+          <div className="md:col-span-2">
+            <Field label="Hotel Tagline" hint="Shows below hotel name on invoice.">
+              <Input disabled={dis} maxLength={100} placeholder="Hospitality · Experience · Comfort"
+                value={form.tagline ?? ""} onChange={(e) => set("tagline", e.target.value)} />
+            </Field>
+          </div>
           <Field label="Star Rating">
             <div className="flex items-center gap-1">
               {[1, 2, 3, 4, 5].map((n) => (
