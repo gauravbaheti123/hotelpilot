@@ -127,7 +127,7 @@ function FolioPage() {
   const [emailTo, setEmailTo] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
   const [emailBody, setEmailBody] = useState("");
-  const [downloading, setDownloading] = useState(false);
+  // PDF download uses browser print dialog — no async state needed.
 
   const load = useCallback(async () => {
     setLoading(true);
