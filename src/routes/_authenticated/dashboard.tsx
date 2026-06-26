@@ -437,6 +437,7 @@ function OwnerDashboard({
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
               <LegendDot style={{ backgroundColor: "#16a34a" }} label="Vacant" />
               <LegendDot style={{ backgroundColor: "#dc2626" }} label="Occupied" />
+              <LegendDot style={{ backgroundColor: "#b45309" }} label="Overdue" />
               <LegendDot style={{ backgroundColor: "#d97706" }} label="Dirty" />
               <LegendDot style={{ backgroundColor: "#6b7280" }} label="Maintenance" />
               <LegendDot style={{ backgroundColor: "#7c3aed" }} label="Event Block" />
