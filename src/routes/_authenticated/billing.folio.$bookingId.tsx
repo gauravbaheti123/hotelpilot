@@ -28,6 +28,12 @@ import { verifyManagerPassword } from "@/lib/manager-verify";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
+import {
+  renderInvoiceHtml,
+  openInvoiceWindow,
+  resolveLogoUrl,
+  type InvoiceProperty,
+} from "@/lib/invoiceTemplates";
 
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
   head: () => ({ meta: [{ title: "Folio — HotelPilot" }] }),
@@ -65,12 +71,10 @@ interface BookingCtx {
     room_categories: { name: string; gst_rate: number | null } | null;
   }[];
 }
-interface PropertyInfo {
-  name: string; gstin: string | null; address: string | null;
-  city: string | null; state: string | null; pincode: string | null;
-  phone: string | null; email: string | null; wa_number: string | null;
-  logo_url: string | null;
-}
+type PropertyInfo = InvoiceProperty & {
+  address?: string | null; // legacy
+  pincode?: string | null; // legacy
+};
 interface PendingKot {
   id: string; kot_number: string; status: string;
   total_amount: number; sub_total: number;
@@ -138,7 +142,12 @@ function FolioPage() {
     setBooking(bk);
 
     const { data: prop } = await supabase.from("properties")
-      .select("name,gstin,address,city,state,pincode,phone,email,wa_number,logo_url")
+      .select(`name,legal_entity_name,gstin,pan_number,state,state_code,
+        address_line1,address_line2,city,pin_code,phone,email,website,wa_number,logo_url,
+        invoice_prefix,invoice_footer,invoice_primary_color,invoice_template,
+        invoice_show_hsn,invoice_show_gst_breakup,invoice_show_signature,invoice_show_powered_by,
+        default_checkin_time,default_checkout_time,
+        address,pincode`)
       .eq("id", bk.property_id).single();
     setProperty((prop ?? null) as PropertyInfo | null);
 
@@ -529,175 +538,24 @@ function FolioPage() {
     load();
   }
 
-  function printInvoice() {
-    if (!folio || !booking) return;
-    const esc = (s: unknown) => String(s ?? "")
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-    const isGst = (folio.bill_type ?? folio.gst_mode) === "gst_invoice" || folio.gst_mode === "gst";
-    const title = isGst ? "TAX INVOICE" : "RECEIPT";
-    const receiptNo = isGst ? folio.invoice_number : `RCPT-${folio.invoice_number.replace(/^INV-/, "")}`;
-    const html = `
-      <html><head><title>${esc(folio.invoice_number)}</title>
-      <style>
-        body{font-family:Arial,sans-serif;font-size:12px;padding:24px;max-width:780px;margin:0 auto;color:#111}
-        h1{font-size:18px;margin:0 0 4px;text-align:center;letter-spacing:1px}
-        h2{font-size:14px;margin:0}
-        table{width:100%;border-collapse:collapse;margin-top:8px}
-        th,td{padding:6px 8px;border-bottom:1px solid #ddd;text-align:left;font-size:11px}
-        th{background:#f3f4f6}
-        .right{text-align:right}
-        .totals{margin-top:8px;width:50%;margin-left:auto}
-        .totals td{border:none;padding:3px 8px}
-        .totals .grand{font-weight:bold;font-size:13px;border-top:2px solid #111}
-        .meta{display:flex;justify-content:space-between;margin:12px 0;gap:24px}
-        .meta>div{flex:1}
-        .small{font-size:10px;color:#555}
-      </style></head><body>
-      <h1>${title}</h1>
-      <div style="text-align:center"><strong>${esc(property?.name ?? "")}</strong></div>
-      <div class="small" style="text-align:center">${esc(property?.address ?? "")}${isGst && property?.gstin ? ` · GSTIN: ${esc(property.gstin)}` : ""}</div>
-      <hr/>
-      <div class="meta">
-        <div>
-          <div><strong>Guest:</strong> ${esc(booking.guests?.name ?? "")}</div>
-          <div>${esc(booking.guests?.mobile ?? "")}</div>
-          ${isGst && folio.guest_gstin ? `<div>GSTIN: ${esc(folio.guest_gstin)}</div>` : ""}
-          ${isGst && folio.guest_company ? `<div>${esc(folio.guest_company)}</div>` : ""}
-        </div>
-        <div class="right">
-          <div><strong>${isGst ? "Invoice" : "Receipt"}:</strong> ${esc(receiptNo)}</div>
-          <div>Booking: ${esc(booking.booking_number)}</div>
-          <div>Stay: ${esc(booking.check_in)} → ${esc(booking.check_out)}</div>
-          <div>Date: ${new Date().toLocaleDateString()}</div>
-        </div>
-      </div>
-      ${isGst ? `<table>
-        <thead><tr>
-          <th>Description</th><th>HSN/SAC</th><th class="right">Qty</th><th class="right">Rate</th>
-          <th class="right">Amount</th><th class="right">CGST</th><th class="right">SGST</th>
-        </tr></thead>
-        <tbody>
-          ${charges.map((c: any) => `<tr>
-            <td>${esc(c.description)}</td>
-            <td>${esc(c.hsn_code ?? (c.charge_type === "room" ? "996311" : c.charge_type === "food" ? "996331" : ""))}</td>
-            <td class="right">${Number(c.qty).toLocaleString("en-IN")}</td>
-            <td class="right">${inr(c.rate)}</td>
-            <td class="right">${inr(c.amount)}</td>
-            <td class="right">${(Number(c.gst_rate) / 2).toFixed(1)}% · ${inr(Number(c.gst_amount) / 2)}</td>
-            <td class="right">${(Number(c.gst_rate) / 2).toFixed(1)}% · ${inr(Number(c.gst_amount) / 2)}</td>
-          </tr>`).join("")}
-        </tbody>
-      </table>` : `<table>
-        <thead><tr><th>Service description</th><th class="right">Amount</th></tr></thead>
-        <tbody>
-          ${charges.map((c) => `<tr>
-            <td>${esc(c.description)}</td>
-            <td class="right">${inr(Number(c.amount) + Number(c.gst_amount || 0))}</td>
-          </tr>`).join("")}
-        </tbody>
-      </table>
-      <p class="small" style="margin-top:6px"><em>Amount includes all applicable taxes.</em></p>`}
-      <table class="totals">
-        ${isGst ? `<tr><td>Sub-total</td><td class="right">${inr(folio.sub_total)}</td></tr>` : ""}
-        ${isGst && Number(folio.discount_amount) > 0 ? `<tr><td>Discount</td><td class="right">- ${inr(folio.discount_amount)}</td></tr>` : ""}
-        ${isGst ? `<tr><td>CGST</td><td class="right">${inr(Number(folio.gst_amount) / 2)}</td></tr>` : ""}
-        ${isGst ? `<tr><td>SGST</td><td class="right">${inr(Number(folio.gst_amount) / 2)}</td></tr>` : ""}
-        <tr class="grand"><td>Total</td><td class="right">${inr(folio.total_amount)}</td></tr>
-        <tr><td>Paid</td><td class="right">${inr(folio.paid_amount)}</td></tr>
-        <tr><td>Balance</td><td class="right">${inr(folio.balance_amount)}</td></tr>
-      </table>
-      ${payments.length > 0 ? `<h2 style="margin-top:16px">Payments</h2>
-        <table><thead><tr><th>Date</th><th>Mode</th><th>Ref</th><th class="right">Amount</th></tr></thead>
-        <tbody>${payments.map((p) => `<tr>
-          <td>${new Date(p.paid_at).toLocaleString()}</td>
-          <td>${esc(p.mode.toUpperCase())}</td>
-          <td>${esc(p.reference_no ?? "")}</td>
-          <td class="right">${inr(p.amount)}</td>
-        </tr>`).join("")}</tbody></table>` : ""}
-      <p class="small" style="margin-top:24px;text-align:center">Thank you for staying with ${esc(property?.name ?? "us")}.</p>
-      <div style="margin-top:48px;display:flex;justify-content:space-between;gap:48px">
-        <div style="flex:1;border-top:1px solid #111;padding-top:4px;font-size:11px">Received by</div>
-        <div style="flex:1;border-top:1px solid #111;padding-top:4px;font-size:11px;text-align:right">Guest signature</div>
-      </div>
-      </body></html>`;
-    const w = window.open("", "_blank", "width=900,height=900");
-    if (!w) return;
-    w.document.write(html); w.document.close(); w.focus(); w.print();
+  async function printInvoice() {
+    if (!folio || !booking || !property) return;
+    const logoDataUrl = await resolveLogoUrl(property.logo_url);
+    const html = renderInvoiceHtml({
+      property: { ...property, logo_url: logoDataUrl },
+      folio, booking, charges, payments, draft: false, logoDataUrl,
+    });
+    openInvoiceWindow(html);
   }
 
-  function printDraft() {
-    if (!folio || !booking) return;
-    const esc = (s: unknown) => String(s ?? "")
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-    const isGst = (folio.bill_type ?? folio.gst_mode) === "gst_invoice" || folio.gst_mode === "gst";
-    const rows = charges.map((c) => `<tr>
-      <td>${esc(c.description)}</td>
-      <td class="right">${Number(c.qty)}</td>
-      <td class="right">${inr(c.rate)}</td>
-      <td class="right">${inr(Number(c.amount) + (isGst ? 0 : Number(c.gst_amount || 0)))}</td>
-    </tr>`).join("");
-    const html = `<html><head><title>DRAFT — ${esc(booking.booking_number)}</title>
-      <style>
-        body{font-family:Arial,sans-serif;font-size:12px;padding:24px;max-width:780px;margin:0 auto;color:#111;position:relative}
-        h1{font-size:18px;margin:0 0 4px;text-align:center;letter-spacing:1px}
-        table{width:100%;border-collapse:collapse;margin-top:8px}
-        th,td{padding:6px 8px;border-bottom:1px solid #ddd;text-align:left;font-size:11px}
-        th{background:#f3f4f6}
-        .right{text-align:right}
-        .totals{margin-top:8px;width:50%;margin-left:auto}
-        .totals td{border:none;padding:3px 8px}
-        .totals .grand{font-weight:bold;font-size:13px;border-top:2px solid #111}
-        .meta{display:flex;justify-content:space-between;margin:12px 0;gap:24px}
-        .meta>div{flex:1}
-        .small{font-size:10px;color:#555}
-        .bill-number-field.draft{color:#999;letter-spacing:4px;font-weight:600}
-        .draft-watermark{position:fixed;top:50%;left:50%;
-          transform:translate(-50%,-50%) rotate(-45deg);
-          font-size:72px;font-weight:700;color:#000;opacity:0.10;
-          white-space:nowrap;pointer-events:none;z-index:9999}
-        @media print{
-          .draft-watermark{position:fixed;top:50%;left:50%;
-            transform:translate(-50%,-50%) rotate(-45deg);
-            font-size:72px;font-weight:700;color:#000;opacity:0.12;
-            white-space:nowrap;pointer-events:none;z-index:9999}
-        }
-      </style></head><body>
-      <div class="draft-watermark">DRAFT — NOT A TAX INVOICE</div>
-      <h1>DRAFT BILL</h1>
-      <div style="text-align:center"><strong>${esc(property?.name ?? "")}</strong></div>
-      <div class="small" style="text-align:center">${esc(property?.address ?? "")}</div>
-      <hr/>
-      <div class="meta">
-        <div>
-          <div><strong>Guest:</strong> ${esc(booking.guests?.name ?? "")}</div>
-          <div>${esc(booking.guests?.mobile ?? "")}</div>
-        </div>
-        <div class="right">
-          <div><strong>Bill No:</strong> <span class="bill-number-field draft">- - - - - -</span></div>
-          <div>Booking: ${esc(booking.booking_number)}</div>
-          <div>Stay: ${esc(booking.check_in)} → ${esc(booking.check_out)}</div>
-          <div>Date: ${new Date().toLocaleDateString()}</div>
-        </div>
-      </div>
-      <table>
-        <thead><tr><th>Description</th><th class="right">Qty</th><th class="right">Rate</th><th class="right">Amount</th></tr></thead>
-        <tbody>${rows || `<tr><td colspan="4" style="text-align:center;color:#666">No charges yet</td></tr>`}</tbody>
-      </table>
-      <table class="totals">
-        <tr><td>Sub-total</td><td class="right">${inr(folio.sub_total)}</td></tr>
-        ${Number(folio.discount_amount) > 0 ? `<tr><td>Discount</td><td class="right">- ${inr(folio.discount_amount)}</td></tr>` : ""}
-        ${isGst ? `<tr><td>GST</td><td class="right">${inr(folio.gst_amount)}</td></tr>` : ""}
-        <tr class="grand"><td>Total</td><td class="right">${inr(folio.total_amount)}</td></tr>
-        <tr><td>Paid</td><td class="right">${inr(folio.paid_amount)}</td></tr>
-        <tr><td>Balance</td><td class="right">${inr(folio.balance_amount)}</td></tr>
-      </table>
-      <p class="small" style="margin-top:24px;text-align:center">This is a draft for verification only. The final tax invoice will be issued on confirmation.</p>
-      </body></html>`;
-    const w = window.open("", "_blank", "width=900,height=900");
-    if (!w) return;
-    w.document.write(html); w.document.close(); w.focus(); w.print();
+  async function printDraft() {
+    if (!folio || !booking || !property) return;
+    const logoDataUrl = await resolveLogoUrl(property.logo_url);
+    const html = renderInvoiceHtml({
+      property: { ...property, logo_url: logoDataUrl },
+      folio, booking, charges, payments, draft: true, logoDataUrl,
+    });
+    openInvoiceWindow(html);
   }
 
   if (loading) return <AppShell title="Folio"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
