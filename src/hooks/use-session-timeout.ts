@@ -146,19 +146,20 @@ export function useSessionTimeout() {
       }
     });
 
-    const events: (keyof WindowEventMap)[] = [
+    const events = [
       "mousemove",
       "keydown",
       "click",
       "scroll",
       "touchstart",
-      "visibilitychange",
-    ];
+    ] as const;
     events.forEach((e) => window.addEventListener(e, markActivity, { passive: true }));
+    document.addEventListener("visibilitychange", markActivity);
 
     return () => {
       sub.subscription.unsubscribe();
       events.forEach((e) => window.removeEventListener(e, markActivity));
+      document.removeEventListener("visibilitychange", markActivity);
       stop();
     };
   }, []);
