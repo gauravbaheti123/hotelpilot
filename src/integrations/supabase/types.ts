@@ -3623,6 +3623,8 @@ export type Database = {
           new_rate: number | null
           old_rate: number | null
           property_id: string
+          rate_applied: number | null
+          rate_type: string | null
           reason: string | null
           shifted_at: string
           shifted_by: string | null
@@ -3636,6 +3638,8 @@ export type Database = {
           new_rate?: number | null
           old_rate?: number | null
           property_id: string
+          rate_applied?: number | null
+          rate_type?: string | null
           reason?: string | null
           shifted_at?: string
           shifted_by?: string | null
@@ -3649,6 +3653,8 @@ export type Database = {
           new_rate?: number | null
           old_rate?: number | null
           property_id?: string
+          rate_applied?: number | null
+          rate_type?: string | null
           reason?: string | null
           shifted_at?: string
           shifted_by?: string | null
