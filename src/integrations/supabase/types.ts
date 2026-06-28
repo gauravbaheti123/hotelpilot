@@ -121,6 +121,93 @@ export type Database = {
           },
         ]
       }
+      auth_audit_log: {
+        Row: {
+          created_at: string
+          email: string | null
+          event_type: string
+          id: string
+          ip: string | null
+          metadata: Json
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          event_type: string
+          id?: string
+          ip?: string | null
+          metadata?: Json
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          event_type?: string
+          id?: string
+          ip?: string | null
+          metadata?: Json
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      auth_lockouts: {
+        Row: {
+          email: string
+          failed_count: number
+          last_failure_at: string | null
+          locked_until: string | null
+          updated_at: string
+        }
+        Insert: {
+          email: string
+          failed_count?: number
+          last_failure_at?: string | null
+          locked_until?: string | null
+          updated_at?: string
+        }
+        Update: {
+          email?: string
+          failed_count?: number
+          last_failure_at?: string | null
+          locked_until?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      auth_login_attempts: {
+        Row: {
+          attempted_at: string
+          email: string
+          id: string
+          ip: string | null
+          reason: string | null
+          success: boolean
+          user_agent: string | null
+        }
+        Insert: {
+          attempted_at?: string
+          email: string
+          id?: string
+          ip?: string | null
+          reason?: string | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Update: {
+          attempted_at?: string
+          email?: string
+          id?: string
+          ip?: string | null
+          reason?: string | null
+          success?: boolean
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       banquet_bookings: {
         Row: {
           advance_amount: number
@@ -4030,6 +4117,36 @@ export type Database = {
           },
         ]
       }
+      user_mfa_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          enrolled_at: string | null
+          factor_type: string
+          last_used_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          enrolled_at?: string | null
+          factor_type?: string
+          last_used_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          enrolled_at?: string | null
+          factor_type?: string
+          last_used_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -4315,6 +4432,7 @@ export type Database = {
       can_front_desk: { Args: { _user_id: string }; Returns: boolean }
       can_housekeeping: { Args: { _user_id: string }; Returns: boolean }
       can_manage_masters: { Args: { _user_id: string }; Returns: boolean }
+      check_login_allowed: { Args: { _email: string }; Returns: Json }
       delete_night_audit: { Args: { _id: string }; Returns: undefined }
       get_next_bill_number: {
         Args: { p_property_id: string; p_type: string }
@@ -4343,6 +4461,15 @@ export type Database = {
       }
       is_owner_or_super: { Args: { _user_id: string }; Returns: boolean }
       is_superadmin: { Args: { _uid: string }; Returns: boolean }
+      log_auth_event: {
+        Args: {
+          _event_type: string
+          _ip?: string
+          _metadata?: Json
+          _user_agent?: string
+        }
+        Returns: string
+      }
       post_nightly_room_charges: {
         Args: { _audit_date: string; _property_id: string }
         Returns: number
@@ -4350,6 +4477,16 @@ export type Database = {
       recompute_folio_totals: {
         Args: { _folio_id: string }
         Returns: undefined
+      }
+      record_login_attempt: {
+        Args: {
+          _email: string
+          _ip?: string
+          _reason?: string
+          _success: boolean
+          _user_agent?: string
+        }
+        Returns: Json
       }
       save_property_secrets: {
         Args: {

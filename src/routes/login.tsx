@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import {
+  checkLoginAllowed,
+  recordLoginAttempt,
+  lockoutMessage,
+} from "@/lib/auth-security";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -33,8 +38,17 @@ function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
+      const pre = await checkLoginAllowed(email);
+      if (!pre.allowed) {
+        toast.error(lockoutMessage(pre));
+        return;
+      }
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      if (error) {
+        await recordLoginAttempt(email, false, error.message);
+        throw error;
+      }
+      await recordLoginAttempt(email, true);
       toast.success("Welcome back");
       navigate({ to: "/dashboard" });
     } catch (err) {
