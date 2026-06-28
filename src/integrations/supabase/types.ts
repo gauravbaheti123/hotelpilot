@@ -4427,11 +4427,21 @@ export type Database = {
     }
     Functions: {
       auto_cancel_incomplete_bookings: { Args: never; Returns: number }
-      can_billing: { Args: { _user_id: string }; Returns: boolean }
-      can_food: { Args: { _user_id: string }; Returns: boolean }
-      can_front_desk: { Args: { _user_id: string }; Returns: boolean }
-      can_housekeeping: { Args: { _user_id: string }; Returns: boolean }
-      can_manage_masters: { Args: { _user_id: string }; Returns: boolean }
+      can_billing:
+        | { Args: { _user_id: string }; Returns: boolean }
+        | { Args: { _property_id: string; _user_id: string }; Returns: boolean }
+      can_food:
+        | { Args: { _user_id: string }; Returns: boolean }
+        | { Args: { _property_id: string; _user_id: string }; Returns: boolean }
+      can_front_desk:
+        | { Args: { _user_id: string }; Returns: boolean }
+        | { Args: { _property_id: string; _user_id: string }; Returns: boolean }
+      can_housekeeping:
+        | { Args: { _user_id: string }; Returns: boolean }
+        | { Args: { _property_id: string; _user_id: string }; Returns: boolean }
+      can_manage_masters:
+        | { Args: { _user_id: string }; Returns: boolean }
+        | { Args: { _property_id: string; _user_id: string }; Returns: boolean }
       check_login_allowed: { Args: { _email: string }; Returns: Json }
       delete_night_audit: { Args: { _id: string }; Returns: undefined }
       get_next_bill_number: {
