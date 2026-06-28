@@ -42,9 +42,9 @@ export async function recordLoginAttempt(
   await supabase.rpc("record_login_attempt", {
     _email: email,
     _success: success,
-    _ip: null,
-    _user_agent: getUA() ?? null,
-    _reason: reason ?? null,
+    _ip: undefined,
+    _user_agent: getUA(),
+    _reason: reason,
   });
 }
 
@@ -55,9 +55,9 @@ export async function logAuthEvent(
   try {
     await supabase.rpc("log_auth_event", {
       _event_type: eventType,
-      _metadata: metadata,
-      _ip: null,
-      _user_agent: getUA() ?? null,
+      _metadata: metadata as never,
+      _ip: undefined,
+      _user_agent: getUA(),
     });
   } catch (e) {
     console.warn("[auth-security] log_auth_event failed", e);
