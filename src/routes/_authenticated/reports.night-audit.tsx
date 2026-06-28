@@ -246,7 +246,6 @@ function NightAuditPage() {
 
   async function closeDay() {
     if (!propertyId) return;
-    if (existing) { toast.error("This day is already closed"); return; }
     if (!actualCash) { toast.error("Enter actual cash in hand"); return; }
     if (Math.abs(difference) > 0.01 && !notes.trim()) {
       toast.error("Notes are required when cash difference is not zero");
@@ -254,30 +253,13 @@ function NightAuditPage() {
     }
     setBusy(true);
     try {
-      // 1) Post nightly room charges
-      const posted: string[] = [];
-      for (const tp of tariffPosts) {
-        if (!(tp.amount > 0)) continue;
-        let folioId = tp.folioId;
-        if (!folioId) {
-          const { data: fid, error: fErr } = await supabase.rpc("get_or_create_folio", { _booking_id: tp.bookingId });
-          if (fErr || !fid) {
-            toast.error(`Could not create folio for Room ${tp.roomNumber}: ${fErr?.message ?? "unknown error"}`);
-            continue;
-          }
-          folioId = fid as unknown as string;
-        }
-        const { error } = await supabase.from("folio_charges").insert({
-          folio_id: folioId,
-          charge_type: "room",
-          description: `Room Charge — ${date}`,
-          qty: 1,
-          rate: tp.amount,
-          amount: tp.amount,
-          gst_amount: 0,
-        } as any);
-        if (!error) posted.push(tp.bookingId);
-      }
+      // 1) Post nightly room charges via idempotent RPC
+      const { data: postedCount, error: postErr } = await supabase.rpc(
+        "post_nightly_room_charges",
+        { _property_id: propertyId, _audit_date: date },
+      );
+      if (postErr) throw postErr;
+      const posted = Number(postedCount ?? 0);
 
       // 2) Build occupancy/revenue snapshot
       const occSnap = await fetchOccupancy(propertyId, date);
@@ -293,8 +275,8 @@ function NightAuditPage() {
         tariff_posts: tariffPosts.filter((tp) => tp.folioId && tp.amount > 0),
       };
 
-      // 3) Insert audit report
-      const { error: nerr } = await supabase.from("night_audit_reports").insert({
+      // 3) Upsert audit report (unique on property_id, audit_date)
+      const { error: nerr } = await supabase.from("night_audit_reports").upsert({
         property_id: propertyId,
         audit_date: date,
         closed_by: user?.id ?? null,
@@ -313,7 +295,7 @@ function NightAuditPage() {
         cash_difference: difference,
         notes: notes || null,
         report_data: reportData,
-      } as any);
+      } as any, { onConflict: "property_id,audit_date" });
       if (nerr) throw nerr;
 
       // 4) Also insert day_closures for back-compat
@@ -338,7 +320,7 @@ function NightAuditPage() {
         notes: notes || null,
       } as any, { onConflict: "property_id,business_date" });
 
-      toast.success(`Day closed. Posted ${posted.length} room charge(s).`);
+      toast.success(`Day closed. Posted ${posted} room charge(s).`);
       setNotes(""); setActualCash("");
       await refresh();
     } catch (e: any) {
@@ -349,7 +331,7 @@ function NightAuditPage() {
   async function deleteAudit(id: string) {
     if (!isOwner) { toast.error("Only owners can override a closed day"); return; }
     if (!confirm("Override and delete this day's audit?")) return;
-    const { error } = await supabase.from("night_audit_reports").delete().eq("id", id);
+    const { error } = await supabase.rpc("delete_night_audit", { _id: id });
     if (error) { toast.error(error.message); return; }
     toast.success("Audit removed — day unlocked");
     refresh();
