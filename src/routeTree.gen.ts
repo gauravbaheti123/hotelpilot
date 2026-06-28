@@ -39,6 +39,7 @@ import { Route as AuthenticatedSettingsHotelRouteImport } from './routes/_authen
 import { Route as AuthenticatedRoomsRoomNumberRouteImport } from './routes/_authenticated/rooms.$roomNumber'
 import { Route as AuthenticatedReportsSalesRouteImport } from './routes/_authenticated/reports.sales'
 import { Route as AuthenticatedReportsRoomWiseRouteImport } from './routes/_authenticated/reports.room-wise'
+import { Route as AuthenticatedReportsRoomShiftRouteImport } from './routes/_authenticated/reports.room-shift'
 import { Route as AuthenticatedReportsNightAuditRouteImport } from './routes/_authenticated/reports.night-audit'
 import { Route as AuthenticatedReportsMisRouteImport } from './routes/_authenticated/reports.mis'
 import { Route as AuthenticatedReportsGuestWiseRouteImport } from './routes/_authenticated/reports.guest-wise'
@@ -265,6 +266,12 @@ const AuthenticatedReportsRoomWiseRoute =
   AuthenticatedReportsRoomWiseRouteImport.update({
     id: '/reports/room-wise',
     path: '/reports/room-wise',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsRoomShiftRoute =
+  AuthenticatedReportsRoomShiftRouteImport.update({
+    id: '/reports/room-shift',
+    path: '/reports/room-shift',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedReportsNightAuditRoute =
@@ -655,6 +662,7 @@ export interface FileRoutesByFullPath {
   '/reports/guest-wise': typeof AuthenticatedReportsGuestWiseRoute
   '/reports/mis': typeof AuthenticatedReportsMisRoute
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
+  '/reports/room-shift': typeof AuthenticatedReportsRoomShiftRoute
   '/reports/room-wise': typeof AuthenticatedReportsRoomWiseRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/rooms/$roomNumber': typeof AuthenticatedRoomsRoomNumberRoute
@@ -743,6 +751,7 @@ export interface FileRoutesByTo {
   '/reports/guest-wise': typeof AuthenticatedReportsGuestWiseRoute
   '/reports/mis': typeof AuthenticatedReportsMisRoute
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
+  '/reports/room-shift': typeof AuthenticatedReportsRoomShiftRoute
   '/reports/room-wise': typeof AuthenticatedReportsRoomWiseRoute
   '/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/rooms/$roomNumber': typeof AuthenticatedRoomsRoomNumberRoute
@@ -833,6 +842,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/guest-wise': typeof AuthenticatedReportsGuestWiseRoute
   '/_authenticated/reports/mis': typeof AuthenticatedReportsMisRoute
   '/_authenticated/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
+  '/_authenticated/reports/room-shift': typeof AuthenticatedReportsRoomShiftRoute
   '/_authenticated/reports/room-wise': typeof AuthenticatedReportsRoomWiseRoute
   '/_authenticated/reports/sales': typeof AuthenticatedReportsSalesRoute
   '/_authenticated/rooms/$roomNumber': typeof AuthenticatedRoomsRoomNumberRoute
@@ -923,6 +933,7 @@ export interface FileRouteTypes {
     | '/reports/guest-wise'
     | '/reports/mis'
     | '/reports/night-audit'
+    | '/reports/room-shift'
     | '/reports/room-wise'
     | '/reports/sales'
     | '/rooms/$roomNumber'
@@ -1011,6 +1022,7 @@ export interface FileRouteTypes {
     | '/reports/guest-wise'
     | '/reports/mis'
     | '/reports/night-audit'
+    | '/reports/room-shift'
     | '/reports/room-wise'
     | '/reports/sales'
     | '/rooms/$roomNumber'
@@ -1100,6 +1112,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/guest-wise'
     | '/_authenticated/reports/mis'
     | '/_authenticated/reports/night-audit'
+    | '/_authenticated/reports/room-shift'
     | '/_authenticated/reports/room-wise'
     | '/_authenticated/reports/sales'
     | '/_authenticated/rooms/$roomNumber'
@@ -1351,6 +1364,13 @@ declare module '@tanstack/react-router' {
       path: '/reports/room-wise'
       fullPath: '/reports/room-wise'
       preLoaderRoute: typeof AuthenticatedReportsRoomWiseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/room-shift': {
+      id: '/_authenticated/reports/room-shift'
+      path: '/reports/room-shift'
+      fullPath: '/reports/room-shift'
+      preLoaderRoute: typeof AuthenticatedReportsRoomShiftRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/reports/night-audit': {
@@ -1807,6 +1827,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsGuestWiseRoute: typeof AuthenticatedReportsGuestWiseRoute
   AuthenticatedReportsMisRoute: typeof AuthenticatedReportsMisRoute
   AuthenticatedReportsNightAuditRoute: typeof AuthenticatedReportsNightAuditRoute
+  AuthenticatedReportsRoomShiftRoute: typeof AuthenticatedReportsRoomShiftRoute
   AuthenticatedReportsRoomWiseRoute: typeof AuthenticatedReportsRoomWiseRoute
   AuthenticatedReportsSalesRoute: typeof AuthenticatedReportsSalesRoute
   AuthenticatedRoomsRoomNumberRoute: typeof AuthenticatedRoomsRoomNumberRoute
@@ -1898,6 +1919,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsGuestWiseRoute: AuthenticatedReportsGuestWiseRoute,
   AuthenticatedReportsMisRoute: AuthenticatedReportsMisRoute,
   AuthenticatedReportsNightAuditRoute: AuthenticatedReportsNightAuditRoute,
+  AuthenticatedReportsRoomShiftRoute: AuthenticatedReportsRoomShiftRoute,
   AuthenticatedReportsRoomWiseRoute: AuthenticatedReportsRoomWiseRoute,
   AuthenticatedReportsSalesRoute: AuthenticatedReportsSalesRoute,
   AuthenticatedRoomsRoomNumberRoute: AuthenticatedRoomsRoomNumberRoute,
