@@ -296,27 +296,22 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       }
     }
 
-    // Recompute & settle
-    const gstMode = (folio.gst_mode as "cash" | "gst") ?? "cash";
-    const t = recomputeFolio(charges as any, gstMode);
-    const paid = totals.paid + rows.reduce((s, r) => s + r.amount, 0);
-    const balance = Math.max(0, t.total_amount - paid);
-    if (balance > 0.01) {
+    // Refresh folio from DB — payments_sync trigger has already recomputed
+    // paid_amount, balance_amount, and status from the actual payment rows.
+    // This avoids any stale local state ever driving checkout.
+    const { data: freshFolio, error: refErr } = await supabase
+      .from("folios")
+      .select("id,total_amount,paid_amount,balance_amount,status")
+      .eq("id", folio.id)
+      .single();
+    if (refErr) { setBusy(false); return toast.error(refErr.message); }
+    const liveBalance = Number((freshFolio as any)?.balance_amount ?? 0);
+    if (liveBalance > 0.01) {
       setBusy(false);
-      return toast.error(`Pending balance ${inr(balance)}. Collect payment first.`);
+      return toast.error(`Pending balance ${inr(liveBalance)}. Collect payment first.`);
     }
 
     const now = new Date().toISOString();
-    await supabase
-      .from("folios")
-      .update({
-        ...t,
-        paid_amount: paid,
-        balance_amount: 0,
-        status: "settled",
-        settled_at: now,
-      } as any)
-      .eq("id", folio.id);
 
     if (booking.status !== "checked_out" && booking.status !== "cancelled") {
       await supabase

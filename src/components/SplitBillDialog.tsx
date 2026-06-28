@@ -144,18 +144,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     }
     setBusy(true);
     try {
-      // 1) Void original folio (soft-delete; preserve invoice_number for audit).
-      const { error: voidErr } = await supabase.from("folios").update({
-        is_deleted: true,
-        deleted_by: user?.id ?? null,
-        deleted_at: new Date().toISOString(),
-        status: "void",
-        voided_at: new Date().toISOString(),
-        void_reason: `Split into 2 bills (${splitType})`,
-      } as any).eq("id", folio.id);
-      if (voidErr) throw voidErr;
-
-      // 2) Create two new folios; trigger assigns invoice_number from sequence.
+      // 1) Create Invoice A + Invoice B FIRST. Only void the original after both succeed.
       const newFolioIds: string[] = [];
       const created: typeof createdBills = [];
       for (let i = 0; i < 2; i++) {
@@ -176,7 +165,13 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           balance_amount: totals.total_amount,
           created_by: user?.id ?? null,
         } as any).select("id,invoice_number,total_amount").single();
-        if (fErr) throw fErr;
+        if (fErr) {
+          // Rollback any folio we just created so we don't leak orphans.
+          if (newFolioIds.length > 0) {
+            await supabase.from("folios").delete().in("id", newFolioIds);
+          }
+          throw fErr;
+        }
         const newId = (f as any).id as string;
         newFolioIds.push(newId);
         created.push({
@@ -186,7 +181,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           total: Number((f as any).total_amount),
         });
 
-        // 3) Copy charges to new folio (new rows; preserve original charges on voided folio for audit).
+        // 2) Copy charges to the new folio (originals stay on the source folio for audit).
         const rows = items.map((c) => ({
           folio_id: newId,
           charge_type: c.charge_type,
@@ -202,7 +197,24 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           created_by: user?.id ?? null,
         }));
         const { error: cErr } = await supabase.from("folio_charges").insert(rows as any);
-        if (cErr) throw cErr;
+        if (cErr) {
+          await supabase.from("folios").delete().in("id", newFolioIds);
+          throw cErr;
+        }
+      }
+
+      // 3) Both invoices verified — now void the original via the safe helper.
+      //    void_folio_safe refuses to void a folio that still has payments, so
+      //    we don't silently lose payment history.
+      const { error: voidErr } = await supabase.rpc("void_folio_safe" as any, {
+        _folio_id: folio.id,
+        _reason: `Split into 2 bills (${splitType})`,
+        _user_id: user?.id ?? null,
+      });
+      if (voidErr) {
+        // Rollback the newly created folios so we don't end up with 3 active bills.
+        await supabase.from("folios").delete().in("id", newFolioIds);
+        throw voidErr;
       }
 
       setCreatedBills(created);
@@ -257,12 +269,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
             reference_no: row.reference || null,
             created_by: user?.id ?? null,
           } as any);
-          await supabase.from("folios").update({
-            paid_amount: amt,
-            balance_amount: Math.max(0, b.total - amt),
-            status: amt + 0.01 >= b.total ? "settled" : "open",
-            settled_at: amt + 0.01 >= b.total ? new Date().toISOString() : null,
-          } as any).eq("id", b.folio_id);
+          // Paid / Balance / Status are recomputed by the payments_sync trigger.
         }
       }
       // Mark booking checked-out.
