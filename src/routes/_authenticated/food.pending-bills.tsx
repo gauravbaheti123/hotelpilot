@@ -31,7 +31,7 @@ function PendingBillsPage() {
       const { data } = await supabase.from("kot_orders")
         .select("id,kot_number,kot_type,table_no,guest_name,status,total_amount,created_at,rooms(room_number)")
         .eq("property_id", propertyId)
-        .in("status", ["pending", "served"])
+        .in("status", ["open", "printed", "served"])
         .order("created_at", { ascending: false })
         .limit(200);
       setRows((data ?? []) as unknown as Row[]);
