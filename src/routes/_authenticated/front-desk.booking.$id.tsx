@@ -308,41 +308,21 @@ function BookingDetailPage() {
     if (!shiftReason.trim()) return toast.error("Reason is required");
     if (tariffChoice === "custom" && !mgrApproved) return toast.error("Manager authorisation required for custom rate");
     const target = rooms.find((r) => r.id === shiftToRoom);
-    const oldRate = Number(br.rate);
     const newRate = resolveNewRate(br, target);
     const fromRoomId = br.room_id;
     setShiftBusy(true);
 
-    // Mark old booking_room as shifted (audit trail), then create a new active row for the new room.
-    const nowIso = new Date().toISOString();
-    const { error: e1 } = await supabase.from("booking_rooms")
-      .update({
-        status: "shifted",
-        end_date: nowIso,
-        shifted_to_room_id: shiftToRoom,
-        shifted_at: nowIso,
-        shifted_by: user?.id ?? null,
-        actual_check_out: br.actual_check_out ?? nowIso,
-      } as any)
-      .eq("id", br.id);
-    if (e1) { setShiftBusy(false); return toast.error(e1.message); }
-
-    const { data: newBr, error: e1b } = await supabase.from("booking_rooms").insert({
-      booking_id: b.id,
-      room_id: shiftToRoom,
-      category_id: target?.category_id ?? br.category_id,
-      rate: newRate,
-      meal_plan: br.meal_plan,
-      adults: br.adults,
-      children: br.children,
-      check_in: br.check_in,
-      check_out: br.check_out,
-      actual_check_in: nowIso,
-      status: "active",
-      start_date: nowIso,
-    } as any).select("id").single();
-    if (e1b) { setShiftBusy(false); return toast.error(e1b.message); }
-    const newBrId = (newBr as any)?.id as string | undefined;
+    // Atomic shift: closes old booking_room, creates new one, logs shift,
+    // updates room statuses, and validates target room availability — all in one DB tx.
+    const { error: shiftErr } = await supabase.rpc("shift_room" as any, {
+      _booking_room_id: br.id,
+      _to_room_id: shiftToRoom,
+      _new_rate: newRate,
+      _tariff_choice: tariffChoice,
+      _reason: shiftReason,
+      _shifted_by: user?.id ?? null,
+    });
+    if (shiftErr) { setShiftBusy(false); return toast.error(shiftErr.message); }
 
     // Recompute folio totals at new rate for any still-unposted future nights (existing historical charges remain).
     try {
@@ -357,31 +337,6 @@ function BookingDetailPage() {
         ...t, balance_amount: Math.max(0, t.total_amount - paid),
       }).eq("id", fId);
     } catch (e) { console.warn("folio rate update failed", e); }
-
-    await supabase.from("room_shifts").insert({
-      property_id: b.property_id,
-      booking_room_id: br.id,
-      from_room_id: fromRoomId,
-      to_room_id: shiftToRoom,
-      reason: shiftReason,
-      old_rate: oldRate,
-      new_rate: newRate,
-      tariff_choice: tariffChoice,
-      rate_applied: newRate,
-      rate_type: tariffChoice === "keep" ? "original_rate" : "new_rate",
-      shifted_by: user?.id ?? null,
-    } as any);
-    void newBrId;
-
-    if (b.status === "checked_in") {
-      if (fromRoomId) {
-        await supabase.from("rooms").update({
-          status: "vacant" as any,
-          housekeeping_status: "dirty" as any,
-        }).eq("id", fromRoomId);
-      }
-      await supabase.from("rooms").update({ status: "occupied" as any }).eq("id", shiftToRoom);
-    }
 
     // === Transfer open/printed KOTs to new room and log ===
     if (transferKots) try {

@@ -4351,6 +4351,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      shift_room: {
+        Args: {
+          _booking_room_id: string
+          _new_rate: number
+          _reason: string
+          _shifted_by: string
+          _tariff_choice: string
+          _to_room_id: string
+        }
+        Returns: string
+      }
       user_has_permission: {
         Args: {
           _action: string
