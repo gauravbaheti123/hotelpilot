@@ -367,6 +367,8 @@ function BookingDetailPage() {
       old_rate: oldRate,
       new_rate: newRate,
       tariff_choice: tariffChoice,
+      rate_applied: newRate,
+      rate_type: tariffChoice === "keep" ? "original_rate" : "new_rate",
       shifted_by: user?.id ?? null,
     } as any);
     void newBrId;

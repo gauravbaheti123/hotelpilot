@@ -138,7 +138,6 @@ const SUPERADMIN_NAV: NavGroup[] = [
       { to: "/properties", label: "Properties", icon: Building2 },
       { to: "/superadmin/users", label: "Users", icon: Users },
       { to: "/superadmin/roles", label: "Roles & Permissions", icon: KeyRound },
-      { to: "/security", label: "Security Dashboard", icon: ShieldCheck },
       { to: "/reports/activity", label: "System Logs", icon: ScrollText },
       { to: "/settings", label: "Settings", icon: Settings },
     ],
