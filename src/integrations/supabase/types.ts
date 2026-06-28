@@ -4315,6 +4315,7 @@ export type Database = {
       can_front_desk: { Args: { _user_id: string }; Returns: boolean }
       can_housekeeping: { Args: { _user_id: string }; Returns: boolean }
       can_manage_masters: { Args: { _user_id: string }; Returns: boolean }
+      delete_night_audit: { Args: { _id: string }; Returns: undefined }
       get_next_bill_number: {
         Args: { p_property_id: string; p_type: string }
         Returns: string
@@ -4342,6 +4343,10 @@ export type Database = {
       }
       is_owner_or_super: { Args: { _user_id: string }; Returns: boolean }
       is_superadmin: { Args: { _uid: string }; Returns: boolean }
+      post_nightly_room_charges: {
+        Args: { _audit_date: string; _property_id: string }
+        Returns: number
+      }
       recompute_folio_totals: {
         Args: { _folio_id: string }
         Returns: undefined
