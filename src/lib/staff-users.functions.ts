@@ -11,6 +11,24 @@ async function assertCallerIsOwnerOrSuper(context: any) {
   return false;
 }
 
+async function callerIsSuper(context: any): Promise<boolean> {
+  const { data } = await context.supabase.rpc("is_superadmin", { _uid: context.userId });
+  return !!data;
+}
+
+async function callerHasProperty(context: any, propertyId: string | null | undefined): Promise<boolean> {
+  if (!propertyId) return await callerIsSuper(context);
+  const { data } = await context.supabase.rpc("user_has_property", {
+    _uid: context.userId,
+    _prop: propertyId,
+  });
+  return !!data;
+}
+
+function isPrivilegedRoleName(name: string | null | undefined): boolean {
+  return !!name && /^(owner|superadmin)$/i.test(name);
+}
+
 export const createStaffUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: {
