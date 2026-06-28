@@ -15,7 +15,13 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ShieldAlert, UserPlus, KeyRound, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { createStaffUser, resetStaffPassword, deleteStaffUser } from "@/lib/staff-users.functions";
+import {
+  createStaffUser,
+  resetStaffPassword,
+  deleteStaffUser,
+  assignRoleTemplate,
+  setUserActive,
+} from "@/lib/staff-users.functions";
 
 export const Route = createFileRoute("/_authenticated/superadmin/users")({
   head: () => ({ meta: [{ title: "User Management — HotelPilot" }] }),
@@ -76,6 +82,8 @@ function UsersPage() {
   const createFn = useServerFn(createStaffUser);
   const resetFn = useServerFn(resetStaffPassword);
   const deleteFn = useServerFn(deleteStaffUser);
+  const assignFn = useServerFn(assignRoleTemplate);
+  const setActiveFn = useServerFn(setUserActive);
 
   useEffect(() => {
     if (!loading && !canAccess) {
@@ -149,19 +157,20 @@ function UsersPage() {
   }
 
   async function assign(ur_id: string, role_id: string) {
-    const { error } = await supabase.from("user_roles").update({ role_id: role_id || null }).eq("id", ur_id);
-    if (error) return toast.error(error.message);
-    const r = rows.find((x) => x.ur_id === ur_id);
-    toast.success(`Role updated${r?.name ? ` for ${r.name}` : ""}`);
-    load();
+    try {
+      await assignFn({ data: { ur_id, role_id: role_id || null } });
+      const r = rows.find((x) => x.ur_id === ur_id);
+      toast.success(`Role updated${r?.name ? ` for ${r.name}` : ""}`);
+      load();
+    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
   }
 
   async function toggleActive(r: AssignRow) {
-    const { error } = await supabase
-      .from("profiles").update({ is_active: !r.is_active }).eq("id", r.user_id);
-    if (error) return toast.error(error.message);
-    toast.success(!r.is_active ? "User activated" : "User deactivated");
-    load();
+    try {
+      await setActiveFn({ data: { user_id: r.user_id, active: !r.is_active } });
+      toast.success(!r.is_active ? "User activated" : "User deactivated");
+      load();
+    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
   }
 
   async function onCreate() {
