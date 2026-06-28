@@ -132,3 +132,254 @@ export const deleteStaffUser = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true };
   });
+
+/* -------------------------------------------------------------------------- */
+/* Privileged table writes — replace direct browser supabase writes.          */
+/* Every handler validates: caller role, target role, property ownership.     */
+/* -------------------------------------------------------------------------- */
+
+export const assignRoleTemplate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { ur_id: string; role_id: string | null }) => {
+    if (!i?.ur_id) throw new Error("ur_id required");
+    return i;
+  })
+  .handler(async ({ data, context }) => {
+    await assertCallerIsOwnerOrSuper(context);
+    const isSuper = await callerIsSuper(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: ur, error: urErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("id, user_id, role, property_id")
+      .eq("id", data.ur_id)
+      .maybeSingle();
+    if (urErr) throw urErr;
+    if (!ur) throw new Error("Assignment not found");
+
+    // Block modifying privileged targets unless caller is superadmin.
+    if ((ur.role === "owner" || ur.role === "superadmin") && !isSuper) {
+      throw new Error("Cannot modify an owner or superadmin assignment");
+    }
+    // Property scope: non-superadmin caller must own the property.
+    if (!isSuper && !(await callerHasProperty(context, ur.property_id))) {
+      throw new Error("Not authorised for this property");
+    }
+
+    if (data.role_id) {
+      const { data: tpl, error: tErr } = await supabaseAdmin
+        .from("roles")
+        .select("id, name, property_id")
+        .eq("id", data.role_id)
+        .maybeSingle();
+      if (tErr) throw tErr;
+      if (!tpl) throw new Error("Role template not found");
+      if (isPrivilegedRoleName(tpl.name) && !isSuper) {
+        throw new Error("Only a superadmin can assign an owner or superadmin template");
+      }
+      // Owners cannot assign a template from another property
+      if (!isSuper && tpl.property_id && ur.property_id && tpl.property_id !== ur.property_id) {
+        throw new Error("Role template belongs to a different property");
+      }
+    }
+
+    const { error } = await supabaseAdmin
+      .from("user_roles")
+      .update({ role_id: data.role_id ?? null })
+      .eq("id", data.ur_id);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+export const setUserActive = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { user_id: string; active: boolean }) => {
+    if (!i?.user_id) throw new Error("user_id required");
+    return i;
+  })
+  .handler(async ({ data, context }) => {
+    await assertCallerIsOwnerOrSuper(context);
+    const isSuper = await callerIsSuper(context);
+    if (data.user_id === context.userId) throw new Error("You cannot change your own status");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: targetRoles } = await supabaseAdmin
+      .from("user_roles").select("role, property_id").eq("user_id", data.user_id);
+    const hasPrivileged = (targetRoles ?? []).some((r: any) => r.role === "owner" || r.role === "superadmin");
+    if (hasPrivileged && !isSuper) throw new Error("Cannot modify an owner or superadmin");
+    if (!isSuper) {
+      // Owner must share at least one property with the target.
+      const ok = await Promise.all(
+        (targetRoles ?? []).map((r: any) => callerHasProperty(context, r.property_id)),
+      );
+      if (!ok.some(Boolean)) throw new Error("Not authorised for this user");
+    }
+    const { error } = await supabaseAdmin
+      .from("profiles").update({ is_active: !!data.active }).eq("id", data.user_id);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+export const createCustomRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: {
+    name: string;
+    description?: string | null;
+    property_id?: string | null;
+    clone_from_role_id?: string | null;
+  }) => {
+    if (!i?.name?.trim()) throw new Error("Name required");
+    return i;
+  })
+  .handler(async ({ data, context }) => {
+    await assertCallerIsOwnerOrSuper(context);
+    const isSuper = await callerIsSuper(context);
+    if (isPrivilegedRoleName(data.name)) {
+      throw new Error("Reserved role name");
+    }
+    let property_id = data.property_id ?? null;
+    if (!isSuper) {
+      if (!property_id) throw new Error("Property is required");
+      if (!(await callerHasProperty(context, property_id))) {
+        throw new Error("Not authorised for this property");
+      }
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: created, error } = await supabaseAdmin
+      .from("roles")
+      .insert({
+        name: data.name.trim(),
+        description: data.description?.trim() || null,
+        is_system: false,
+        property_id,
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+
+    if (data.clone_from_role_id && created?.id) {
+      const { data: src } = await supabaseAdmin
+        .from("role_permissions").select("permission_id, allowed").eq("role_id", data.clone_from_role_id);
+      if (src?.length) {
+        await supabaseAdmin.from("role_permissions").upsert(
+          src.map((r: any) => ({ role_id: created.id, permission_id: r.permission_id, allowed: r.allowed })),
+          { onConflict: "role_id,permission_id" },
+        );
+      }
+    }
+    return { id: created!.id as string };
+  });
+
+export const updateRoleMeta = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: {
+    role_id: string;
+    name?: string;
+    description?: string | null;
+    max_discount_pct?: number;
+  }) => {
+    if (!i?.role_id) throw new Error("role_id required");
+    return i;
+  })
+  .handler(async ({ data, context }) => {
+    await assertCallerIsOwnerOrSuper(context);
+    const isSuper = await callerIsSuper(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: role, error: rErr } = await supabaseAdmin
+      .from("roles").select("id, name, is_system, property_id").eq("id", data.role_id).maybeSingle();
+    if (rErr) throw rErr;
+    if (!role) throw new Error("Role not found");
+    if (isPrivilegedRoleName(role.name) && !isSuper) {
+      throw new Error("Cannot modify privileged roles");
+    }
+    if (role.is_system && !isSuper) throw new Error("System roles are read-only");
+    if (!isSuper && role.property_id && !(await callerHasProperty(context, role.property_id))) {
+      throw new Error("Not authorised for this property");
+    }
+    const patch: Record<string, unknown> = {};
+    if (typeof data.name === "string") {
+      const trimmed = data.name.trim();
+      if (!trimmed) throw new Error("Name required");
+      if (isPrivilegedRoleName(trimmed) && !isSuper) throw new Error("Reserved role name");
+      patch.name = trimmed;
+    }
+    if (data.description !== undefined) {
+      patch.description = (data.description ?? "").toString().trim() || null;
+    }
+    if (typeof data.max_discount_pct === "number") {
+      patch.max_discount_pct = Math.max(0, Math.min(100, data.max_discount_pct));
+    }
+    if (Object.keys(patch).length === 0) return { ok: true };
+    const { error } = await supabaseAdmin.from("roles").update(patch).eq("id", data.role_id);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+export const deleteCustomRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { role_id: string }) => {
+    if (!i?.role_id) throw new Error("role_id required");
+    return i;
+  })
+  .handler(async ({ data, context }) => {
+    await assertCallerIsOwnerOrSuper(context);
+    const isSuper = await callerIsSuper(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: role } = await supabaseAdmin
+      .from("roles").select("id, name, is_system, property_id").eq("id", data.role_id).maybeSingle();
+    if (!role) throw new Error("Role not found");
+    if (role.is_system) throw new Error("System roles cannot be deleted");
+    if (isPrivilegedRoleName(role.name)) throw new Error("Reserved role");
+    if (!isSuper && role.property_id && !(await callerHasProperty(context, role.property_id))) {
+      throw new Error("Not authorised for this property");
+    }
+    const { count } = await supabaseAdmin
+      .from("user_roles").select("id", { count: "exact", head: true }).eq("role_id", data.role_id);
+    if ((count ?? 0) > 0) throw new Error("Role still assigned to users");
+    const { error } = await supabaseAdmin.from("roles").delete().eq("id", data.role_id);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+export const upsertRolePermissions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: {
+    role_id: string;
+    rows: { permission_id: string; allowed: boolean }[];
+    max_discount_pct?: number;
+  }) => {
+    if (!i?.role_id) throw new Error("role_id required");
+    if (!Array.isArray(i.rows)) throw new Error("rows required");
+    return i;
+  })
+  .handler(async ({ data, context }) => {
+    await assertCallerIsOwnerOrSuper(context);
+    const isSuper = await callerIsSuper(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: role } = await supabaseAdmin
+      .from("roles").select("id, name, is_system, property_id").eq("id", data.role_id).maybeSingle();
+    if (!role) throw new Error("Role not found");
+    if (isPrivilegedRoleName(role.name) && !isSuper) {
+      throw new Error("Cannot modify privileged roles");
+    }
+    if (!isSuper && role.property_id && !(await callerHasProperty(context, role.property_id))) {
+      throw new Error("Not authorised for this property");
+    }
+
+    const rows = data.rows.map((r) => ({
+      role_id: data.role_id,
+      permission_id: r.permission_id,
+      allowed: !!r.allowed,
+    }));
+    if (rows.length) {
+      const { error } = await supabaseAdmin
+        .from("role_permissions").upsert(rows, { onConflict: "role_id,permission_id" });
+      if (error) throw error;
+    }
+    if (typeof data.max_discount_pct === "number" && !/owner/i.test(role.name)) {
+      const pct = Math.max(0, Math.min(100, data.max_discount_pct));
+      const { error } = await supabaseAdmin
+        .from("roles").update({ max_discount_pct: pct } as any).eq("id", data.role_id);
+      if (error) throw error;
+    }
+    return { ok: true };
+  });
