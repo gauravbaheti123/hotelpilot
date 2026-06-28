@@ -211,6 +211,13 @@ function NewKotPage() {
           gst_amount: rTotals.gst,
           total_amount: rTotals.total,
           notes: [headerNote, notes].filter(Boolean).join(" — "),
+          // CRITICAL: restaurant copy is a separate row and MUST have its own
+          // client_ref, otherwise it collides with the hotel_copy on the unique
+          // (property_id, client_ref) index and the insert fails with 23505.
+          client_ref:
+            (typeof crypto !== "undefined" && "randomUUID" in crypto)
+              ? crypto.randomUUID()
+              : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         };
         const { data: copyKot, error: cErr } = await supabase
           .from("kot_orders").insert(copyPayload).select("id").single();
