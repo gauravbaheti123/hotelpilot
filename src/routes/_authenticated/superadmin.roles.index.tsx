@@ -15,6 +15,13 @@ import {
 } from "@/components/ui/dialog";
 import { ShieldAlert, Plus, Pencil, Trash2, Search, Settings2 } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { usePropertyId } from "@/hooks/use-property";
+import {
+  createCustomRole,
+  updateRoleMeta,
+  deleteCustomRole,
+} from "@/lib/staff-users.functions";
 
 export const Route = createFileRoute("/_authenticated/superadmin/roles/")({
   head: () => ({ meta: [{ title: "Roles & Permissions — HotelPilot" }] }),
@@ -36,6 +43,10 @@ function RolesPage() {
   const isOwner = appRoles.includes("owner");
   const canAccess = isSuperadmin || isOwner;
   const navigate = useNavigate();
+  const currentPropertyId = usePropertyId();
+  const createRoleFn = useServerFn(createCustomRole);
+  const updateRoleFn = useServerFn(updateRoleMeta);
+  const deleteRoleFn = useServerFn(deleteCustomRole);
 
   const [rows, setRows] = useState<RoleRow[]>([]);
   const [tab, setTab] = useState<"all" | "system" | "custom">("all");
@@ -98,41 +109,36 @@ function RolesPage() {
   async function createRole() {
     if (!name.trim()) return toast.error("Name required");
     setBusy(true);
-    const { data: created, error } = await supabase
-      .from("roles")
-      .insert({ name: name.trim(), description: desc.trim() || null, is_system: false })
-      .select("id").single();
-    if (error) { setBusy(false); return toast.error(error.message); }
-    if (cloneFrom && created?.id) {
-      const { data: src } = await supabase
-        .from("role_permissions").select("permission_id,allowed").eq("role_id", cloneFrom);
-      if (src?.length) {
-        await supabase.from("role_permissions").upsert(
-          src.map((r: any) => ({ role_id: created.id, permission_id: r.permission_id, allowed: r.allowed })),
-          { onConflict: "role_id,permission_id" },
-        );
-      }
-    }
-    setBusy(false);
-    toast.success("Role created");
-    setName(""); setDesc(""); setCloneFrom(""); setShowNew(false);
-    load();
+    try {
+      await createRoleFn({ data: {
+        name: name.trim(),
+        description: desc.trim() || null,
+        property_id: isSuperadmin ? null : (currentPropertyId ?? null),
+        clone_from_role_id: cloneFrom || null,
+      }});
+      toast.success("Role created");
+      setName(""); setDesc(""); setCloneFrom(""); setShowNew(false);
+      load();
+    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    finally { setBusy(false); }
   }
 
   async function saveDescription(id: string) {
-    const { error } = await supabase.from("roles").update({ description: descDraft || null }).eq("id", id);
-    if (error) return toast.error(error.message);
-    setEditingDescId(null);
-    load();
+    try {
+      await updateRoleFn({ data: { role_id: id, description: descDraft || null } });
+      setEditingDescId(null);
+      load();
+    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
   }
 
   async function saveName(id: string) {
     const trimmed = nameDraft.trim();
     if (!trimmed) { setRenamingId(null); return; }
-    const { error } = await supabase.from("roles").update({ name: trimmed }).eq("id", id);
-    if (error) return toast.error(error.message);
-    setRenamingId(null);
-    load();
+    try {
+      await updateRoleFn({ data: { role_id: id, name: trimmed } });
+      setRenamingId(null);
+      load();
+    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
   }
 
   async function confirmDelete() {
@@ -142,11 +148,12 @@ function RolesPage() {
       toast.error(`Assign different role to ${r.user_count} user${r.user_count === 1 ? "" : "s"} first`);
       return;
     }
-    const { error } = await supabase.from("roles").delete().eq("id", r.id);
-    if (error) return toast.error(error.message);
-    toast.success("Role deleted");
-    setDeleteTarget(null);
-    load();
+    try {
+      await deleteRoleFn({ data: { role_id: r.id } });
+      toast.success("Role deleted");
+      setDeleteTarget(null);
+      load();
+    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
   }
 
   if (loading) return <AppShell title="Roles & Permissions"><div className="text-muted-foreground">Loading…</div></AppShell>;
