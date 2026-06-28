@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedSuperadminRouteImport } from './routes/_authenticated/superadmin'
 import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedWhatsappIndexRouteImport } from './routes/_authenticated/whatsapp.index'
@@ -117,6 +118,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSuperadminRoute = AuthenticatedSuperadminRouteImport.update({
+  id: '/superadmin',
+  path: '/superadmin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPropertiesRoute = AuthenticatedPropertiesRouteImport.update({
   id: '/properties',
   path: '/properties',
@@ -210,15 +216,15 @@ const AuthenticatedChannelsIndexRoute =
   } as any)
 const AuthenticatedSuperadminUsersRoute =
   AuthenticatedSuperadminUsersRouteImport.update({
-    id: '/superadmin/users',
-    path: '/superadmin/users',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    id: '/users',
+    path: '/users',
+    getParentRoute: () => AuthenticatedSuperadminRoute,
   } as any)
 const AuthenticatedSuperadminDashboardRoute =
   AuthenticatedSuperadminDashboardRouteImport.update({
-    id: '/superadmin/dashboard',
-    path: '/superadmin/dashboard',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    id: '/dashboard',
+    path: '/dashboard',
+    getParentRoute: () => AuthenticatedSuperadminRoute,
   } as any)
 const AuthenticatedStaffPayrollRoute =
   AuthenticatedStaffPayrollRouteImport.update({
@@ -561,15 +567,15 @@ const AuthenticatedBanquetBookingsRoute =
   } as any)
 const AuthenticatedSuperadminRolesIndexRoute =
   AuthenticatedSuperadminRolesIndexRouteImport.update({
-    id: '/superadmin/roles/',
-    path: '/superadmin/roles/',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    id: '/roles/',
+    path: '/roles/',
+    getParentRoute: () => AuthenticatedSuperadminRoute,
   } as any)
 const AuthenticatedSuperadminRolesIdRoute =
   AuthenticatedSuperadminRolesIdRouteImport.update({
-    id: '/superadmin/roles/$id',
-    path: '/superadmin/roles/$id',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    id: '/roles/$id',
+    path: '/roles/$id',
+    getParentRoute: () => AuthenticatedSuperadminRoute,
   } as any)
 const AuthenticatedFrontDeskBookingIdRoute =
   AuthenticatedFrontDeskBookingIdRouteImport.update({
@@ -613,6 +619,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/superadmin': typeof AuthenticatedSuperadminRouteWithChildren
   '/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
   '/banquet/new': typeof AuthenticatedBanquetNewRoute
   '/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
@@ -702,6 +709,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
+  '/superadmin': typeof AuthenticatedSuperadminRouteWithChildren
   '/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
   '/banquet/new': typeof AuthenticatedBanquetNewRoute
   '/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
@@ -793,6 +801,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
+  '/_authenticated/superadmin': typeof AuthenticatedSuperadminRouteWithChildren
   '/_authenticated/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
   '/_authenticated/banquet/new': typeof AuthenticatedBanquetNewRoute
   '/_authenticated/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
@@ -884,6 +893,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/properties'
+    | '/superadmin'
     | '/banquet/bookings'
     | '/banquet/new'
     | '/billing/invoices'
@@ -973,6 +983,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/dashboard'
     | '/properties'
+    | '/superadmin'
     | '/banquet/bookings'
     | '/banquet/new'
     | '/billing/invoices'
@@ -1063,6 +1074,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/dashboard'
     | '/_authenticated/properties'
+    | '/_authenticated/superadmin'
     | '/_authenticated/banquet/bookings'
     | '/_authenticated/banquet/new'
     | '/_authenticated/billing/invoices'
@@ -1184,6 +1196,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/superadmin': {
+      id: '/_authenticated/superadmin'
+      path: '/superadmin'
+      fullPath: '/superadmin'
+      preLoaderRoute: typeof AuthenticatedSuperadminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/properties': {
       id: '/_authenticated/properties'
       path: '/properties'
@@ -1298,17 +1317,17 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/superadmin/users': {
       id: '/_authenticated/superadmin/users'
-      path: '/superadmin/users'
+      path: '/users'
       fullPath: '/superadmin/users'
       preLoaderRoute: typeof AuthenticatedSuperadminUsersRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedSuperadminRoute
     }
     '/_authenticated/superadmin/dashboard': {
       id: '/_authenticated/superadmin/dashboard'
-      path: '/superadmin/dashboard'
+      path: '/dashboard'
       fullPath: '/superadmin/dashboard'
       preLoaderRoute: typeof AuthenticatedSuperadminDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedSuperadminRoute
     }
     '/_authenticated/staff/payroll': {
       id: '/_authenticated/staff/payroll'
@@ -1718,17 +1737,17 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/superadmin/roles/': {
       id: '/_authenticated/superadmin/roles/'
-      path: '/superadmin/roles'
+      path: '/roles'
       fullPath: '/superadmin/roles/'
       preLoaderRoute: typeof AuthenticatedSuperadminRolesIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedSuperadminRoute
     }
     '/_authenticated/superadmin/roles/$id': {
       id: '/_authenticated/superadmin/roles/$id'
-      path: '/superadmin/roles/$id'
+      path: '/roles/$id'
       fullPath: '/superadmin/roles/$id'
       preLoaderRoute: typeof AuthenticatedSuperadminRolesIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedSuperadminRoute
     }
     '/_authenticated/front-desk/booking/$id': {
       id: '/_authenticated/front-desk/booking/$id'
@@ -1775,9 +1794,32 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedSuperadminRouteChildren {
+  AuthenticatedSuperadminDashboardRoute: typeof AuthenticatedSuperadminDashboardRoute
+  AuthenticatedSuperadminUsersRoute: typeof AuthenticatedSuperadminUsersRoute
+  AuthenticatedSuperadminRolesIdRoute: typeof AuthenticatedSuperadminRolesIdRoute
+  AuthenticatedSuperadminRolesIndexRoute: typeof AuthenticatedSuperadminRolesIndexRoute
+}
+
+const AuthenticatedSuperadminRouteChildren: AuthenticatedSuperadminRouteChildren =
+  {
+    AuthenticatedSuperadminDashboardRoute:
+      AuthenticatedSuperadminDashboardRoute,
+    AuthenticatedSuperadminUsersRoute: AuthenticatedSuperadminUsersRoute,
+    AuthenticatedSuperadminRolesIdRoute: AuthenticatedSuperadminRolesIdRoute,
+    AuthenticatedSuperadminRolesIndexRoute:
+      AuthenticatedSuperadminRolesIndexRoute,
+  }
+
+const AuthenticatedSuperadminRouteWithChildren =
+  AuthenticatedSuperadminRoute._addFileChildren(
+    AuthenticatedSuperadminRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedPropertiesRoute: typeof AuthenticatedPropertiesRoute
+  AuthenticatedSuperadminRoute: typeof AuthenticatedSuperadminRouteWithChildren
   AuthenticatedBanquetBookingsRoute: typeof AuthenticatedBanquetBookingsRoute
   AuthenticatedBanquetNewRoute: typeof AuthenticatedBanquetNewRoute
   AuthenticatedBillingInvoicesRoute: typeof AuthenticatedBillingInvoicesRoute
@@ -1836,8 +1878,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedStaffAttendanceRoute: typeof AuthenticatedStaffAttendanceRoute
   AuthenticatedStaffAttendanceHistoryRoute: typeof AuthenticatedStaffAttendanceHistoryRoute
   AuthenticatedStaffPayrollRoute: typeof AuthenticatedStaffPayrollRoute
-  AuthenticatedSuperadminDashboardRoute: typeof AuthenticatedSuperadminDashboardRoute
-  AuthenticatedSuperadminUsersRoute: typeof AuthenticatedSuperadminUsersRoute
   AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
   AuthenticatedCommsIndexRoute: typeof AuthenticatedCommsIndexRoute
   AuthenticatedExpensesIndexRoute: typeof AuthenticatedExpensesIndexRoute
@@ -1858,13 +1898,12 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBillingFolioBookingIdRoute: typeof AuthenticatedBillingFolioBookingIdRoute
   AuthenticatedFoodKotIdRoute: typeof AuthenticatedFoodKotIdRoute
   AuthenticatedFrontDeskBookingIdRoute: typeof AuthenticatedFrontDeskBookingIdRoute
-  AuthenticatedSuperadminRolesIdRoute: typeof AuthenticatedSuperadminRolesIdRoute
-  AuthenticatedSuperadminRolesIndexRoute: typeof AuthenticatedSuperadminRolesIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedPropertiesRoute: AuthenticatedPropertiesRoute,
+  AuthenticatedSuperadminRoute: AuthenticatedSuperadminRouteWithChildren,
   AuthenticatedBanquetBookingsRoute: AuthenticatedBanquetBookingsRoute,
   AuthenticatedBanquetNewRoute: AuthenticatedBanquetNewRoute,
   AuthenticatedBillingInvoicesRoute: AuthenticatedBillingInvoicesRoute,
@@ -1929,8 +1968,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedStaffAttendanceHistoryRoute:
     AuthenticatedStaffAttendanceHistoryRoute,
   AuthenticatedStaffPayrollRoute: AuthenticatedStaffPayrollRoute,
-  AuthenticatedSuperadminDashboardRoute: AuthenticatedSuperadminDashboardRoute,
-  AuthenticatedSuperadminUsersRoute: AuthenticatedSuperadminUsersRoute,
   AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,
   AuthenticatedCommsIndexRoute: AuthenticatedCommsIndexRoute,
   AuthenticatedExpensesIndexRoute: AuthenticatedExpensesIndexRoute,
@@ -1952,9 +1989,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedBillingFolioBookingIdRoute,
   AuthenticatedFoodKotIdRoute: AuthenticatedFoodKotIdRoute,
   AuthenticatedFrontDeskBookingIdRoute: AuthenticatedFrontDeskBookingIdRoute,
-  AuthenticatedSuperadminRolesIdRoute: AuthenticatedSuperadminRolesIdRoute,
-  AuthenticatedSuperadminRolesIndexRoute:
-    AuthenticatedSuperadminRolesIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
