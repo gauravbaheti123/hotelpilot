@@ -884,8 +884,10 @@ function RoomCard({
             </span>
           </div>
           <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, marginTop: 1 }}>{category}</div>
-          <div className="truncate" style={{ color: "#ffffff", fontSize: 13, fontWeight: 600, marginTop: 2 }}>{eventInfo!.eventName}</div>
-          <div className="truncate" style={{ color: eventInfo!.guestName ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.7)", fontStyle: eventInfo!.guestName ? "normal" : "italic", fontSize: 12 }}>
+          <div className="truncate" style={{ color: "rgba(255,255,255,0.8)", fontSize: 13, fontStyle: "italic", fontWeight: 500, marginTop: 2 }}>
+            — {eventInfo!.eventName} —
+          </div>
+          <div className="truncate" style={{ color: eventInfo!.guestName ? "#ffffff" : "rgba(255,255,255,0.75)", fontStyle: eventInfo!.guestName ? "normal" : "italic", fontSize: 14, fontWeight: eventInfo!.guestName ? 700 : 500 }}>
             {eventInfo!.guestName ?? "Guest Unassigned"}
           </div>
           <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 11 }}>{fmtShort(eventInfo!.checkin)} → {fmtShort(eventInfo!.checkout)}</div>

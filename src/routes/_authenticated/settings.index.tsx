@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  Building2, MessageCircle, Cloud, Receipt, ShieldCheck, Users, ShieldAlert,
+  Building2, MessageCircle, Cloud, Receipt, ShieldCheck, Users,
   Lock,
 } from "lucide-react";
 
@@ -21,7 +21,6 @@ const ITEMS: Array<{ to: string; label: string; icon: any; desc: string; soon?: 
   { to: "/superadmin/roles", label: "Roles & Permissions", icon: ShieldCheck, desc: "Define role access", ownerOnly: true },
   { to: "/superadmin/users", label: "User Management", icon: Users, desc: "Assign roles to users", ownerOnly: true },
   { to: "/properties", label: "Properties", icon: Building2, desc: "Manage properties" },
-  { to: "/security", label: "Security / Wipe", icon: ShieldAlert, desc: "Raid protection" },
 ];
 
 function SettingsIndex() {
