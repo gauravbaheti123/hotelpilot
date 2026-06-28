@@ -12,6 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ShieldAlert, ArrowLeft, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { upsertRolePermissions } from "@/lib/staff-users.functions";
 
 export const Route = createFileRoute("/_authenticated/superadmin/roles/$id")({
   head: () => ({ meta: [{ title: "Edit Permissions — HotelPilot" }] }),
@@ -85,6 +87,7 @@ function EditRolePage() {
   const isOwner = appRoles.includes("owner");
   const canAccess = isSuperadmin || isOwner;
   const navigate = useNavigate();
+  const upsertPermsFn = useServerFn(upsertRolePermissions);
 
   const [role, setRole] = useState<{ id: string; name: string; description: string | null; is_system?: boolean; max_discount_pct?: number | null } | null>(null);
   const [perms, setPerms] = useState<Perm[]>([]);
@@ -241,19 +244,18 @@ function EditRolePage() {
   async function save() {
     if (readOnly) { toast.error("This role is read only"); return; }
     setSaving(true);
-    const rows = perms.map((p) => ({ role_id: id, permission_id: p.id, allowed: !!allowed[p.id] }));
-    const { error } = await supabase.from("role_permissions").upsert(rows, { onConflict: "role_id,permission_id" });
-    if (error) { setSaving(false); return toast.error(error.message); }
-    if (!/owner/i.test(role?.name ?? "")) {
-      const pct = Math.max(0, Math.min(100, Number(maxDiscount) || 0));
-      const { error: rErr } = await supabase.from("roles").update({ max_discount_pct: pct } as any).eq("id", id);
-      if (rErr) { setSaving(false); return toast.error(rErr.message); }
-    }
-    setSaving(false);
-    invalidatePermissions();
-    setSavedAllowed({ ...allowed });
-    setSavedMaxDiscount(maxDiscount);
-    toast.success("Permissions saved");
+    try {
+      const rows = perms.map((p) => ({ permission_id: p.id, allowed: !!allowed[p.id] }));
+      const pct = /owner/i.test(role?.name ?? "")
+        ? undefined
+        : Math.max(0, Math.min(100, Number(maxDiscount) || 0));
+      await upsertPermsFn({ data: { role_id: id, rows, max_discount_pct: pct } });
+      invalidatePermissions();
+      setSavedAllowed({ ...allowed });
+      setSavedMaxDiscount(maxDiscount);
+      toast.success("Permissions saved");
+    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    finally { setSaving(false); }
   }
 
   if (loading) return <AppShell title="Edit Permissions"><div className="text-muted-foreground">Loading…</div></AppShell>;

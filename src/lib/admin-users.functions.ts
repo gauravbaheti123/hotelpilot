@@ -27,11 +27,19 @@ export const createOwnerLogin = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }) => {
-    // Authorize: only superadmin / owner / manager can mint logins
-    const { data: allowed } = await context.supabase.rpc("can_manage_masters", {
-      _user_id: context.userId,
+    // Authorize: only superadmin / owner can mint logins via this endpoint.
+    // Privileged target roles (owner / superadmin) require a superadmin caller.
+    const { data: isSuper } = await context.supabase.rpc("is_superadmin", {
+      _uid: context.userId,
     });
-    if (!allowed) throw new Error("Not authorised");
+    if (data.role === "owner" || data.role === "superadmin") {
+      if (!isSuper) throw new Error("Only a superadmin can create owner or superadmin accounts");
+    } else {
+      const { data: isOwnerSuper } = await context.supabase.rpc("is_owner_or_super", {
+        _user_id: context.userId,
+      });
+      if (!isOwnerSuper) throw new Error("Not authorised");
+    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
