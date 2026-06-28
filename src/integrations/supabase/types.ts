@@ -4342,6 +4342,10 @@ export type Database = {
       }
       is_owner_or_super: { Args: { _user_id: string }; Returns: boolean }
       is_superadmin: { Args: { _uid: string }; Returns: boolean }
+      recompute_folio_totals: {
+        Args: { _folio_id: string }
+        Returns: undefined
+      }
       save_property_secrets: {
         Args: {
           _aisensy_api_key: string
@@ -4362,6 +4366,10 @@ export type Database = {
         }
         Returns: string
       }
+      sync_booking_balance: {
+        Args: { _booking_id: string }
+        Returns: undefined
+      }
       user_has_permission: {
         Args: {
           _action: string
@@ -4380,6 +4388,10 @@ export type Database = {
         Returns: number
       }
       user_property_ids: { Args: { _uid: string }; Returns: string[] }
+      void_folio_safe: {
+        Args: { _folio_id: string; _reason: string; _user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
