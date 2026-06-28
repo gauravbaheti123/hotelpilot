@@ -309,7 +309,7 @@ export const updateRoleMeta = createServerFn({ method: "POST" })
       patch.max_discount_pct = Math.max(0, Math.min(100, data.max_discount_pct));
     }
     if (Object.keys(patch).length === 0) return { ok: true };
-    const { error } = await supabaseAdmin.from("roles").update(patch).eq("id", data.role_id);
+    const { error } = await supabaseAdmin.from("roles").update(patch as any).eq("id", data.role_id);
     if (error) throw error;
     return { ok: true };
   });
