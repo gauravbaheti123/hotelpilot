@@ -19,6 +19,7 @@ const ITEMS = [
   { to: "/reports/cash-collection", label: "Cash Collection", icon: FileSpreadsheet, desc: "Cash receipts" },
   { to: "/reports/date-wise-revenue", label: "Date-Wise Revenue", icon: BarChart3, desc: "Revenue by date" },
   { to: "/reports/room-wise", label: "Room-Wise", icon: FileSpreadsheet, desc: "Occupancy & revenue per room" },
+  { to: "/reports/room-shift", label: "Room Shift", icon: FileSpreadsheet, desc: "Shifts & rate decisions" },
   { to: "/reports/food-kot", label: "Food / KOT", icon: FileSpreadsheet, desc: "Restaurant report" },
   { to: "/reports/banquet", label: "Banquet", icon: FileSpreadsheet, desc: "Events report" },
   { to: "/reports/guest-wise", label: "Guest-Wise", icon: FileSpreadsheet, desc: "By guest" },
