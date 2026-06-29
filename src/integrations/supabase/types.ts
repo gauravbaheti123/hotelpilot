@@ -2930,6 +2930,44 @@ export type Database = {
         }
         Relationships: []
       }
+      printer_roles: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          property_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          property_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          property_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "printer_roles_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       printers: {
         Row: {
           created_at: string
