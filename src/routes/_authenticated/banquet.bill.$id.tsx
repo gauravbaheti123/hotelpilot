@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { inr } from "@/lib/billing";
 import { fmtDate } from "@/lib/reportExports";
+import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
 
 export const Route = createFileRoute("/_authenticated/banquet/bill/$id")({
   head: () => ({ meta: [{ title: "Event Bill — HotelPilot" }] }),
@@ -133,12 +134,13 @@ function BanquetBillPage() {
   const isSettled = balance < 0.01;
   const canShiftMis = hasRole(roles, "owner") || hasRole(roles, "manager") || hasRole(roles, "superadmin");
 
-  function handlePrint() {
+  async function handlePrint() {
     if (!b) return;
     const prev = document.title;
     const safe = (b.guests?.name ?? b.event_name ?? b.banquet_number).replace(/[^\w]+/g, "");
     document.title = `INV-${b.banquet_number}-${safe}`;
-    window.print();
+    const paperSize = await fetchPrinterPaperSize(b.property_id, "bill");
+    withPrintStyles(paperSize, () => window.print());
     setTimeout(() => { document.title = prev; }, 500);
   }
 
