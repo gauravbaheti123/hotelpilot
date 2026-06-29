@@ -31,6 +31,7 @@ interface Printer {
   location: string | null;
   ip_address: string | null;
   port: number | null;
+  paper_size: string | null;
   is_default: boolean;
   is_active: boolean;
 }
@@ -45,7 +46,15 @@ interface PrinterRole {
 
 const columns: ColumnDef<Printer>[] = [
   { header: "Name", render: (r) => <span className="font-medium">{r.name}</span> },
-  { header: "Type", render: (r) => <Badge variant="outline">{r.type}</Badge> },
+  {
+    header: "Type",
+    render: (r) => (
+      <div className="flex items-center gap-1">
+        <Badge variant="outline">{r.type}</Badge>
+        <Badge variant="secondary">{r.paper_size ?? "80mm"}</Badge>
+      </div>
+    ),
+  },
   { header: "Role", render: (r) => <Badge variant="secondary">{r.printer_role}</Badge> },
   { header: "Location", render: (r) => r.location ?? "—" },
   {
@@ -105,6 +114,17 @@ function PrintersPage() {
     { name: "location", label: "Location", type: "text" },
     { name: "ip_address", label: "IP address", type: "text" },
     { name: "port", label: "Port", type: "number", defaultValue: 9100 },
+    {
+      name: "paper_size",
+      label: "Paper Size",
+      type: "select",
+      options: [
+        { value: "58mm", label: "58mm" },
+        { value: "80mm", label: "80mm" },
+        { value: "A4", label: "A4" },
+      ],
+      defaultValue: "80mm",
+    },
     { name: "is_default", label: "Default", type: "switch", defaultValue: false },
     { name: "is_active", label: "Active", type: "switch", defaultValue: true },
   ];
