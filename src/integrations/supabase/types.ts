@@ -2977,6 +2977,7 @@ export type Database = {
           is_default: boolean
           location: string | null
           name: string
+          paper_size: string | null
           port: number | null
           printer_role: string
           property_id: string
@@ -2992,6 +2993,7 @@ export type Database = {
           is_default?: boolean
           location?: string | null
           name: string
+          paper_size?: string | null
           port?: number | null
           printer_role?: string
           property_id: string
@@ -3007,6 +3009,7 @@ export type Database = {
           is_default?: boolean
           location?: string | null
           name?: string
+          paper_size?: string | null
           port?: number | null
           printer_role?: string
           property_id?: string
