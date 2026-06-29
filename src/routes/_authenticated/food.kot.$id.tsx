@@ -13,6 +13,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { KOT_STATUS_LABEL, KOT_STATUS_TONE, computeKotTotals } from "@/lib/food";
+import { fetchPrinterPaperSize, getPrintStyles } from "@/lib/printStyles";
+import { useCurrentProperty } from "@/hooks/use-property";
 import { Printer, Check, Ban, ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/food/kot/$id")({
@@ -39,6 +41,7 @@ interface Kot {
 function KotDetailPage() {
   const { id } = Route.useParams();
   const router = useRouter();
+  const { current } = useCurrentProperty();
   const [k, setK] = useState<Kot | null>(null);
   const [loading, setLoading] = useState(true);
   const [voidOpen, setVoidOpen] = useState(false);
@@ -108,15 +111,17 @@ function KotDetailPage() {
   const editable = k.status === "open" || k.status === "printed";
   const stations = Array.from(new Set(k.kot_items.map((i) => i.kot_station)));
 
-  function printSlip(station?: string) {
+  async function printSlip(station?: string) {
     if (!k) return;
+    const paperSize = await fetchPrinterPaperSize(current?.id, "kot");
     const esc = (s: unknown) => String(s ?? "")
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     const target = station ? k.kot_items.filter((i) => i.kot_station === station && !i.is_void) : k.kot_items.filter((i) => !i.is_void);
     const html = `
       <html><head><title>${esc(k.kot_number)}</title>
-      <style>body{font:12px monospace;padding:8px;width:280px}h2{margin:0 0 4px;font-size:14px}hr{border:none;border-top:1px dashed #999;margin:6px 0}.row{display:flex;justify-content:space-between}</style>
+      <style>${getPrintStyles(paperSize)}
+      body{font:12px monospace;padding:8px}h2{margin:0 0 4px;font-size:14px}hr{border:none;border-top:1px dashed #999;margin:6px 0}.row{display:flex;justify-content:space-between}</style>
       </head><body>
       <h2>KOT ${esc(k.kot_number)}</h2>
       <div>${new Date(k.created_at).toLocaleString()}</div>
