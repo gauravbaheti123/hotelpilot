@@ -34,6 +34,7 @@ import {
   resolveLogoUrl,
   type InvoiceProperty,
 } from "@/lib/invoiceTemplates";
+import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
 
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
   head: () => ({ meta: [{ title: "Folio — HotelPilot" }] }),
@@ -693,12 +694,13 @@ function FolioPage() {
     setCheckoutOpen(true);
   }
 
-  function handleDownloadPDF() {
+  async function handleDownloadPDF() {
     if (!folio || !booking) return;
     const prevTitle = document.title;
     const safeName = (booking.guests?.name ?? "guest").replace(/[^\w]+/g, "");
     document.title = `INV-${folio.invoice_number}-${safeName}`;
-    window.print();
+    const paperSize = await fetchPrinterPaperSize(booking.property_id, "bill");
+    withPrintStyles(paperSize, () => window.print());
     setTimeout(() => { document.title = prevTitle; }, 500);
   }
 
