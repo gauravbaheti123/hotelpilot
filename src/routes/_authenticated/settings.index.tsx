@@ -29,19 +29,7 @@ function SettingsIndex() {
   const items = ITEMS.filter((it) => !it.ownerOnly || canManageRoles);
   return (
     <AppShell title="Settings">
-      <div className="mb-6 rounded-lg border border-dashed bg-muted/40 p-5 flex items-start gap-3">
-        <div className="p-2 rounded-md bg-primary/10 text-primary"><Lock className="h-5 w-5" /></div>
-        <div className="flex-1">
-          <div className="font-medium flex items-center gap-2">
-            Communications <Badge variant="secondary" className="text-[10px]">Coming Soon</Badge>
-          </div>
-          <div className="text-sm text-muted-foreground mt-1">
-            WhatsApp Integration — Connect AiSensy to enable automated guest messaging,
-            inbox, and broadcasts. Configure in <Link to="/settings/whatsapp" className="text-primary hover:underline">Settings → WhatsApp</Link>.
-          </div>
-        </div>
-      </div>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((it, idx) => (
           <Link key={idx} to={it.to}>
             <Card className="hover:shadow-md hover:border-primary/40 transition-all h-full">
@@ -58,6 +46,20 @@ function SettingsIndex() {
             </Card>
           </Link>
         ))}
+        <Card className="border-dashed bg-muted/40 h-full sm:col-span-2">
+          <CardContent className="p-5 flex items-start gap-3">
+            <div className="p-2 rounded-md bg-primary/10 text-primary"><Lock className="h-5 w-5" /></div>
+            <div className="flex-1">
+              <div className="font-medium flex items-center gap-2">
+                Communications <Badge variant="secondary" className="text-[10px]">Coming Soon</Badge>
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                WhatsApp Integration — Connect AiSensy to enable automated guest messaging,
+                inbox, and broadcasts. Configure in <Link to="/settings/whatsapp" className="text-primary hover:underline">Settings → WhatsApp</Link>.
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </AppShell>
   );
