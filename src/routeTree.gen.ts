@@ -18,6 +18,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DataProcessingAgreementRouteImport } from './routes/data-processing-agreement'
 import { Route as CookiePolicyRouteImport } from './routes/cookie-policy'
+import { Route as AcceptableUsePolicyRouteImport } from './routes/acceptable-use-policy'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSuperadminRouteImport } from './routes/_authenticated/superadmin'
@@ -149,6 +150,11 @@ const DataProcessingAgreementRoute = DataProcessingAgreementRouteImport.update({
 const CookiePolicyRoute = CookiePolicyRouteImport.update({
   id: '/cookie-policy',
   path: '/cookie-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AcceptableUsePolicyRoute = AcceptableUsePolicyRouteImport.update({
+  id: '/acceptable-use-policy',
+  path: '/acceptable-use-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -657,6 +663,7 @@ const AuthenticatedBanquetEventRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/acceptable-use-policy': typeof AcceptableUsePolicyRoute
   '/cookie-policy': typeof CookiePolicyRoute
   '/data-processing-agreement': typeof DataProcessingAgreementRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -754,6 +761,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/acceptable-use-policy': typeof AcceptableUsePolicyRoute
   '/cookie-policy': typeof CookiePolicyRoute
   '/data-processing-agreement': typeof DataProcessingAgreementRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -853,6 +861,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/acceptable-use-policy': typeof AcceptableUsePolicyRoute
   '/cookie-policy': typeof CookiePolicyRoute
   '/data-processing-agreement': typeof DataProcessingAgreementRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -952,6 +961,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/acceptable-use-policy'
     | '/cookie-policy'
     | '/data-processing-agreement'
     | '/forgot-password'
@@ -1049,6 +1059,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/acceptable-use-policy'
     | '/cookie-policy'
     | '/data-processing-agreement'
     | '/forgot-password'
@@ -1147,6 +1158,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/acceptable-use-policy'
     | '/cookie-policy'
     | '/data-processing-agreement'
     | '/forgot-password'
@@ -1246,6 +1258,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AcceptableUsePolicyRoute: typeof AcceptableUsePolicyRoute
   CookiePolicyRoute: typeof CookiePolicyRoute
   DataProcessingAgreementRoute: typeof DataProcessingAgreementRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -1320,6 +1333,13 @@ declare module '@tanstack/react-router' {
       path: '/cookie-policy'
       fullPath: '/cookie-policy'
       preLoaderRoute: typeof CookiePolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/acceptable-use-policy': {
+      id: '/acceptable-use-policy'
+      path: '/acceptable-use-policy'
+      fullPath: '/acceptable-use-policy'
+      preLoaderRoute: typeof AcceptableUsePolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -2137,6 +2157,7 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AcceptableUsePolicyRoute: AcceptableUsePolicyRoute,
   CookiePolicyRoute: CookiePolicyRoute,
   DataProcessingAgreementRoute: DataProcessingAgreementRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
