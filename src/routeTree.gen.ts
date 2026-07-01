@@ -9,8 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsOfServiceRouteImport } from './routes/terms-of-service'
+import { Route as SlaRouteImport } from './routes/sla'
+import { Route as SecurityPolicyRouteImport } from './routes/security-policy'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
+import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as DataProcessingAgreementRouteImport } from './routes/data-processing-agreement'
+import { Route as CookiePolicyRouteImport } from './routes/cookie-policy'
+import { Route as AcceptableUsePolicyRouteImport } from './routes/acceptable-use-policy'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSuperadminRouteImport } from './routes/_authenticated/superadmin'
@@ -99,6 +107,31 @@ import { Route as AuthenticatedBanquetEventIdRouteImport } from './routes/_authe
 import { Route as AuthenticatedBanquetBillIdRouteImport } from './routes/_authenticated/banquet.bill.$id'
 import { Route as AuthenticatedBanquetEventRouteImport } from './routes/_authenticated/banquet.event.'
 
+const TermsOfServiceRoute = TermsOfServiceRouteImport.update({
+  id: '/terms-of-service',
+  path: '/terms-of-service',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SlaRoute = SlaRouteImport.update({
+  id: '/sla',
+  path: '/sla',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecurityPolicyRoute = SecurityPolicyRouteImport.update({
+  id: '/security-policy',
+  path: '/security-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
+  id: '/privacy-policy',
+  path: '/privacy-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -107,6 +140,21 @@ const LoginRoute = LoginRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataProcessingAgreementRoute = DataProcessingAgreementRouteImport.update({
+  id: '/data-processing-agreement',
+  path: '/data-processing-agreement',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CookiePolicyRoute = CookiePolicyRouteImport.update({
+  id: '/cookie-policy',
+  path: '/cookie-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AcceptableUsePolicyRoute = AcceptableUsePolicyRouteImport.update({
+  id: '/acceptable-use-policy',
+  path: '/acceptable-use-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -615,8 +663,16 @@ const AuthenticatedBanquetEventRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/acceptable-use-policy': typeof AcceptableUsePolicyRoute
+  '/cookie-policy': typeof CookiePolicyRoute
+  '/data-processing-agreement': typeof DataProcessingAgreementRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
+  '/refund-policy': typeof RefundPolicyRoute
+  '/security-policy': typeof SecurityPolicyRoute
+  '/sla': typeof SlaRoute
+  '/terms-of-service': typeof TermsOfServiceRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
   '/superadmin': typeof AuthenticatedSuperadminRouteWithChildren
@@ -705,8 +761,16 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/acceptable-use-policy': typeof AcceptableUsePolicyRoute
+  '/cookie-policy': typeof CookiePolicyRoute
+  '/data-processing-agreement': typeof DataProcessingAgreementRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
+  '/refund-policy': typeof RefundPolicyRoute
+  '/security-policy': typeof SecurityPolicyRoute
+  '/sla': typeof SlaRoute
+  '/terms-of-service': typeof TermsOfServiceRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
   '/superadmin': typeof AuthenticatedSuperadminRouteWithChildren
@@ -797,8 +861,16 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/acceptable-use-policy': typeof AcceptableUsePolicyRoute
+  '/cookie-policy': typeof CookiePolicyRoute
+  '/data-processing-agreement': typeof DataProcessingAgreementRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/privacy-policy': typeof PrivacyPolicyRoute
+  '/refund-policy': typeof RefundPolicyRoute
+  '/security-policy': typeof SecurityPolicyRoute
+  '/sla': typeof SlaRoute
+  '/terms-of-service': typeof TermsOfServiceRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
   '/_authenticated/superadmin': typeof AuthenticatedSuperadminRouteWithChildren
@@ -889,8 +961,16 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/acceptable-use-policy'
+    | '/cookie-policy'
+    | '/data-processing-agreement'
     | '/forgot-password'
     | '/login'
+    | '/privacy-policy'
+    | '/refund-policy'
+    | '/security-policy'
+    | '/sla'
+    | '/terms-of-service'
     | '/dashboard'
     | '/properties'
     | '/superadmin'
@@ -979,8 +1059,16 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/acceptable-use-policy'
+    | '/cookie-policy'
+    | '/data-processing-agreement'
     | '/forgot-password'
     | '/login'
+    | '/privacy-policy'
+    | '/refund-policy'
+    | '/security-policy'
+    | '/sla'
+    | '/terms-of-service'
     | '/dashboard'
     | '/properties'
     | '/superadmin'
@@ -1070,8 +1158,16 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/acceptable-use-policy'
+    | '/cookie-policy'
+    | '/data-processing-agreement'
     | '/forgot-password'
     | '/login'
+    | '/privacy-policy'
+    | '/refund-policy'
+    | '/security-policy'
+    | '/sla'
+    | '/terms-of-service'
     | '/_authenticated/dashboard'
     | '/_authenticated/properties'
     | '/_authenticated/superadmin'
@@ -1162,12 +1258,55 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AcceptableUsePolicyRoute: typeof AcceptableUsePolicyRoute
+  CookiePolicyRoute: typeof CookiePolicyRoute
+  DataProcessingAgreementRoute: typeof DataProcessingAgreementRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  PrivacyPolicyRoute: typeof PrivacyPolicyRoute
+  RefundPolicyRoute: typeof RefundPolicyRoute
+  SecurityPolicyRoute: typeof SecurityPolicyRoute
+  SlaRoute: typeof SlaRoute
+  TermsOfServiceRoute: typeof TermsOfServiceRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms-of-service': {
+      id: '/terms-of-service'
+      path: '/terms-of-service'
+      fullPath: '/terms-of-service'
+      preLoaderRoute: typeof TermsOfServiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sla': {
+      id: '/sla'
+      path: '/sla'
+      fullPath: '/sla'
+      preLoaderRoute: typeof SlaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/security-policy': {
+      id: '/security-policy'
+      path: '/security-policy'
+      fullPath: '/security-policy'
+      preLoaderRoute: typeof SecurityPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy-policy': {
+      id: '/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PrivacyPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -1180,6 +1319,27 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/data-processing-agreement': {
+      id: '/data-processing-agreement'
+      path: '/data-processing-agreement'
+      fullPath: '/data-processing-agreement'
+      preLoaderRoute: typeof DataProcessingAgreementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookie-policy': {
+      id: '/cookie-policy'
+      path: '/cookie-policy'
+      fullPath: '/cookie-policy'
+      preLoaderRoute: typeof CookiePolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/acceptable-use-policy': {
+      id: '/acceptable-use-policy'
+      path: '/acceptable-use-policy'
+      fullPath: '/acceptable-use-policy'
+      preLoaderRoute: typeof AcceptableUsePolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -1997,8 +2157,16 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AcceptableUsePolicyRoute: AcceptableUsePolicyRoute,
+  CookiePolicyRoute: CookiePolicyRoute,
+  DataProcessingAgreementRoute: DataProcessingAgreementRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  PrivacyPolicyRoute: PrivacyPolicyRoute,
+  RefundPolicyRoute: RefundPolicyRoute,
+  SecurityPolicyRoute: SecurityPolicyRoute,
+  SlaRoute: SlaRoute,
+  TermsOfServiceRoute: TermsOfServiceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
