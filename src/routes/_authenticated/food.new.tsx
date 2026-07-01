@@ -314,16 +314,21 @@ function NewKotPage() {
             </div>
             <Input placeholder="Search items…" value={search} onChange={(e) => setSearch(e.target.value)} />
             <div className="grid gap-2 sm:grid-cols-2">
-              {filtered.map((it) => (
+              {filtered.map((it) => {
+                const cat = cats.find((c) => c.id === it.category_id);
+                const pid = it.kitchen_printer_id ?? cat?.kot_printer_id ?? null;
+                const pname = printers.find((p) => p.id === pid)?.name ?? (it.kot_station || "—");
+                return (
                 <button key={it.id} onClick={() => addItem(it)}
                   className="text-left rounded border p-2 hover:bg-accent transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="font-medium text-sm">{it.name}</div>
-                    <Badge variant="outline" className="text-[10px]">{it.kot_station}</Badge>
+                    <Badge variant="outline" className="text-[10px]">{pname}</Badge>
                   </div>
                   <div className="text-xs text-muted-foreground">₹{Number(it.price).toLocaleString("en-IN")} · GST {it.gst_rate}%</div>
                 </button>
-              ))}
+                );
+              })}
               {filtered.length === 0 && <p className="text-xs text-muted-foreground col-span-full">No items.</p>}
             </div>
           </CardContent>
