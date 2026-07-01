@@ -28,8 +28,10 @@ interface MenuItem {
   id: string; name: string; price: number; gst_rate: number;
   kot_station: string; is_available: boolean; category_id: string | null;
   kitchen_type?: string;
+  kitchen_printer_id?: string | null;
 }
-interface MenuCategory { id: string; name: string }
+interface MenuCategory { id: string; name: string; kot_printer_id?: string | null }
+interface PrinterOption { id: string; name: string; location: string | null }
 interface InHouseRow {
   id: string; booking_id: string; room_id: string;
   rooms: { room_number: string } | null;
@@ -44,6 +46,8 @@ interface CartLine {
   gst_rate: number;
   kot_station: string;
   kitchen_type: string;
+  printer_id: string | null;
+  printer_name: string;
   notes?: string;
 }
 
@@ -53,6 +57,7 @@ function NewKotPage() {
   const { currentId: propertyId } = useCurrentProperty();
   const [items, setItems] = useState<MenuItem[]>([]);
   const [cats, setCats] = useState<MenuCategory[]>([]);
+  const [printers, setPrinters] = useState<PrinterOption[]>([]);
   const [inhouse, setInhouse] = useState<InHouseRow[]>([]);
   const [activeCat, setActiveCat] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -76,10 +81,12 @@ function NewKotPage() {
   useEffect(() => {
     if (!propertyId) return;
     (async () => {
-      const [mi, mc, ih] = await Promise.all([
-        supabase.from("menu_items").select("id,name,price,gst_rate,kot_station,is_available,category_id,kitchen_type")
+      const [mi, mc, pr, ih] = await Promise.all([
+        supabase.from("menu_items").select("id,name,price,gst_rate,kot_station,is_available,category_id,kitchen_type,kitchen_printer_id")
           .eq("property_id", propertyId).eq("is_available", true).order("name"),
-        supabase.from("menu_categories").select("id,name").eq("property_id", propertyId).order("name"),
+        supabase.from("menu_categories").select("id,name,kot_printer_id").eq("property_id", propertyId).order("name"),
+        supabase.from("printers").select("id,name,location")
+          .eq("property_id", propertyId).eq("is_active", true).in("type", ["kot", "both"]).order("name"),
         supabase.from("booking_rooms")
           .select("id,booking_id,room_id,status,rooms!booking_rooms_room_id_fkey(room_number),bookings!inner(id,booking_number,status,guests(name,mobile))")
           .eq("property_id", propertyId)
@@ -89,6 +96,7 @@ function NewKotPage() {
       ]);
       setItems((mi.data ?? []) as MenuItem[]);
       setCats((mc.data ?? []) as MenuCategory[]);
+      setPrinters((pr.data ?? []) as PrinterOption[]);
       setInhouse((ih.data ?? []) as unknown as InHouseRow[]);
     })();
   }, [propertyId]);
@@ -107,11 +115,17 @@ function NewKotPage() {
     setCart((prev) => {
       const ex = prev.find((c) => c.menu_item_id === it.id);
       if (ex) return prev.map((c) => c === ex ? { ...c, qty: c.qty + 1 } : c);
+      const cat = cats.find((c) => c.id === it.category_id);
+      const printerId = it.kitchen_printer_id ?? cat?.kot_printer_id ?? null;
+      const printer = printers.find((p) => p.id === printerId);
+      const printerName = printer?.name ?? (it.kot_station || "kitchen");
       return [...prev, {
         menu_item_id: it.id, item_name: it.name, qty: 1,
         rate: Number(it.price), gst_rate: Number(it.gst_rate ?? 5),
-        kot_station: it.kot_station || "kitchen",
+        kot_station: printerName,
         kitchen_type: it.kitchen_type ?? "hotel",
+        printer_id: printerId,
+        printer_name: printerName,
       }];
     });
   }
@@ -300,16 +314,21 @@ function NewKotPage() {
             </div>
             <Input placeholder="Search items…" value={search} onChange={(e) => setSearch(e.target.value)} />
             <div className="grid gap-2 sm:grid-cols-2">
-              {filtered.map((it) => (
+              {filtered.map((it) => {
+                const cat = cats.find((c) => c.id === it.category_id);
+                const pid = it.kitchen_printer_id ?? cat?.kot_printer_id ?? null;
+                const pname = printers.find((p) => p.id === pid)?.name ?? (it.kot_station || "—");
+                return (
                 <button key={it.id} onClick={() => addItem(it)}
                   className="text-left rounded border p-2 hover:bg-accent transition-colors">
                   <div className="flex items-center justify-between">
                     <div className="font-medium text-sm">{it.name}</div>
-                    <Badge variant="outline" className="text-[10px]">{it.kot_station}</Badge>
+                    <Badge variant="outline" className="text-[10px]">{pname}</Badge>
                   </div>
                   <div className="text-xs text-muted-foreground">₹{Number(it.price).toLocaleString("en-IN")} · GST {it.gst_rate}%</div>
                 </button>
-              ))}
+                );
+              })}
               {filtered.length === 0 && <p className="text-xs text-muted-foreground col-span-full">No items.</p>}
             </div>
           </CardContent>

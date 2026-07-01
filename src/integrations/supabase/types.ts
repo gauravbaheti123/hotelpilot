@@ -2199,6 +2199,7 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          kot_printer_id: string | null
           kot_type: Database["public"]["Enums"]["kot_type"]
           name: string
           property_id: string
@@ -2209,6 +2210,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          kot_printer_id?: string | null
           kot_type?: Database["public"]["Enums"]["kot_type"]
           name: string
           property_id: string
@@ -2219,6 +2221,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          kot_printer_id?: string | null
           kot_type?: Database["public"]["Enums"]["kot_type"]
           name?: string
           property_id?: string
@@ -2226,6 +2229,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "menu_categories_kot_printer_id_fkey"
+            columns: ["kot_printer_id"]
+            isOneToOne: false
+            referencedRelation: "printers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "menu_categories_property_id_fkey"
             columns: ["property_id"]
@@ -2245,6 +2255,7 @@ export type Database = {
           id: string
           is_available: boolean
           is_veg: boolean
+          kitchen_printer_id: string | null
           kitchen_type: string
           kot_station: string
           name: string
@@ -2261,6 +2272,7 @@ export type Database = {
           id?: string
           is_available?: boolean
           is_veg?: boolean
+          kitchen_printer_id?: string | null
           kitchen_type?: string
           kot_station?: string
           name: string
@@ -2277,6 +2289,7 @@ export type Database = {
           id?: string
           is_available?: boolean
           is_veg?: boolean
+          kitchen_printer_id?: string | null
           kitchen_type?: string
           kot_station?: string
           name?: string
@@ -2290,6 +2303,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "menu_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_items_kitchen_printer_id_fkey"
+            columns: ["kitchen_printer_id"]
+            isOneToOne: false
+            referencedRelation: "printers"
             referencedColumns: ["id"]
           },
           {
