@@ -341,7 +341,7 @@ function Index() {
             >
               <h2 className="text-3xl sm:text-5xl font-bold text-white tracking-tight">Ready to simplify your hotel operations?</h2>
               <p className="mt-4 text-teal-50/90 text-lg max-w-2xl mx-auto">
-                Join hotels running their entire operation on HotelPilot — from check-in to GST invoice.
+                Join hotels running their entire operation on HotelPilot — from check-in to&nbsp; invoice.
               </p>
               <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
                 <Link to="/login">
