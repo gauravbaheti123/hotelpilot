@@ -86,7 +86,7 @@ function Index() {
 
   const features = [
     { icon: Building2, title: "Multi-property", desc: "Manage multiple hotels from a single login with isolated data." },
-    { icon: Receipt, title: "GST Billing", desc: "Cash bill or tax invoice with per-category GST slabs and templates." },
+    { icon: Receipt, title: "Billing", desc: "Invoice with category, slabs wise ready made templates." },
     { icon: ConciergeBell, title: "Front Desk", desc: "Check-in, check-out, room shifts and folios with full audit trail." },
     { icon: Sparkles, title: "Housekeeping", desc: "Live room status, dirty/clean/maintenance and task assignments." },
     { icon: ChefHat, title: "Kitchen / KOT", desc: "Dual-print KOTs by station, restaurant credits and settlements." },
@@ -97,7 +97,7 @@ function Index() {
 
   const stats = [
     { num: "13+", label: "Modules", sub: "Front desk to reports, all in one" },
-    { num: "100%", label: "GST Ready", sub: "Cash bill or tax invoice, your choice" },
+    { num: "100%", label: "Invoice Ready", sub: "Invoice at finger tips" },
     { num: "Multi", label: "Property", sub: "Manage multiple hotels, one login" },
     { num: "24/7", label: "Support", sub: "Real help, real fast" },
   ];
@@ -193,7 +193,7 @@ function Index() {
               </a>
             </div>
             <p className="mt-6 text-sm text-slate-500">
-              Trusted by hotels across Maharashtra · GST-ready · Multi-property
+              Trusted by hotels across Maharashtra · Multi-property
             </p>
           </div>
         </section>
