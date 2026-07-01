@@ -390,9 +390,14 @@ function Index() {
           <div>
             <div className="text-white font-semibold text-sm mb-4">Legal</div>
             <ul className="space-y-2.5 text-sm">
-              <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-white">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-white">Refund Policy</a></li>
+              <li><Link to="/privacy-policy" className="hover:text-white">Privacy Policy</Link></li>
+              <li><Link to="/terms-of-service" className="hover:text-white">Terms of Service</Link></li>
+              <li><Link to="/refund-policy" className="hover:text-white">Refund Policy</Link></li>
+              <li><Link to="/data-processing-agreement" className="hover:text-white">Data Processing</Link></li>
+              <li><Link to="/cookie-policy" className="hover:text-white">Cookie Policy</Link></li>
+              <li><Link to="/sla" className="hover:text-white">SLA</Link></li>
+              <li><Link to="/security-policy" className="hover:text-white">Security</Link></li>
+              <li><Link to="/acceptable-use-policy" className="hover:text-white">Acceptable Use</Link></li>
             </ul>
           </div>
         </div>
