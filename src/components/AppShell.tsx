@@ -1,8 +1,13 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { Logo } from "./Logo";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import {
   LayoutDashboard,
   Building2,
@@ -50,6 +55,7 @@ import {
   Eye,
   KeyRound,
   ScrollText,
+  Menu,
 } from "lucide-react";
 import { ShieldAlert } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -229,6 +235,11 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
   const isManagerOrAbove = roles.includes("manager") || isOwner;
   const currentPath = router.state.location.pathname;
   const { can, loading: permsLoading, isSuperadmin: permSuper, map } = usePermissions();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  // Close the mobile drawer whenever the route changes.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [currentPath]);
   const hasAnyAssignment = permSuper || Object.keys(map).length > 0;
   // Filter the sidebar by permissions only AFTER auth + perms have settled,
   // and never for Owners / Superadmin. This prevents the "full menu shrinks
@@ -268,47 +279,66 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
     setTimeout(() => window.location.reload(), 50);
   }
 
+  const sidebarBody = (
+    <>
+      <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
+        <Logo size={36} />
+        <div>
+          <div className="font-semibold">HotelPilot</div>
+          <div className="text-[10px] text-sidebar-foreground/60">Hotel Management System</div>
+        </div>
+      </div>
+      <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+        {visibleGroups.map((group, gi) => (
+          <div key={gi} className="space-y-1">
+            {group.label && (
+              <div className="px-3 pt-1 pb-1 text-[10px] uppercase tracking-wider text-sidebar-foreground/50">
+                {group.label}
+              </div>
+            )}
+            {group.items.map((item) => (
+              <NavEntry key={item.to} item={item} currentPath={currentPath} />
+            ))}
+          </div>
+        ))}
+      </nav>
+      <div className="px-3 py-4 border-t border-sidebar-border space-y-2">
+        {!inAdminMode && (
+          <div className="px-1 sm:hidden">
+            <PropertySelector />
+          </div>
+        )}
+        <div className="px-3 text-xs text-sidebar-foreground/60 truncate">
+          {user?.email}
+        </div>
+        <div className="px-3 text-[10px] uppercase tracking-wider text-sidebar-foreground/50">
+          {roles.length ? roles.join(", ") : "no role"}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={signOut}
+          className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        >
+          <LogOut className="h-4 w-4 mr-2" /> Sign out
+        </Button>
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-screen flex bg-background">
       <aside className="hidden md:flex w-64 flex-col bg-sidebar text-sidebar-foreground">
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
-          <Logo size={36} />
-          <div>
-            <div className="font-semibold">HotelPilot</div>
-            <div className="text-[10px] text-sidebar-foreground/60">Hotel Management System</div>
-          </div>
-        </div>
-        <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
-          {visibleGroups.map((group, gi) => (
-            <div key={gi} className="space-y-1">
-              {group.label && (
-                <div className="px-3 pt-1 pb-1 text-[10px] uppercase tracking-wider text-sidebar-foreground/50">
-                  {group.label}
-                </div>
-              )}
-              {group.items.map((item) => (
-                <NavEntry key={item.to} item={item} currentPath={currentPath} />
-              ))}
-            </div>
-          ))}
-        </nav>
-        <div className="px-3 py-4 border-t border-sidebar-border space-y-2">
-          <div className="px-3 text-xs text-sidebar-foreground/60 truncate">
-            {user?.email}
-          </div>
-          <div className="px-3 text-[10px] uppercase tracking-wider text-sidebar-foreground/50">
-            {roles.length ? roles.join(", ") : "no role"}
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={signOut}
-            className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          >
-            <LogOut className="h-4 w-4 mr-2" /> Sign out
-          </Button>
-        </div>
+        {sidebarBody}
       </aside>
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent
+          side="left"
+          className="w-72 p-0 bg-sidebar text-sidebar-foreground flex flex-col md:hidden"
+        >
+          {sidebarBody}
+        </SheetContent>
+      </Sheet>
 
       <div className="flex-1 flex flex-col min-w-0">
         {isPlatformSuper && isViewing && (
@@ -318,7 +348,7 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
           >
             <div className="flex items-center gap-2">
               <Eye className="h-4 w-4" />
-              <span>
+              <span className="truncate">
                 Viewing as: <strong>{current?.name ?? "—"}</strong>
                 {current?.city ? ` · ${current.city}` : ""}
               </span>
@@ -326,19 +356,28 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
             <Button
               size="sm"
               variant="secondary"
-              className="h-7"
+              className="h-7 shrink-0"
               onClick={backToAdmin}
             >
               ← Back to Admin Dashboard
             </Button>
           </div>
         )}
-        <header className="h-14 border-b bg-card flex items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <div className="md:hidden"><Logo size={28} /></div>
-            <h1 className="text-base sm:text-lg font-semibold">{headerTitle}</h1>
+        <header className="h-14 border-b bg-card flex items-center justify-between gap-2 px-3 sm:px-6">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden h-9 w-9 shrink-0"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            <div className="md:hidden shrink-0"><Logo size={28} /></div>
+            <h1 className="text-base sm:text-lg font-semibold truncate">{headerTitle}</h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {user?.id && (
               <RemindersBell propertyId={propertyId} userId={user.id} />
             )}
@@ -350,7 +389,7 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
             </div>
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6 overflow-auto">{children}</main>
+        <main className="flex-1 p-3 sm:p-6 overflow-auto">{children}</main>
       </div>
       {propertyPaused && !isSuperadmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur">
