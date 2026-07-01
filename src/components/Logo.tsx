@@ -1,11 +1,14 @@
+import logoAsset from "@/assets/hotel-pilot-logo.png.asset.json";
+
 export function Logo({ size = 36 }: { size?: number }) {
   return (
-    <div
-      className="flex items-center justify-center rounded-md bg-primary text-primary-foreground font-bold"
-      style={{ width: size, height: size, fontSize: size * 0.42 }}
-      aria-label="HotelPilot"
-    >
-      HP
-    </div>
+    <img
+      src={logoAsset.url}
+      alt="HotelPilot"
+      width={size}
+      height={size}
+      className="rounded-md object-cover"
+      style={{ width: size, height: size }}
+    />
   );
 }
