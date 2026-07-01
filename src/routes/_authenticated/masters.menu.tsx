@@ -271,7 +271,7 @@ function MenuPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>KOT</TableHead>
+                    <TableHead>KOT printer</TableHead>
                     <TableHead>Sort</TableHead>
                     {canManage && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
@@ -280,7 +280,11 @@ function MenuPage() {
                   {cats.map((c) => (
                     <TableRow key={c.id}>
                       <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell><Badge variant="outline">{c.kot_type}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {printers.find((p) => p.id === c.kot_printer_id)?.name ?? "—"}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{c.sort_order}</TableCell>
                       {canManage && (
                         <TableCell className="text-right">
@@ -455,7 +459,7 @@ function MenuPage() {
                     <TableHead>Category</TableHead>
                     <TableHead>Price</TableHead>
                     <TableHead>GST</TableHead>
-                    <TableHead>Kitchen</TableHead>
+                    <TableHead>Kitchen printer</TableHead>
                     <TableHead>Available</TableHead>
                     {canManage && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
