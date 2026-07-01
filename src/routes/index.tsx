@@ -406,10 +406,6 @@ function Index() {
               <a href="mailto:Consult@GrowthStoryCo.in" className="flex items-center gap-1.5 hover:text-white">
                 <Mail className="h-3.5 w-3.5" /> Consult@GrowthStoryCo.in
               </a>
-              <div className="flex items-center gap-3">
-                <a href="#" aria-label="LinkedIn" className="hover:text-white"><Linkedin className="h-4 w-4" /></a>
-                <a href="#" aria-label="Facebook" className="hover:text-white"><Facebook className="h-4 w-4" /></a>
-              </div>
             </div>
           </div>
         </div>
