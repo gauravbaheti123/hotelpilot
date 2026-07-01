@@ -384,7 +384,7 @@ function Index() {
             <div className="text-white font-semibold text-sm mb-4">Company</div>
             <ul className="space-y-2.5 text-sm">
               <li><a href="#" className="hover:text-white">About</a></li>
-              <li><a href="mailto:support@hotelpilot.in" className="hover:text-white">Contact</a></li>
+              <li><a href="mailto:Consult@GrowthStoryCo.in" className="hover:text-white">Contact</a></li>
             </ul>
           </div>
           <div>
@@ -403,8 +403,8 @@ function Index() {
               <a href="tel:8007444464" className="flex items-center gap-1.5 hover:text-white">
                 <Phone className="h-3.5 w-3.5" /> 8007 444 464
               </a>
-              <a href="mailto:support@hotelpilot.in" className="flex items-center gap-1.5 hover:text-white">
-                <Mail className="h-3.5 w-3.5" /> support@hotelpilot.in
+              <a href="mailto:Consult@GrowthStoryCo.in" className="flex items-center gap-1.5 hover:text-white">
+                <Mail className="h-3.5 w-3.5" /> Consult@GrowthStoryCo.in
               </a>
               <div className="flex items-center gap-3">
                 <a href="#" aria-label="Twitter" className="hover:text-white"><Twitter className="h-4 w-4" /></a>
