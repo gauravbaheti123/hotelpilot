@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsOfServiceRouteImport } from './routes/terms-of-service'
 import { Route as SlaRouteImport } from './routes/sla'
+import { Route as SecurityPolicyRouteImport } from './routes/security-policy'
 import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
 import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
 import { Route as LoginRouteImport } from './routes/login'
@@ -113,6 +114,11 @@ const TermsOfServiceRoute = TermsOfServiceRouteImport.update({
 const SlaRoute = SlaRouteImport.update({
   id: '/sla',
   path: '/sla',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecurityPolicyRoute = SecurityPolicyRouteImport.update({
+  id: '/security-policy',
+  path: '/security-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RefundPolicyRoute = RefundPolicyRouteImport.update({
@@ -657,6 +663,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/refund-policy': typeof RefundPolicyRoute
+  '/security-policy': typeof SecurityPolicyRoute
   '/sla': typeof SlaRoute
   '/terms-of-service': typeof TermsOfServiceRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -753,6 +760,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/refund-policy': typeof RefundPolicyRoute
+  '/security-policy': typeof SecurityPolicyRoute
   '/sla': typeof SlaRoute
   '/terms-of-service': typeof TermsOfServiceRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -851,6 +859,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
   '/refund-policy': typeof RefundPolicyRoute
+  '/security-policy': typeof SecurityPolicyRoute
   '/sla': typeof SlaRoute
   '/terms-of-service': typeof TermsOfServiceRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -949,6 +958,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacy-policy'
     | '/refund-policy'
+    | '/security-policy'
     | '/sla'
     | '/terms-of-service'
     | '/dashboard'
@@ -1045,6 +1055,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacy-policy'
     | '/refund-policy'
+    | '/security-policy'
     | '/sla'
     | '/terms-of-service'
     | '/dashboard'
@@ -1142,6 +1153,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacy-policy'
     | '/refund-policy'
+    | '/security-policy'
     | '/sla'
     | '/terms-of-service'
     | '/_authenticated/dashboard'
@@ -1240,6 +1252,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   RefundPolicyRoute: typeof RefundPolicyRoute
+  SecurityPolicyRoute: typeof SecurityPolicyRoute
   SlaRoute: typeof SlaRoute
   TermsOfServiceRoute: typeof TermsOfServiceRoute
 }
@@ -1258,6 +1271,13 @@ declare module '@tanstack/react-router' {
       path: '/sla'
       fullPath: '/sla'
       preLoaderRoute: typeof SlaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/security-policy': {
+      id: '/security-policy'
+      path: '/security-policy'
+      fullPath: '/security-policy'
+      preLoaderRoute: typeof SecurityPolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/refund-policy': {
@@ -2123,6 +2143,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
   RefundPolicyRoute: RefundPolicyRoute,
+  SecurityPolicyRoute: SecurityPolicyRoute,
   SlaRoute: SlaRoute,
   TermsOfServiceRoute: TermsOfServiceRoute,
 }
