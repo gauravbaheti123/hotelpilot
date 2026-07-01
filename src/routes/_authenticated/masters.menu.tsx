@@ -49,6 +49,7 @@ interface MenuCategory {
   kot_type: string;
   sort_order: number;
   is_active: boolean;
+  kot_printer_id: string | null;
 }
 interface MenuItem {
   id: string;
@@ -61,6 +62,13 @@ interface MenuItem {
   is_veg: boolean;
   is_available: boolean;
   kitchen_type: string;
+  kitchen_printer_id: string | null;
+}
+interface PrinterOption {
+  id: string;
+  name: string;
+  location: string | null;
+  type: string;
 }
 
 function MenuPage() {
@@ -70,6 +78,7 @@ function MenuPage() {
   const { current, loading: propLoading } = useCurrentProperty();
   const [cats, setCats] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
+  const [printers, setPrinters] = useState<PrinterOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [catOpen, setCatOpen] = useState(false);
@@ -80,14 +89,21 @@ function MenuPage() {
   async function load() {
     if (!current) return;
     setLoading(true);
-    const [c, i] = await Promise.all([
+    const [c, i, p] = await Promise.all([
       supabase.from("menu_categories").select("*").eq("property_id", current.id).order("sort_order"),
       supabase.from("menu_items").select("*").eq("property_id", current.id).order("name"),
+      supabase.from("printers")
+        .select("id,name,location,type")
+        .eq("property_id", current.id)
+        .eq("is_active", true)
+        .in("type", ["kot", "both"])
+        .order("name"),
     ]);
     if (c.error) toast.error(c.error.message);
     if (i.error) toast.error(i.error.message);
     setCats((c.data ?? []) as MenuCategory[]);
     setItems((i.data ?? []) as MenuItem[]);
+    setPrinters((p.data ?? []) as PrinterOption[]);
     setLoading(false);
   }
 
@@ -104,6 +120,7 @@ function MenuPage() {
       kot_type: editingCat.kot_type ?? "kitchen",
       sort_order: Number(editingCat.sort_order ?? 0),
       is_active: editingCat.is_active ?? true,
+      kot_printer_id: editingCat.kot_printer_id ?? null,
     };
     const { error } = editingCat.id
       ? await supabase.from("menu_categories").update(payload).eq("id", editingCat.id)
@@ -128,6 +145,7 @@ function MenuPage() {
       is_veg: editingItem.is_veg ?? true,
       is_available: editingItem.is_available ?? true,
       kitchen_type: editingItem.kitchen_type ?? "hotel",
+      kitchen_printer_id: editingItem.kitchen_printer_id ?? null,
     };
     const { error } = editingItem.id
       ? await supabase.from("menu_items").update(payload).eq("id", editingItem.id)
@@ -203,17 +221,28 @@ function MenuPage() {
                         />
                       </Field>
                       <Field label="KOT printer">
-                        <Select
-                          value={editingCat.kot_type ?? "kitchen"}
-                          onValueChange={(v) => setEditingCat({ ...editingCat, kot_type: v })}
-                        >
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="kitchen">Kitchen</SelectItem>
-                            <SelectItem value="bar">Bar</SelectItem>
-                            <SelectItem value="both">Both</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {printers.length === 0 ? (
+                          <p className="text-xs text-muted-foreground border rounded px-2 py-2">
+                            No KOT printers configured. Add printers in Master Data → Printers.
+                          </p>
+                        ) : (
+                          <Select
+                            value={editingCat.kot_printer_id ?? "none"}
+                            onValueChange={(v) =>
+                              setEditingCat({ ...editingCat, kot_printer_id: v === "none" ? null : v })
+                            }
+                          >
+                            <SelectTrigger><SelectValue placeholder="Select printer" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">— Unassigned —</SelectItem>
+                              {printers.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.name}{p.location ? ` · ${p.location}` : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </Field>
                       <Field label="Sort order">
                         <Input
@@ -375,17 +404,29 @@ function MenuPage() {
                         <Switch checked={editingItem.is_available ?? true}
                           onCheckedChange={(v) => setEditingItem({ ...editingItem, is_available: v })} />
                       </Field>
-                      <Field label="Kitchen">
-                        <Select value={editingItem.kitchen_type ?? "hotel"}
-                          onValueChange={(v) => setEditingItem({ ...editingItem, kitchen_type: v })}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="hotel">Hotel Kitchen</SelectItem>
-                            <SelectItem value="restaurant">Restaurant Kitchen</SelectItem>
-                            <SelectItem value="bar">Bar</SelectItem>
-                            <SelectItem value="banquet">Banquet Kitchen</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      <Field label="Kitchen printer">
+                        {printers.length === 0 ? (
+                          <p className="text-xs text-muted-foreground border rounded px-2 py-2">
+                            No KOT printers configured. Add printers in Master Data → Printers.
+                          </p>
+                        ) : (
+                          <Select
+                            value={editingItem.kitchen_printer_id ?? "none"}
+                            onValueChange={(v) =>
+                              setEditingItem({ ...editingItem, kitchen_printer_id: v === "none" ? null : v })
+                            }
+                          >
+                            <SelectTrigger><SelectValue placeholder="Inherit from category" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">— Inherit from category —</SelectItem>
+                              {printers.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.name}{p.location ? ` · ${p.location}` : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </Field>
                     </div>
                   )}
@@ -431,7 +472,15 @@ function MenuPage() {
                       <TableCell>{cats.find((c) => c.id === i.category_id)?.name ?? "—"}</TableCell>
                       <TableCell>₹{i.price}</TableCell>
                       <TableCell>{i.gst_rate}%</TableCell>
-                      <TableCell><Badge variant="outline">{i.kitchen_type}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {(() => {
+                            const pid = i.kitchen_printer_id ?? cats.find((c) => c.id === i.category_id)?.kot_printer_id;
+                            const pr = printers.find((p) => p.id === pid);
+                            return pr?.name ?? "—";
+                          })()}
+                        </Badge>
+                      </TableCell>
                       <TableCell>
                         <Badge variant={i.is_available ? "default" : "secondary"}>
                           {i.is_available ? "Yes" : "No"}
