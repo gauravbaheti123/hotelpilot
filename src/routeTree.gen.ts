@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TotpChallengeRouteImport } from './routes/totp-challenge'
 import { Route as TermsOfServiceRouteImport } from './routes/terms-of-service'
 import { Route as SlaRouteImport } from './routes/sla'
 import { Route as SecurityPolicyRouteImport } from './routes/security-policy'
@@ -107,6 +108,11 @@ import { Route as AuthenticatedBanquetEventIdRouteImport } from './routes/_authe
 import { Route as AuthenticatedBanquetBillIdRouteImport } from './routes/_authenticated/banquet.bill.$id'
 import { Route as AuthenticatedBanquetEventRouteImport } from './routes/_authenticated/banquet.event.'
 
+const TotpChallengeRoute = TotpChallengeRouteImport.update({
+  id: '/totp-challenge',
+  path: '/totp-challenge',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsOfServiceRoute = TermsOfServiceRouteImport.update({
   id: '/terms-of-service',
   path: '/terms-of-service',
@@ -673,6 +679,7 @@ export interface FileRoutesByFullPath {
   '/security-policy': typeof SecurityPolicyRoute
   '/sla': typeof SlaRoute
   '/terms-of-service': typeof TermsOfServiceRoute
+  '/totp-challenge': typeof TotpChallengeRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
   '/superadmin': typeof AuthenticatedSuperadminRouteWithChildren
@@ -771,6 +778,7 @@ export interface FileRoutesByTo {
   '/security-policy': typeof SecurityPolicyRoute
   '/sla': typeof SlaRoute
   '/terms-of-service': typeof TermsOfServiceRoute
+  '/totp-challenge': typeof TotpChallengeRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/properties': typeof AuthenticatedPropertiesRoute
   '/superadmin': typeof AuthenticatedSuperadminRouteWithChildren
@@ -871,6 +879,7 @@ export interface FileRoutesById {
   '/security-policy': typeof SecurityPolicyRoute
   '/sla': typeof SlaRoute
   '/terms-of-service': typeof TermsOfServiceRoute
+  '/totp-challenge': typeof TotpChallengeRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
   '/_authenticated/superadmin': typeof AuthenticatedSuperadminRouteWithChildren
@@ -971,6 +980,7 @@ export interface FileRouteTypes {
     | '/security-policy'
     | '/sla'
     | '/terms-of-service'
+    | '/totp-challenge'
     | '/dashboard'
     | '/properties'
     | '/superadmin'
@@ -1069,6 +1079,7 @@ export interface FileRouteTypes {
     | '/security-policy'
     | '/sla'
     | '/terms-of-service'
+    | '/totp-challenge'
     | '/dashboard'
     | '/properties'
     | '/superadmin'
@@ -1168,6 +1179,7 @@ export interface FileRouteTypes {
     | '/security-policy'
     | '/sla'
     | '/terms-of-service'
+    | '/totp-challenge'
     | '/_authenticated/dashboard'
     | '/_authenticated/properties'
     | '/_authenticated/superadmin'
@@ -1268,10 +1280,18 @@ export interface RootRouteChildren {
   SecurityPolicyRoute: typeof SecurityPolicyRoute
   SlaRoute: typeof SlaRoute
   TermsOfServiceRoute: typeof TermsOfServiceRoute
+  TotpChallengeRoute: typeof TotpChallengeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/totp-challenge': {
+      id: '/totp-challenge'
+      path: '/totp-challenge'
+      fullPath: '/totp-challenge'
+      preLoaderRoute: typeof TotpChallengeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms-of-service': {
       id: '/terms-of-service'
       path: '/terms-of-service'
@@ -2167,6 +2187,7 @@ const rootRouteChildren: RootRouteChildren = {
   SecurityPolicyRoute: SecurityPolicyRoute,
   SlaRoute: SlaRoute,
   TermsOfServiceRoute: TermsOfServiceRoute,
+  TotpChallengeRoute: TotpChallengeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
