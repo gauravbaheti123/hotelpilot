@@ -97,7 +97,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", type: "image/png", href: "/__l5e/assets-v1/92174dfe-5da0-4e37-8170-099745c94a71/hotel-pilot-logo.png" },
+      { rel: "icon", type: "image/png", href: "/__l5e/assets-v1/d6d2b524-5e70-4765-8c3b-e3e5060ab59a/hotel-pilot-logo.png" },
     ],
   }),
   shellComponent: RootShell,
