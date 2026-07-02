@@ -138,7 +138,7 @@ export function EditKotDialog({
       const { error: insErr } = await supabase.from("kot_items").insert(insertLines);
       if (insErr) throw insErr;
 
-      const patch: Record<string, unknown> = {
+      const patch = {
         table_no: kot.kot_type === "restaurant" ? tableNo.trim() : null,
         notes: notes || null,
         sub_total: t.sub_total,
@@ -147,7 +147,7 @@ export function EditKotDialog({
         edited_at: new Date().toISOString(),
         edited_by: user.id,
       };
-      const { error: uErr } = await supabase.from("kot_orders").update(patch).eq("id", kot.id);
+      const { error: uErr } = await supabase.from("kot_orders").update(patch as never).eq("id", kot.id);
       if (uErr) throw uErr;
 
       // Keep any linked folio_charge in sync so KOT total and bill never drift.
