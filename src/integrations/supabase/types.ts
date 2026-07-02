@@ -2075,6 +2075,9 @@ export type Database = {
           client_ref: string | null
           created_at: string
           created_by: string | null
+          delivery_photo_taken_at: string | null
+          delivery_photo_taken_by: string | null
+          delivery_proof_url: string | null
           gst_amount: number
           guest_name: string | null
           id: string
@@ -2104,6 +2107,9 @@ export type Database = {
           client_ref?: string | null
           created_at?: string
           created_by?: string | null
+          delivery_photo_taken_at?: string | null
+          delivery_photo_taken_by?: string | null
+          delivery_proof_url?: string | null
           gst_amount?: number
           guest_name?: string | null
           id?: string
@@ -2133,6 +2139,9 @@ export type Database = {
           client_ref?: string | null
           created_at?: string
           created_by?: string | null
+          delivery_photo_taken_at?: string | null
+          delivery_photo_taken_by?: string | null
+          delivery_proof_url?: string | null
           gst_amount?: number
           guest_name?: string | null
           id?: string
@@ -3119,6 +3128,7 @@ export type Database = {
           phone: string | null
           pin_code: string | null
           pincode: string | null
+          require_delivery_proof: boolean
           short_code: string | null
           star_rating: number | null
           state: string | null
@@ -3175,6 +3185,7 @@ export type Database = {
           phone?: string | null
           pin_code?: string | null
           pincode?: string | null
+          require_delivery_proof?: boolean
           short_code?: string | null
           star_rating?: number | null
           state?: string | null
@@ -3231,6 +3242,7 @@ export type Database = {
           phone?: string | null
           pin_code?: string | null
           pincode?: string | null
+          require_delivery_proof?: boolean
           short_code?: string | null
           star_rating?: number | null
           state?: string | null
