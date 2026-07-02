@@ -11,6 +11,7 @@ import {
   recordLoginAttempt,
   lockoutMessage,
 } from "@/lib/auth-security";
+import { currentUserTotpRequired, clearTotpVerified } from "@/lib/totp";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -29,8 +30,11 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard" });
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return;
+      const needs = await currentUserTotpRequired();
+      if (needs) navigate({ to: "/totp-challenge" });
+      else navigate({ to: "/dashboard" });
     });
   }, [navigate]);
 
@@ -49,8 +53,15 @@ function LoginPage() {
         throw error;
       }
       await recordLoginAttempt(email, true);
-      toast.success("Welcome back");
-      navigate({ to: "/dashboard" });
+      // Clear any stale TOTP verification flag from a previous browser tab.
+      clearTotpVerified();
+      const needs = await currentUserTotpRequired();
+      if (needs) {
+        navigate({ to: "/totp-challenge" });
+      } else {
+        toast.success("Welcome back");
+        navigate({ to: "/dashboard" });
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
       toast.error(msg);
