@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ShieldAlert, UserPlus, KeyRound, Trash2 } from "lucide-react";
+import { ShieldAlert, UserPlus, KeyRound, Trash2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import {
   createStaffUser,
@@ -22,6 +22,7 @@ import {
   assignRoleTemplate,
   setUserActive,
 } from "@/lib/staff-users.functions";
+import { Manage2FADialog } from "@/components/Manage2FADialog";
 
 export const Route = createFileRoute("/_authenticated/superadmin/users")({
   head: () => ({ meta: [{ title: "User Management — HotelPilot" }] }),
@@ -40,6 +41,9 @@ interface AssignRow {
   property_name: string;
   role_id: string | null;
   role: string;
+  totp_enabled: boolean;
+  totp_locked_until: string | null;
+  totp_created_at: string | null;
 }
 
 const APP_ROLE_ENUM = ["manager", "receptionist", "housekeeping", "kitchen"] as const;
@@ -78,6 +82,7 @@ function UsersPage() {
 
   const [resetTarget, setResetTarget] = useState<AssignRow | null>(null);
   const [resetPw, setResetPw] = useState("");
+  const [tfaTarget, setTfaTarget] = useState<AssignRow | null>(null);
 
   const createFn = useServerFn(createStaffUser);
   const resetFn = useServerFn(resetStaffPassword);
@@ -116,6 +121,7 @@ function UsersPage() {
     const emails: Record<string, string> = {};
     const names: Record<string, string> = {};
     const actives: Record<string, boolean> = {};
+    const totp: Record<string, { enabled: boolean; locked_until: string | null; created_at: string | null }> = {};
     if (userIds.length) {
       const { data: profs } = await supabase
         .from("profiles").select("id,email,name,is_active").in("id", userIds);
@@ -123,6 +129,19 @@ function UsersPage() {
         emails[p.id] = (p as any).email ?? "";
         names[p.id] = (p as any).name ?? "";
         actives[p.id] = (p as any).is_active ?? true;
+      }
+      if (isSuperadmin) {
+        const { data: totps } = await supabase
+          .from("user_totp_secrets")
+          .select("user_id,enabled,locked_until,created_at")
+          .in("user_id", userIds);
+        for (const t of totps ?? []) {
+          totp[(t as any).user_id] = {
+            enabled: !!(t as any).enabled,
+            locked_until: (t as any).locked_until ?? null,
+            created_at: (t as any).created_at ?? null,
+          };
+        }
       }
     }
     const propsMap: Record<string, string> = {};
@@ -139,6 +158,9 @@ function UsersPage() {
         property_name: u.property_id ? (propsMap[u.property_id] ?? "—") : "All (global)",
         role_id: u.role_id,
         role: u.role ?? "",
+        totp_enabled: totp[u.user_id]?.enabled ?? false,
+        totp_locked_until: totp[u.user_id]?.locked_until ?? null,
+        totp_created_at: totp[u.user_id]?.created_at ?? null,
       })),
     );
   }
@@ -244,16 +266,18 @@ function UsersPage() {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>2FA</TableHead>
                   <TableHead>Template</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {visibleRows.length === 0 && (
-                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No users yet.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No users yet.</TableCell></TableRow>
                 )}
                 {visibleRows.map((r) => {
                   const editable = canManage(r);
+                  const locked = r.totp_locked_until && new Date(r.totp_locked_until).getTime() > Date.now();
                   return (
                   <TableRow key={r.ur_id}>
                     <TableCell className="font-medium">{r.name || "—"}</TableCell>
@@ -263,6 +287,13 @@ function UsersPage() {
                       {r.is_active
                         ? <Badge className="bg-green-600 hover:bg-green-600">Active</Badge>
                         : <Badge variant="secondary">Inactive</Badge>}
+                    </TableCell>
+                    <TableCell>
+                      {locked
+                        ? <Badge variant="destructive">Locked</Badge>
+                        : r.totp_enabled
+                          ? <Badge className="bg-green-600 hover:bg-green-600">Active</Badge>
+                          : <Badge variant="secondary">Not enabled</Badge>}
                     </TableCell>
                     <TableCell>
                       <Select value={r.role_id ?? ""} onValueChange={(v) => assign(r.ur_id, v)} disabled={!editable}>
@@ -275,6 +306,11 @@ function UsersPage() {
                       </Select>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
+                      {isSuperadmin && (
+                        <Button size="sm" variant="outline" onClick={() => setTfaTarget(r)}>
+                          <ShieldCheck className="h-3.5 w-3.5 mr-1" /> 2FA
+                        </Button>
+                      )}
                       <Button size="sm" variant="outline" disabled={!editable}
                         onClick={() => { setResetTarget(r); setResetPw(randomPassword()); }}>
                         <KeyRound className="h-3.5 w-3.5 mr-1" /> Reset
@@ -347,6 +383,20 @@ function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {tfaTarget && (
+        <Manage2FADialog
+          user={{
+            userId: tfaTarget.user_id,
+            email: tfaTarget.email,
+            name: tfaTarget.name,
+            enabled: tfaTarget.totp_enabled,
+            lockedUntil: tfaTarget.totp_locked_until,
+            createdAt: tfaTarget.totp_created_at,
+          }}
+          onClose={() => { setTfaTarget(null); load(); }}
+        />
+      )}
     </AppShell>
   );
 }
