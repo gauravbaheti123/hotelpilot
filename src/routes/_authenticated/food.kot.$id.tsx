@@ -208,6 +208,7 @@ function KotDetailPage() {
           <DeliveryProof
             kotId={k.id}
             propertyId={current?.id}
+            kotNumber={k.kot_number}
             proofUrl={k.delivery_proof_url}
             takenAt={k.delivery_photo_taken_at}
             takenBy={k.delivery_photo_taken_by}

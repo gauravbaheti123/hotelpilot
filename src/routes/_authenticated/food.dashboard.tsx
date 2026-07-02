@@ -406,6 +406,7 @@ function FoodDashboardPage() {
                           <DeliveryProof compact
                             kotId={r.id}
                             propertyId={propertyId}
+                            kotNumber={r.kot_number}
                             proofUrl={r.delivery_proof_url}
                             takenAt={r.delivery_photo_taken_at}
                             takenBy={r.delivery_photo_taken_by}

@@ -23,7 +23,7 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { addDaysIso, nightsBetween, SOURCES, todayIso } from "@/lib/front-desk";
 import { GuestIdUploadField, type SelectedIdFile } from "@/components/GuestIdUploadField";
-import { uploadToDrive, isDriveConfigured } from "@/lib/googleDrive";
+import { uploadFileToDrive, safeName } from "@/lib/driveUpload";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 
 export const Route = createFileRoute("/_authenticated/front-desk/new")({
@@ -497,33 +497,27 @@ function NewBookingPage() {
       // ID Document upload (best-effort, deferred to after booking save)
       if (idFile && guestId) {
         try {
-          if (!isDriveConfigured()) {
-            await supabase.from("guests").update({
-              id_document_name: idFile.file.name,
-              notes: (guestNotes ? guestNotes + "\n" : "") + "ID document attached — Drive not configured",
-            } as any).eq("id", guestId);
-            toast.message("ID saved locally — Google Drive not configured");
-          } else {
-            const res = await uploadToDrive(idFile.file, current.name, name || "Guest", booking!.id);
-            await supabase.from("guests").update({
-              id_document_url: res.viewUrl,
-              id_document_name: idFile.file.name,
-              id_document_uploaded_at: new Date().toISOString(),
-            } as any).eq("id", guestId);
-            await supabase.from("guest_documents").insert({
-              property_id: current.id,
-              guest_id: guestId,
-              booking_id: booking!.id,
-              document_name: idFile.file.name,
-              drive_file_id: res.fileId,
-              drive_view_url: res.viewUrl,
-              drive_folder_path: res.folderPath,
-            } as any);
-            toast.success(`✓ Saved to Drive: ${res.folderPath}`);
-          }
+          const ts = Date.now();
+          const fileName = `${safeName(name || "Guest")}_${safeName(booking!.booking_number || booking!.id.slice(0, 8))}_${ts}.jpg`;
+          const res = await uploadFileToDrive(idFile.file, "id_doc", fileName);
+          await supabase.from("guests").update({
+            id_document_url: res.viewUrl,
+            id_document_name: idFile.file.name,
+            id_document_uploaded_at: new Date().toISOString(),
+          } as any).eq("id", guestId);
+          await supabase.from("guest_documents").insert({
+            property_id: current.id,
+            guest_id: guestId,
+            booking_id: booking!.id,
+            document_name: idFile.file.name,
+            drive_file_id: res.fileId,
+            drive_view_url: res.viewUrl,
+            drive_folder_path: null,
+          } as any);
+          toast.success("✓ ID document uploaded to Drive");
         } catch (e: any) {
           console.warn("ID upload failed", e);
-          toast.error(`ID upload failed: ${e.message ?? "unknown"}`);
+          toast.error("ID upload failed, please try again");
         }
       }
 
