@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { KOT_STATUS_LABEL, KOT_STATUS_TONE, computeKotTotals } from "@/lib/food";
 import { fetchPrinterPaperSize, getPrintStyles } from "@/lib/printStyles";
 import { useCurrentProperty } from "@/hooks/use-property";
+import { DeliveryProof } from "@/components/DeliveryProof";
 import { Printer, Check, Ban, ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/food/kot/$id")({
@@ -33,6 +34,9 @@ interface Kot {
   notes: string | null; void_reason: string | null; created_at: string;
   printed_at: string | null; served_at: string | null; billed_at: string | null;
   booking_id: string | null;
+  delivery_proof_url: string | null;
+  delivery_photo_taken_at: string | null;
+  delivery_photo_taken_by: string | null;
   rooms: { room_number: string } | null;
   bookings: { booking_number: string } | null;
   kot_items: Item[];
@@ -52,6 +56,7 @@ function KotDetailPage() {
     const { data, error } = await supabase.from("kot_orders")
       .select(`id,kot_number,kot_type,table_no,guest_name,status,sub_total,gst_amount,total_amount,
         notes,void_reason,created_at,printed_at,served_at,billed_at,booking_id,
+        delivery_proof_url,delivery_photo_taken_at,delivery_photo_taken_by,
         rooms(room_number),bookings(booking_number),
         kot_items(id,item_name,qty,rate,amount,gst_rate,kot_station,notes,is_void)`)
       .eq("id", id).single();
@@ -198,6 +203,17 @@ function KotDetailPage() {
             {k.void_reason && <div className="text-xs text-rose-600 pt-2">Void reason: {k.void_reason}</div>}
           </CardContent>
         </Card>
+
+        {(k.status === "served" || k.status === "billed" || k.delivery_proof_url) && (
+          <DeliveryProof
+            kotId={k.id}
+            propertyId={current?.id}
+            proofUrl={k.delivery_proof_url}
+            takenAt={k.delivery_photo_taken_at}
+            takenBy={k.delivery_photo_taken_by}
+            onSaved={load}
+          />
+        )}
 
         <Dialog open={voidOpen} onOpenChange={setVoidOpen}>
           <DialogContent>
