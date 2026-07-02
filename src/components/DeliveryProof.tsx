@@ -51,12 +51,11 @@ export function DeliveryProof({ kotId, propertyId, proofUrl, takenAt, takenBy, o
       upsert: true,
     });
     if (up.error) { setSaving(false); toast.error(up.error.message); return; }
-    const patch: Record<string, unknown> = {
+    const { error } = await supabase.from("kot_orders").update({
       delivery_proof_url: path,
       delivery_photo_taken_at: new Date().toISOString(),
       delivery_photo_taken_by: user?.id ?? null,
-    };
-    const { error } = await supabase.from("kot_orders").update(patch).eq("id", kotId);
+    }).eq("id", kotId);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Delivery proof captured");
