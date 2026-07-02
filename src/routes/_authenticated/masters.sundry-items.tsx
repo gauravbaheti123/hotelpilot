@@ -65,7 +65,7 @@ const columns: ColumnDef<Item>[] = [
 
 function SundryItemsPage() {
   return (
-    <RequirePermission module="masters_sundry_items">
+    <RequirePermission module="master_data">
     <CrudPage<Item>
       title="Sundry / POS Items"
       subtitle="Mini-bar, laundry, spa and other extras posted from the POS module."
