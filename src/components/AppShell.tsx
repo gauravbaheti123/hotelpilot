@@ -268,13 +268,29 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
     : NAV_GROUPS
         .map((g) => ({
           ...g,
-          items: g.items.filter(
-            (n) =>
-              (!n.requireSuperadmin || isSuperadmin) &&
-              (!n.requireOwner || isOwner) &&
-              (!n.requireManagerOrAbove || isManagerOrAbove) &&
-              (!n.module || skipPermissionFilter || can(n.module, "view")),
-          ),
+          items: g.items
+            .map((n) => {
+              // Filter sub-items by their own module permission first
+              if (n.children && !skipPermissionFilter) {
+                const filteredChildren = n.children.filter(
+                  (c) => !c.module || can(c.module, "view"),
+                );
+                return { ...n, children: filteredChildren };
+              }
+              return n;
+            })
+            .filter((n) => {
+              if (n.requireSuperadmin && !isSuperadmin) return false;
+              if (n.requireOwner && !isOwner) return false;
+              if (n.requireManagerOrAbove && !isManagerOrAbove) return false;
+              if (skipPermissionFilter) return true;
+              // If the item aggregates multiple modules, show when ANY child module is allowed
+              if (n.modules && n.modules.length > 0) {
+                return n.modules.some((m) => can(m, "view"));
+              }
+              if (n.module) return can(n.module, "view");
+              return true;
+            }),
         }))
         .filter((g) => g.items.length > 0);
 
