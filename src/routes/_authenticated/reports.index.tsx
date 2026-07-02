@@ -2,8 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  BarChart3, FileSpreadsheet, FileText, Moon, History, ShieldAlert,
+  BarChart3, FileSpreadsheet, FileText, Moon, History, ShieldAlert, ClipboardList,
 } from "lucide-react";
+import { useAuth, hasRole } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/reports/")({
   head: () => ({ meta: [{ title: "Reports — HotelPilot" }] }),
@@ -29,11 +30,18 @@ const ITEMS = [
   { to: "/reports/night-audit", label: "Day Close", icon: Moon, desc: "End-of-day close" },
 ];
 
+const OWNER_ITEMS = [
+  { to: "/reports/kot-activity", label: "KOT Activity Log", icon: ClipboardList, desc: "KOT edits, voids & deletes (Owner)" },
+];
+
 function ReportsIndex() {
+  const { roles } = useAuth();
+  const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const items = isOwner ? [...ITEMS, ...OWNER_ITEMS] : ITEMS;
   return (
     <AppShell title="Reports">
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {ITEMS.map((it) => (
+        {items.map((it) => (
           <Link key={it.to} to={it.to}>
             <Card className="hover:shadow-md hover:border-primary/40 transition-all h-full">
               <CardContent className="p-5 flex items-start gap-3">
