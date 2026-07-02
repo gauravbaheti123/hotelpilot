@@ -2,3 +2,12 @@ project_id = "fjhvpzpahlcezcbksnpr"
 
 [functions.upload-to-drive]
 verify_jwt = true
+
+[functions.generate-totp-secret]
+verify_jwt = true
+
+[functions.verify-and-enable-totp]
+verify_jwt = true
+
+[functions.verify-totp-login]
+verify_jwt = false
