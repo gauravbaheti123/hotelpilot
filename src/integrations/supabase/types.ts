@@ -2078,6 +2078,8 @@ export type Database = {
           delivery_photo_taken_at: string | null
           delivery_photo_taken_by: string | null
           delivery_proof_url: string | null
+          edited_at: string | null
+          edited_by: string | null
           gst_amount: number
           guest_name: string | null
           id: string
@@ -2098,6 +2100,7 @@ export type Database = {
           updated_at: string
           void_reason: string | null
           voided_at: string | null
+          voided_by: string | null
           wipe_log_id: string | null
           wiped_at: string | null
         }
@@ -2110,6 +2113,8 @@ export type Database = {
           delivery_photo_taken_at?: string | null
           delivery_photo_taken_by?: string | null
           delivery_proof_url?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
           gst_amount?: number
           guest_name?: string | null
           id?: string
@@ -2130,6 +2135,7 @@ export type Database = {
           updated_at?: string
           void_reason?: string | null
           voided_at?: string | null
+          voided_by?: string | null
           wipe_log_id?: string | null
           wiped_at?: string | null
         }
@@ -2142,6 +2148,8 @@ export type Database = {
           delivery_photo_taken_at?: string | null
           delivery_photo_taken_by?: string | null
           delivery_proof_url?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
           gst_amount?: number
           guest_name?: string | null
           id?: string
@@ -2162,6 +2170,7 @@ export type Database = {
           updated_at?: string
           void_reason?: string | null
           voided_at?: string | null
+          voided_by?: string | null
           wipe_log_id?: string | null
           wiped_at?: string | null
         }
