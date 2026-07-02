@@ -32,6 +32,8 @@ export function usePermissions(): PermState & {
   const { user, roles, loading: authLoading } = useAuth();
   const propertyId = usePropertyId();
   const isSuperadmin = roles.includes("superadmin");
+  // Owners have full access to every module — bypass the permission map.
+  const isOwner = roles.includes("owner");
   const [state, setState] = useState<PermState>({
     loading: true,
     isSuperadmin,
@@ -53,8 +55,8 @@ export function usePermissions(): PermState & {
       setState({ loading: false, isSuperadmin: false, map: {} });
       return;
     }
-    if (isSuperadmin) {
-      setState({ loading: false, isSuperadmin: true, map: {} });
+    if (isSuperadmin || isOwner) {
+      setState({ loading: false, isSuperadmin: isSuperadmin || isOwner, map: {} });
       return;
     }
 
@@ -91,7 +93,7 @@ export function usePermissions(): PermState & {
     return () => {
       cancelled = true;
     };
-  }, [user, authLoading, isSuperadmin, propertyId, tick]);
+  }, [user, authLoading, isSuperadmin, isOwner, propertyId, tick]);
 
   const can = (module: string, action: PermAction = "view") => {
     if (state.isSuperadmin) return true;
