@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Camera, Check, Loader2, Eye, Download, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
+import { uploadFileToDrive, validateDriveImage, safeName } from "@/lib/driveUpload";
 
 const BUCKET = "kot-delivery-proofs";
 
@@ -16,15 +17,11 @@ interface Props {
   takenBy: string | null;
   onSaved?: () => void;
   compact?: boolean;
-}
-
-function objectPath(propertyId: string, kotId: string) {
-  const d = new Date().toISOString().slice(0, 10);
-  return `${propertyId}/${d}/${kotId}.jpg`;
+  kotNumber?: string | null;
 }
 
 /** Renders a signed URL preview, capture button, and viewer for a KOT delivery proof. */
-export function DeliveryProof({ kotId, propertyId, proofUrl, takenAt, takenBy, onSaved, compact }: Props) {
+export function DeliveryProof({ kotId, propertyId, proofUrl, takenAt, takenBy, onSaved, compact, kotNumber }: Props) {
   const { user } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
@@ -34,6 +31,9 @@ export function DeliveryProof({ kotId, propertyId, proofUrl, takenAt, takenBy, o
   useEffect(() => {
     let cancelled = false;
     if (!proofUrl) { setSigned(null); return; }
+    // Google Drive (or any absolute URL) is used directly; legacy bucket
+    // paths still resolve via a signed URL for backwards compatibility.
+    if (/^https?:\/\//i.test(proofUrl)) { setSigned(proofUrl); return; }
     (async () => {
       const { data } = await supabase.storage.from(BUCKET).createSignedUrl(proofUrl, 60 * 60);
       if (!cancelled) setSigned(data?.signedUrl ?? null);
@@ -43,23 +43,25 @@ export function DeliveryProof({ kotId, propertyId, proofUrl, takenAt, takenBy, o
 
   async function handleFile(file: File) {
     if (!propertyId) { toast.error("No property selected"); return; }
-    if (!file.type.startsWith("image/")) { toast.error("Please choose an image"); return; }
+    try { validateDriveImage(file); } catch (e: any) { toast.error(e.message); return; }
     setSaving(true);
-    const path = objectPath(propertyId, kotId);
-    const up = await supabase.storage.from(BUCKET).upload(path, file, {
-      contentType: file.type || "image/jpeg",
-      upsert: true,
-    });
-    if (up.error) { setSaving(false); toast.error(up.error.message); return; }
-    const { error } = await supabase.from("kot_orders").update({
-      delivery_proof_url: path,
-      delivery_photo_taken_at: new Date().toISOString(),
-      delivery_photo_taken_by: user?.id ?? null,
-    }).eq("id", kotId);
-    setSaving(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Delivery proof captured");
-    onSaved?.();
+    try {
+      const ts = Date.now();
+      const fileName = `KOT${safeName(kotNumber || kotId.slice(0, 8))}_${ts}.jpg`;
+      const res = await uploadFileToDrive(file, "kot_proof", fileName);
+      const { error } = await supabase.from("kot_orders").update({
+        delivery_proof_url: res.viewUrl,
+        delivery_photo_taken_at: new Date().toISOString(),
+        delivery_photo_taken_by: user?.id ?? null,
+      }).eq("id", kotId);
+      if (error) throw error;
+      toast.success("Delivery proof captured");
+      onSaved?.();
+    } catch (e: any) {
+      toast.error(e.message ?? "Upload failed");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const hasProof = !!proofUrl;
