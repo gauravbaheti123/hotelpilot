@@ -74,6 +74,7 @@ interface NavItem {
   requireOwner?: boolean;
   requireManagerOrAbove?: boolean;
   module?: string;
+  modules?: string[];
   children?: NavItem[];
 }
 
@@ -87,52 +88,58 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, module: "dashboard" },
       {
-        to: "/front-desk/bookings", label: "Front Desk", icon: ListChecks, module: "bookings",
+        to: "/front-desk/bookings", label: "Front Desk", icon: ListChecks,
+        modules: ["bookings", "calendar", "inhouse"],
         children: [
-          { to: "/front-desk/bookings", label: "Bookings", icon: ListChecks },
-          { to: "/front-desk/calendar", label: "Calendar", icon: CalendarRange },
-          { to: "/front-desk/in-house", label: "In-house", icon: BedDouble },
+          { to: "/front-desk/bookings", label: "Bookings", icon: ListChecks, module: "bookings" },
+          { to: "/front-desk/calendar", label: "Calendar", icon: CalendarRange, module: "calendar" },
+          { to: "/front-desk/in-house", label: "In-house", icon: BedDouble, module: "inhouse" },
         ],
       },
       {
-        to: "/food/dashboard", label: "Food & KOT", icon: ChefHat, module: "food_kot",
+        to: "/food/dashboard", label: "Food & KOT", icon: ChefHat,
+        modules: ["food_dashboard", "all_kots", "new_kot", "pending_bills"],
         children: [
-          { to: "/food/dashboard", label: "Food Dashboard", icon: LayoutDashboard },
-          { to: "/food/kots", label: "All KOTs", icon: ClipboardList },
-          { to: "/food/new", label: "New KOT", icon: PlusCircle },
-          { to: "/food/pending-bills", label: "Pending Bills", icon: Receipt },
+          { to: "/food/dashboard", label: "Food Dashboard", icon: LayoutDashboard, module: "food_dashboard" },
+          { to: "/food/kots", label: "All KOTs", icon: ClipboardList, module: "all_kots" },
+          { to: "/food/new", label: "New KOT", icon: PlusCircle, module: "new_kot" },
+          { to: "/food/pending-bills", label: "Pending Bills", icon: Receipt, module: "pending_bills" },
         ],
       },
       {
-        to: "/pos", label: "Billing", icon: Receipt, module: "pos_sundry",
+        to: "/pos", label: "Billing", icon: Receipt,
+        modules: ["pos", "restaurant_billing", "invoices", "mis_ac"],
         children: [
-          { to: "/pos", label: "POS", icon: ShoppingCart },
-          { to: "/restaurant", label: "Restaurant Billing", icon: UtensilsCrossed },
-          { to: "/billing/invoices", label: "Invoices", icon: FileText },
-          { to: "/billing/mis", label: "MIS A/c", icon: Banknote },
+          { to: "/pos", label: "POS", icon: ShoppingCart, module: "pos" },
+          { to: "/restaurant", label: "Restaurant Billing", icon: UtensilsCrossed, module: "restaurant_billing" },
+          { to: "/billing/invoices", label: "Invoices", icon: FileText, module: "invoices" },
+          { to: "/billing/mis", label: "MIS A/c", icon: Banknote, module: "mis_ac" },
         ],
       },
       {
-        to: "/reports", label: "Reports", icon: BarChart3, module: "reports_daily",
+        to: "/reports", label: "Reports", icon: BarChart3,
+        modules: ["reports", "day_close"],
         children: [
-          { to: "/reports", label: "Reports", icon: BarChart3 },
-          { to: "/reports/night-audit", label: "Day Close", icon: Moon },
+          { to: "/reports", label: "Reports", icon: BarChart3, module: "reports" },
+          { to: "/reports/night-audit", label: "Day Close", icon: Moon, module: "day_close" },
         ],
       },
       {
-        to: "/housekeeping/board", label: "Housekeeping", icon: LayoutGrid, module: "room_board",
+        to: "/housekeeping/board", label: "Housekeeping", icon: LayoutGrid,
+        modules: ["room_board", "tasks"],
         children: [
-          { to: "/housekeeping/board", label: "Room Board", icon: LayoutGrid },
-          { to: "/housekeeping/tasks", label: "Tasks", icon: ClipboardList },
+          { to: "/housekeeping/board", label: "Room Board", icon: LayoutGrid, module: "room_board" },
+          { to: "/housekeeping/tasks", label: "Tasks", icon: ClipboardList, module: "tasks" },
         ],
       },
       { to: "/guests", label: "Guest CRM", icon: UserCircle2, module: "guest_crm" },
       { to: "/inventory", label: "Inventory", icon: Package, module: "inventory" },
-      { to: "/expenses", label: "Expenses", icon: Wallet, module: "masters_expense_categories" },
+      { to: "/expenses", label: "Expenses", icon: Wallet, module: "expenses" },
       { to: "/staff", label: "Staff HR", icon: Users, module: "staff_hr" },
-      { to: "/banquet/bookings", label: "Banquet", icon: PartyPopper, module: "masters_halls" },
-      { to: "/masters", label: "Master Data", icon: LayoutGrid, module: "masters_rooms" },
-      { to: "/settings", label: "Settings", icon: Settings, requireManagerOrAbove: true },
+      { to: "/banquet/bookings", label: "Banquet", icon: PartyPopper, module: "banquet" },
+      { to: "/masters", label: "Master Data", icon: LayoutGrid, module: "master_data" },
+      { to: "/settings", label: "Settings", icon: Settings,
+        modules: ["settings_business", "settings_invoice", "settings_whatsapp", "user_management", "roles_permissions"] },
     ],
   },
 ];
@@ -261,13 +268,29 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
     : NAV_GROUPS
         .map((g) => ({
           ...g,
-          items: g.items.filter(
-            (n) =>
-              (!n.requireSuperadmin || isSuperadmin) &&
-              (!n.requireOwner || isOwner) &&
-              (!n.requireManagerOrAbove || isManagerOrAbove) &&
-              (!n.module || skipPermissionFilter || can(n.module, "view")),
-          ),
+          items: g.items
+            .map((n) => {
+              // Filter sub-items by their own module permission first
+              if (n.children && !skipPermissionFilter) {
+                const filteredChildren = n.children.filter(
+                  (c) => !c.module || can(c.module, "view"),
+                );
+                return { ...n, children: filteredChildren };
+              }
+              return n;
+            })
+            .filter((n) => {
+              if (n.requireSuperadmin && !isSuperadmin) return false;
+              if (n.requireOwner && !isOwner) return false;
+              if (n.requireManagerOrAbove && !isManagerOrAbove) return false;
+              if (skipPermissionFilter) return true;
+              // If the item aggregates multiple modules, show when ANY child module is allowed
+              if (n.modules && n.modules.length > 0) {
+                return n.modules.some((m) => can(m, "view"));
+              }
+              if (n.module) return can(n.module, "view");
+              return true;
+            }),
         }))
         .filter((g) => g.items.length > 0);
 
