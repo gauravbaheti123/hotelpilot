@@ -49,5 +49,8 @@ export const ACTIVITY = {
   BILL_CREATED: { action_type: "BILL_CREATED", module: "Billing" },
   PAYMENT_RECEIVED: { action_type: "PAYMENT_RECEIVED", module: "Billing" },
   KOT_CREATED: { action_type: "KOT_CREATED", module: "Food" },
+  KOT_EDITED: { action_type: "KOT_EDITED", module: "Food" },
+  KOT_VOIDED: { action_type: "KOT_VOIDED", module: "Food" },
+  KOT_DELETED: { action_type: "KOT_DELETED", module: "Food" },
   ROOM_STATUS_CHANGED: { action_type: "ROOM_STATUS_CHANGED", module: "Rooms" },
 } as const;
