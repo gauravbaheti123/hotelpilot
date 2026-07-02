@@ -4262,6 +4262,45 @@ export type Database = {
           },
         ]
       }
+      user_totp_secrets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          failed_attempts: number
+          id: string
+          last_verified_at: string | null
+          locked_until: string | null
+          secret_encrypted: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          failed_attempts?: number
+          id?: string
+          last_verified_at?: string | null
+          locked_until?: string | null
+          secret_encrypted: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          failed_attempts?: number
+          id?: string
+          last_verified_at?: string | null
+          locked_until?: string | null
+          secret_encrypted?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       vendors: {
         Row: {
           address: string | null
@@ -4521,6 +4560,7 @@ export type Database = {
         Returns: boolean
       }
       check_login_allowed: { Args: { _email: string }; Returns: Json }
+      current_user_totp_required: { Args: never; Returns: boolean }
       delete_night_audit: { Args: { _id: string }; Returns: undefined }
       get_next_bill_number: {
         Args: { p_property_id: string; p_type: string }
