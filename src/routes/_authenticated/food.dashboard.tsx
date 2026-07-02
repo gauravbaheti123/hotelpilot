@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
+import { DeliveryProof } from "@/components/DeliveryProof";
 import { AlertTriangle, PlusCircle, RefreshCcw, X, CheckCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/food/dashboard")({
@@ -32,6 +33,9 @@ interface KotRow {
   booking_id: string | null;
   room_id: string | null;
   kot_copy: string | null;
+  delivery_proof_url: string | null;
+  delivery_photo_taken_at: string | null;
+  delivery_photo_taken_by: string | null;
   rooms: { room_number: string } | null;
   bookings: { id: string; check_out: string; guests: { name: string } | null } | null;
   kot_items: KotItem[];
@@ -72,6 +76,7 @@ function FoodDashboardPage() {
   const [kitchen, setKitchen] = useState<string>("all");
   const [dismissBanner, setDismissBanner] = useState(false);
   const [posting, setPosting] = useState<string | null>(null);
+  const [requireProof, setRequireProof] = useState(false);
   const boardRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -80,6 +85,7 @@ function FoodDashboardPage() {
       .from("kot_orders")
       .select(
         "id,kot_number,kot_type,table_no,guest_name,status,total_amount,created_at,printed_at,served_at,billed_at,booking_id,room_id,kot_copy," +
+          "delivery_proof_url,delivery_photo_taken_at,delivery_photo_taken_by," +
           "rooms(room_number)," +
           "bookings(id,check_out,guests(name))," +
           "kot_items(id,item_name,qty,kot_station,is_void)",
@@ -96,6 +102,16 @@ function FoodDashboardPage() {
     setLoading(true);
     load();
   }, [load]);
+
+  // Load property-level "require delivery proof" setting
+  useEffect(() => {
+    if (!propertyId) return;
+    (async () => {
+      const { data } = await supabase.from("properties")
+        .select("require_delivery_proof").eq("id", propertyId).maybeSingle();
+      setRequireProof(!!data?.require_delivery_proof);
+    })();
+  }, [propertyId]);
 
   // Realtime + polling fallback
   useEffect(() => {
@@ -172,6 +188,10 @@ function FoodDashboardPage() {
   }
 
   async function addKotToBill(k: KotRow): Promise<boolean> {
+    if (requireProof && !k.delivery_proof_url) {
+      toast.error(`Capture delivery proof for ${k.kot_number} before billing`);
+      return false;
+    }
     if (!k.booking_id) {
       const { error } = await supabase.from("kot_orders").update({ status: "billed", billed_at: new Date().toISOString() }).eq("id", k.id);
       if (error) { toast.error(error.message); return false; }
