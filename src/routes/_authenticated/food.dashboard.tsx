@@ -401,6 +401,18 @@ function FoodDashboardPage() {
                           <div className="text-xs text-emerald-700">Billed</div>
                         )}
                       </div>
+                      {(st === "served" || (st === "billed" && r.delivery_proof_url)) && (
+                        <div className="mt-2 pt-2 border-t">
+                          <DeliveryProof compact
+                            kotId={r.id}
+                            propertyId={propertyId}
+                            proofUrl={r.delivery_proof_url}
+                            takenAt={r.delivery_photo_taken_at}
+                            takenBy={r.delivery_photo_taken_by}
+                            onSaved={load}
+                          />
+                        </div>
+                      )}
                     </div>
                   );
                 })}
