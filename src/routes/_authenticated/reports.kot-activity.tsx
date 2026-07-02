@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,16 +14,10 @@ import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
+import { useAuth, hasRole } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/reports/kot-activity")({
   head: () => ({ meta: [{ title: "KOT Activity Log — HotelPilot" }] }),
-  beforeLoad: async () => {
-    const { data } = await supabase.rpc("get_current_user_roles" as never);
-    const roles = (data ?? []) as unknown as string[];
-    if (!roles.some((r) => r === "owner" || r === "superadmin")) {
-      throw redirect({ to: "/reports" });
-    }
-  },
   component: KotActivityReport,
 });
 
@@ -51,6 +45,12 @@ interface Row {
 
 function KotActivityReport() {
   const { current, loading: propLoading } = useCurrentProperty();
+  const { roles, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  useEffect(() => {
+    if (!authLoading && !isOwner) navigate({ to: "/reports" });
+  }, [authLoading, isOwner, navigate]);
   const today = new Date().toISOString().slice(0, 10);
   const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const [from, setFrom] = useState(monthAgo);
