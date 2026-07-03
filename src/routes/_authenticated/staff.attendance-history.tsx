@@ -13,6 +13,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   ATTENDANCE_LABEL, ATTENDANCE_TONE, type AttendanceStatus,
   monthStart, monthEnd,
@@ -20,7 +21,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/staff/attendance-history")({
   head: () => ({ meta: [{ title: "Attendance History — HotelPilot" }] }),
-  component: AttHistoryPage,
+  component: () => (<RequirePermission module="staff_hr"><AttHistoryPage /></RequirePermission>),
 });
 
 interface Row {

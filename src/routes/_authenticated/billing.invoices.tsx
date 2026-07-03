@@ -18,9 +18,10 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { toast } from "sonner";
 import { Pencil, Trash2, FileSpreadsheet, Hash, AlertTriangle } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/invoices")({
   head: () => ({ meta: [{ title: "Invoices — HotelPilot" }] }),
-  component: InvoicesPage,
+  component: () => (<RequirePermission module="invoices"><InvoicesPage /></RequirePermission>),
 });
 
 interface Row {

@@ -20,6 +20,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { Wand2 } from "lucide-react";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   ATTENDANCE_WEIGHT, daysInMonth, formatMonth, monthStart,
   type AttendanceStatus,
@@ -27,7 +28,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/staff/payroll")({
   head: () => ({ meta: [{ title: "Payroll — HotelPilot" }] }),
-  component: PayrollPage,
+  component: () => (<RequirePermission module="staff_hr"><PayrollPage /></RequirePermission>),
 });
 
 interface PayrollRow {

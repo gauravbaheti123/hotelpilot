@@ -3,9 +3,10 @@ import { CrudPage, type FieldDef, type ColumnDef } from "@/components/master/Cru
 import { Badge } from "@/components/ui/badge";
 import { CHANNEL_PRESETS } from "@/lib/channels";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/masters/channels")({
   head: () => ({ meta: [{ title: "OTA Channels — HotelPilot" }] }),
-  component: ChannelsPage,
+  component: () => (<RequirePermission module="master_data"><ChannelsPage /></RequirePermission>),
 });
 
 interface Channel {

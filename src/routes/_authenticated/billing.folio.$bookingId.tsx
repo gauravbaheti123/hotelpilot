@@ -36,9 +36,10 @@ import {
 } from "@/lib/invoiceTemplates";
 import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
   head: () => ({ meta: [{ title: "Folio — HotelPilot" }] }),
-  component: FolioPage,
+  component: () => (<RequirePermission module="invoices"><FolioPage /></RequirePermission>),
 });
 
 interface Charge {

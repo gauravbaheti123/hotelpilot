@@ -18,9 +18,10 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { DeliveryProof } from "@/components/DeliveryProof";
 import { Printer, Check, Ban, ArrowLeft } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/food/kot/$id")({
   head: () => ({ meta: [{ title: "KOT — HotelPilot" }] }),
-  component: KotDetailPage,
+  component: () => (<RequirePermission module="all_kots"><KotDetailPage /></RequirePermission>),
 });
 
 interface Item {

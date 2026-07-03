@@ -23,9 +23,10 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/front-desk/in-house")({
   head: () => ({ meta: [{ title: "In-house — HotelPilot" }] }),
-  component: InHousePage,
+  component: () => (<RequirePermission module="inhouse"><InHousePage /></RequirePermission>),
 });
 
 interface InHouseRow {

@@ -3,9 +3,10 @@ import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { CalendarDays, History, Banknote } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/staff/")({
   head: () => ({ meta: [{ title: "Staff HR — HotelPilot" }] }),
-  component: StaffIndex,
+  component: () => (<RequirePermission module="staff_hr"><StaffIndex /></RequirePermission>),
 });
 
 const ITEMS = [

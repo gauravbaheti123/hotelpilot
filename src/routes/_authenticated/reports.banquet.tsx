@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso } from "@/lib/reportExports";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/reports/banquet")({
   head: () => ({ meta: [{ title: "Banquet Report — HotelPilot" }] }),
-  component: Page,
+  component: () => (<RequirePermission module="reports"><Page /></RequirePermission>),
 });
 
 interface Row {

@@ -16,9 +16,10 @@ import { Ban, ShieldCheck } from "lucide-react";
 import { ID_PROOF_TYPES, guestSchema, emptyToNull } from "@/lib/guests";
 import { inr } from "@/lib/billing";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/guests/$id")({
   head: () => ({ meta: [{ title: "Guest — HotelPilot" }] }),
-  component: GuestDetail,
+  component: () => (<RequirePermission module="guest_crm"><GuestDetail /></RequirePermission>),
 });
 
 interface Guest {

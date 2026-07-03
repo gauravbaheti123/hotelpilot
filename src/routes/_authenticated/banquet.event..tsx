@@ -20,9 +20,10 @@ import { BANQUET_STATUS_TONE, FUNCTION_TYPES, computeBanquetTotal } from "@/lib/
 import { ArrowLeft, BedDouble, Trash2, CheckCircle2, Ban, Plus, FileText, Pencil } from "lucide-react";
 import type { EventBlockRecord } from "@/lib/eventRoomBlocks";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/banquet/event/")({
   head: () => ({ meta: [{ title: "Banquet Event — HotelPilot" }] }),
-  component: BanquetEventPage,
+  component: () => (<RequirePermission module="banquet"><BanquetEventPage /></RequirePermission>),
 });
 
 interface Bq {

@@ -17,9 +17,10 @@ import { PlusCircle, Trash2, AlertTriangle } from "lucide-react";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/banquet/bookings")({
   head: () => ({ meta: [{ title: "Banquet Events — HotelPilot" }] }),
-  component: BanquetBookingsPage,
+  component: () => (<RequirePermission module="banquet"><BanquetBookingsPage /></RequirePermission>),
 });
 
 interface Row {

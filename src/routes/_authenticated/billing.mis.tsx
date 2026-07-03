@@ -20,9 +20,10 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { Lock, Trash2, AlertTriangle, Pencil, Download } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/mis")({
   head: () => ({ meta: [{ title: "MIS Account — HotelPilot" }] }),
-  component: MISPage,
+  component: () => (<RequirePermission module="mis_ac"><MISPage /></RequirePermission>),
 });
 
 interface Row {

@@ -35,6 +35,7 @@ import { fireTrigger } from "@/lib/whatsapp";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { recomputeFolio } from "@/lib/billing";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   LogIn,
   LogOut,
@@ -48,7 +49,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/front-desk/booking/$id")({
   head: () => ({ meta: [{ title: "Booking — HotelPilot" }] }),
-  component: BookingDetailPage,
+  component: () => (<RequirePermission module="bookings"><BookingDetailPage /></RequirePermission>),
 });
 
 interface Guest { id: string; name: string; mobile: string | null; email: string | null; address: string | null; id_proof_type: string | null; id_proof_number: string | null; }

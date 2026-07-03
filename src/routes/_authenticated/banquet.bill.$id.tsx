@@ -18,9 +18,10 @@ import { inr } from "@/lib/billing";
 import { fmtDate } from "@/lib/reportExports";
 import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/banquet/bill/$id")({
   head: () => ({ meta: [{ title: "Event Bill — HotelPilot" }] }),
-  component: BanquetBillPage,
+  component: () => (<RequirePermission module="banquet"><BanquetBillPage /></RequirePermission>),
 });
 
 interface Bq {

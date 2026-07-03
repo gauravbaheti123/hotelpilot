@@ -19,9 +19,10 @@ import { toast } from "sonner";
 import { Download, MessageCircle, FileSpreadsheet, AlertTriangle, CheckCircle2, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/restaurant/")({
   head: () => ({ meta: [{ title: "Restaurant Billing — HotelPilot" }] }),
-  component: RestaurantPage,
+  component: () => (<RequirePermission module="restaurant_billing"><RestaurantPage /></RequirePermission>),
 });
 
 interface CreditRow {

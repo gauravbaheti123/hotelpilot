@@ -4,9 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
 import { useCurrentProperty } from "@/hooks/use-property";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/masters/staff")({
   head: () => ({ meta: [{ title: "Staff — HotelPilot" }] }),
-  component: StaffPage,
+  component: () => (<RequirePermission module="master_data"><StaffPage /></RequirePermission>),
 });
 
 interface Staff {

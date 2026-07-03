@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   BedDouble, IndianRupee, TrendingUp, UtensilsCrossed, PartyPopper,
   Users, Printer, Tags, MessageSquare, ShoppingCart, Cloud, CalendarDays,
@@ -8,7 +9,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/masters/")({
   head: () => ({ meta: [{ title: "Master Data — HotelPilot" }] }),
-  component: MastersIndex,
+  component: () => (<RequirePermission module="master_data"><MastersIndex /></RequirePermission>),
 });
 
 const ITEMS = [

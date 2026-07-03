@@ -11,9 +11,10 @@ import { addDaysIso, todayIso } from "@/lib/front-desk";
 import { pickSeason, effectiveRate, type RateSeason } from "@/lib/yield";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/front-desk/rate-calendar")({
   head: () => ({ meta: [{ title: "Rate Calendar — HotelPilot" }] }),
-  component: RateCalendarPage,
+  component: () => (<RequirePermission module="calendar"><RateCalendarPage /></RequirePermission>),
 });
 
 const DAYS = 14;

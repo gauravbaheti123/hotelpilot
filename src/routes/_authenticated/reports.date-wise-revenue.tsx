@@ -7,13 +7,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
 
 export const Route = createFileRoute("/_authenticated/reports/date-wise-revenue")({
   head: () => ({ meta: [{ title: "Date-Wise Revenue — HotelPilot" }] }),
-  component: Page,
+  component: () => (<RequirePermission module="reports"><Page /></RequirePermission>),
 });
 
 interface DayRow {

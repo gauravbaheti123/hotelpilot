@@ -4,9 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
 import { useCurrentProperty } from "@/hooks/use-property";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/masters/expense-categories")({
   head: () => ({ meta: [{ title: "Expense Categories — HotelPilot" }] }),
-  component: ExpenseCategoriesPage,
+  component: () => (<RequirePermission module="master_data"><ExpenseCategoriesPage /></RequirePermission>),
 });
 
 interface Cat { id: string; name: string; is_active: boolean }

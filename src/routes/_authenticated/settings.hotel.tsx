@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   Building2, MapPin, FileText, Image as ImageIcon, Percent,
   Receipt, Clock, Star, Save, Upload, Trash2,
@@ -25,7 +26,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/settings/hotel")({
   head: () => ({ meta: [{ title: "Hotel Settings — HotelPilot" }] }),
-  component: HotelSettingsPage,
+  component: () => (<RequirePermission module="settings_business"><HotelSettingsPage /></RequirePermission>),
 });
 
 const INDIAN_STATES: Array<{ name: string; code: string }> = [

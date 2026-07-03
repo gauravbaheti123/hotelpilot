@@ -26,6 +26,7 @@ import { GuestIdUploadField, type SelectedIdFile } from "@/components/GuestIdUpl
 import { uploadFileToDrive, safeName } from "@/lib/driveUpload";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/front-desk/new")({
   head: () => ({ meta: [{ title: "New Booking — HotelPilot" }] }),
   validateSearch: (s: Record<string, unknown>) => ({
@@ -37,7 +38,7 @@ export const Route = createFileRoute("/_authenticated/front-desk/new")({
     checkIn: typeof s.checkIn === "string" ? s.checkIn : undefined,
     checkOut: typeof s.checkOut === "string" ? s.checkOut : undefined,
   }),
-  component: NewBookingPage,
+  component: () => (<RequirePermission module="bookings"><NewBookingPage /></RequirePermission>),
 });
 
 interface Category { id: string; name: string; base_rate: number; max_occupancy: number; }

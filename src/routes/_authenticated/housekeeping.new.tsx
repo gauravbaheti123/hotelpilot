@@ -15,9 +15,10 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { TASK_TYPES, TASK_PRIORITIES, type TaskType, type TaskPriority } from "@/lib/housekeeping";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/housekeeping/new")({
   head: () => ({ meta: [{ title: "New Task — HotelPilot" }] }),
-  component: NewTaskPage,
+  component: () => (<RequirePermission module="tasks"><NewTaskPage /></RequirePermission>),
 });
 
 function NewTaskPage() {

@@ -20,9 +20,10 @@ import { toast } from "sonner";
 import { EditKotDialog } from "@/components/EditKotDialog";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/food/kots")({
   head: () => ({ meta: [{ title: "All KOTs — HotelPilot" }] }),
-  component: AllKotsPage,
+  component: () => (<RequirePermission module="all_kots"><AllKotsPage /></RequirePermission>),
 });
 
 interface Row {

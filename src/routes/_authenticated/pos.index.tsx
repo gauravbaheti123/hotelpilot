@@ -15,12 +15,13 @@ import { recomputeFolio, inr } from "@/lib/billing";
 import { SUNDRY_CATEGORIES, categoryColor, categoryLabel } from "@/lib/sundry";
 import { Plus, Minus, Trash2, Receipt, Send } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/pos/")({
   validateSearch: (s: Record<string, unknown>) => ({
     booking_id: typeof s.booking_id === "string" ? s.booking_id : undefined,
   }),
   head: () => ({ meta: [{ title: "POS — HotelPilot" }] }),
-  component: PosPage,
+  component: () => (<RequirePermission module="pos"><PosPage /></RequirePermission>),
 });
 
 interface Booking {

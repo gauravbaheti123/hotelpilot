@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   Building2, MessageCircle, Cloud, Receipt, ShieldCheck, Users,
   Lock,
@@ -10,7 +11,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/settings/")({
   head: () => ({ meta: [{ title: "Settings — HotelPilot" }] }),
-  component: SettingsIndex,
+  component: () => (<RequirePermission module="settings_business"><SettingsIndex /></RequirePermission>),
 });
 
 const ITEMS: Array<{ to: string; label: string; icon: any; desc: string; soon?: boolean; ownerOnly?: boolean }> = [

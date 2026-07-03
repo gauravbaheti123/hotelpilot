@@ -8,13 +8,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
 
 export const Route = createFileRoute("/_authenticated/reports/mis")({
   head: () => ({ meta: [{ title: "MIS Report — HotelPilot" }] }),
-  component: Page,
+  component: () => (<RequirePermission module="reports"><Page /></RequirePermission>),
 });
 
 interface Row {

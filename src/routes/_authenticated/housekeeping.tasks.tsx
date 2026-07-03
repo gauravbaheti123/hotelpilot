@@ -19,9 +19,10 @@ import {
 import { Link } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/housekeeping/tasks")({
   head: () => ({ meta: [{ title: "Housekeeping Tasks — HotelPilot" }] }),
-  component: TasksPage,
+  component: () => (<RequirePermission module="tasks"><TasksPage /></RequirePermission>),
 });
 
 interface TaskRow {

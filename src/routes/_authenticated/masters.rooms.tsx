@@ -37,9 +37,10 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/masters/rooms")({
   head: () => ({ meta: [{ title: "Rooms & Categories — HotelPilot" }] }),
-  component: RoomsMasterPage,
+  component: () => (<RequirePermission module="master_data"><RoomsMasterPage /></RequirePermission>),
 });
 
 interface Category {

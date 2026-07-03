@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { computeBanquetTotal, FUNCTION_TYPES } from "@/lib/banquet";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2 } from "lucide-react";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   pickAvailableRooms, commitRoomBlocks, nightsBetween,
   type AssignedBlock,
@@ -24,7 +25,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/banquet/new")({
   head: () => ({ meta: [{ title: "New Banquet — HotelPilot" }] }),
-  component: NewBanquetPage,
+  component: () => (<RequirePermission module="banquet"><NewBanquetPage /></RequirePermission>),
 });
 
 interface Hall { id: string; name: string; capacity: number; hourly_rate: number; day_rate: number }

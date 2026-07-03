@@ -19,9 +19,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/guests/")({
   head: () => ({ meta: [{ title: "Guests — HotelPilot" }] }),
-  component: GuestsListPage,
+  component: () => (<RequirePermission module="guest_crm"><GuestsListPage /></RequirePermission>),
 });
 
 interface Row {

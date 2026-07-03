@@ -18,9 +18,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { toast } from "sonner";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/masters/printers")({
   head: () => ({ meta: [{ title: "Printers — HotelPilot" }] }),
-  component: PrintersPage,
+  component: () => (<RequirePermission module="master_data"><PrintersPage /></RequirePermission>),
 });
 
 interface Printer {

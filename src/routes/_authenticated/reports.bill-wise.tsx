@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
   buildTallySalesXml, downloadXml, buildFileName,
@@ -15,7 +16,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/reports/bill-wise")({
   head: () => ({ meta: [{ title: "Bill-Wise Report — HotelPilot" }] }),
-  component: Page,
+  component: () => (<RequirePermission module="reports"><Page /></RequirePermission>),
 });
 
 interface Row {

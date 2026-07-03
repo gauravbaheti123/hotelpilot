@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { fetchGstInvoices, type GstInvoiceRow } from "@/lib/reports";
 import { ReportShell } from "@/components/ReportShell";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR,
   buildTallySalesXml, downloadXml, buildFileName,
@@ -13,7 +14,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/reports/gst")({
   head: () => ({ meta: [{ title: "GST Report — HotelPilot" }] }),
-  component: GstReportPage,
+  component: () => (<RequirePermission module="reports"><GstReportPage /></RequirePermission>),
 });
 
 function monthBounds(month: string): [string, string] {

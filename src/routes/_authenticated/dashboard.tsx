@@ -26,9 +26,10 @@ import { CalendarDays } from "lucide-react";
 import { SuperadminDashboard as PlatformSuperadminDashboard } from "@/components/SuperadminDashboard";
 import { useSuperadminView } from "@/lib/superadmin-view";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — HotelPilot" }] }),
-  component: DashboardRouter,
+  component: () => (<RequirePermission module="dashboard"><DashboardRouter /></RequirePermission>),
 });
 
 function DashboardRouter() {

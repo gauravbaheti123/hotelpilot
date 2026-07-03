@@ -10,9 +10,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { inr } from "@/lib/billing";
 import { todayIso, PAYMENT_MODE_LABELS } from "@/lib/reports";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/reports/sales")({
   head: () => ({ meta: [{ title: "Sales Report — HotelPilot" }] }),
-  component: SalesReportPage,
+  component: () => (<RequirePermission module="reports"><SalesReportPage /></RequirePermission>),
 });
 
 function firstOfMonth() {

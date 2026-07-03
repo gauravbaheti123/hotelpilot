@@ -9,9 +9,10 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { KOT_STATUS_LABEL, KOT_STATUS_TONE } from "@/lib/food";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/food/pending-bills")({
   head: () => ({ meta: [{ title: "Pending Bills — HotelPilot" }] }),
-  component: PendingBillsPage,
+  component: () => (<RequirePermission module="pending_bills"><PendingBillsPage /></RequirePermission>),
 });
 
 interface Row {

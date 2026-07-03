@@ -6,9 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/masters/tariff")({
   head: () => ({ meta: [{ title: "Tariff Plans — HotelPilot" }] }),
-  component: TariffPage,
+  component: () => (<RequirePermission module="master_data"><TariffPage /></RequirePermission>),
 });
 
 interface Tariff {
