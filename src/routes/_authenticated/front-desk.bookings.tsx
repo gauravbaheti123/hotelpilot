@@ -110,7 +110,7 @@ function BookingsPage() {
           </Select>
           <div className="flex-1" />
           <Button asChild>
-            <Link to="/front-desk/new"><PlusCircle className="h-4 w-4 mr-1" /> New booking</Link>
+            <Link to="/front-desk/new" search={{}}><PlusCircle className="h-4 w-4 mr-1" /> New booking</Link>
           </Button>
         </div>
 

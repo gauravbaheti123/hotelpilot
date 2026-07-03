@@ -317,7 +317,7 @@ function NewBanquetPage() {
         .select("banquet_number").eq("id", bq!.id).maybeSingle();
       const bn = (bnRow as any)?.banquet_number ?? "";
       toast.success(roomsBlocked > 0
-        ? `Event saved — ${bn} generated, ${roomsBlocked} rooms blocked`
+        ? `Event saved — ${bn} generated, ${roomsBlocked} rooms assigned to event`
         : `Event saved — ${bn} generated`);
       router.navigate({ to: "/banquet/event/$id", params: { id: bq!.id } });
     } catch (e: any) {

@@ -126,7 +126,7 @@ function CommsIndexPage() {
               </SelectContent>
             </Select>
             <div className="ml-auto">
-              <Link to="/comms/new"><Button><PlusCircle className="h-4 w-4 mr-1" /> New Message</Button></Link>
+              <Link to="/comms/new" search={{}}><Button><PlusCircle className="h-4 w-4 mr-1" /> New Message</Button></Link>
             </div>
           </CardContent>
         </Card>
