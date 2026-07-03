@@ -24,7 +24,7 @@ export const PRIORITY_TONE: Record<string, string> = {
 export const ROOM_STATUS_TONE: Record<string, string> = {
   vacant: "bg-emerald-100 text-emerald-800 border-emerald-300",
   occupied: "bg-sky-100 text-sky-800 border-sky-300",
-  blocked: "bg-amber-100 text-amber-800 border-amber-300",
+  blocked: "bg-purple-100 text-purple-800 border-purple-300",
   maintenance: "bg-rose-100 text-rose-800 border-rose-300",
 };
 
