@@ -266,6 +266,48 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     load();
   }
 
+  async function addPendingPosToBill() {
+    if (!folio || !booking || pendingPos.length === 0) return;
+    setBusy(true);
+    for (const pc of pendingPos) {
+      const { data: inserted, error: cErr } = await supabase
+        .from("folio_charges")
+        .insert({
+          folio_id: folio.id,
+          charge_type: "extra",
+          description: `${pc.category_name} · ${pc.description}`,
+          qty: pc.qty,
+          rate: pc.rate,
+          amount: pc.amount,
+          gst_rate: pc.gst_rate,
+          gst_amount: pc.gst_amount,
+          source_table: "pos_charges",
+          source_id: pc.id,
+          created_by: user?.id ?? null,
+        } as any)
+        .select("id")
+        .single();
+      if (cErr) { setBusy(false); return toast.error(cErr.message); }
+      await supabase.from("pos_charges")
+        .update({ status: "billed", folio_charge_id: (inserted as any).id, billed_at: new Date().toISOString() } as any)
+        .eq("id", pc.id);
+    }
+    // Recompute folio totals after inserting
+    const { data: allCharges } = await supabase.from("folio_charges").select("*").eq("folio_id", folio.id);
+    const mode = (folio.gst_mode as "cash" | "gst") ?? "gst";
+    const t = recomputeFolio((allCharges ?? []) as any[], mode);
+    const { data: pays } = await supabase.from("payments").select("amount").eq("folio_id", folio.id);
+    const paid = (pays ?? []).reduce((s: number, p: any) => s + Number(p.amount), 0);
+    await supabase.from("folios").update({
+      ...t,
+      paid_amount: paid,
+      balance_amount: Math.max(0, t.total_amount - paid),
+    } as any).eq("id", folio.id);
+    toast.success(`${pendingPos.length} POS charge(s) added to bill`);
+    setBusy(false);
+    load();
+  }
+
   function setSplit(i: number, patch: Partial<SplitRow>) {
     setSplits((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
