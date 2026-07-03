@@ -447,6 +447,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   })();
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
