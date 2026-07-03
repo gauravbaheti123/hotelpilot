@@ -808,11 +808,12 @@ function OwnerDashboard({
 }
 
 function RoomGroups({
-  rooms, categories, occupiedRoomIds, pendingFoodByRoom, occInfoByRoom, eventBlockByRoom,
+  rooms, categories, grouping, occupiedRoomIds, pendingFoodByRoom, occInfoByRoom, eventBlockByRoom,
   onPick, onPickFood, onCheckout, onAssignEvent, onEventCheckIn,
 }: {
   rooms: Room[];
   categories: RoomCategory[];
+  grouping: "category" | "floor";
   occupiedRoomIds: Set<string>;
   pendingFoodByRoom: Map<string, PendingFood>;
   occInfoByRoom: Map<string, OccInfo>;
@@ -823,18 +824,35 @@ function RoomGroups({
   onAssignEvent: (blk: EventBlockRecord) => void;
   onEventCheckIn: (blk: EventBlockRecord) => void;
 }) {
-  const byCat = new Map<string, Room[]>();
-  const uncategorised: Room[] = [];
-  rooms.forEach((r) => {
-    if (!r.category_id) { uncategorised.push(r); return; }
-    const arr = byCat.get(r.category_id) ?? [];
-    arr.push(r);
-    byCat.set(r.category_id, arr);
-  });
-  const ordered = categories
-    .map((c) => ({ name: c.name, rooms: byCat.get(c.id) ?? [] }))
-    .filter((g) => g.rooms.length > 0);
-  if (uncategorised.length > 0) ordered.push({ name: "Uncategorised", rooms: uncategorised });
+  let ordered: { name: string; rooms: Room[] }[] = [];
+  if (grouping === "floor") {
+    const byFloor = new Map<string, Room[]>();
+    const unassigned: Room[] = [];
+    rooms.forEach((r) => {
+      const f = (r.floor ?? "").trim();
+      if (!f) { unassigned.push(r); return; }
+      const arr = byFloor.get(f) ?? [];
+      arr.push(r);
+      byFloor.set(f, arr);
+    });
+    ordered = Array.from(byFloor.keys())
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      .map((f) => ({ name: `Floor ${f}`, rooms: byFloor.get(f) ?? [] }));
+    if (unassigned.length > 0) ordered.push({ name: "No floor set", rooms: unassigned });
+  } else {
+    const byCat = new Map<string, Room[]>();
+    const uncategorised: Room[] = [];
+    rooms.forEach((r) => {
+      if (!r.category_id) { uncategorised.push(r); return; }
+      const arr = byCat.get(r.category_id) ?? [];
+      arr.push(r);
+      byCat.set(r.category_id, arr);
+    });
+    ordered = categories
+      .map((c) => ({ name: c.name, rooms: byCat.get(c.id) ?? [] }))
+      .filter((g) => g.rooms.length > 0);
+    if (uncategorised.length > 0) ordered.push({ name: "Uncategorised", rooms: uncategorised });
+  }
 
   return (
     <div className="space-y-4">
