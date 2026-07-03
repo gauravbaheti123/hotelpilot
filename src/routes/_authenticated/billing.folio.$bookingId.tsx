@@ -570,7 +570,7 @@ function FolioPage() {
   const pendingTotal = pendingKots.reduce((s, k) => s + Number(k.total_amount || 0), 0);
   const hasPending = pendingKots.length > 0;
   const canVoid = can("invoices", "delete");
-  const canShiftMis = can("mis_ac", "create");
+  const canShiftMis = can("billing", "mis_shift");
   // Feature 2: Manager / Owner may edit ANY bill regardless of status.
   // Receptionist keeps current behaviour (edit only while open).
   const canEditAnyStatus = canVoid;

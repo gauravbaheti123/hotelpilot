@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/superadmin/roles/$id")({
   component: EditRolePage,
 });
 
-const SECTIONS: { title: string; modules: { key: string; label: string }[] }[] = [
+const SECTIONS: { title: string; modules: { key: string; label: string; singleAction?: string }[] }[] = [
   { title: "Front Desk", modules: [
     { key: "dashboard", label: "Dashboard" },
     { key: "bookings", label: "Bookings" },
@@ -38,6 +38,8 @@ const SECTIONS: { title: string; modules: { key: string; label: string }[] }[] =
     { key: "restaurant_billing", label: "Restaurant Billing" },
     { key: "invoices", label: "Invoices" },
     { key: "mis_ac", label: "MIS A/c" },
+    { key: "billing", label: "Split Bill", singleAction: "split_bill" },
+    { key: "billing", label: "Shift to MIS", singleAction: "mis_shift" },
   ]},
   { title: "Reports", modules: [
     { key: "reports", label: "Reports" },
@@ -351,6 +353,42 @@ function EditRolePage() {
                           </TableCell>
                         </TableRow>
                         {sec.modules.map((m) => {
+                          if (m.singleAction) {
+                            const p = byKey[`${m.key}:${m.singleAction}`];
+                            const enabled = canOwnerToggle(m.key, m.singleAction as Action);
+                            const dirty = p ? isDirty(p.id) : false;
+                            const checked = p ? !!allowed[p.id] : false;
+                            const cell = (
+                              <TableCell
+                                colSpan={ACTIONS.length}
+                                className={`text-center ${dirty ? "bg-amber-100 dark:bg-amber-950/40" : ""} ${!enabled ? "opacity-50" : ""}`}
+                              >
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(v) => p && toggle(p.id, !!v)}
+                                  disabled={readOnly || !p || !enabled}
+                                />
+                              </TableCell>
+                            );
+                            return (
+                              <TableRow key={`${m.key}:${m.singleAction}`}>
+                                <TableCell>{m.label}</TableCell>
+                                {enabled ? cell : (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild><div className="contents">{cell}</div></TooltipTrigger>
+                                    <TooltipContent>You don&apos;t have this permission</TooltipContent>
+                                  </Tooltip>
+                                )}
+                                <TableCell className="text-center">
+                                  <Checkbox
+                                    checked={checked}
+                                    onCheckedChange={(v) => p && toggle(p.id, !!v)}
+                                    disabled={readOnly || !p || !enabled}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            );
+                          }
                           const rowAll = ACTIONS.every((a) => {
                             const p = byKey[`${m.key}:${a}`];
                             return p ? !!allowed[p.id] : true;

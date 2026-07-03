@@ -65,12 +65,9 @@ interface SplitRow {
 export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props) {
   const { user } = useAuth();
   const { can } = usePermissions();
-  // MIS shift: closest existing permission key is mis_ac/create (creating an MIS ledger entry).
-  const canShiftMis = can("mis_ac", "create");
+  const canShiftMis = can("billing", "mis_shift");
   const [misOpen, setMisOpen] = useState(false);
-  // No dedicated split-bill permission key exists — split creates new folios/invoices,
-  // gate it on invoices/create as the closest available action.
-  const canSplit = can("invoices", "create");
+  const canSplit = can("billing", "split_bill");
   const [splitOpen, setSplitOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
