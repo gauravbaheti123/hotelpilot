@@ -13,9 +13,10 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { AlertTriangle, Plus } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/inventory/stock")({
   head: () => ({ meta: [{ title: "Current Stock — HotelPilot" }] }),
-  component: StockPage,
+  component: () => (<RequirePermission module="inventory"><StockPage /></RequirePermission>),
 });
 
 interface ItemRow {

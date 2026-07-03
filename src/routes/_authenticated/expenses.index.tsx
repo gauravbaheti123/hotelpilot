@@ -16,13 +16,14 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   PAYMENT_MODES, PAYMENT_MODE_LABEL, PAYMENT_MODE_TONE, type PaymentMode,
 } from "@/lib/expenses";
 
 export const Route = createFileRoute("/_authenticated/expenses/")({
   head: () => ({ meta: [{ title: "Expenses — HotelPilot" }] }),
-  component: ExpensesPage,
+  component: () => (<RequirePermission module="expenses"><ExpensesPage /></RequirePermission>),
 });
 
 interface ExpenseRow {

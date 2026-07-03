@@ -13,9 +13,10 @@ import {
 } from "@/lib/reports";
 import { inr } from "@/lib/billing";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/reports/daily")({
   head: () => ({ meta: [{ title: "Daily Report — HotelPilot" }] }),
-  component: DailyReportPage,
+  component: () => (<RequirePermission module="reports"><DailyReportPage /></RequirePermission>),
 });
 
 function DailyReportPage() {

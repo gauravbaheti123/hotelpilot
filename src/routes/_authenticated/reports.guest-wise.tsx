@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso } from "@/lib/reportExports";
 import { ChevronRight, ChevronDown } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/reports/guest-wise")({
   head: () => ({ meta: [{ title: "Guest-Wise Report — HotelPilot" }] }),
-  component: Page,
+  component: () => (<RequirePermission module="reports"><Page /></RequirePermission>),
 });
 
 interface BookingLite {

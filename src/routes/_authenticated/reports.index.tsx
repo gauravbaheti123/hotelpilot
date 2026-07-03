@@ -6,9 +6,10 @@ import {
 } from "lucide-react";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/reports/")({
   head: () => ({ meta: [{ title: "Reports — HotelPilot" }] }),
-  component: ReportsIndex,
+  component: () => (<RequirePermission module="reports"><ReportsIndex /></RequirePermission>),
 });
 
 const ITEMS = [

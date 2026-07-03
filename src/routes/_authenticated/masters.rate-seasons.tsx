@@ -6,9 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { SEASON_TYPES } from "@/lib/yield";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/masters/rate-seasons")({
   head: () => ({ meta: [{ title: "Rate Seasons — HotelPilot" }] }),
-  component: RateSeasonsPage,
+  component: () => (<RequirePermission module="master_data"><RateSeasonsPage /></RequirePermission>),
 });
 
 interface Season {

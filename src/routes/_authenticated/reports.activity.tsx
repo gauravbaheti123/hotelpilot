@@ -15,9 +15,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/reports/activity")({
   head: () => ({ meta: [{ title: "Activity Log — HotelPilot" }] }),
-  component: ActivityLogPage,
+  component: () => (<RequirePermission module="reports"><ActivityLogPage /></RequirePermission>),
 });
 
 interface ActivityRow {

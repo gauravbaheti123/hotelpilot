@@ -10,9 +10,10 @@ import { toast } from "sonner";
 import { addDaysIso, todayIso, BOOKING_STATUS_TONE } from "@/lib/front-desk";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/front-desk/calendar")({
   head: () => ({ meta: [{ title: "Reservation Calendar — HotelPilot" }] }),
-  component: CalendarPage,
+  component: () => (<RequirePermission module="calendar"><CalendarPage /></RequirePermission>),
 });
 
 interface RoomRow {

@@ -7,13 +7,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtDateTime, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
 
 export const Route = createFileRoute("/_authenticated/reports/cash-collection")({
   head: () => ({ meta: [{ title: "Cash Collection — HotelPilot" }] }),
-  component: Page,
+  component: () => (<RequirePermission module="reports"><Page /></RequirePermission>),
 });
 
 interface Row {

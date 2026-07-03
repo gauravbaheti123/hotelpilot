@@ -2,9 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { CrudPage, ColumnDef, FieldDef } from "@/components/master/CrudPage";
 import { Badge } from "@/components/ui/badge";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/masters/halls")({
   head: () => ({ meta: [{ title: "Halls — HotelPilot" }] }),
-  component: HallsPage,
+  component: () => (<RequirePermission module="master_data"><HallsPage /></RequirePermission>),
 });
 
 interface Hall {

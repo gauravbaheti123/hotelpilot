@@ -12,9 +12,10 @@ import { ChevronDown, ChevronLeft, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/rooms/$roomNumber")({
   head: () => ({ meta: [{ title: "Room Detail — HotelPilot" }] }),
-  component: RoomDetailPage,
+  component: () => (<RequirePermission module="room_board"><RoomDetailPage /></RequirePermission>),
 });
 
 type RoomRow = {

@@ -15,9 +15,10 @@ import { toast } from "sonner";
 import { HK_STATUSES, HK_STATUS_TONE, ROOM_STATUS_TONE, type HkStatus } from "@/lib/housekeeping";
 import { MoreVertical } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/housekeeping/board")({
   head: () => ({ meta: [{ title: "Room Status Board — HotelPilot" }] }),
-  component: BoardPage,
+  component: () => (<RequirePermission module="room_board"><BoardPage /></RequirePermission>),
 });
 
 interface RoomRow {

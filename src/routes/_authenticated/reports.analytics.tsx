@@ -10,6 +10,7 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { fetchAnalytics, isoDaysAgo, type AnalyticsRange } from "@/lib/analytics";
 import { todayIso } from "@/lib/reports";
 import { inr } from "@/lib/billing";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend,
@@ -17,7 +18,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/reports/analytics")({
   head: () => ({ meta: [{ title: "Analytics — HotelPilot" }] }),
-  component: AnalyticsPage,
+  component: () => (<RequirePermission module="reports"><AnalyticsPage /></RequirePermission>),
 });
 
 function AnalyticsPage() {

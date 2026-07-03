@@ -3,9 +3,10 @@ import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Boxes, ArrowLeftRight, Package, Truck } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/inventory/")({
   head: () => ({ meta: [{ title: "Inventory — HotelPilot" }] }),
-  component: InventoryIndex,
+  component: () => (<RequirePermission module="inventory"><InventoryIndex /></RequirePermission>),
 });
 
 const ITEMS = [

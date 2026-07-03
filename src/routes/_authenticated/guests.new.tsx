@@ -13,9 +13,10 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { ID_PROOF_TYPES } from "@/lib/guests";
 import { toast } from "sonner";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/guests/new")({
   head: () => ({ meta: [{ title: "New Guest — HotelPilot" }] }),
-  component: NewGuestPage,
+  component: () => (<RequirePermission module="guest_crm"><NewGuestPage /></RequirePermission>),
 });
 
 function NewGuestPage() {

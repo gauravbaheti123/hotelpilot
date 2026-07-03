@@ -15,9 +15,10 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { PAYMENT_MODES, PAYMENT_MODE_LABEL, type PaymentMode } from "@/lib/expenses";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/expenses/new")({
   head: () => ({ meta: [{ title: "New Expense — HotelPilot" }] }),
-  component: NewExpensePage,
+  component: () => (<RequirePermission module="expenses"><NewExpensePage /></RequirePermission>),
 });
 
 interface Opt { id: string; name: string }

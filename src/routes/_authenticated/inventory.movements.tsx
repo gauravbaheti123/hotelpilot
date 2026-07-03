@@ -21,6 +21,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   MOVEMENT_TYPES, MOVEMENT_LABEL, MOVEMENT_TONE, DEPARTMENTS,
   type MovementType,
@@ -28,7 +29,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/inventory/movements")({
   head: () => ({ meta: [{ title: "Stock Movements — HotelPilot" }] }),
-  component: MovementsPage,
+  component: () => (<RequirePermission module="inventory"><MovementsPage /></RequirePermission>),
 });
 
 interface MovementRow {

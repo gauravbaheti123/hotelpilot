@@ -3,9 +3,10 @@ import { CrudPage, FieldDef, ColumnDef } from "@/components/master/CrudPage";
 import { Badge } from "@/components/ui/badge";
 import { ITEM_CATEGORIES, UNITS } from "@/lib/inventory";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/inventory/items")({
   head: () => ({ meta: [{ title: "Item Master — HotelPilot" }] }),
-  component: ItemsPage,
+  component: () => (<RequirePermission module="inventory"><ItemsPage /></RequirePermission>),
 });
 
 interface Item {

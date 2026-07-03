@@ -4,9 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { CHANNELS, TEMPLATE_VARIABLES } from "@/lib/comms";
 import { TRIGGER_LABELS } from "@/lib/whatsapp";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/masters/message-templates")({
   head: () => ({ meta: [{ title: "Message Templates — HotelPilot" }] }),
-  component: TemplatesPage,
+  component: () => (<RequirePermission module="master_data"><TemplatesPage /></RequirePermission>),
 });
 
 interface Tpl {

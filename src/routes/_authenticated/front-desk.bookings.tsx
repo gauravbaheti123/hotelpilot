@@ -27,9 +27,10 @@ import { toast } from "sonner";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_TONE } from "@/lib/front-desk";
 import { PlusCircle } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/front-desk/bookings")({
   head: () => ({ meta: [{ title: "Bookings — HotelPilot" }] }),
-  component: BookingsPage,
+  component: () => (<RequirePermission module="bookings"><BookingsPage /></RequirePermission>),
 });
 
 interface BookingRow {

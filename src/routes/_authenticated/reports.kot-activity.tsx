@@ -16,9 +16,10 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/reports/kot-activity")({
   head: () => ({ meta: [{ title: "KOT Activity Log — HotelPilot" }] }),
-  component: KotActivityReport,
+  component: () => (<RequirePermission module="reports"><KotActivityReport /></RequirePermission>),
 });
 
 const ALL = "__all__";

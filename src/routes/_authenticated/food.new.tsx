@@ -19,9 +19,10 @@ import { computeKotTotals } from "@/lib/food";
 import { Plus, Minus, Trash2 } from "lucide-react";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/food/new")({
   head: () => ({ meta: [{ title: "New KOT — HotelPilot" }] }),
-  component: NewKotPage,
+  component: () => (<RequirePermission module="new_kot"><NewKotPage /></RequirePermission>),
 });
 
 interface MenuItem {

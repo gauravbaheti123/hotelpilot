@@ -12,9 +12,10 @@ import { toast } from "sonner";
 import { DeliveryProof } from "@/components/DeliveryProof";
 import { AlertTriangle, PlusCircle, RefreshCcw, X, CheckCircle2 } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/food/dashboard")({
   head: () => ({ meta: [{ title: "Food Dashboard — HotelPilot" }] }),
-  component: FoodDashboardPage,
+  component: () => (<RequirePermission module="food_dashboard"><FoodDashboardPage /></RequirePermission>),
 });
 
 interface KotItem { id: string; item_name: string; qty: number; kot_station: string | null; is_void: boolean | null }

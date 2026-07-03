@@ -16,9 +16,10 @@ import { fetchDailySummary, fetchOccupancy, todayIso, PAYMENT_MODE_LABELS } from
 import { inr } from "@/lib/billing";
 import { AlertTriangle, CheckCircle2, Lock, Printer, FileText } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/reports/night-audit")({
   head: () => ({ meta: [{ title: "Night Audit — HotelPilot" }] }),
-  component: NightAuditPage,
+  component: () => (<RequirePermission module="day_close"><NightAuditPage /></RequirePermission>),
 });
 
 interface OccupiedRow {

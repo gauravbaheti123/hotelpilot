@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
+import { RequirePermission } from "@/components/RequirePermission";
 import {
   ATTENDANCE_STATUSES, ATTENDANCE_LABEL, ATTENDANCE_TONE,
   type AttendanceStatus,
@@ -19,7 +20,7 @@ import {
 
 export const Route = createFileRoute("/_authenticated/staff/attendance")({
   head: () => ({ meta: [{ title: "Attendance — HotelPilot" }] }),
-  component: AttendancePage,
+  component: () => (<RequirePermission module="staff_hr"><AttendancePage /></RequirePermission>),
 });
 
 interface StaffRow { id: string; name: string; designation: string | null; department: string | null }
