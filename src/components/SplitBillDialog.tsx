@@ -245,6 +245,27 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         },
       });
       toast.success(`Bills created: ${created[0].invoice_number} + ${created[1].invoice_number}`);
+      // Log any resulting cash bills separately for audit.
+      for (const cb of created) {
+        if (cb.party.bill_type === "cash_bill" && user) {
+          logActivity({
+            property_id: booking.property_id,
+            user_id: user.id,
+            user_name: userDisplayName(user as any),
+            action_type: "CASH_BILL_GENERATED",
+            module: "Billing",
+            reference_id: cb.folio_id,
+            reference_label: cb.invoice_number,
+            details: {
+              bill_number: cb.invoice_number,
+              amount: cb.total,
+              party_name: cb.party.name,
+              generated_by: user.id,
+              via: "split_bill",
+            },
+          });
+        }
+      }
       setStep(4);
       onDone?.(newFolioIds);
     } catch (e: any) {
