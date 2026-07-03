@@ -251,13 +251,16 @@ function BanquetBillPage() {
     const nextBillDiscAmt = computeBillDiscountAmount(nextNetSubtotal, nextBillDisc);
     const nextTaxable = Math.max(0, nextNetSubtotal - nextBillDiscAmt);
     const nextGst = isGst ? round2(nextTaxable * gstRate) : 0;
-    const nextTotal = round2(nextTaxable + nextGst);
+    const nextTotalRaw = round2(nextTaxable + nextGst);
+    const nextTotal = roundHalfUp(nextTotalRaw);
+    const nextRoundOff = round2(nextTotal - nextTotalRaw);
     const nextDiscountAmount = round2(nextFixedLineDisc + roomLineDiscTotal + nextBillDiscAmt);
     const nextBalance = Math.max(0, round2(nextTotal - totalPaid));
     return await supabase.from("banquet_bookings").update({
       ...patch,
       discount_amount: nextDiscountAmount,
       total_amount: nextTotal,
+      round_off_amount: nextRoundOff,
       balance_amount: nextBalance,
     } as any).eq("id", b.id);
   }
