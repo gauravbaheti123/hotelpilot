@@ -18,7 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth, hasRole } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
 import { inr, recomputeFolio } from "@/lib/billing";
 import { fireTrigger } from "@/lib/whatsapp";
@@ -63,9 +64,13 @@ interface SplitRow {
 
 export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props) {
   const { user, roles } = useAuth();
-  const canShiftMis = hasRole(roles, "manager") || hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const { can } = usePermissions();
+  // MIS shift: closest existing permission key is mis_ac/create (creating an MIS ledger entry).
+  const canShiftMis = can("mis_ac", "create");
   const [misOpen, setMisOpen] = useState(false);
-  const canSplit = canShiftMis; // manager / owner / superadmin only
+  // No dedicated split-bill permission key exists — split creates new folios/invoices,
+  // gate it on invoices/create as the closest available action.
+  const canSplit = can("invoices", "create");
   const [splitOpen, setSplitOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
