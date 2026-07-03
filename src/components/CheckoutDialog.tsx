@@ -57,6 +57,17 @@ interface PendingKot {
   gst_amount: number;
 }
 
+interface PendingPosCharge {
+  id: string;
+  category_name: string;
+  description: string;
+  qty: number;
+  rate: number;
+  amount: number;
+  gst_rate: number;
+  gst_amount: number;
+}
+
 interface SplitRow {
   mode: string;
   amount: string;
