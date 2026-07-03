@@ -683,14 +683,20 @@ function BanquetBillPage() {
                   <SummaryRow label="CGST 6%" value={inr(cgst)} />
                   <SummaryRow label="SGST 6%" value={inr(sgst)} />
                 </>)}
-                <SummaryRow label="Total" value={inr(total)} bold />
+                {Math.abs(roundOff) >= 0.01 && (
+                  <SummaryRow
+                    label="Round Off"
+                    value={`${roundOff >= 0 ? "+ " : "- "}${inr(Math.abs(roundOff))}`}
+                  />
+                )}
+                <SummaryRow label="Total" value={inrRound(total)} bold />
                 {advance > 0 && <SummaryRow label="Advance Received" value={`- ${inr(advance)}`} />}
                 {paidViaEventPayments > 0 && (
                   <SummaryRow label="Payments Received" value={`- ${inr(paidViaEventPayments)}`} />
                 )}
                 <SummaryRow
                   label="Balance Due"
-                  value={inr(balance)}
+                  value={inrRound(balance)}
                   bold
                   highlight={balance > 0 ? "red" : undefined}
                 />
