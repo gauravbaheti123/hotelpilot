@@ -742,9 +742,10 @@ function FolioPage() {
   const hasPending = pendingKots.length > 0;
   const canVoid = can("invoices", "delete");
   const canShiftMis = can("billing", "mis_shift");
-  // Feature 2: Manager / Owner may edit ANY bill regardless of status.
-  // Receptionist keeps current behaviour (edit only while open).
-  const canEditAnyStatus = canVoid;
+  // Feature 2: any role granted invoices/edit may edit ANY bill regardless of status
+  // (Owner + Manager by default). Previously this was mistakenly wired to invoices/delete,
+  // which hid the edit UI on settled/paid bills whenever a role had edit but not delete.
+  const canEditAnyStatus = can("invoices", "edit");
   const canEditNow = isOpen || canEditAnyStatus;
 
   async function markAllServed() {
