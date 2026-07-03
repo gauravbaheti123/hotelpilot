@@ -434,6 +434,79 @@ function PosPage() {
               {lines.reduce((s, l) => s + l.qty, 0)} item{lines.reduce((s, l) => s + l.qty, 0) === 1 ? "" : "s"} ready to post
             </Badge>
           )}
+
+          {/* Custom expense (goes to pos_charges as pending, requires "Add to Bill" on folio) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Custom Expense</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Ad-hoc charges (Laundry, Damage, etc.). Sits as <b>pending</b> until added to the guest's bill.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground">Category</label>
+                <Select value={ceCatId} onValueChange={setCeCatId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={posCategories.length ? "Select category" : "No categories — add in Masters → POS Categories"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {posCategories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Description</label>
+                <Input value={ceDesc} onChange={(e) => setCeDesc(e.target.value)} placeholder="e.g. 3 shirts + 2 trousers" />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">Qty</label>
+                  <Input type="number" value={ceQty} onChange={(e) => setCeQty(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Amount</label>
+                  <Input type="number" value={ceRate} onChange={(e) => setCeRate(e.target.value)} placeholder="0" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">GST %</label>
+                  <Input type="number" value={ceGst} onChange={(e) => setCeGst(e.target.value)} />
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                disabled={ceBusy || !bookingId || !ceCatId || !ceDesc.trim() || !canCreateCharge}
+                onClick={postCustomExpense}
+              >
+                <Plus className="h-4 w-4 mr-1" /> Add custom expense (pending)
+              </Button>
+
+              {pendingPos.length > 0 && (
+                <div className="border-t pt-2 space-y-1.5">
+                  <div className="text-xs font-medium text-muted-foreground uppercase">
+                    Pending on this booking ({pendingPos.length})
+                  </div>
+                  {pendingPos.map((p) => (
+                    <div key={p.id} className="flex justify-between text-xs bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                      <span className="truncate">
+                        <span className="font-medium">{p.category_name}</span> · {p.description}
+                      </span>
+                      <span className="font-medium">{inr(p.amount + p.gst_amount)}</span>
+                    </div>
+                  ))}
+                  {bookingId && (
+                    <Link to="/billing/folio/$bookingId" params={{ bookingId }} className="block">
+                      <Button variant="outline" size="sm" className="w-full mt-1">
+                        Open folio to add to bill →
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </AppShell>
