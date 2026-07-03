@@ -499,9 +499,9 @@ function BanquetBillPage() {
       Number(b.fb_charge) > 0 ? `F&B: ${inr(b.fb_charge)}` : "",
       roomSubtotalGross > 0 ? `Rooms: ${inr(roomSubtotalGross)}` : "",
       isGst ? `GST: ${inr(cgst + sgst)}` : "",
-      `*Total: ${inr(total)}*`,
+      `*Total: ${inrRound(total)}*`,
       `Advance: ${inr(advance)}`,
-      `Balance Due: ${inr(balance)}`,
+      `Balance Due: ${inrRound(balance)}`,
     ].filter(Boolean).join("\n");
     try {
       if (phone) {
