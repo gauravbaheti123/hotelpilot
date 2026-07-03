@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/superadmin/roles/$id")({
   component: EditRolePage,
 });
 
-const SECTIONS: { title: string; modules: { key: string; label: string }[] }[] = [
+const SECTIONS: { title: string; modules: { key: string; label: string; singleAction?: string }[] }[] = [
   { title: "Front Desk", modules: [
     { key: "dashboard", label: "Dashboard" },
     { key: "bookings", label: "Bookings" },
