@@ -55,7 +55,9 @@ interface PartyDetails {
 interface PaymentRow { mode: string; amount: string; reference: string }
 
 export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, onDone }: Props) {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  // Cash Bill toggle is strictly owner-only (superadmin excluded).
+  const isOwnerStrict = roles.includes("owner") && !roles.includes("superadmin");
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [splitType, setSplitType] = useState<SplitType>("same");
   const [bill1Ids, setBill1Ids] = useState<Set<string>>(new Set());
@@ -71,7 +73,9 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     name: guestName, mobile: guestMobile, gstin: guestGstin, bill_type: folioGst,
   });
   const [party2, setParty2] = useState<PartyDetails>({
-    name: "", mobile: "", gstin: "", bill_type: "cash_bill",
+    name: "", mobile: "", gstin: "",
+    // Non-owners cannot generate a cash bill — default silently to GST Invoice.
+    bill_type: isOwnerStrict ? "cash_bill" : "gst_invoice",
   });
 
   const [createdBills, setCreatedBills] = useState<
@@ -90,7 +94,10 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     setBusy(false);
     setCreatedBills([]);
     setParty1({ name: guestName, mobile: guestMobile, gstin: guestGstin, bill_type: folioGst });
-    setParty2({ name: "", mobile: "", gstin: "", bill_type: "cash_bill" });
+    setParty2({
+      name: "", mobile: "", gstin: "",
+      bill_type: isOwnerStrict ? "cash_bill" : "gst_invoice",
+    });
     const ids = new Set<string>();
     for (const c of charges) {
       if (c.charge_type !== "food") ids.add(c.id);
