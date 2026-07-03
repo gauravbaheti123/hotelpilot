@@ -89,6 +89,10 @@ function FolioPage() {
   const router = useRouter();
   const { user, roles } = useAuth();
   const { can } = usePermissions();
+  // Cash Bill toggle is strictly owner-only. Superadmin does NOT get this
+  // toggle, even in impersonation mode. All other roles silently default to
+  // GST Invoice — the toggle component itself is not rendered.
+  const isOwnerStrict = roles.includes("owner") && !roles.includes("superadmin");
   const [booking, setBooking] = useState<BookingCtx | null>(null);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
   const [folio, setFolio] = useState<Folio | null>(null);
@@ -318,8 +322,29 @@ function FolioPage() {
 
   async function toggleMode(mode: "cash" | "gst") {
     if (!folio) return;
+    if (mode === "cash" && !isOwnerStrict) {
+      toast.error("Only the property owner can generate a Cash Bill");
+      return;
+    }
     const bill_type = mode === "gst" ? "gst_invoice" : "cash_bill";
     await persistTotals(charges, payments, { gst_mode: mode, bill_type } as Partial<Folio>);
+    if (mode === "cash" && booking && user) {
+      logActivity({
+        property_id: folio.property_id,
+        user_id: user.id,
+        user_name: userDisplayName(user as any),
+        action_type: "CASH_BILL_GENERATED",
+        module: "Billing",
+        reference_id: folio.id,
+        reference_label: folio.invoice_number,
+        details: {
+          bill_number: folio.invoice_number,
+          amount: Number(folio.total_amount ?? 0),
+          guest_name: booking?.guests?.name ?? null,
+          generated_by: user.id,
+        },
+      });
+    }
     toast.success(`Mode: ${mode === "gst" ? "GST tax invoice" : "Cash bill"}`);
     load();
   }
@@ -862,18 +887,20 @@ function FolioPage() {
         {/* Bill Type controls (screen only) */}
         <Card className="print:hidden no-print">
           <CardContent className="flex flex-wrap items-end gap-3 p-4">
-            <div className="flex gap-2 rounded-md border p-1 bg-muted/30">
-              <button type="button" disabled={!isOpen} onClick={() => toggleMode("gst")}
-                className={`rounded px-3 py-1.5 text-sm font-medium transition ${isGst ? "text-white shadow" : "hover:bg-background"}`}
-                style={isGst ? { background: TEAL } : undefined}>
-                GST Invoice
-              </button>
-              <button type="button" disabled={!isOpen} onClick={() => toggleMode("cash")}
-                className={`rounded px-3 py-1.5 text-sm font-medium transition ${!isGst ? "text-white shadow" : "hover:bg-background"}`}
-                style={!isGst ? { background: TEAL } : undefined}>
-                Cash Bill
-              </button>
-            </div>
+            {isOwnerStrict && (
+              <div className="flex gap-2 rounded-md border p-1 bg-muted/30">
+                <button type="button" disabled={!isOpen} onClick={() => toggleMode("gst")}
+                  className={`rounded px-3 py-1.5 text-sm font-medium transition ${isGst ? "text-white shadow" : "hover:bg-background"}`}
+                  style={isGst ? { background: TEAL } : undefined}>
+                  GST Invoice
+                </button>
+                <button type="button" disabled={!isOpen} onClick={() => toggleMode("cash")}
+                  className={`rounded px-3 py-1.5 text-sm font-medium transition ${!isGst ? "text-white shadow" : "hover:bg-background"}`}
+                  style={!isGst ? { background: TEAL } : undefined}>
+                  Cash Bill
+                </button>
+              </div>
+            )}
             {isGst && (
               <>
                 <div className="space-y-1">
