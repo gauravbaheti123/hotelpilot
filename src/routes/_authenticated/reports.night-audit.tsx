@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -67,8 +68,10 @@ interface AuditReport {
 
 function NightAuditPage() {
   const { currentId: propertyId, current } = useCurrentProperty();
-  const { user, roles } = useAuth();
-  const isOwner = roles.includes("owner") || roles.includes("superadmin");
+  const { user } = useAuth();
+  const { can } = usePermissions();
+  // Night audit override / delete: use day_close (closest existing module).
+  const isOwner = can("day_close", "delete");
 
   const [date, setDate] = useState<string>(todayIso());
   const [notes, setNotes] = useState("");

@@ -14,6 +14,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { FOLIO_STATUS_TONE, inr } from "@/lib/billing";
 import { useAuth, hasRole } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { toast } from "sonner";
 import { Pencil, Trash2, FileSpreadsheet, Hash, AlertTriangle } from "lucide-react";
@@ -38,8 +39,13 @@ interface Row {
 function InvoicesPage() {
   const { currentId: propertyId } = useCurrentProperty();
   const { user, roles } = useAuth();
+  const { can } = usePermissions();
   const navigate = useNavigate();
-  const canEditDelete = hasRole(roles, "manager") || hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const canEdit = can("invoices", "edit");
+  const canDelete = can("invoices", "delete");
+  const canEditDelete = canEdit || canDelete;
+  // Bill renumbering is intentionally owner-only — no dedicated permission key
+  // exists for renumbering, so keep the hardcoded role gate.
   const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
 
   const [rows, setRows] = useState<Row[]>([]);

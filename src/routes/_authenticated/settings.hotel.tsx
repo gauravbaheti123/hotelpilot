@@ -15,6 +15,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -78,11 +79,11 @@ type FormState = Record<string, any>;
 function HotelSettingsPage() {
   const { current, currentId: propertyId, reload: reloadProps } = useCurrentProperty();
   const { roles } = useAuth();
+  const { can } = usePermissions();
   const isSuperadmin = roles.includes("superadmin");
   const isOwner = roles.includes("owner") || isSuperadmin;
-  const isManager = roles.includes("manager");
-  const readOnly = !isOwner && isManager;
-  const allowed = isOwner || isManager;
+  const allowed = can("settings_business", "view");
+  const readOnly = !can("settings_business", "edit");
 
   if (!propertyId) {
     return (

@@ -63,7 +63,7 @@ interface SplitRow {
 }
 
 export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props) {
-  const { user, roles } = useAuth();
+  const { user } = useAuth();
   const { can } = usePermissions();
   // MIS shift: closest existing permission key is mis_ac/create (creating an MIS ledger entry).
   const canShiftMis = can("mis_ac", "create");

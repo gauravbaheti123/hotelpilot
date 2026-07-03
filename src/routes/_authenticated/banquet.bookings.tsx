@@ -14,7 +14,8 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { BANQUET_STATUS_TONE } from "@/lib/banquet";
 import { PlusCircle, Trash2, AlertTriangle } from "lucide-react";
-import { useAuth, hasRole } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
 
 import { RequirePermission } from "@/components/RequirePermission";
@@ -33,8 +34,9 @@ interface Row {
 
 function BanquetBookingsPage() {
   const { currentId: propertyId } = useCurrentProperty();
-  const { user, roles } = useAuth();
-  const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const { user } = useAuth();
+  const { can } = usePermissions();
+  const isOwner = can("banquet", "delete");
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState("");
   const [delTarget, setDelTarget] = useState<Row | null>(null);
