@@ -133,7 +133,7 @@ function BoardPage() {
                       </DropdownMenu>
                     </div>
                     <div className="flex flex-wrap gap-1 mt-2">
-                      <Badge variant="outline" className={`${ROOM_STATUS_TONE[r.status]} text-[10px]`}>{r.status}</Badge>
+                      <Badge variant="outline" className={`${ROOM_STATUS_TONE[r.status]} text-[10px]`}>{r.status === "blocked" ? "event" : r.status}</Badge>
                       <Badge variant="outline" className={`${HK_STATUS_TONE[r.housekeeping_status]} text-[10px]`}>
                         {r.housekeeping_status.replace("_", " ")}
                       </Badge>

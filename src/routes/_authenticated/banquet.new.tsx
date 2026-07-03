@@ -15,8 +15,8 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { computeBanquetTotal, FUNCTION_TYPES } from "@/lib/banquet";
-import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RequirePermission } from "@/components/RequirePermission";
 import {
   pickAvailableRooms, commitRoomBlocks, nightsBetween,
@@ -28,8 +28,10 @@ export const Route = createFileRoute("/_authenticated/banquet/new")({
   component: () => (<RequirePermission module="banquet"><NewBanquetPage /></RequirePermission>),
 });
 
-interface Hall { id: string; name: string; capacity: number; hourly_rate: number; day_rate: number }
+interface Hall { id: string; name: string; capacity: number }
 interface Cat { id: string; name: string; base_rate?: number }
+interface RoomOpt { id: string; room_number: string; category_id: string | null; status: string; category_name: string | null }
+interface ExtraRow { point_name: string; amount: string }
 interface BlockRow {
   category_id: string;
   quantity: string;
@@ -44,6 +46,7 @@ function NewBanquetPage() {
   const { currentId: propertyId } = useCurrentProperty();
   const [halls, setHalls] = useState<Hall[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
+  const [allRooms, setAllRooms] = useState<RoomOpt[]>([]);
   const [saving, setSaving] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -62,17 +65,23 @@ function NewBanquetPage() {
   const [pax, setPax] = useState("100");
 
   // charges
-  const [packageRate, setPackageRate] = useState("0");
-  const [hallCharge, setHallCharge] = useState("0");
-  const [fbCharge, setFbCharge] = useState("0");
-  const [extraCharge, setExtraCharge] = useState("0");
+  const [eventPrice, setEventPrice] = useState("0");
   const [discount, setDiscount] = useState("0");
   const [advance, setAdvance] = useState("0");
   const [notes, setNotes] = useState("");
 
-  // Room block
-  const [blockOn, setBlockOn] = useState(false);
+  // Extras (repeatable named line items)
+  const [extras, setExtras] = useState<ExtraRow[]>([]);
+
+  // Rooms: two modes — single-assign or bulk-block
+  const [roomMode, setRoomMode] = useState<"none" | "single" | "bulk">("none");
   const [eventName, setEventName] = useState("");
+  // Single-room state
+  const [singleRoomId, setSingleRoomId] = useState("");
+  const [singleCheckIn, setSingleCheckIn] = useState(today);
+  const [singleCheckOut, setSingleCheckOut] = useState(today);
+  const [singleRate, setSingleRate] = useState("0");
+  // Bulk state
   const [blockRows, setBlockRows] = useState<BlockRow[]>([]);
   const [assignments, setAssignments] = useState<AssignedBlock[]>([]);
   const [showAssignments, setShowAssignments] = useState(false);
@@ -81,21 +90,39 @@ function NewBanquetPage() {
     if (!propertyId) return;
     (async () => {
       const { data } = await supabase.from("halls")
-        .select("id,name,capacity,hourly_rate,day_rate")
+        .select("id,name,capacity")
         .eq("property_id", propertyId).eq("is_active", true).order("name");
       setHalls((data ?? []) as Hall[]);
       const { data: cs } = await supabase.from("room_categories")
         .select("id, name, base_rate")
         .eq("property_id", propertyId).order("name");
       setCats((cs ?? []) as Cat[]);
+      const { data: rs } = await supabase.from("rooms")
+        .select("id,room_number,category_id,status,room_categories(name)")
+        .eq("property_id", propertyId).eq("is_active", true)
+        .eq("status", "vacant").order("room_number");
+      setAllRooms(((rs ?? []) as any[]).map((r) => ({
+        id: r.id, room_number: r.room_number, category_id: r.category_id,
+        status: r.status, category_name: r.room_categories?.name ?? null,
+      })));
     })();
   }, [propertyId]);
 
+  const extrasTotal = useMemo(
+    () => extras.reduce((s, x) => s + (Number(x.amount) || 0), 0),
+    [extras],
+  );
   const total = useMemo(() => computeBanquetTotal({
-    package_rate: Number(packageRate), pax: Number(pax),
-    hall_charge: Number(hallCharge), fb_charge: Number(fbCharge),
-    extra_charge: Number(extraCharge), discount_amount: Number(discount),
-  }), [packageRate, pax, hallCharge, fbCharge, extraCharge, discount]);
+    package_rate: 0, pax: Number(pax),
+    hall_charge: Number(eventPrice), fb_charge: 0,
+    extra_charge: extrasTotal, discount_amount: Number(discount),
+  }), [eventPrice, extrasTotal, pax, discount]);
+
+  function addExtra() { setExtras((p) => [...p, { point_name: "", amount: "" }]); }
+  function updateExtra(i: number, patch: Partial<ExtraRow>) {
+    setExtras((p) => p.map((r, idx) => idx === i ? { ...r, ...patch } : r));
+  }
+  function removeExtra(i: number) { setExtras((p) => p.filter((_, idx) => idx !== i)); }
 
   const blockSummary = useMemo(() => {
     let totalRooms = 0;
@@ -111,6 +138,15 @@ function NewBanquetPage() {
     const categories = new Set(blockRows.filter((r) => r.category_id).map((r) => r.category_id)).size;
     return { totalRooms, revenue, categories };
   }, [blockRows, cats]);
+
+  const summaryRoomRevenue = useMemo(() => {
+    if (roomMode === "bulk") return blockSummary.revenue;
+    if (roomMode === "single" && singleRoomId && Number(singleRate) > 0) {
+      const n = Math.max(1, nightsBetween(singleCheckIn, singleCheckOut));
+      return Number(singleRate) * n;
+    }
+    return 0;
+  }, [roomMode, blockSummary.revenue, singleRoomId, singleRate, singleCheckIn, singleCheckOut]);
 
   function addBlockRow() {
     setBlockRows((prev) => [...prev, {
@@ -160,7 +196,11 @@ function NewBanquetPage() {
     if (!guestName.trim() || !guestMobile.trim()) return toast.error("Guest name & mobile required");
     if (!hallId) return toast.error("Pick a hall");
     if (!eventDate || !startTime || !endTime) return toast.error("Event date/time required");
-    if (blockOn && blockRows.length > 0 && !eventName.trim()) return toast.error("Event name required for room block");
+    if ((roomMode === "single" || roomMode === "bulk") && !eventName.trim()) {
+      return toast.error("Event name required when assigning rooms");
+    }
+    if (roomMode === "single" && !singleRoomId) return toast.error("Pick a room to assign");
+    if (roomMode === "bulk" && blockRows.length === 0) return toast.error("Add at least one bulk block row");
     setSaving(true);
     try {
       const { data: g, error: ge } = await supabase.from("guests").insert({
@@ -174,9 +214,24 @@ function NewBanquetPage() {
 
       const advanceAmt = Number(advance) || 0;
 
-      // Prepare assignments if not already
-      let finalAssignments = assignments;
-      if (blockOn && blockRows.length > 0 && finalAssignments.length === 0) {
+      // Build assignments depending on roomMode
+      let finalAssignments: AssignedBlock[] = [];
+      if (roomMode === "single" && singleRoomId) {
+        const r = allRooms.find((x) => x.id === singleRoomId);
+        if (!r) throw new Error("Selected room no longer available");
+        finalAssignments = [{
+          room_id: r.id, room_number: r.room_number,
+          room_category: r.category_name ?? "",
+          category_id: r.category_id ?? "",
+          checkin_date: singleCheckIn,
+          checkout_date: singleCheckOut,
+          special_rate: Number(singleRate) || 0,
+          guest_name: guestName.trim(),
+          guest_mobile: guestMobile.trim(),
+        }];
+      } else if (roomMode === "bulk" && blockRows.length > 0) {
+        finalAssignments = assignments;
+        if (finalAssignments.length === 0) {
         const out: AssignedBlock[] = [];
         for (const row of blockRows) {
           if (!row.category_id) continue;
@@ -195,6 +250,7 @@ function NewBanquetPage() {
           }));
         }
         finalAssignments = out;
+        }
       }
 
       const totalRoomCharges = finalAssignments.reduce((sum, a) => {
@@ -207,16 +263,16 @@ function NewBanquetPage() {
         property_id: propertyId,
         hall_id: hallId,
         guest_id: g!.id,
-        event_name: blockOn ? eventName : null,
+        event_name: roomMode !== "none" ? eventName : null,
         function_type: functionType,
         event_date: eventDate,
         start_time: startTime,
         end_time: endTime,
         pax: Number(pax) || 0,
-        package_rate: Number(packageRate) || 0,
-        hall_charge: Number(hallCharge) || 0,
-        fb_charge: Number(fbCharge) || 0,
-        extra_charge: Number(extraCharge) || 0,
+        package_rate: 0,
+        hall_charge: Number(eventPrice) || 0,
+        fb_charge: 0,
+        extra_charge: extrasTotal,
         discount_amount: Number(discount) || 0,
         total_amount: combinedTotal,
         advance_amount: advanceAmt,
@@ -228,8 +284,26 @@ function NewBanquetPage() {
       } as any).select("id").single();
       if (be) throw be;
 
+      // Persist extras
+      const extraRows = extras
+        .map((x, idx) => ({ point_name: x.point_name.trim(), amount: Number(x.amount) || 0, sort_order: idx }))
+        .filter((x) => x.point_name && x.amount > 0);
+      if (extraRows.length > 0) {
+        const { error: exErr } = await supabase.from("banquet_extra_charges").insert(
+          extraRows.map((x) => ({
+            banquet_booking_id: bq!.id,
+            property_id: propertyId,
+            point_name: x.point_name,
+            amount: x.amount,
+            sort_order: x.sort_order,
+            created_by: user?.id ?? null,
+          })) as any,
+        );
+        if (exErr) throw exErr;
+      }
+
       let roomsBlocked = 0;
-      if (blockOn && finalAssignments.length > 0) {
+      if (roomMode !== "none" && finalAssignments.length > 0) {
         roomsBlocked = await commitRoomBlocks({
           propertyId,
           banquetBookingId: bq!.id,
@@ -296,10 +370,7 @@ function NewBanquetPage() {
           <Card>
             <CardHeader><CardTitle className="text-base">Charges</CardTitle></CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-3">
-              <Field label="Package rate / pax (₹)"><Input type="number" value={packageRate} onChange={(e) => setPackageRate(e.target.value)} /></Field>
-              <Field label="Hall charge (₹)"><Input type="number" value={hallCharge} onChange={(e) => setHallCharge(e.target.value)} /></Field>
-              <Field label="F&B charge (₹)"><Input type="number" value={fbCharge} onChange={(e) => setFbCharge(e.target.value)} /></Field>
-              <Field label="Extra (₹)"><Input type="number" value={extraCharge} onChange={(e) => setExtraCharge(e.target.value)} /></Field>
+              <Field label="Event Price (₹) *"><Input type="number" value={eventPrice} onChange={(e) => setEventPrice(e.target.value)} /></Field>
               <Field label="Discount (₹)"><Input type="number" value={discount} onChange={(e) => setDiscount(e.target.value)} /></Field>
               <Field label="Advance (₹)"><Input type="number" value={advance} onChange={(e) => setAdvance(e.target.value)} /></Field>
               <Field label="Notes" wide><Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
@@ -308,19 +379,86 @@ function NewBanquetPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-base">Room Block for Event</CardTitle>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs">Add room block</Label>
-                <Switch checked={blockOn} onCheckedChange={setBlockOn} />
-              </div>
+              <CardTitle className="text-base">Extra Charges</CardTitle>
+              <Button type="button" variant="outline" size="sm" onClick={addExtra}>
+                <Plus className="h-4 w-4 mr-1" /> Add Extra Charge
+              </Button>
             </CardHeader>
-            {blockOn && (
-              <CardContent className="space-y-3">
-                <Field label="Event Name * (shown on dashboard cards)">
-                  <Input placeholder="e.g. Sharma Wedding" value={eventName} onChange={(e) => setEventName(e.target.value)} />
-                </Field>
+            <CardContent className="space-y-2">
+              {extras.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Optional. Add named line items (e.g. "DJ Setup", "Extra Chairs", "Decoration") that appear on the event bill.
+                </p>
+              )}
+              {extras.map((x, i) => (
+                <div key={i} className="grid gap-2 sm:grid-cols-[1.5fr_140px_30px] items-end">
+                  <Field label={i === 0 ? "Point name" : ""}>
+                    <Input placeholder="e.g. DJ Setup" value={x.point_name}
+                      onChange={(e) => updateExtra(i, { point_name: e.target.value })} />
+                  </Field>
+                  <Field label={i === 0 ? "Amount (₹)" : ""}>
+                    <Input type="number" value={x.amount}
+                      onChange={(e) => updateExtra(i, { amount: e.target.value })} />
+                  </Field>
+                  <Button type="button" variant="ghost" size="icon"
+                    className="h-8 w-8 text-destructive" onClick={() => removeExtra(i)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
 
-                <div className="space-y-2">
+          <Card>
+            <CardHeader><CardTitle className="text-base">Rooms · Assign Guest</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <Tabs value={roomMode} onValueChange={(v) => setRoomMode(v as any)}>
+                <TabsList>
+                  <TabsTrigger value="none">None</TabsTrigger>
+                  <TabsTrigger value="single">Assign One Room</TabsTrigger>
+                  <TabsTrigger value="bulk">Block Multiple Rooms</TabsTrigger>
+                </TabsList>
+
+                {roomMode !== "none" && (
+                  <div className="pt-3">
+                    <Field label="Event Name * (shown on dashboard cards)">
+                      <Input placeholder="e.g. Sharma Wedding" value={eventName} onChange={(e) => setEventName(e.target.value)} />
+                    </Field>
+                  </div>
+                )}
+
+                <TabsContent value="single" className="space-y-3 pt-3">
+                  <div className="grid gap-2 sm:grid-cols-4">
+                    <Field label="Room *">
+                      <Select value={singleRoomId} onValueChange={setSingleRoomId}>
+                        <SelectTrigger><SelectValue placeholder="Pick vacant room" /></SelectTrigger>
+                        <SelectContent>
+                          {allRooms.length === 0 && <div className="px-2 py-1 text-xs text-muted-foreground">No vacant rooms.</div>}
+                          {allRooms.map((r) => (
+                            <SelectItem key={r.id} value={r.id}>
+                              {r.room_number} {r.category_name ? `· ${r.category_name}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field label="Check-in">
+                      <Input type="date" value={singleCheckIn} onChange={(e) => setSingleCheckIn(e.target.value)} />
+                    </Field>
+                    <Field label="Check-out">
+                      <Input type="date" value={singleCheckOut} onChange={(e) => setSingleCheckOut(e.target.value)} />
+                    </Field>
+                    <Field label="Rate / night (₹)">
+                      <Input type="number" value={singleRate} onChange={(e) => setSingleRate(e.target.value)} />
+                    </Field>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Assigns this single room to the event host guest (name/mobile above).
+                  </p>
+                </TabsContent>
+
+                <TabsContent value="bulk" className="space-y-3 pt-3">
+                  <div className="space-y-2">
                   {blockRows.map((r, i) => {
                     const cat = cats.find((c) => c.id === r.category_id);
                     return (
@@ -384,28 +522,32 @@ function NewBanquetPage() {
                     <p className="text-xs text-muted-foreground">Leave blank to mark as "Unassigned" — can be filled later from event page or dashboard.</p>
                   </div>
                 )}
-              </CardContent>
-            )}
+                </TabsContent>
+              </Tabs>
+            </CardContent>
           </Card>
         </div>
 
         <Card className="self-start sticky top-4">
           <CardHeader><CardTitle className="text-base">Summary</CardTitle></CardHeader>
           <CardContent className="text-sm space-y-2">
-            <Row k="Package" v={`₹${(Number(packageRate) * Number(pax)).toLocaleString("en-IN")}`} />
-            <Row k="Hall" v={`₹${Number(hallCharge).toLocaleString("en-IN")}`} />
-            <Row k="F&B" v={`₹${Number(fbCharge).toLocaleString("en-IN")}`} />
-            <Row k="Extra" v={`₹${Number(extraCharge).toLocaleString("en-IN")}`} />
+            <Row k="Event Price" v={`₹${Number(eventPrice).toLocaleString("en-IN")}`} />
+            {extrasTotal > 0 && <Row k="Extras" v={`₹${extrasTotal.toLocaleString("en-IN")}`} />}
             {Number(discount) > 0 && <Row k="Discount" v={`- ₹${Number(discount).toLocaleString("en-IN")}`} />}
-            {blockOn && blockSummary.revenue > 0 && <Row k={`Rooms (${blockSummary.totalRooms})`} v={`₹${blockSummary.revenue.toLocaleString("en-IN")}`} />}
+            {roomMode === "bulk" && blockSummary.revenue > 0 && (
+              <Row k={`Rooms (${blockSummary.totalRooms})`} v={`₹${blockSummary.revenue.toLocaleString("en-IN")}`} />
+            )}
+            {roomMode === "single" && singleRoomId && Number(singleRate) > 0 && (
+              <Row k="Room (1)" v={`₹${(Number(singleRate) * Math.max(1, nightsBetween(singleCheckIn, singleCheckOut))).toLocaleString("en-IN")}`} />
+            )}
             <div className="border-t pt-2">
-              <Row k="Total" v={`₹${(total + (blockOn ? blockSummary.revenue : 0)).toLocaleString("en-IN")}`} bold />
+              <Row k="Total" v={`₹${(total + summaryRoomRevenue).toLocaleString("en-IN")}`} bold />
               <Row k="Advance" v={`₹${Number(advance).toLocaleString("en-IN")}`} />
-              <Row k="Balance" v={`₹${Math.max(0, total + (blockOn ? blockSummary.revenue : 0) - Number(advance)).toLocaleString("en-IN")}`} bold highlight />
+              <Row k="Balance" v={`₹${Math.max(0, total + summaryRoomRevenue - Number(advance)).toLocaleString("en-IN")}`} bold highlight />
             </div>
             <div className="pt-3 flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => router.history.back()}>Cancel</Button>
-              <Button className="flex-1" onClick={save} disabled={saving}>{saving ? "Saving…" : "Save event"}</Button>
+              <Button className="flex-1" onClick={save} disabled={saving}>{saving ? "Saving…" : "Assign Guest / Save"}</Button>
             </div>
           </CardContent>
         </Card>

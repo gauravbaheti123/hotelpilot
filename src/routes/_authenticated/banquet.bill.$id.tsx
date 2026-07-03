@@ -46,6 +46,14 @@ interface Bulk {
   discount_value?: number | null;
   discount_amount?: number | null;
 }
+interface ExtraCharge {
+  id: string;
+  point_name: string;
+  amount: number;
+  discount_type: DiscType | null;
+  discount_value: number | null;
+  discount_amount: number | null;
+}
 interface PropertyInfo {
   name: string; gstin: string | null; address: string | null;
   city: string | null; state: string | null; pincode: string | null;
@@ -70,6 +78,7 @@ function BanquetBillPage() {
   const { can } = usePermissions();
   const [b, setB] = useState<Bq | null>(null);
   const [bulk, setBulk] = useState<Bulk[]>([]);
+  const [extras, setExtras] = useState<ExtraCharge[]>([]);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
   const [billType, setBillType] = useState<"gst_invoice" | "cash_bill">("gst_invoice");
   const [loading, setLoading] = useState(true);
@@ -91,6 +100,7 @@ function BanquetBillPage() {
     | { kind: "bill" }
     | { kind: "line"; lineKey: string; base: number; description: string }
     | { kind: "room"; rowId: string; base: number; description: string }
+    | { kind: "extra"; rowId: string; base: number; description: string }
   >({ kind: "bill" });
 
   const load = useCallback(async () => {
@@ -117,6 +127,11 @@ function BanquetBillPage() {
     ]);
     setBulk(((br ?? []) as unknown) as Bulk[]);
     setProperty((p ?? null) as PropertyInfo | null);
+    const { data: ex } = await supabase.from("banquet_extra_charges")
+      .select("id,point_name,amount,discount_type,discount_value,discount_amount")
+      .eq("banquet_booking_id", id)
+      .order("sort_order", { ascending: true });
+    setExtras(((ex ?? []) as unknown) as ExtraCharge[]);
     const { data: pp } = await supabase.from("event_payments" as any)
       .select("id,amount,payment_mode,reference,paid_at,notes")
       .eq("event_id", id).order("paid_at", { ascending: false });
@@ -190,10 +205,17 @@ function BanquetBillPage() {
   };
   const roomSubtotalGross = bulk.reduce((s, r) => s + Number(r.rate || 0) * Number(r.nights || 0), 0);
   const roomLineDiscTotal = bulk.reduce((s, r) => s + roomDiscAmt(r), 0);
+  const extraDiscAmt = (e: ExtraCharge) => {
+    const base = Number(e.amount || 0);
+    const raw = Number(e.discount_amount ?? 0);
+    return Math.max(0, Math.min(raw, base));
+  };
+  const extrasSubtotalGross = extras.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const extrasLineDiscTotal = extras.reduce((s, e) => s + extraDiscAmt(e), 0);
   const subtotal =
-    lineBase.hall + lineBase.package + lineBase.fb + lineBase.extra + roomSubtotalGross;
+    lineBase.hall + lineBase.package + lineBase.fb + lineBase.extra + roomSubtotalGross + extrasSubtotalGross;
   const fixedLineDiscTotal = lineDiscAmt("hall") + lineDiscAmt("package") + lineDiscAmt("fb") + lineDiscAmt("extra");
-  const totalLineDisc = fixedLineDiscTotal + roomLineDiscTotal;
+  const totalLineDisc = fixedLineDiscTotal + roomLineDiscTotal + extrasLineDiscTotal;
   const netSubtotal = Math.max(0, subtotal - totalLineDisc);
   const billDisc: BillDiscount | null =
     b.discount_type && Number(b.discount_value) > 0
@@ -231,6 +253,11 @@ function BanquetBillPage() {
   function openRoomDiscount(rowId: string, base: number, description: string) {
     if (base <= 0) return;
     setDiscTarget({ kind: "room", rowId, base, description });
+    setDiscOpen(true);
+  }
+  function openExtraDiscount(rowId: string, base: number, description: string) {
+    if (base <= 0) return;
+    setDiscTarget({ kind: "extra", rowId, base, description });
     setDiscOpen(true);
   }
 
@@ -325,6 +352,26 @@ function BanquetBillPage() {
         },
       });
       toast.success(value > 0 ? "Line discount applied" : "Line discount cleared");
+    } else if (discTarget.kind === "extra") {
+      const { error: eerr } = await supabase.from("banquet_extra_charges").update({
+        discount_type: value > 0 ? type : null,
+        discount_value: value > 0 ? value : 0,
+        discount_amount: value > 0 ? rupees : 0,
+      } as any).eq("id", discTarget.rowId);
+      if (eerr) { toast.error(eerr.message); return; }
+      await persistBanquetDiscount({});
+      logActivity({
+        property_id: b.property_id, user_id: user.id, user_name: userDisplayName(user as any),
+        action_type: "DISCOUNT_APPLIED", module: "Banquet",
+        reference_id: b.id, reference_label: b.banquet_number,
+        details: {
+          bill_number: b.banquet_number, level: "line_item",
+          line_description: discTarget.description,
+          discount_type: type, discount_value: value, discount_amount: rupees,
+          applied_by: userDisplayName(user as any), role: roles.join(","),
+        },
+      });
+      toast.success(value > 0 ? "Line discount applied" : "Line discount cleared");
     }
     load();
   }
@@ -332,7 +379,8 @@ function BanquetBillPage() {
   const discBase =
     discTarget.kind === "bill" ? netSubtotal :
     discTarget.kind === "line" ? discTarget.base :
-    discTarget.kind === "room" ? discTarget.base : 0;
+    discTarget.kind === "room" ? discTarget.base :
+    discTarget.kind === "extra" ? discTarget.base : 0;
   const discInitial: { type: DiscType; value: number } = (() => {
     if (discTarget.kind === "bill") {
       return { type: (b.discount_type as DiscType) ?? "percent", value: Number(b.discount_value ?? 0) };
@@ -345,12 +393,17 @@ function BanquetBillPage() {
       const r = bulk.find((x) => x.id === discTarget.rowId);
       return { type: (r?.discount_type as DiscType) ?? "percent", value: Number(r?.discount_value ?? 0) };
     }
+    if (discTarget.kind === "extra") {
+      const e = extras.find((x) => x.id === discTarget.rowId);
+      return { type: (e?.discount_type as DiscType) ?? "percent", value: Number(e?.discount_value ?? 0) };
+    }
     return { type: "percent", value: 0 };
   })();
   const discHasExisting =
     (discTarget.kind === "bill" && Number(b.discount_value ?? 0) > 0) ||
     (discTarget.kind === "line" && Number(lineDiscMap?.[discTarget.lineKey]?.value ?? 0) > 0) ||
-    (discTarget.kind === "room" && Number(bulk.find((x) => x.id === discTarget.rowId)?.discount_value ?? 0) > 0);
+    (discTarget.kind === "room" && Number(bulk.find((x) => x.id === discTarget.rowId)?.discount_value ?? 0) > 0) ||
+    (discTarget.kind === "extra" && Number(extras.find((x) => x.id === discTarget.rowId)?.discount_value ?? 0) > 0);
 
   async function handlePrint() {
     if (!b) return;
@@ -667,6 +720,24 @@ function BanquetBillPage() {
                   rows={[{ label: "Extra Charges", amount: lineBase.extra, lineKey: "extra",
                     disc: lineDiscAmt("extra"), discMeta: lineDiscMap?.extra }]}
                   onLineClick={(row) => openLineDiscount(row.lineKey, row.amount, row.label)}
+                />
+              </>)}
+
+              {extras.length > 0 && (<>
+                <SectionTitle>Extras</SectionTitle>
+                <DiscLineTable
+                  rows={extras.map((e) => ({
+                    label: e.point_name,
+                    amount: Number(e.amount || 0),
+                    lineKey: `extra:${e.id}`,
+                    rowId: e.id,
+                    disc: extraDiscAmt(e),
+                    discMeta: e.discount_type && Number(e.discount_value) > 0
+                      ? { type: e.discount_type, value: Number(e.discount_value), amount: Number(e.discount_amount) }
+                      : null,
+                  }))}
+                  onLineClick={(row) => row.rowId && openExtraDiscount(row.rowId, row.amount, row.label)}
+                  footer={extras.length > 1 ? ["Extras Subtotal", extrasSubtotalGross] : undefined}
                 />
               </>)}
 

@@ -432,8 +432,8 @@ function BanquetEventPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2"><BedDouble className="h-4 w-4" /> Rooms</CardTitle>
-            {editable && <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-1" /> Add room</Button>}
+            <CardTitle className="text-base flex items-center gap-2"><BedDouble className="h-4 w-4" /> Rooms · Assign Guest</CardTitle>
+            {editable && <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-1" /> Assign Guest / Block Room</Button>}
           </CardHeader>
           <CardContent>
             {blocks.length === 0 ? (
@@ -463,7 +463,11 @@ function BanquetEventPage() {
                       blk.status === "checked_out" ? "bg-emerald-100 text-emerald-800" :
                       blk.status === "cancelled" ? "bg-rose-100 text-rose-800" :
                       "bg-purple-100 text-purple-800"
-                    }>{blk.status.replace("_", " ")}</Badge>
+                    }>{
+                      blk.status === "blocked"
+                        ? (blk.guest_name ? "assigned" : "unassigned")
+                        : blk.status.replace("_", " ")
+                    }</Badge>
                     <div className="flex flex-wrap gap-1">
                       {isBlocked && !hasGuest && (
                         <Button size="sm" variant="outline" onClick={() => openAssign(blk)}><UserPlus className="h-3.5 w-3.5 mr-1" />Assign</Button>
@@ -500,7 +504,7 @@ function BanquetEventPage() {
 
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogContent>
-            <DialogHeader><DialogTitle>Add room to block</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>Assign guest / block room</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Specific room (optional)</Label>
