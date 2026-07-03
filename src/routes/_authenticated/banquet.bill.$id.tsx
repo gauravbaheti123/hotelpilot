@@ -135,7 +135,7 @@ function BanquetBillPage() {
   const totalPaid = advance + paidViaEventPayments;
   const balance = Math.max(0, total - totalPaid);
   const isSettled = balance < 0.01;
-  const canShiftMis = can("mis_ac", "create");
+  const canShiftMis = can("billing", "mis_shift");
 
   async function handlePrint() {
     if (!b) return;
