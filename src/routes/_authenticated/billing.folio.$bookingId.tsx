@@ -463,6 +463,127 @@ function FolioPage() {
     load();
   }
 
+  // ---------- DISCOUNT HANDLERS ----------
+  const unlimitedDisc = () => hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const capPctForRole = () => (unlimitedDisc() ? 100 : Math.max(0, Math.min(100, Number(maxDiscPct) || 0)));
+
+  function openBillDiscount() {
+    if (!folio) return;
+    setDiscTarget({ kind: "bill" });
+    setDiscType((folio.discount_type as "percent" | "amount") ?? "percent");
+    setDiscValue(String(folio.discount_value ?? ""));
+    setDiscOpen(true);
+  }
+  function openLineDiscount(c: Charge) {
+    setDiscTarget({ kind: "line", chargeId: c.id, base: Number(c.amount), description: c.description });
+    setDiscType((c.discount_type as "percent" | "amount") ?? "percent");
+    setDiscValue(String(c.discount_value ?? ""));
+    setDiscOpen(true);
+  }
+
+  /** Convert (type,value,base) to a positive rupee amount, clamped to base. */
+  function discountToRupees(type: "percent" | "amount", value: number, base: number): number {
+    if (!value || value <= 0 || base <= 0) return 0;
+    if (type === "percent") return Math.max(0, Math.min(100, value)) * base / 100;
+    return Math.min(value, base);
+  }
+  /** Effective % of a base regardless of input type. */
+  function effectivePct(type: "percent" | "amount", value: number, base: number): number {
+    if (base <= 0 || !value || value <= 0) return 0;
+    if (type === "percent") return Math.max(0, Math.min(100, value));
+    return (value / base) * 100;
+  }
+
+  async function saveDiscount() {
+    if (!folio || !booking) return;
+    const val = Number(discValue);
+    if (!Number.isFinite(val) || val < 0) return toast.error("Enter a valid discount");
+    if (!isOpen && !canEditAnyStatus) return toast.error("Only manager/owner can edit a settled bill");
+
+    const cap = capPctForRole();
+
+    if (discTarget.kind === "bill") {
+      // base = sum of non-discount lines minus their per-line discounts
+      const base = charges.reduce((s, c) => {
+        if (c.charge_type === "discount" || c.charge_type === "tax") return s;
+        const amt = Math.abs(Number(c.amount) || 0);
+        const ld = Math.min(Number(c.discount_amount) || 0, amt);
+        return s + (amt - ld);
+      }, 0);
+      const pct = effectivePct(discType, val, base);
+      if (val > 0 && pct > cap + 0.01 && !unlimitedDisc()) {
+        return toast.error(`Max discount allowed for your role is ${cap}%`);
+      }
+      const rupees = discountToRupees(discType, val, base);
+      const { error } = await supabase.from("folios").update({
+        discount_type: val > 0 ? discType : null,
+        discount_value: val > 0 ? val : 0,
+      } as any).eq("id", folio.id);
+      if (error) return toast.error(error.message);
+      await persistTotals(charges, payments, {
+        discount_type: val > 0 ? discType : undefined,
+        discount_value: val > 0 ? val : 0,
+      } as Partial<Folio>);
+      logActivity({
+        property_id: booking.property_id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "DISCOUNT_APPLIED",
+        module: "Billing",
+        reference_id: folio.id,
+        reference_label: folio.invoice_number,
+        details: {
+          bill_number: folio.invoice_number,
+          level: "bill",
+          discount_type: discType,
+          discount_value: val,
+          discount_amount: round2(rupees),
+          applied_by: userDisplayName(user as any),
+          role: roles.join(","),
+        },
+      });
+      toast.success(val > 0 ? "Bill discount applied" : "Bill discount cleared");
+    } else {
+      const base = Math.abs(discTarget.base);
+      const pct = effectivePct(discType, val, base);
+      if (val > 0 && pct > cap + 0.01 && !unlimitedDisc()) {
+        return toast.error(`Max discount allowed for your role is ${cap}%`);
+      }
+      const rupees = discountToRupees(discType, val, base);
+      const { error } = await supabase.from("folio_charges").update({
+        discount_type: val > 0 ? discType : null,
+        discount_value: val > 0 ? val : 0,
+        discount_amount: round2(rupees),
+      } as any).eq("id", discTarget.chargeId);
+      if (error) return toast.error(error.message);
+      const next = await refetchCharges();
+      await persistTotals(next, payments);
+      logActivity({
+        property_id: booking.property_id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "DISCOUNT_APPLIED",
+        module: "Billing",
+        reference_id: folio.id,
+        reference_label: folio.invoice_number,
+        details: {
+          bill_number: folio.invoice_number,
+          level: "line_item",
+          line_description: discTarget.description,
+          discount_type: discType,
+          discount_value: val,
+          discount_amount: round2(rupees),
+          applied_by: userDisplayName(user as any),
+          role: roles.join(","),
+        },
+      });
+      toast.success(val > 0 ? "Line discount applied" : "Line discount cleared");
+    }
+    setDiscOpen(false);
+    setDiscValue("");
+    load();
+  }
+
   async function addPayment() {
     if (!folio || !booking) return;
     const amt = Number(payAmount);
