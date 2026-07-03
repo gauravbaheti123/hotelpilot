@@ -829,9 +829,9 @@ function FolioPage() {
       subFood > 0 ? `Food & beverage: ${inr(subFood)}` : "",
       subSundry > 0 ? `Sundry: ${inr(subSundry)}` : "",
       isGst ? `GST: ${inr(folio.gst_amount)}` : "",
-      `*Grand total: ${inr(folio.total_amount)}*`,
+      `*Grand total: ${inrRound(folio.total_amount)}*`,
       `Paid: ${inr(folio.paid_amount)}`,
-      `Balance: ${inr(folio.balance_amount)}`,
+      `Balance: ${inrRound(folio.balance_amount)}`,
       ``,
       `Thank you for staying with us.`,
     ].filter(Boolean).join("\n");
@@ -863,7 +863,7 @@ function FolioPage() {
       return toast.error("Resolve pending food orders before checkout");
     }
     if (Number(folio.balance_amount) > 0.01) {
-      return toast.error(`Collect ${inr(folio.balance_amount)} before checkout`);
+      return toast.error(`Collect ${inrRound(folio.balance_amount)} before checkout`);
     }
     setCheckoutOpen(true);
   }
@@ -887,9 +887,9 @@ function FolioPage() {
       `Dear ${booking.guests?.name ?? "Guest"},\n\n` +
       `Please find your ${isGst ? "tax invoice" : "receipt"} ${folio.invoice_number} for ` +
       `your stay from ${booking.check_in} to ${booking.check_out}.\n\n` +
-      `Grand Total: ${inr(folio.total_amount)}\n` +
+      `Grand Total: ${inrRound(folio.total_amount)}\n` +
       `Paid: ${inr(folio.paid_amount)}\n` +
-      `Balance: ${inr(folio.balance_amount)}\n\n` +
+      `Balance: ${inrRound(folio.balance_amount)}\n\n` +
       `Thank you for staying with us.\n${property?.name ?? ""}`
     );
     setEmailOpen(true);
