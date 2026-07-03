@@ -1246,6 +1246,12 @@ function FolioPage() {
                     <td>
                       <div>{c.description}</div>
                       {isGst && <div style={{ fontSize: 10, color: "#666" }}>GST {Number(c.gst_rate)}%</div>}
+                      {Number(c.discount_amount) > 0 && (
+                        <div style={{ fontSize: 10, color: "#059669" }}>
+                          Discount {c.discount_type === "percent" ? `${Number(c.discount_value)}%` : `₹${Number(c.discount_value)}`}
+                          {" — "}-{inr(Number(c.discount_amount))}
+                        </div>
+                      )}
                     </td>
                     {isGst && (
                       <td style={{ fontSize: 11 }}>
@@ -1254,12 +1260,31 @@ function FolioPage() {
                     )}
                     <td style={{ textAlign: "right" }}>{Number(c.qty)}</td>
                     <td style={{ textAlign: "right" }}>{inr(c.rate)}</td>
-                    <td style={{ textAlign: "right", fontWeight: 600 }}>{inr(c.amount)}</td>
+                    <td style={{ textAlign: "right", fontWeight: 600 }}>
+                      {Number(c.discount_amount) > 0 ? (
+                        <>
+                          <span style={{ textDecoration: "line-through", color: "#999", fontWeight: 400, marginRight: 6 }}>{inr(c.amount)}</span>
+                          {inr(Number(c.amount) - Number(c.discount_amount))}
+                        </>
+                      ) : inr(c.amount)}
+                    </td>
                     {canEditNow && (
                       <td className="print:hidden" style={{ textAlign: "right" }}>
-                        <button onClick={() => removeCharge(c.id)} className="text-destructive">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          {c.charge_type !== "discount" && c.charge_type !== "tax" && (
+                            <button
+                              type="button"
+                              onClick={() => openLineDiscount(c)}
+                              className="text-emerald-700"
+                              title="Apply line-item discount"
+                            >
+                              <Percent className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          <button onClick={() => removeCharge(c.id)} className="text-destructive">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
