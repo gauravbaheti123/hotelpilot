@@ -43,7 +43,6 @@ function InvoicesPage() {
   const navigate = useNavigate();
   const canEdit = can("invoices", "edit");
   const canDelete = can("invoices", "delete");
-  const canEditDelete = canEdit || canDelete;
   // Bill renumbering is intentionally owner-only — no dedicated permission key
   // exists for renumbering, so keep the hardcoded role gate.
   const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
