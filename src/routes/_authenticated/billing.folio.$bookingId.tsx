@@ -125,6 +125,15 @@ function FolioPage() {
   const [voidOpen, setVoidOpen] = useState(false);
   const [voidReason, setVoidReason] = useState("");
 
+  // Discount dialog (bill-level or line-item)
+  const [discOpen, setDiscOpen] = useState(false);
+  const [discTarget, setDiscTarget] = useState<
+    | { kind: "bill" }
+    | { kind: "line"; chargeId: string; base: number; description: string }
+  >({ kind: "bill" });
+  const [discType, setDiscType] = useState<"percent" | "amount">("percent");
+  const [discValue, setDiscValue] = useState<string>("");
+
   // Pending KOT lock state
   const [pendingKots, setPendingKots] = useState<PendingKot[]>([]);
   const [cancelOpen, setCancelOpen] = useState(false);
