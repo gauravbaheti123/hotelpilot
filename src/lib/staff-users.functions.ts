@@ -3,6 +3,36 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 type AppRole = "manager" | "receptionist" | "housekeeping" | "kitchen";
 
+/** Fire-and-forget activity log writer for server-fn callers. Never throws. */
+async function logServerActivity(
+  supabase: any,
+  input: {
+    property_id: string | null;
+    user_id: string | null;
+    action_type: string;
+    module: string;
+    reference_id?: string | null;
+    reference_label?: string | null;
+    details?: Record<string, unknown>;
+  },
+) {
+  try {
+    if (!input.property_id || !input.user_id) return;
+    await supabase.from("activity_log").insert({
+      property_id: input.property_id,
+      user_id: input.user_id,
+      user_name: "System",
+      action_type: input.action_type,
+      module: input.module,
+      reference_id: input.reference_id ?? null,
+      reference_label: input.reference_label ?? null,
+      details: input.details ?? {},
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
 async function assertCallerIsOwnerOrSuper(context: any) {
   const { data: isSuper } = await context.supabase.rpc("is_superadmin", { _uid: context.userId });
   if (isSuper) return true;
@@ -84,6 +114,36 @@ export const createStaffUser = createServerFn({ method: "POST" })
     } else if (data.role_id) {
       await supabaseAdmin.from("user_roles").update({ role_id: data.role_id }).eq("id", existing.id);
     }
+    await logServerActivity(supabaseAdmin, {
+      property_id: data.property_id,
+      user_id: context.userId,
+      action_type: "USER_CREATED",
+      module: "Superadmin",
+      reference_id: userId,
+      reference_label: data.email,
+      details: {
+        user_id: userId,
+        email: data.email,
+        role_name: data.role,
+        property_id: data.property_id,
+        created_by: context.userId,
+      },
+    });
+    await logServerActivity(supabaseAdmin, {
+      property_id: data.property_id,
+      user_id: context.userId,
+      action_type: "USER_ROLE_ASSIGNED",
+      module: "Superadmin",
+      reference_id: userId,
+      reference_label: data.email,
+      details: {
+        user_id: userId,
+        email: data.email,
+        role_name: data.role,
+        property_id: data.property_id,
+        created_by: context.userId,
+      },
+    });
     return { user_id: userId, email: data.email };
   });
 
@@ -188,6 +248,21 @@ export const assignRoleTemplate = createServerFn({ method: "POST" })
       .update({ role_id: data.role_id ?? null })
       .eq("id", data.ur_id);
     if (error) throw error;
+    await logServerActivity(supabaseAdmin, {
+      property_id: ur.property_id,
+      user_id: context.userId,
+      action_type: "USER_ROLE_ASSIGNED",
+      module: "Superadmin",
+      reference_id: ur.user_id,
+      reference_label: null,
+      details: {
+        user_id: ur.user_id,
+        role_name: ur.role,
+        property_id: ur.property_id,
+        role_template_id: data.role_id ?? null,
+        created_by: context.userId,
+      },
+    });
     return { ok: true };
   });
 
@@ -365,6 +440,26 @@ export const upsertRolePermissions = createServerFn({ method: "POST" })
       throw new Error("Not authorised for this property");
     }
 
+    // Snapshot existing permissions to compute old_value per row.
+    const permIds = data.rows.map((r) => r.permission_id);
+    const prevMap = new Map<string, boolean>();
+    if (permIds.length) {
+      const { data: prevRows } = await supabaseAdmin
+        .from("role_permissions")
+        .select("permission_id, allowed")
+        .eq("role_id", data.role_id)
+        .in("permission_id", permIds);
+      (prevRows ?? []).forEach((r: any) => {
+        prevMap.set(r.permission_id as string, !!r.allowed);
+      });
+    }
+    const { data: permMeta } = await supabaseAdmin
+      .from("permissions")
+      .select("id, module, action")
+      .in("id", permIds.length ? permIds : ["00000000-0000-0000-0000-000000000000"]);
+    const metaMap = new Map<string, { module: string; action: string }>();
+    (permMeta ?? []).forEach((p: any) => metaMap.set(p.id as string, { module: p.module, action: p.action }));
+
     const rows = data.rows.map((r) => ({
       role_id: data.role_id,
       permission_id: r.permission_id,
@@ -374,6 +469,28 @@ export const upsertRolePermissions = createServerFn({ method: "POST" })
       const { error } = await supabaseAdmin
         .from("role_permissions").upsert(rows, { onConflict: "role_id,permission_id" });
       if (error) throw error;
+    }
+    for (const r of data.rows) {
+      const prev = prevMap.has(r.permission_id) ? prevMap.get(r.permission_id) : null;
+      const next = !!r.allowed;
+      if (prev === next) continue;
+      const m = metaMap.get(r.permission_id);
+      await logServerActivity(supabaseAdmin, {
+        property_id: role.property_id,
+        user_id: context.userId,
+        action_type: "PERMISSION_CHANGED",
+        module: "Superadmin",
+        reference_id: data.role_id,
+        reference_label: role.name,
+        details: {
+          role_name: role.name,
+          module: m?.module ?? null,
+          action: m?.action ?? null,
+          old_value: prev,
+          new_value: next,
+          changed_by: context.userId,
+        },
+      });
     }
     if (typeof data.max_discount_pct === "number" && !/owner/i.test(role.name)) {
       const pct = Math.max(0, Math.min(100, data.max_discount_pct));

@@ -36,6 +36,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/masters/rooms")({
@@ -70,7 +71,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 function RoomsMasterPage() {
-  const { roles } = useAuth();
+  const { roles, user } = useAuth();
   const canManage =
     roles.includes("superadmin") || roles.includes("owner") || roles.includes("manager");
   const { current, loading: propLoading } = useCurrentProperty();
@@ -112,6 +113,8 @@ function RoomsMasterPage() {
 
   async function saveCat() {
     if (!editingCat?.name || !current) return toast.error("Name required");
+    const isEdit = !!editingCat.id;
+    const before = isEdit ? cats.find((c) => c.id === editingCat.id) : null;
     const payload = {
       property_id: current.id,
       name: editingCat.name,
@@ -121,10 +124,27 @@ function RoomsMasterPage() {
       extra_bed_rate: Number(editingCat.extra_bed_rate ?? 0),
       is_active: editingCat.is_active ?? true,
     };
-    const { error } = editingCat.id
-      ? await supabase.from("room_categories").update(payload).eq("id", editingCat.id)
-      : await supabase.from("room_categories").insert(payload);
+    const res = editingCat.id
+      ? await supabase.from("room_categories").update(payload).eq("id", editingCat.id).select("id").maybeSingle()
+      : await supabase.from("room_categories").insert(payload).select("id").maybeSingle();
+    const { error } = res;
     if (error) return toast.error(error.message);
+    const recId = (res.data as { id?: string } | null)?.id ?? editingCat.id ?? null;
+    const changed = isEdit && before
+      ? (Object.keys(payload) as Array<keyof typeof payload>).filter(
+          (k) => (before as unknown as Record<string, unknown>)[k as string] !== payload[k],
+        )
+      : undefined;
+    logActivity({
+      property_id: current.id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as never),
+      action_type: isEdit ? "MASTER_CATEGORY_EDITED" : "MASTER_CATEGORY_CREATED",
+      module: "Masters",
+      reference_id: recId,
+      reference_label: payload.name,
+      details: { record_id: recId, name: payload.name, ...(changed ? { changed_fields: changed } : {}) },
+    });
     toast.success("Saved");
     setCatOpen(false);
     setEditingCat(null);
@@ -133,6 +153,8 @@ function RoomsMasterPage() {
 
   async function saveRoom() {
     if (!editingRoom?.room_number || !current) return toast.error("Room number required");
+    const isEdit = !!editingRoom.id;
+    const before = isEdit ? rooms.find((r) => r.id === editingRoom.id) : null;
     const payload: any = {
       property_id: current.id,
       room_number: editingRoom.room_number,
@@ -142,10 +164,27 @@ function RoomsMasterPage() {
       housekeeping_status: editingRoom.housekeeping_status ?? "clean",
       is_active: editingRoom.is_active ?? true,
     };
-    const { error } = editingRoom.id
-      ? await supabase.from("rooms").update(payload).eq("id", editingRoom.id)
-      : await supabase.from("rooms").insert(payload);
+    const res = editingRoom.id
+      ? await supabase.from("rooms").update(payload).eq("id", editingRoom.id).select("id").maybeSingle()
+      : await supabase.from("rooms").insert(payload).select("id").maybeSingle();
+    const { error } = res;
     if (error) return toast.error(error.message);
+    const recId = (res.data as { id?: string } | null)?.id ?? editingRoom.id ?? null;
+    const changed = isEdit && before
+      ? Object.keys(payload).filter(
+          (k) => (before as unknown as Record<string, unknown>)[k] !== payload[k],
+        )
+      : undefined;
+    logActivity({
+      property_id: current.id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as never),
+      action_type: isEdit ? "MASTER_ROOM_EDITED" : "MASTER_ROOM_CREATED",
+      module: "Masters",
+      reference_id: recId,
+      reference_label: payload.room_number,
+      details: { record_id: recId, name: payload.room_number, ...(changed ? { changed_fields: changed } : {}) },
+    });
     toast.success("Saved");
     setRoomOpen(false);
     setEditingRoom(null);
@@ -156,12 +195,36 @@ function RoomsMasterPage() {
     if (!confirm(`Delete category "${c.name}"?`)) return;
     const { error } = await supabase.from("room_categories").delete().eq("id", c.id);
     if (error) return toast.error(error.message);
+    if (current) {
+      logActivity({
+        property_id: current.id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as never),
+        action_type: "MASTER_CATEGORY_DELETED",
+        module: "Masters",
+        reference_id: c.id,
+        reference_label: c.name,
+        details: { record_id: c.id, name: c.name },
+      });
+    }
     load();
   }
   async function removeRoom(r: Room) {
     if (!confirm(`Delete room ${r.room_number}?`)) return;
     const { error } = await supabase.from("rooms").delete().eq("id", r.id);
     if (error) return toast.error(error.message);
+    if (current) {
+      logActivity({
+        property_id: current.id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as never),
+        action_type: "MASTER_ROOM_DELETED",
+        module: "Masters",
+        reference_id: r.id,
+        reference_label: r.room_number,
+        details: { record_id: r.id, name: r.room_number },
+      });
+    }
     load();
   }
 

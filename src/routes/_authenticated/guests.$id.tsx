@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Ban, ShieldCheck } from "lucide-react";
 import { ID_PROOF_TYPES, guestSchema, emptyToNull } from "@/lib/guests";
 import { inr } from "@/lib/billing";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/guests/$id")({
@@ -92,8 +93,30 @@ function GuestDetail() {
       const { name, ...rest } = parsed.data;
       const payload = emptyToNull(rest);
       const tags = tagsInput.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 10);
+      const beforeMap: Record<string, unknown> = {
+        name: g.name, mobile: g.mobile, email: g.email, gender: g.gender, dob: g.dob,
+        nationality: g.nationality, address: g.address, city: g.city, state: g.state,
+        country: g.country, pincode: g.pincode, company: g.company, gst_number: g.gst_number,
+        id_proof_type: g.id_proof_type, id_proof_number: g.id_proof_number, notes: g.notes,
+        tags: (g.tags ?? []).join(","),
+      };
+      const newMap: Record<string, unknown> = { name, ...payload, tags: tags.join(",") };
+      const changed = Object.keys(newMap).filter(
+        (k) => (beforeMap[k] ?? null) !== (newMap[k] ?? null),
+      );
       const { error } = await supabase.from("guests").update({ name, ...payload, tags }).eq("id", g.id);
       if (error) throw error;
+      const { data: u } = await supabase.auth.getUser();
+      logActivity({
+        property_id: g.property_id,
+        user_id: u.user?.id ?? "",
+        user_name: userDisplayName(u.user as never),
+        action_type: "GUEST_EDITED",
+        module: "Guests",
+        reference_id: g.id,
+        reference_label: name,
+        details: { guest_id: g.id, guest_name: name, changed_fields: changed },
+      });
       toast.success("Saved");
       await load();
     } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
@@ -102,8 +125,24 @@ function GuestDetail() {
 
   async function toggleBlacklist() {
     if (!g) return;
-    const { error } = await supabase.from("guests").update({ is_blacklisted: !g.is_blacklisted }).eq("id", g.id);
-    if (error) toast.error(error.message); else { toast.success(g.is_blacklisted ? "Unblocked" : "Blacklisted"); load(); }
+    const nextVal = !g.is_blacklisted;
+    const { error } = await supabase.from("guests").update({ is_blacklisted: nextVal }).eq("id", g.id);
+    if (error) toast.error(error.message);
+    else {
+      const { data: u } = await supabase.auth.getUser();
+      logActivity({
+        property_id: g.property_id,
+        user_id: u.user?.id ?? "",
+        user_name: userDisplayName(u.user as never),
+        action_type: nextVal ? "GUEST_BLACKLISTED" : "GUEST_UNBLACKLISTED",
+        module: "Guests",
+        reference_id: g.id,
+        reference_label: g.name,
+        details: { guest_id: g.id, guest_name: g.name },
+      });
+      toast.success(g.is_blacklisted ? "Unblocked" : "Blacklisted");
+      load();
+    }
   }
 
   const totalSpend = stays.reduce((s, r) => s + Number(r.total_amount ?? 0), 0);

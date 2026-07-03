@@ -24,6 +24,7 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 export const Route = createFileRoute("/_authenticated/front-desk/in-house")({
   head: () => ({ meta: [{ title: "In-house — HotelPilot" }] }),
   component: () => (<RequirePermission module="inhouse"><InHousePage /></RequirePermission>),
@@ -323,11 +324,23 @@ function AssignRoomDialog({
     if (!bookingId || !picked || !propertyId || !booking) return;
     setBusy(true);
     const rate = booking.booking_rooms[0]?.rate ?? 0;
+    const roomNumber = rooms.find((r) => r.id === picked)?.room_number ?? null;
     const { error: brErr } = await supabase.from("booking_rooms").insert({
       booking_id: bookingId, property_id: propertyId, room_id: picked, rate, status: "active",
     } as any);
     if (brErr) { setBusy(false); return toast.error(brErr.message); }
     await supabase.from("rooms").update({ status: "occupied" } as any).eq("id", picked);
+    const { data: u } = await supabase.auth.getUser();
+    logActivity({
+      property_id: propertyId,
+      user_id: u.user?.id ?? "",
+      user_name: userDisplayName(u.user as never),
+      action_type: "ROOM_ADDED_TO_STAY",
+      module: "Front Desk",
+      reference_id: bookingId,
+      reference_label: roomNumber ? `Room ${roomNumber}` : null,
+      details: { booking_id: bookingId, room_id: picked, room_number: roomNumber },
+    });
     setBusy(false);
     toast.success("Room assigned");
     onDone();

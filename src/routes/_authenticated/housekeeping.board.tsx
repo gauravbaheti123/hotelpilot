@@ -14,6 +14,8 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { HK_STATUSES, HK_STATUS_TONE, ROOM_STATUS_TONE, type HkStatus } from "@/lib/housekeeping";
 import { MoreVertical } from "lucide-react";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
+import { useAuth } from "@/hooks/use-auth";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/housekeeping/board")({
@@ -29,6 +31,7 @@ interface RoomRow {
 
 function BoardPage() {
   const { currentId: propertyId } = useCurrentProperty();
+  const { user } = useAuth();
   const [rooms, setRooms] = useState<RoomRow[]>([]);
   const [filter, setFilter] = useState<"all" | HkStatus>("all");
 
@@ -61,8 +64,30 @@ function BoardPage() {
   }, [rooms]);
 
   async function setHk(roomId: string, hk: HkStatus) {
+    const prev = rooms.find((r) => r.id === roomId);
     const { error } = await supabase.from("rooms").update({ housekeeping_status: hk }).eq("id", roomId);
-    if (error) toast.error(error.message); else { toast.success("Updated"); load(); }
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Updated");
+      if (propertyId && user && prev) {
+        logActivity({
+          property_id: propertyId,
+          user_id: user.id,
+          user_name: userDisplayName(user as never),
+          action_type: "HK_STATUS_CHANGED",
+          module: "Housekeeping",
+          reference_id: roomId,
+          reference_label: `Room ${prev.room_number}`,
+          details: {
+            room_id: roomId,
+            room_number: prev.room_number,
+            old_status: prev.housekeeping_status,
+            new_status: hk,
+          },
+        });
+      }
+      load();
+    }
   }
 
   if (!propertyId) return <AppShell title="Room Status Board"><EmptyPropertyState /></AppShell>;
