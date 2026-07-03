@@ -418,9 +418,10 @@ function BanquetBillPage() {
         ${discount > 0 ? `<tr><td>Discount</td><td class="right">- ${inr(discount)}</td></tr>` : ""}
         ${isGst ? `<tr><td>CGST 6%</td><td class="right">${inr(cgst)}</td></tr>
                    <tr><td>SGST 6%</td><td class="right">${inr(sgst)}</td></tr>` : ""}
-        <tr class="grand"><td>Total</td><td class="right">${inr(total)}</td></tr>
+        ${Math.abs(roundOff) >= 0.01 ? `<tr><td>Round Off</td><td class="right">${roundOff >= 0 ? "+ " : "- "}${inr(Math.abs(roundOff))}</td></tr>` : ""}
+        <tr class="grand"><td>Total</td><td class="right">${inrRound(total)}</td></tr>
         <tr><td>Advance</td><td class="right">- ${inr(advance)}</td></tr>
-        <tr><td>Balance Due</td><td class="right">${inr(balance)}</td></tr>
+        <tr><td>Balance Due</td><td class="right">${inrRound(balance)}</td></tr>
       </table>
       <p style="margin-top:24px;text-align:center;font-size:10px;color:#666">This is a draft for verification only.</p>
       </body></html>`;
