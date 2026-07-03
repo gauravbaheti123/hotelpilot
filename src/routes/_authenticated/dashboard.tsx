@@ -377,8 +377,12 @@ function OwnerDashboard({
           }));
         setEvents(filtered);
         const map = new Map<string, RoomEventInfo>();
-        filtered.forEach((ev) => ev.blocks.forEach((b) => {
+        // Populate the per-room event map from ALL blocks (not just those
+        // active on the selected date) so any room whose DB status is
+        // "blocked" always surfaces its event name + guest name on the tile.
+        summaries.forEach((ev) => ev.blocks.forEach((b) => {
           if (!b.room_id) return;
+          if (b.status === "checked_out" || b.status === "cancelled") return;
           map.set(b.room_id, {
             blockId: b.id,
             bookingId: b.booking_id ?? "",
