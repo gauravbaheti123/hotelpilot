@@ -3007,6 +3007,130 @@ export type Database = {
         }
         Relationships: []
       }
+      pos_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_categories_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_charges: {
+        Row: {
+          amount: number
+          billed_at: string | null
+          booking_id: string
+          category_id: string | null
+          category_name: string
+          created_at: string
+          created_by: string | null
+          description: string
+          folio_charge_id: string | null
+          gst_amount: number
+          gst_rate: number
+          id: string
+          property_id: string
+          qty: number
+          rate: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          billed_at?: string | null
+          booking_id: string
+          category_id?: string | null
+          category_name: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          folio_charge_id?: string | null
+          gst_amount?: number
+          gst_rate?: number
+          id?: string
+          property_id: string
+          qty?: number
+          rate?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billed_at?: string | null
+          booking_id?: string
+          category_id?: string | null
+          category_name?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          folio_charge_id?: string | null
+          gst_amount?: number
+          gst_rate?: number
+          id?: string
+          property_id?: string
+          qty?: number
+          rate?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_charges_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_charges_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "pos_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_charges_folio_charge_id_fkey"
+            columns: ["folio_charge_id"]
+            isOneToOne: false
+            referencedRelation: "folio_charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_charges_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       printer_roles: {
         Row: {
           active: boolean

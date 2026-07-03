@@ -48,6 +48,19 @@ interface CartLine {
   qty: number;
 }
 
+interface PosCategory { id: string; name: string; is_active: boolean }
+interface PendingPos {
+  id: string;
+  category_name: string;
+  description: string;
+  qty: number;
+  rate: number;
+  amount: number;
+  gst_rate: number;
+  gst_amount: number;
+  booking_id: string;
+}
+
 function PosPage() {
   const search = useSearch({ from: "/_authenticated/pos/" });
   const { current } = useCurrentProperty();
@@ -62,16 +75,88 @@ function PosPage() {
   const [cart, setCart] = useState<Record<string, CartLine>>({});
   const [busy, setBusy] = useState(false);
 
+  // Custom expense form (pos_charges — pending until added to bill)
+  const [posCategories, setPosCategories] = useState<PosCategory[]>([]);
+  const [ceCatId, setCeCatId] = useState<string>("");
+  const [ceDesc, setCeDesc] = useState("");
+  const [ceQty, setCeQty] = useState("1");
+  const [ceRate, setCeRate] = useState("");
+  const [ceGst, setCeGst] = useState("0");
+  const [ceBusy, setCeBusy] = useState(false);
+  const [pendingPos, setPendingPos] = useState<PendingPos[]>([]);
+
   useEffect(() => {
     if (!current) return;
     Promise.all([
       supabase.from("bookings").select("id,booking_number,status,check_in,check_out,guests(name),booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))").eq("property_id", current.id).in("status", ["checked_in", "reserved"]).order("check_in", { ascending: false }).limit(100),
       supabase.from("sundry_items").select("id,name,category,rate,gst_rate,unit").eq("property_id", current.id).eq("is_active", true).order("name"),
-    ]).then(([b, i]) => {
+      supabase.from("pos_categories").select("id,name,is_active").eq("property_id", current.id).eq("is_active", true).order("name"),
+    ]).then(([b, i, pc]) => {
       setBookings((b.data ?? []) as unknown as Booking[]);
       setItems((i.data ?? []) as Item[]);
+      setPosCategories((pc.data ?? []) as PosCategory[]);
     });
   }, [current?.id]);
+
+  // Load pending POS charges for the selected booking
+  useEffect(() => {
+    if (!bookingId) { setPendingPos([]); return; }
+    supabase.from("pos_charges")
+      .select("id,category_name,description,qty,rate,amount,gst_rate,gst_amount,booking_id")
+      .eq("booking_id", bookingId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setPendingPos((data ?? []) as any));
+  }, [bookingId, ceBusy]);
+
+  async function postCustomExpense() {
+    if (!current) return;
+    if (!canCreateCharge) return toast.error("You do not have permission to post POS charges");
+    if (!bookingId) return toast.error("Select a booking");
+    if (!ceCatId) return toast.error("Select a category");
+    if (!ceDesc.trim()) return toast.error("Description required");
+    const qty = Number(ceQty) || 1;
+    const rate = Number(ceRate) || 0;
+    if (rate <= 0) return toast.error("Enter a valid amount");
+    const gstR = Number(ceGst) || 0;
+    const amt = Math.round(qty * rate * 100) / 100;
+    const gstAmt = Math.round(amt * gstR) / 100;
+    const category = posCategories.find((c) => c.id === ceCatId);
+    setCeBusy(true);
+    const { error } = await supabase.from("pos_charges").insert({
+      property_id: current.id,
+      booking_id: bookingId,
+      category_id: ceCatId,
+      category_name: category?.name ?? "Other",
+      description: ceDesc.trim(),
+      qty, rate, amount: amt,
+      gst_rate: gstR, gst_amount: gstAmt,
+      status: "pending",
+      created_by: user?.id ?? null,
+    } as any);
+    if (error) { setCeBusy(false); return toast.error(error.message); }
+    if (user) {
+      logActivity({
+        property_id: current.id,
+        user_id: user.id,
+        user_name: userDisplayName(user as any),
+        action_type: "POS_CHARGE_ADDED",
+        module: "POS",
+        reference_id: bookingId,
+        reference_label: `${category?.name ?? ""} · ${ceDesc.trim()}`,
+        details: {
+          booking_id: bookingId,
+          category: category?.name ?? null,
+          description: ceDesc.trim(),
+          qty, rate, amount: amt, gst_amount: gstAmt,
+          status: "pending",
+        },
+      });
+    }
+    toast.success(`Added ${category?.name ?? "POS"} charge — pending. Add to bill from the folio.`);
+    setCeDesc(""); setCeQty("1"); setCeRate(""); setCeGst("0");
+    setCeBusy(false);
+  }
 
   const filteredItems = useMemo(() => items.filter((it) => {
     if (cat !== "all" && it.category !== cat) return false;
@@ -349,6 +434,79 @@ function PosPage() {
               {lines.reduce((s, l) => s + l.qty, 0)} item{lines.reduce((s, l) => s + l.qty, 0) === 1 ? "" : "s"} ready to post
             </Badge>
           )}
+
+          {/* Custom expense (goes to pos_charges as pending, requires "Add to Bill" on folio) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Custom Expense</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Ad-hoc charges (Laundry, Damage, etc.). Sits as <b>pending</b> until added to the guest's bill.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <label className="text-xs text-muted-foreground">Category</label>
+                <Select value={ceCatId} onValueChange={setCeCatId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={posCategories.length ? "Select category" : "No categories — add in Masters → POS Categories"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {posCategories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Description</label>
+                <Input value={ceDesc} onChange={(e) => setCeDesc(e.target.value)} placeholder="e.g. 3 shirts + 2 trousers" />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="text-xs text-muted-foreground">Qty</label>
+                  <Input type="number" value={ceQty} onChange={(e) => setCeQty(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">Amount</label>
+                  <Input type="number" value={ceRate} onChange={(e) => setCeRate(e.target.value)} placeholder="0" />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">GST %</label>
+                  <Input type="number" value={ceGst} onChange={(e) => setCeGst(e.target.value)} />
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                disabled={ceBusy || !bookingId || !ceCatId || !ceDesc.trim() || !canCreateCharge}
+                onClick={postCustomExpense}
+              >
+                <Plus className="h-4 w-4 mr-1" /> Add custom expense (pending)
+              </Button>
+
+              {pendingPos.length > 0 && (
+                <div className="border-t pt-2 space-y-1.5">
+                  <div className="text-xs font-medium text-muted-foreground uppercase">
+                    Pending on this booking ({pendingPos.length})
+                  </div>
+                  {pendingPos.map((p) => (
+                    <div key={p.id} className="flex justify-between text-xs bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                      <span className="truncate">
+                        <span className="font-medium">{p.category_name}</span> · {p.description}
+                      </span>
+                      <span className="font-medium">{inr(p.amount + p.gst_amount)}</span>
+                    </div>
+                  ))}
+                  {bookingId && (
+                    <Link to="/billing/folio/$bookingId" params={{ bookingId }} className="block">
+                      <Button variant="outline" size="sm" className="w-full mt-1">
+                        Open folio to add to bill →
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </AppShell>

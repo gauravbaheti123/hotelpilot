@@ -138,6 +138,11 @@ function FolioPage() {
 
   // Pending KOT lock state
   const [pendingKots, setPendingKots] = useState<PendingKot[]>([]);
+  // Pending POS charges (custom expenses awaiting Add to Bill)
+  const [pendingPos, setPendingPos] = useState<Array<{
+    id: string; category_name: string; description: string;
+    qty: number; rate: number; amount: number; gst_rate: number; gst_amount: number;
+  }>>([]);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [overrideOpen, setOverrideOpen] = useState(false);
@@ -213,6 +218,14 @@ function FolioPage() {
       .neq("kot_copy", "restaurant_copy")
       .not("status", "in", "(billed,cancelled,void)");
     setPendingKots(((pk ?? []) as unknown as PendingKot[]));
+
+    // Load pending POS charges (custom expenses awaiting add-to-bill)
+    const { data: pos } = await supabase
+      .from("pos_charges")
+      .select("id,category_name,description,qty,rate,amount,gst_rate,gst_amount")
+      .eq("booking_id", bookingId)
+      .eq("status", "pending");
+    setPendingPos((pos ?? []) as any);
 
     setLoading(false);
   }, [bookingId]);
@@ -742,9 +755,10 @@ function FolioPage() {
   const hasPending = pendingKots.length > 0;
   const canVoid = can("invoices", "delete");
   const canShiftMis = can("billing", "mis_shift");
-  // Feature 2: Manager / Owner may edit ANY bill regardless of status.
-  // Receptionist keeps current behaviour (edit only while open).
-  const canEditAnyStatus = canVoid;
+  // Feature 2: any role granted invoices/edit may edit ANY bill regardless of status
+  // (Owner + Manager by default). Previously this was mistakenly wired to invoices/delete,
+  // which hid the edit UI on settled/paid bills whenever a role had edit but not delete.
+  const canEditAnyStatus = can("invoices", "edit");
   const canEditNow = isOpen || canEditAnyStatus;
 
   async function markAllServed() {
@@ -862,10 +876,48 @@ function FolioPage() {
     if (hasPending && !overrideApproved) {
       return toast.error("Resolve pending food orders before checkout");
     }
+    if (pendingPos.length > 0) {
+      return toast.error(`Add ${pendingPos.length} pending POS charge(s) to bill before checkout`);
+    }
     if (Number(folio.balance_amount) > 0.01) {
       return toast.error(`Collect ${inrRound(folio.balance_amount)} before checkout`);
     }
     setCheckoutOpen(true);
+  }
+
+  async function addPendingPosToBill(ids?: string[]) {
+    if (!folio || !booking) return;
+    const targets = ids && ids.length > 0
+      ? pendingPos.filter((p) => ids.includes(p.id))
+      : pendingPos;
+    if (targets.length === 0) return;
+    for (const pc of targets) {
+      const { data: inserted, error: cErr } = await supabase
+        .from("folio_charges")
+        .insert({
+          folio_id: folio.id,
+          charge_type: "extra",
+          description: `${pc.category_name} · ${pc.description}`,
+          qty: pc.qty,
+          rate: pc.rate,
+          amount: pc.amount,
+          gst_rate: pc.gst_rate,
+          gst_amount: pc.gst_amount,
+          source_table: "pos_charges",
+          source_id: pc.id,
+          created_by: user?.id ?? null,
+        } as any)
+        .select("id")
+        .single();
+      if (cErr) return toast.error(cErr.message);
+      await supabase.from("pos_charges")
+        .update({ status: "billed", folio_charge_id: (inserted as any).id, billed_at: new Date().toISOString() } as any)
+        .eq("id", pc.id);
+    }
+    const next = await refetchCharges();
+    await persistTotals(next, payments);
+    toast.success(`${targets.length} POS charge(s) added to bill`);
+    load();
   }
 
   async function handleDownloadPDF() {
@@ -1026,6 +1078,49 @@ function FolioPage() {
                   </Button>
                 </div>
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {isOpen && pendingPos.length > 0 && (
+          <Card className="border-amber-400 bg-amber-50/60 no-print">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2 text-amber-800">
+                <AlertTriangle className="h-5 w-5" />
+                {pendingPos.length} POS charge(s) not yet added to bill
+                {" · "}
+                {Array.from(new Set(pendingPos.map((p) => p.category_name))).join(", ")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="space-y-2">
+                {pendingPos.map((p) => (
+                  <div key={p.id} className="rounded border bg-background p-2 flex items-center gap-2">
+                    <div className="flex-1">
+                      <div className="font-medium">
+                        <Badge variant="outline" className="mr-1 text-[10px] uppercase">{p.category_name}</Badge>
+                        {p.description}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {p.qty} × {inr(p.rate)}
+                        {p.gst_rate > 0 ? ` + ${p.gst_rate}% GST` : ""}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">{inr(p.amount + p.gst_amount)}</div>
+                    </div>
+                    <Button size="sm" variant="outline"
+                      onClick={() => addPendingPosToBill([p.id])}>
+                      Add to Bill
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end">
+                <Button size="sm" onClick={() => addPendingPosToBill()}>
+                  Add All to Bill
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}

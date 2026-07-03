@@ -22,6 +22,7 @@ const ITEMS = [
   { to: "/masters/staff", label: "Staff", icon: Users },
   { to: "/masters/printers", label: "Printers", icon: Printer },
   { to: "/masters/expense-categories", label: "Expense Categories", icon: Tags },
+  { to: "/masters/pos-categories", label: "POS Categories", icon: Tags },
   { to: "/masters/sundry-items", label: "Sundry Items", icon: ShoppingCart },
   { to: "/masters/channels", label: "OTA Channels", icon: Cloud },
   { to: "/masters/message-templates", label: "Message Templates", icon: MessageSquare },

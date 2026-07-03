@@ -57,6 +57,17 @@ interface PendingKot {
   gst_amount: number;
 }
 
+interface PendingPosCharge {
+  id: string;
+  category_name: string;
+  description: string;
+  qty: number;
+  rate: number;
+  amount: number;
+  gst_rate: number;
+  gst_amount: number;
+}
+
 interface SplitRow {
   mode: string;
   amount: string;
@@ -77,6 +88,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
   const [charges, setCharges] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [pendingKots, setPendingKots] = useState<PendingKot[]>([]);
+  const [pendingPos, setPendingPos] = useState<PendingPosCharge[]>([]);
 
   // Payment form
   const [splitMode, setSplitMode] = useState(false);
@@ -116,7 +128,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       return;
     }
 
-    const [{ data: f }, { data: c }, { data: p }, { data: pk }] = await Promise.all([
+    const [{ data: f }, { data: c }, { data: p }, { data: pk }, { data: pos }] = await Promise.all([
       supabase.from("folios").select("*").eq("id", folioId as any).single(),
       supabase.from("folio_charges").select("*").eq("folio_id", folioId as any),
       supabase.from("payments").select("*").eq("folio_id", folioId as any),
@@ -127,11 +139,17 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
         .eq("is_wiped", false)
         .neq("kot_copy", "restaurant_copy")
         .not("status", "in", "(billed,cancelled,void)"),
+      supabase
+        .from("pos_charges")
+        .select("id,category_name,description,qty,rate,amount,gst_rate,gst_amount")
+        .eq("booking_id", bookingId)
+        .eq("status", "pending"),
     ]);
     setFolio(f);
     setCharges(c ?? []);
     setPayments(p ?? []);
     setPendingKots((pk ?? []) as unknown as PendingKot[]);
+    setPendingPos((pos ?? []) as unknown as PendingPosCharge[]);
     setLoading(false);
   }, [bookingId]);
 
@@ -248,6 +266,48 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     load();
   }
 
+  async function addPendingPosToBill() {
+    if (!folio || !booking || pendingPos.length === 0) return;
+    setBusy(true);
+    for (const pc of pendingPos) {
+      const { data: inserted, error: cErr } = await supabase
+        .from("folio_charges")
+        .insert({
+          folio_id: folio.id,
+          charge_type: "extra",
+          description: `${pc.category_name} · ${pc.description}`,
+          qty: pc.qty,
+          rate: pc.rate,
+          amount: pc.amount,
+          gst_rate: pc.gst_rate,
+          gst_amount: pc.gst_amount,
+          source_table: "pos_charges",
+          source_id: pc.id,
+          created_by: user?.id ?? null,
+        } as any)
+        .select("id")
+        .single();
+      if (cErr) { setBusy(false); return toast.error(cErr.message); }
+      await supabase.from("pos_charges")
+        .update({ status: "billed", folio_charge_id: (inserted as any).id, billed_at: new Date().toISOString() } as any)
+        .eq("id", pc.id);
+    }
+    // Recompute folio totals after inserting
+    const { data: allCharges } = await supabase.from("folio_charges").select("*").eq("folio_id", folio.id);
+    const mode = (folio.gst_mode as "cash" | "gst") ?? "gst";
+    const t = recomputeFolio((allCharges ?? []) as any[], mode);
+    const { data: pays } = await supabase.from("payments").select("amount").eq("folio_id", folio.id);
+    const paid = (pays ?? []).reduce((s: number, p: any) => s + Number(p.amount), 0);
+    await supabase.from("folios").update({
+      ...t,
+      paid_amount: paid,
+      balance_amount: Math.max(0, t.total_amount - paid),
+    } as any).eq("id", folio.id);
+    toast.success(`${pendingPos.length} POS charge(s) added to bill`);
+    setBusy(false);
+    load();
+  }
+
   function setSplit(i: number, patch: Partial<SplitRow>) {
     setSplits((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
@@ -256,6 +316,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     if (!folio || !booking) return;
     if (pendingKots.length > 0) {
       return toast.error("Add pending food orders to bill first");
+    }
+    if (pendingPos.length > 0) {
+      return toast.error("Add pending POS charges to bill first");
     }
 
     // Build payment rows
@@ -428,8 +491,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
           <div className="py-12 text-center text-sm text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading…
           </div>
-        ) : pendingKots.length > 0 ? (
+        ) : pendingKots.length > 0 || pendingPos.length > 0 ? (
           <div className="space-y-4">
+            {pendingKots.length > 0 && (
             <div className="rounded-md border border-destructive/60 bg-destructive/5 p-4">
               <div className="flex items-center gap-2 font-medium text-destructive mb-2">
                 <AlertTriangle className="h-5 w-5" /> Cannot Checkout
@@ -449,11 +513,43 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
                 Please add these to the room bill before checkout.
               </div>
             </div>
+            )}
+            {pendingPos.length > 0 && (
+            <div className="rounded-md border border-destructive/60 bg-destructive/5 p-4">
+              <div className="flex items-center gap-2 font-medium text-destructive mb-2">
+                <AlertTriangle className="h-5 w-5" /> {pendingPos.length} POS charge(s) not yet added to bill
+              </div>
+              <div className="text-sm mb-2">
+                Categories: {Array.from(new Set(pendingPos.map((p) => p.category_name))).join(", ")}
+              </div>
+              <div className="space-y-1 text-sm">
+                {pendingPos.map((p) => (
+                  <div key={p.id} className="flex justify-between">
+                    <span>
+                      <Badge variant="outline" className="ml-0 mr-1 text-[10px] uppercase">{p.category_name}</Badge>
+                      {p.description}
+                    </span>
+                    <span>{inr(p.amount + p.gst_amount)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="text-xs text-muted-foreground mt-3">
+                Add these to the room bill before checkout.
+              </div>
+            </div>
+            )}
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button onClick={addPendingToBill} disabled={busy}>
-                {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Add to Bill
-              </Button>
+              {pendingKots.length > 0 && (
+                <Button onClick={addPendingToBill} disabled={busy}>
+                  {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Add Food to Bill
+                </Button>
+              )}
+              {pendingPos.length > 0 && (
+                <Button onClick={addPendingPosToBill} disabled={busy}>
+                  {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Add POS to Bill
+                </Button>
+              )}
             </DialogFooter>
           </div>
         ) : (
