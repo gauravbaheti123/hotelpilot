@@ -199,6 +199,7 @@ function OwnerDashboard({
   const [bulkCheckinEvent, setBulkCheckinEvent] = useState<EventBlockSummary | null>(null);
   const [bulkCheckoutEvent, setBulkCheckoutEvent] = useState<EventBlockSummary | null>(null);
   const [singleAssignBlock, setSingleAssignBlock] = useState<EventBlockRecord | null>(null);
+  const [grouping, setGrouping] = useState<"category" | "floor">("category");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -206,6 +207,29 @@ function OwnerDashboard({
     supabase.from("profiles").select("name").eq("id", userId).maybeSingle()
       .then(({ data }) => { if (data?.name) setName(data.name); });
   }, [userId]);
+
+  // Load persisted room grouping preference for this property
+  useEffect(() => {
+    if (!propertyId) return;
+    let cancelled = false;
+    supabase.from("property_settings").select("room_grouping").eq("property_id", propertyId).maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const g = (data as any)?.room_grouping;
+        if (g === "floor" || g === "category") setGrouping(g);
+      });
+    return () => { cancelled = true; };
+  }, [propertyId]);
+
+  async function changeGrouping(next: "category" | "floor") {
+    setGrouping(next);
+    if (!propertyId) return;
+    const { error } = await supabase.from("property_settings").upsert(
+      { property_id: propertyId, room_grouping: next } as any,
+      { onConflict: "property_id" },
+    );
+    if (error) toast.error("Couldn't save grouping preference");
+  }
 
   const reload = useCallback(async () => {
     if (!propertyId) return;
