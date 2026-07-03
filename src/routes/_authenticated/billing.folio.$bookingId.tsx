@@ -1338,11 +1338,29 @@ function FolioPage() {
                 <tbody>
                   <tr><td style={{ color: "#555" }}>Sub-total</td><td style={{ textAlign: "right" }}>{inr(folio.sub_total)}</td></tr>
                   {Number(folio.discount_amount) > 0 && (
-                    <tr><td style={{ color: "#555" }}>Discount</td><td style={{ textAlign: "right" }}>- {inr(folio.discount_amount)}</td></tr>
+                    <tr>
+                      <td style={{ color: "#555" }}>
+                        Discount
+                        {folio.discount_type && Number(folio.discount_value) > 0 && (
+                          <span style={{ color: "#888", marginLeft: 4 }}>
+                            ({folio.discount_type === "percent" ? `${Number(folio.discount_value)}%` : `₹${Number(folio.discount_value)}`})
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "right" }}>- {inr(folio.discount_amount)}</td>
+                    </tr>
                   )}
                   {isGst && <tr><td style={{ color: "#555" }}>GST</td><td style={{ textAlign: "right" }}>{inr(folio.gst_amount)}</td></tr>}
                 </tbody>
               </table>
+              {canEditNow && (
+                <div className="print:hidden mt-2 flex justify-end">
+                  <Button size="sm" variant="outline" onClick={openBillDiscount}>
+                    <Percent className="h-3.5 w-3.5 mr-1" />
+                    {Number(folio.discount_amount) > 0 ? "Edit bill discount" : "Apply bill discount"}
+                  </Button>
+                </div>
+              )}
               <div style={{ background: TEAL, color: "#fff" }} className="mt-2 flex items-center justify-between rounded px-4 py-3">
                 <span className="text-sm font-bold uppercase tracking-wider">Grand Total</span>
                 <span className="text-2xl font-extrabold tabular-nums">{inr(folio.total_amount)}</span>
