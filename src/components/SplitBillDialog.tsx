@@ -404,9 +404,9 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         {step === 3 && (
           <div className="space-y-4">
             <div className="text-sm font-medium">Step 3 — Party Details</div>
-            <PartyEditor label="Bill 1 Party" party={party1} setParty={setParty1} disabledName={splitType === "same"} />
+            <PartyEditor label="Bill 1 Party" party={party1} setParty={setParty1} disabledName={splitType === "same"} showBillType={isOwnerStrict} />
             {splitType === "different" ? (
-              <PartyEditor label="Bill 2 Party" party={party2} setParty={setParty2} showMobile />
+              <PartyEditor label="Bill 2 Party" party={party2} setParty={setParty2} showMobile showBillType={isOwnerStrict} />
             ) : (
               <div className="rounded border bg-muted/30 p-3 text-xs text-muted-foreground">
                 Bill 2 will use the same party as Bill 1 ({party1.name}).
@@ -499,13 +499,14 @@ function BillTypeToggle({ value, onChange }: { value: "cash_bill" | "gst_invoice
 }
 
 function PartyEditor({
-  label, party, setParty, showMobile, disabledName,
+  label, party, setParty, showMobile, disabledName, showBillType,
 }: {
   label: string;
   party: PartyDetails;
   setParty: (p: PartyDetails) => void;
   showMobile?: boolean;
   disabledName?: boolean;
+  showBillType?: boolean;
 }) {
   return (
     <div className="rounded border p-3 space-y-2">
@@ -528,10 +529,12 @@ function PartyEditor({
           <Input value={party.gstin ?? ""}
             onChange={(e) => setParty({ ...party, gstin: e.target.value })} />
         </div>
-        <div>
-          <Label className="text-xs">Bill Type</Label>
-          <div><BillTypeToggle value={party.bill_type} onChange={(v) => setParty({ ...party, bill_type: v })} /></div>
-        </div>
+        {showBillType && (
+          <div>
+            <Label className="text-xs">Bill Type</Label>
+            <div><BillTypeToggle value={party.bill_type} onChange={(v) => setParty({ ...party, bill_type: v })} /></div>
+          </div>
+        )}
       </div>
     </div>
   );
