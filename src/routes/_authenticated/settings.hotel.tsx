@@ -78,10 +78,7 @@ type FormState = Record<string, any>;
 
 function HotelSettingsPage() {
   const { current, currentId: propertyId, reload: reloadProps } = useCurrentProperty();
-  const { roles } = useAuth();
   const { can } = usePermissions();
-  const isSuperadmin = roles.includes("superadmin");
-  const isOwner = roles.includes("owner") || isSuperadmin;
   const allowed = can("settings_business", "view");
   const readOnly = !can("settings_business", "edit");
 
