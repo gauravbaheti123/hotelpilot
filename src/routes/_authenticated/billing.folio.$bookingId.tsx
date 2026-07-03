@@ -1082,6 +1082,49 @@ function FolioPage() {
           </Card>
         )}
 
+        {isOpen && pendingPos.length > 0 && (
+          <Card className="border-amber-400 bg-amber-50/60 no-print">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2 text-amber-800">
+                <AlertTriangle className="h-5 w-5" />
+                {pendingPos.length} POS charge(s) not yet added to bill
+                {" · "}
+                {Array.from(new Set(pendingPos.map((p) => p.category_name))).join(", ")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="space-y-2">
+                {pendingPos.map((p) => (
+                  <div key={p.id} className="rounded border bg-background p-2 flex items-center gap-2">
+                    <div className="flex-1">
+                      <div className="font-medium">
+                        <Badge variant="outline" className="mr-1 text-[10px] uppercase">{p.category_name}</Badge>
+                        {p.description}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {p.qty} × {inr(p.rate)}
+                        {p.gst_rate > 0 ? ` + ${p.gst_rate}% GST` : ""}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">{inr(p.amount + p.gst_amount)}</div>
+                    </div>
+                    <Button size="sm" variant="outline"
+                      onClick={() => addPendingPosToBill([p.id])}>
+                      Add to Bill
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end">
+                <Button size="sm" onClick={() => addPendingPosToBill()}>
+                  Add All to Bill
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Bill Type controls (screen only) */}
         <Card className="print:hidden no-print">
           <CardContent className="flex flex-wrap items-end gap-3 p-4">
