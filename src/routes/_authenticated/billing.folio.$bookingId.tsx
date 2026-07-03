@@ -22,8 +22,10 @@ import {
   PAYMENT_MODES,
   inr,
   recomputeFolio,
+  computeBillDiscountAmount,
+  type BillDiscount,
 } from "@/lib/billing";
-import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle } from "lucide-react";
+import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent } from "lucide-react";
 import { AlertTriangle, ShieldAlert, ArrowRightLeft } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
@@ -48,6 +50,9 @@ interface Charge {
   qty: number; rate: number; amount: number;
   gst_rate: number; gst_amount: number; charged_on: string;
   source_table: string | null; source_id: string | null;
+  discount_type?: "percent" | "amount" | null;
+  discount_value?: number | null;
+  discount_amount?: number | null;
 }
 interface Payment {
   id: string; amount: number; mode: string; reference_no: string | null;
@@ -59,6 +64,8 @@ interface Folio {
   total_amount: number; paid_amount: number; balance_amount: number;
   guest_gstin: string | null; guest_company: string | null;
   notes: string | null; property_id: string; bill_type: string | null;
+  discount_type?: "percent" | "amount" | null;
+  discount_value?: number | null;
 }
 interface BookingCtx {
   id: string; booking_number: string; status: string;
