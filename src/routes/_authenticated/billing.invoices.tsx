@@ -316,7 +316,7 @@ function InvoicesPage() {
                   <div className={`text-sm font-medium ${voided ? "line-through text-muted-foreground" : ""}`}>{inr(r.total_amount)}</div>
                   <div className="text-xs text-muted-foreground">Bal {inr(r.balance_amount)}</div>
                 </div>
-                {canEditDelete && !voided && (
+                {(canEdit || canDelete) && !voided && (
                   <div className="flex items-center gap-1 ml-2">
                     {isOwner && (
                       <Button size="sm" variant="ghost" title="Edit bill number"
@@ -324,15 +324,19 @@ function InvoicesPage() {
                         <Hash className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button size="sm" variant="ghost"
-                      onClick={() => navigate({ to: "/billing/folio/$bookingId", params: { bookingId: r.booking_id } })}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost" title="Void bill"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setDelTarget(r)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {canEdit && (
+                      <Button size="sm" variant="ghost"
+                        onClick={() => navigate({ to: "/billing/folio/$bookingId", params: { bookingId: r.booking_id } })}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button size="sm" variant="ghost" title="Void bill"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setDelTarget(r)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 )}
                 {isOwner && voided && (
