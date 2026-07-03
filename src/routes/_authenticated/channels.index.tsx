@@ -20,9 +20,10 @@ import { logSync, SYNC_STATUS_LABEL, SYNC_STATUS_TONE, SYNC_TYPES, type SyncType
 import { toast } from "sonner";
 import { Cloud, Radio, RefreshCw, Plus, Trash2 } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/channels/")({
   head: () => ({ meta: [{ title: "Channel Manager — HotelPilot" }] }),
-  component: ChannelManagerPage,
+  component: () => (<RequirePermission module="channel_manager"><ChannelManagerPage /></RequirePermission>),
 });
 
 interface Channel { id: string; name: string; code: string; commission_pct: number; is_active: boolean }

@@ -13,9 +13,10 @@ import { toast } from "sonner";
 import { CHANNELS, STATUSES, STATUS_TONE, CHANNEL_TONE } from "@/lib/comms";
 import { PlusCircle, MessageSquare, Phone, Mail, Smartphone } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/comms/")({
   head: () => ({ meta: [{ title: "Guest Communications — HotelPilot" }] }),
-  component: CommsIndexPage,
+  component: () => (<RequirePermission module="communications"><CommsIndexPage /></RequirePermission>),
 });
 
 interface Row {
