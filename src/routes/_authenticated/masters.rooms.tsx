@@ -66,7 +66,7 @@ interface Room {
 const STATUS_COLORS: Record<string, string> = {
   vacant: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   occupied: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  blocked: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+  blocked: "bg-purple-500/10 text-purple-700 dark:text-purple-300",
   maintenance: "bg-slate-500/10 text-slate-700 dark:text-slate-300",
 };
 
@@ -516,7 +516,7 @@ function RoomsMasterPage() {
                             {["vacant", "occupied", "blocked", "maintenance"].map(
                               (s) => (
                                 <SelectItem key={s} value={s}>
-                                  {s}
+                                  {s === "blocked" ? "event" : s}
                                 </SelectItem>
                               ),
                             )}
@@ -594,7 +594,7 @@ function RoomsMasterPage() {
                             variant="outline"
                             className={STATUS_COLORS[r.status] ?? ""}
                           >
-                            {r.status}
+                            {r.status === "blocked" ? "event" : r.status}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">

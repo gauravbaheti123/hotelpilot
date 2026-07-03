@@ -15,8 +15,8 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { computeBanquetTotal, FUNCTION_TYPES } from "@/lib/banquet";
-import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RequirePermission } from "@/components/RequirePermission";
 import {
   pickAvailableRooms, commitRoomBlocks, nightsBetween,
@@ -28,8 +28,10 @@ export const Route = createFileRoute("/_authenticated/banquet/new")({
   component: () => (<RequirePermission module="banquet"><NewBanquetPage /></RequirePermission>),
 });
 
-interface Hall { id: string; name: string; capacity: number; hourly_rate: number; day_rate: number }
+interface Hall { id: string; name: string; capacity: number }
 interface Cat { id: string; name: string; base_rate?: number }
+interface RoomOpt { id: string; room_number: string; category_id: string | null; status: string; category_name: string | null }
+interface ExtraRow { point_name: string; amount: string }
 interface BlockRow {
   category_id: string;
   quantity: string;
@@ -44,6 +46,7 @@ function NewBanquetPage() {
   const { currentId: propertyId } = useCurrentProperty();
   const [halls, setHalls] = useState<Hall[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
+  const [allRooms, setAllRooms] = useState<RoomOpt[]>([]);
   const [saving, setSaving] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -62,17 +65,23 @@ function NewBanquetPage() {
   const [pax, setPax] = useState("100");
 
   // charges
-  const [packageRate, setPackageRate] = useState("0");
-  const [hallCharge, setHallCharge] = useState("0");
-  const [fbCharge, setFbCharge] = useState("0");
-  const [extraCharge, setExtraCharge] = useState("0");
+  const [eventPrice, setEventPrice] = useState("0");
   const [discount, setDiscount] = useState("0");
   const [advance, setAdvance] = useState("0");
   const [notes, setNotes] = useState("");
 
-  // Room block
-  const [blockOn, setBlockOn] = useState(false);
+  // Extras (repeatable named line items)
+  const [extras, setExtras] = useState<ExtraRow[]>([]);
+
+  // Rooms: two modes — single-assign or bulk-block
+  const [roomMode, setRoomMode] = useState<"none" | "single" | "bulk">("none");
   const [eventName, setEventName] = useState("");
+  // Single-room state
+  const [singleRoomId, setSingleRoomId] = useState("");
+  const [singleCheckIn, setSingleCheckIn] = useState(today);
+  const [singleCheckOut, setSingleCheckOut] = useState(today);
+  const [singleRate, setSingleRate] = useState("0");
+  // Bulk state
   const [blockRows, setBlockRows] = useState<BlockRow[]>([]);
   const [assignments, setAssignments] = useState<AssignedBlock[]>([]);
   const [showAssignments, setShowAssignments] = useState(false);
@@ -81,21 +90,39 @@ function NewBanquetPage() {
     if (!propertyId) return;
     (async () => {
       const { data } = await supabase.from("halls")
-        .select("id,name,capacity,hourly_rate,day_rate")
+        .select("id,name,capacity")
         .eq("property_id", propertyId).eq("is_active", true).order("name");
       setHalls((data ?? []) as Hall[]);
       const { data: cs } = await supabase.from("room_categories")
         .select("id, name, base_rate")
         .eq("property_id", propertyId).order("name");
       setCats((cs ?? []) as Cat[]);
+      const { data: rs } = await supabase.from("rooms")
+        .select("id,room_number,category_id,status,room_categories(name)")
+        .eq("property_id", propertyId).eq("is_active", true)
+        .eq("status", "vacant").order("room_number");
+      setAllRooms(((rs ?? []) as any[]).map((r) => ({
+        id: r.id, room_number: r.room_number, category_id: r.category_id,
+        status: r.status, category_name: r.room_categories?.name ?? null,
+      })));
     })();
   }, [propertyId]);
 
+  const extrasTotal = useMemo(
+    () => extras.reduce((s, x) => s + (Number(x.amount) || 0), 0),
+    [extras],
+  );
   const total = useMemo(() => computeBanquetTotal({
-    package_rate: Number(packageRate), pax: Number(pax),
-    hall_charge: Number(hallCharge), fb_charge: Number(fbCharge),
-    extra_charge: Number(extraCharge), discount_amount: Number(discount),
-  }), [packageRate, pax, hallCharge, fbCharge, extraCharge, discount]);
+    package_rate: 0, pax: Number(pax),
+    hall_charge: Number(eventPrice), fb_charge: 0,
+    extra_charge: extrasTotal, discount_amount: Number(discount),
+  }), [eventPrice, extrasTotal, pax, discount]);
+
+  function addExtra() { setExtras((p) => [...p, { point_name: "", amount: "" }]); }
+  function updateExtra(i: number, patch: Partial<ExtraRow>) {
+    setExtras((p) => p.map((r, idx) => idx === i ? { ...r, ...patch } : r));
+  }
+  function removeExtra(i: number) { setExtras((p) => p.filter((_, idx) => idx !== i)); }
 
   const blockSummary = useMemo(() => {
     let totalRooms = 0;
@@ -160,7 +187,11 @@ function NewBanquetPage() {
     if (!guestName.trim() || !guestMobile.trim()) return toast.error("Guest name & mobile required");
     if (!hallId) return toast.error("Pick a hall");
     if (!eventDate || !startTime || !endTime) return toast.error("Event date/time required");
-    if (blockOn && blockRows.length > 0 && !eventName.trim()) return toast.error("Event name required for room block");
+    if ((roomMode === "single" || roomMode === "bulk") && !eventName.trim()) {
+      return toast.error("Event name required when assigning rooms");
+    }
+    if (roomMode === "single" && !singleRoomId) return toast.error("Pick a room to assign");
+    if (roomMode === "bulk" && blockRows.length === 0) return toast.error("Add at least one bulk block row");
     setSaving(true);
     try {
       const { data: g, error: ge } = await supabase.from("guests").insert({
@@ -174,9 +205,24 @@ function NewBanquetPage() {
 
       const advanceAmt = Number(advance) || 0;
 
-      // Prepare assignments if not already
-      let finalAssignments = assignments;
-      if (blockOn && blockRows.length > 0 && finalAssignments.length === 0) {
+      // Build assignments depending on roomMode
+      let finalAssignments: AssignedBlock[] = [];
+      if (roomMode === "single" && singleRoomId) {
+        const r = allRooms.find((x) => x.id === singleRoomId);
+        if (!r) throw new Error("Selected room no longer available");
+        finalAssignments = [{
+          room_id: r.id, room_number: r.room_number,
+          room_category: r.category_name ?? "",
+          category_id: r.category_id ?? "",
+          checkin_date: singleCheckIn,
+          checkout_date: singleCheckOut,
+          special_rate: Number(singleRate) || 0,
+          guest_name: guestName.trim(),
+          guest_mobile: guestMobile.trim(),
+        }];
+      } else if (roomMode === "bulk" && blockRows.length > 0) {
+        finalAssignments = assignments;
+        if (finalAssignments.length === 0) {
         const out: AssignedBlock[] = [];
         for (const row of blockRows) {
           if (!row.category_id) continue;
@@ -195,6 +241,7 @@ function NewBanquetPage() {
           }));
         }
         finalAssignments = out;
+        }
       }
 
       const totalRoomCharges = finalAssignments.reduce((sum, a) => {
@@ -207,16 +254,16 @@ function NewBanquetPage() {
         property_id: propertyId,
         hall_id: hallId,
         guest_id: g!.id,
-        event_name: blockOn ? eventName : null,
+        event_name: roomMode !== "none" ? eventName : null,
         function_type: functionType,
         event_date: eventDate,
         start_time: startTime,
         end_time: endTime,
         pax: Number(pax) || 0,
-        package_rate: Number(packageRate) || 0,
-        hall_charge: Number(hallCharge) || 0,
-        fb_charge: Number(fbCharge) || 0,
-        extra_charge: Number(extraCharge) || 0,
+        package_rate: 0,
+        hall_charge: Number(eventPrice) || 0,
+        fb_charge: 0,
+        extra_charge: extrasTotal,
         discount_amount: Number(discount) || 0,
         total_amount: combinedTotal,
         advance_amount: advanceAmt,
@@ -228,8 +275,26 @@ function NewBanquetPage() {
       } as any).select("id").single();
       if (be) throw be;
 
+      // Persist extras
+      const extraRows = extras
+        .map((x, idx) => ({ point_name: x.point_name.trim(), amount: Number(x.amount) || 0, sort_order: idx }))
+        .filter((x) => x.point_name && x.amount > 0);
+      if (extraRows.length > 0) {
+        const { error: exErr } = await supabase.from("banquet_extra_charges").insert(
+          extraRows.map((x) => ({
+            banquet_booking_id: bq!.id,
+            property_id: propertyId,
+            point_name: x.point_name,
+            amount: x.amount,
+            sort_order: x.sort_order,
+            created_by: user?.id ?? null,
+          })) as any,
+        );
+        if (exErr) throw exErr;
+      }
+
       let roomsBlocked = 0;
-      if (blockOn && finalAssignments.length > 0) {
+      if (roomMode !== "none" && finalAssignments.length > 0) {
         roomsBlocked = await commitRoomBlocks({
           propertyId,
           banquetBookingId: bq!.id,

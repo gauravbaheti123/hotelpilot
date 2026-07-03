@@ -411,6 +411,66 @@ export type Database = {
           },
         ]
       }
+      banquet_extra_charges: {
+        Row: {
+          amount: number
+          banquet_booking_id: string
+          created_at: string
+          created_by: string | null
+          discount_amount: number | null
+          discount_type: string | null
+          discount_value: number | null
+          id: string
+          point_name: string
+          property_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          banquet_booking_id: string
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number | null
+          discount_type?: string | null
+          discount_value?: number | null
+          id?: string
+          point_name: string
+          property_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          banquet_booking_id?: string
+          created_at?: string
+          created_by?: string | null
+          discount_amount?: number | null
+          discount_type?: string | null
+          discount_value?: number | null
+          id?: string
+          point_name?: string
+          property_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banquet_extra_charges_banquet_booking_id_fkey"
+            columns: ["banquet_booking_id"]
+            isOneToOne: false
+            referencedRelation: "banquet_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "banquet_extra_charges_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bill_sequences: {
         Row: {
           created_at: string

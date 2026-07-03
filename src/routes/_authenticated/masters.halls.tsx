@@ -10,16 +10,14 @@ export const Route = createFileRoute("/_authenticated/masters/halls")({
 
 interface Hall {
   id: string; name: string; capacity: number;
-  hourly_rate: number; day_rate: number; location: string | null;
+  location: string | null;
   is_active: boolean; notes: string | null;
 }
 
 const fields: FieldDef[] = [
   { name: "name", label: "Hall name", type: "text", required: true, colSpan: 2 },
   { name: "capacity", label: "Capacity (pax)", type: "number" },
-  { name: "location", label: "Location", type: "text" },
-  { name: "hourly_rate", label: "Hourly rate (₹)", type: "number" },
-  { name: "day_rate", label: "Day rate (₹)", type: "number" },
+  { name: "location", label: "Location / floor", type: "text" },
   { name: "is_active", label: "Active", type: "switch", defaultValue: true },
   { name: "notes", label: "Notes", type: "textarea", colSpan: 2 },
 ];
@@ -27,8 +25,6 @@ const fields: FieldDef[] = [
 const columns: ColumnDef<Hall>[] = [
   { header: "Name", render: (r) => <span className="font-medium">{r.name}</span> },
   { header: "Capacity", render: (r) => r.capacity },
-  { header: "Hourly", render: (r) => `₹${Number(r.hourly_rate).toLocaleString("en-IN")}` },
-  { header: "Day", render: (r) => `₹${Number(r.day_rate).toLocaleString("en-IN")}` },
   { header: "Location", render: (r) => r.location ?? "—" },
   { header: "Status", render: (r) => <Badge variant={r.is_active ? "default" : "outline"}>{r.is_active ? "Active" : "Inactive"}</Badge> },
 ];

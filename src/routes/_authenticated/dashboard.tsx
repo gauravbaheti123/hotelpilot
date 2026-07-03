@@ -581,7 +581,7 @@ function OwnerDashboard({
               <LegendDot style={{ backgroundColor: "#b45309" }} label="Overdue" />
               <LegendDot style={{ backgroundColor: "#d97706" }} label="Dirty" />
               <LegendDot style={{ backgroundColor: "#6b7280" }} label="Maintenance" />
-              <LegendDot style={{ backgroundColor: "#7c3aed" }} label="Event Block" />
+              <LegendDot style={{ backgroundColor: "#7c3aed" }} label="Event" />
               <LegendDot style={{ backgroundColor: "#6d28d9" }} label="Event·In" />
               <LegendDot style={{ backgroundColor: "#fbbf24" }} label="Pending food" />
             </div>
@@ -730,7 +730,7 @@ function OwnerDashboard({
                     <div className="text-xs text-muted-foreground">{ev.function_type} · {ev.event_date}</div>
                   </div>
                   <div className="text-xs">
-                    {ev.blocked} blocked · {ev.checked_in} checked in · {ev.checked_out} checked out
+                    {ev.blocked} pending · {ev.checked_in} checked in · {ev.checked_out} checked out
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" disabled={ev.blocked === 0}
@@ -895,7 +895,7 @@ const STATUS_META: Record<string, { label: string; bg: string }> = {
   occupied:    { label: "Occupied",    bg: "#dc2626" },
   dirty:       { label: "Dirty",       bg: "#d97706" },
   maintenance: { label: "Maintenance", bg: "#6b7280" },
-  blocked:     { label: "Blocked",     bg: "#6b7280" },
+  blocked:     { label: "Event",       bg: "#7c3aed" },
   overdue:     { label: "OVERDUE",     bg: "#b45309" },
 };
 const EVENT_BLOCK_BG = "#7c3aed";
@@ -966,7 +966,7 @@ function RoomCard({
             <span style={{ color: "#ffffff", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
             <span className="font-semibold uppercase tracking-wide rounded-full"
               style={{ backgroundColor: "rgba(255,255,255,0.25)", color: "#ffffff", fontSize: 10, padding: "2px 7px" }}>
-              {isEventCheckedIn ? "Event·In" : "Event Block"}
+              {isEventCheckedIn ? "Event·In" : "Event"}
             </span>
           </div>
           <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, marginTop: 1 }}>{category}</div>
@@ -1025,7 +1025,7 @@ function RoomCard({
   const hintText =
     kind === "dirty" ? "🧹 Needs cleaning"
     : kind === "maintenance" ? "🔧 Under repair"
-    : kind === "blocked" ? "⛔ Blocked"
+    : kind === "blocked" ? "🎉 Event"
     : null;
 
   return (
