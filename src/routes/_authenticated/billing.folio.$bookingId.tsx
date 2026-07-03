@@ -317,7 +317,13 @@ function FolioPage() {
   async function persistTotals(nextCharges: Charge[], nextPayments: Payment[], extraFolioPatch: Partial<Folio> = {}) {
     if (!folio) return;
     const mode = (extraFolioPatch.gst_mode as "cash" | "gst") ?? (folio.gst_mode as "cash" | "gst");
-    const t = recomputeFolio(nextCharges, mode);
+    const nextDiscType = (extraFolioPatch.discount_type as "percent" | "amount" | undefined)
+      ?? (folio.discount_type as "percent" | "amount" | undefined);
+    const nextDiscValue = extraFolioPatch.discount_value ?? folio.discount_value ?? 0;
+    const billDisc: BillDiscount | null = nextDiscType && nextDiscValue > 0
+      ? { type: nextDiscType, value: Number(nextDiscValue) }
+      : null;
+    const t = recomputeFolio(nextCharges, mode, billDisc);
     const paid = nextPayments.reduce((s, p) => s + Number(p.amount), 0);
     await supabase.from("folios").update({
       ...t,
