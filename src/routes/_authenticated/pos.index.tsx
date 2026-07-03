@@ -14,6 +14,7 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { recomputeFolio, inr } from "@/lib/billing";
 import { SUNDRY_CATEGORIES, categoryColor, categoryLabel } from "@/lib/sundry";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { Plus, Minus, Trash2, Receipt, Send } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
@@ -162,6 +163,23 @@ function PosPage() {
     }).eq("id", fId);
 
     toast.success(`Posted ${lines.length} charge(s) — ${inr(totals.total)}`);
+    if (user && current) {
+      logActivity({
+        property_id: current.id,
+        user_id: user.id,
+        user_name: userDisplayName(user as any),
+        action_type: "POS_CHARGE_ADDED",
+        module: "POS",
+        reference_id: bookingId,
+        reference_label: `POS ${lines.length} item(s)`,
+        details: {
+          booking_id: bookingId,
+          folio_id: fId,
+          items: lines.map((l) => ({ name: l.item.name, qty: l.qty, rate: Number(l.item.rate) })),
+          total: totals.total,
+        },
+      });
+    }
     setCart({});
     setBusy(false);
     if (navigateAfter) {
