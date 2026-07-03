@@ -66,7 +66,7 @@ interface Folio {
   notes: string | null; property_id: string; bill_type: string | null;
   discount_type?: "percent" | "amount";
   discount_value?: number;
-  round_off_amount?: number | null;
+  round_off_amount?: number;
 }
 interface BookingCtx {
   id: string; booking_number: string; status: string;
