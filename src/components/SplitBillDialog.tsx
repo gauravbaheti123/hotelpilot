@@ -410,11 +410,13 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
             ) : (
               <div className="rounded border bg-muted/30 p-3 text-xs text-muted-foreground">
                 Bill 2 will use the same party as Bill 1 ({party1.name}).
+              {isOwnerStrict && (
                 <div className="mt-2 flex items-center gap-3">
                   <Label className="text-xs">Bill 2 Type</Label>
                   <BillTypeToggle value={party2.bill_type}
                     onChange={(v) => setParty2({ ...party2, bill_type: v, name: party1.name, mobile: party1.mobile, gstin: party1.gstin })} />
                 </div>
+              )}
               </div>
             )}
             <div className="rounded border p-3 text-xs space-y-1">
