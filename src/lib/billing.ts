@@ -12,33 +12,78 @@ export interface ChargeLike {
   amount: number | string;
   gst_rate?: number | string | null;
   gst_amount?: number | string | null;
+  /** Optional per-line discount amount (rupees, positive number) */
+  discount_amount?: number | string | null;
+}
+
+export interface BillDiscount {
+  type: "percent" | "amount";
+  value: number;
 }
 
 /**
  * Recompute folio totals from charges.
  * GST mode "cash" → ignore GST, total = sub - discount.
  * GST mode "gst"  → total = sub - discount + GST.
+ *
+ * Per-line discount (charge.discount_amount) reduces that line's taxable
+ * amount and its GST proportionally. Bill-level discount (optional 3rd arg)
+ * is applied on the net subtotal.
  */
-export function recomputeFolio(charges: ChargeLike[], gstMode: "cash" | "gst") {
+export function recomputeFolio(
+  charges: ChargeLike[],
+  gstMode: "cash" | "gst",
+  billDiscount?: BillDiscount | null,
+) {
   let sub = 0;
-  let discount = 0;
+  let lineDiscTotal = 0;
+  let legacyDiscount = 0;
   let gst = 0;
   for (const c of charges) {
     const amt = Number(c.amount ?? 0);
-    if (c.charge_type === "discount") discount += Math.abs(amt);
-    else if (c.charge_type === "tax") gst += amt;
-    else sub += amt;
-    if (gstMode === "gst" && c.charge_type !== "discount" && c.charge_type !== "tax") {
-      gst += Number(c.gst_amount ?? 0);
+    if (c.charge_type === "discount") {
+      // legacy in-line discount charge (kept for backward compat)
+      legacyDiscount += Math.abs(amt);
+      continue;
+    }
+    if (c.charge_type === "tax") {
+      gst += amt;
+      continue;
+    }
+    const lineDisc = Math.max(0, Math.min(Number(c.discount_amount ?? 0), Math.abs(amt)));
+    const net = amt - lineDisc;
+    lineDiscTotal += lineDisc;
+    sub += net;
+    if (gstMode === "gst") {
+      const gstFull = Number(c.gst_amount ?? 0);
+      const gstNet = amt > 0 ? gstFull * (net / amt) : gstFull;
+      gst += gstNet;
     }
   }
+  // Bill-level discount (on net subtotal, after line discounts)
+  let billDiscAmt = 0;
+  if (billDiscount && billDiscount.value > 0) {
+    if (billDiscount.type === "percent") {
+      billDiscAmt = Math.max(0, Math.min(100, billDiscount.value)) * sub / 100;
+    } else {
+      billDiscAmt = Math.min(billDiscount.value, sub);
+    }
+    // Reduce GST proportionally when in GST mode
+    if (gstMode === "gst" && sub > 0) {
+      const factor = Math.max(0, (sub - billDiscAmt) / sub);
+      gst = gst * factor;
+    }
+  }
+  const discount = legacyDiscount + billDiscAmt;
   const total =
     gstMode === "gst"
-      ? Math.max(0, sub - discount + gst)
-      : Math.max(0, sub - discount);
+      ? Math.max(0, sub - billDiscAmt - legacyDiscount + gst)
+      : Math.max(0, sub - billDiscAmt - legacyDiscount);
   return {
     sub_total: round2(sub),
     discount_amount: round2(discount),
+    line_discount_amount: round2(lineDiscTotal),
+    bill_discount_amount: round2(billDiscAmt),
     gst_amount: round2(gstMode === "gst" ? gst : 0),
     total_amount: round2(total),
   };
