@@ -491,8 +491,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
           <div className="py-12 text-center text-sm text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading…
           </div>
-        ) : pendingKots.length > 0 ? (
+        ) : pendingKots.length > 0 || pendingPos.length > 0 ? (
           <div className="space-y-4">
+            {pendingKots.length > 0 && (
             <div className="rounded-md border border-destructive/60 bg-destructive/5 p-4">
               <div className="flex items-center gap-2 font-medium text-destructive mb-2">
                 <AlertTriangle className="h-5 w-5" /> Cannot Checkout
@@ -512,11 +513,43 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
                 Please add these to the room bill before checkout.
               </div>
             </div>
+            )}
+            {pendingPos.length > 0 && (
+            <div className="rounded-md border border-destructive/60 bg-destructive/5 p-4">
+              <div className="flex items-center gap-2 font-medium text-destructive mb-2">
+                <AlertTriangle className="h-5 w-5" /> {pendingPos.length} POS charge(s) not yet added to bill
+              </div>
+              <div className="text-sm mb-2">
+                Categories: {Array.from(new Set(pendingPos.map((p) => p.category_name))).join(", ")}
+              </div>
+              <div className="space-y-1 text-sm">
+                {pendingPos.map((p) => (
+                  <div key={p.id} className="flex justify-between">
+                    <span>
+                      <Badge variant="outline" className="ml-0 mr-1 text-[10px] uppercase">{p.category_name}</Badge>
+                      {p.description}
+                    </span>
+                    <span>{inr(p.amount + p.gst_amount)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="text-xs text-muted-foreground mt-3">
+                Add these to the room bill before checkout.
+              </div>
+            </div>
+            )}
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button onClick={addPendingToBill} disabled={busy}>
-                {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Add to Bill
-              </Button>
+              {pendingKots.length > 0 && (
+                <Button onClick={addPendingToBill} disabled={busy}>
+                  {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Add Food to Bill
+                </Button>
+              )}
+              {pendingPos.length > 0 && (
+                <Button onClick={addPendingPosToBill} disabled={busy}>
+                  {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Add POS to Bill
+                </Button>
+              )}
             </DialogFooter>
           </div>
         ) : (
