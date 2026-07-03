@@ -15,7 +15,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { inr, computeBillDiscountAmount, type BillDiscount } from "@/lib/billing";
+import { inr, inrRound, roundHalfUp, computeBillDiscountAmount, type BillDiscount } from "@/lib/billing";
 import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
 import { fmtDate } from "@/lib/reportExports";
 import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
@@ -205,7 +205,9 @@ function BanquetBillPage() {
   const gstRate = 0.12;
   const cgst = isGst ? Math.round((taxable * gstRate / 2) * 100) / 100 : 0;
   const sgst = cgst;
-  const total = Math.round((taxable + (isGst ? cgst + sgst : 0)) * 100) / 100;
+  const totalRaw = Math.round((taxable + (isGst ? cgst + sgst : 0)) * 100) / 100;
+  const total = roundHalfUp(totalRaw);
+  const roundOff = Math.round((total - totalRaw) * 100) / 100;
   const advance = Number(b.advance_amount || 0);
   const paidViaEventPayments = pays.reduce((s, p) => s + Number(p.amount || 0), 0);
   const totalPaid = advance + paidViaEventPayments;
@@ -249,13 +251,16 @@ function BanquetBillPage() {
     const nextBillDiscAmt = computeBillDiscountAmount(nextNetSubtotal, nextBillDisc);
     const nextTaxable = Math.max(0, nextNetSubtotal - nextBillDiscAmt);
     const nextGst = isGst ? round2(nextTaxable * gstRate) : 0;
-    const nextTotal = round2(nextTaxable + nextGst);
+    const nextTotalRaw = round2(nextTaxable + nextGst);
+    const nextTotal = roundHalfUp(nextTotalRaw);
+    const nextRoundOff = round2(nextTotal - nextTotalRaw);
     const nextDiscountAmount = round2(nextFixedLineDisc + roomLineDiscTotal + nextBillDiscAmt);
     const nextBalance = Math.max(0, round2(nextTotal - totalPaid));
     return await supabase.from("banquet_bookings").update({
       ...patch,
       discount_amount: nextDiscountAmount,
       total_amount: nextTotal,
+      round_off_amount: nextRoundOff,
       balance_amount: nextBalance,
     } as any).eq("id", b.id);
   }
@@ -413,9 +418,10 @@ function BanquetBillPage() {
         ${discount > 0 ? `<tr><td>Discount</td><td class="right">- ${inr(discount)}</td></tr>` : ""}
         ${isGst ? `<tr><td>CGST 6%</td><td class="right">${inr(cgst)}</td></tr>
                    <tr><td>SGST 6%</td><td class="right">${inr(sgst)}</td></tr>` : ""}
-        <tr class="grand"><td>Total</td><td class="right">${inr(total)}</td></tr>
+        ${Math.abs(roundOff) >= 0.01 ? `<tr><td>Round Off</td><td class="right">${roundOff >= 0 ? "+ " : "- "}${inr(Math.abs(roundOff))}</td></tr>` : ""}
+        <tr class="grand"><td>Total</td><td class="right">${inrRound(total)}</td></tr>
         <tr><td>Advance</td><td class="right">- ${inr(advance)}</td></tr>
-        <tr><td>Balance Due</td><td class="right">${inr(balance)}</td></tr>
+        <tr><td>Balance Due</td><td class="right">${inrRound(balance)}</td></tr>
       </table>
       <p style="margin-top:24px;text-align:center;font-size:10px;color:#666">This is a draft for verification only.</p>
       </body></html>`;
@@ -493,9 +499,9 @@ function BanquetBillPage() {
       Number(b.fb_charge) > 0 ? `F&B: ${inr(b.fb_charge)}` : "",
       roomSubtotalGross > 0 ? `Rooms: ${inr(roomSubtotalGross)}` : "",
       isGst ? `GST: ${inr(cgst + sgst)}` : "",
-      `*Total: ${inr(total)}*`,
+      `*Total: ${inrRound(total)}*`,
       `Advance: ${inr(advance)}`,
-      `Balance Due: ${inr(balance)}`,
+      `Balance Due: ${inrRound(balance)}`,
     ].filter(Boolean).join("\n");
     try {
       if (phone) {
@@ -678,14 +684,20 @@ function BanquetBillPage() {
                   <SummaryRow label="CGST 6%" value={inr(cgst)} />
                   <SummaryRow label="SGST 6%" value={inr(sgst)} />
                 </>)}
-                <SummaryRow label="Total" value={inr(total)} bold />
+                {Math.abs(roundOff) >= 0.01 && (
+                  <SummaryRow
+                    label="Round Off"
+                    value={`${roundOff >= 0 ? "+ " : "- "}${inr(Math.abs(roundOff))}`}
+                  />
+                )}
+                <SummaryRow label="Total" value={inrRound(total)} bold />
                 {advance > 0 && <SummaryRow label="Advance Received" value={`- ${inr(advance)}`} />}
                 {paidViaEventPayments > 0 && (
                   <SummaryRow label="Payments Received" value={`- ${inr(paidViaEventPayments)}`} />
                 )}
                 <SummaryRow
                   label="Balance Due"
-                  value={inr(balance)}
+                  value={inrRound(balance)}
                   bold
                   highlight={balance > 0 ? "red" : undefined}
                 />

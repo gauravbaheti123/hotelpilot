@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { inr, recomputeFolio, computeBillDiscountAmount, type BillDiscount } from "@/lib/billing";
+import { inr, inrRound, recomputeFolio, computeBillDiscountAmount, type BillDiscount } from "@/lib/billing";
 import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { useAuth, hasRole } from "@/hooks/use-auth";
@@ -530,7 +530,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
                       ))}
                     </div>
                     <div className="flex justify-between border-t px-3 py-2 text-sm font-semibold">
-                      <span>Total</span><span>{inr(total)}</span>
+                      <span>Total</span><span>{inrRound(total)}</span>
                     </div>
                   </div>
                 );
@@ -563,8 +563,8 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
             )}
             <div className="rounded border p-3 text-xs space-y-1">
               <div className="font-semibold">Summary</div>
-              <div>Bill 1: {party1.name} · <Badge variant="outline" className="text-[10px]">{party1.bill_type}</Badge> · <b>{inr(bill1Total)}</b></div>
-              <div>Bill 2: {splitType === "same" ? party1.name : (party2.name || "—")} · <Badge variant="outline" className="text-[10px]">{party2.bill_type}</Badge> · <b>{inr(bill2Total)}</b></div>
+              <div>Bill 1: {party1.name} · <Badge variant="outline" className="text-[10px]">{party1.bill_type}</Badge> · <b>{inrRound(bill1Total)}</b></div>
+              <div>Bill 2: {splitType === "same" ? party1.name : (party2.name || "—")} · <Badge variant="outline" className="text-[10px]">{party2.bill_type}</Badge> · <b>{inrRound(bill2Total)}</b></div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep(2)}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
@@ -586,7 +586,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
                     <div className="font-semibold">{b.invoice_number}</div>
                     <div className="text-xs text-muted-foreground">{b.party.name}</div>
                   </div>
-                  <div className="font-semibold tabular-nums">{inr(b.total)}</div>
+                  <div className="font-semibold tabular-nums">{inrRound(b.total)}</div>
                 </div>
                 <div className="flex justify-end">
                   <Button size="sm" variant="outline"

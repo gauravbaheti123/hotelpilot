@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
-import { recomputeFolio, inr } from "@/lib/billing";
+import { recomputeFolio, inr, inrRound } from "@/lib/billing";
 import { SUNDRY_CATEGORIES, categoryColor, categoryLabel } from "@/lib/sundry";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { Plus, Minus, Trash2, Receipt, Send } from "lucide-react";
@@ -162,7 +162,7 @@ function PosPage() {
       balance_amount: Math.max(0, t.total_amount - paid),
     }).eq("id", fId);
 
-    toast.success(`Posted ${lines.length} charge(s) — ${inr(totals.total)}`);
+    toast.success(`Posted ${lines.length} charge(s) — ${inrRound(totals.total)}`);
     if (user && current) {
       logActivity({
         property_id: current.id,
@@ -324,7 +324,7 @@ function PosPage() {
                 <div className="mt-4 space-y-1 text-sm border-t pt-3">
                   <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{inr(totals.sub)}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">GST</span><span>{inr(totals.gst)}</span></div>
-                  <div className="flex justify-between font-semibold text-base pt-1 border-t"><span>Total</span><span>{inr(totals.total)}</span></div>
+                  <div className="flex justify-between font-semibold text-base pt-1 border-t"><span>Total</span><span>{inrRound(totals.total)}</span></div>
                 </div>
               )}
             </CardContent>

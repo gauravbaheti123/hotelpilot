@@ -24,6 +24,7 @@ import {
   recomputeFolio,
   computeBillDiscountAmount,
   type BillDiscount,
+ inrRound,
 } from "@/lib/billing";
 import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent } from "lucide-react";
 import { AlertTriangle, ShieldAlert, ArrowRightLeft } from "lucide-react";
@@ -66,6 +67,7 @@ interface Folio {
   notes: string | null; property_id: string; bill_type: string | null;
   discount_type?: "percent" | "amount";
   discount_value?: number;
+  round_off_amount?: number;
 }
 interface BookingCtx {
   id: string; booking_number: string; status: string;
@@ -827,9 +829,9 @@ function FolioPage() {
       subFood > 0 ? `Food & beverage: ${inr(subFood)}` : "",
       subSundry > 0 ? `Sundry: ${inr(subSundry)}` : "",
       isGst ? `GST: ${inr(folio.gst_amount)}` : "",
-      `*Grand total: ${inr(folio.total_amount)}*`,
+      `*Grand total: ${inrRound(folio.total_amount)}*`,
       `Paid: ${inr(folio.paid_amount)}`,
-      `Balance: ${inr(folio.balance_amount)}`,
+      `Balance: ${inrRound(folio.balance_amount)}`,
       ``,
       `Thank you for staying with us.`,
     ].filter(Boolean).join("\n");
@@ -861,7 +863,7 @@ function FolioPage() {
       return toast.error("Resolve pending food orders before checkout");
     }
     if (Number(folio.balance_amount) > 0.01) {
-      return toast.error(`Collect ${inr(folio.balance_amount)} before checkout`);
+      return toast.error(`Collect ${inrRound(folio.balance_amount)} before checkout`);
     }
     setCheckoutOpen(true);
   }
@@ -885,9 +887,9 @@ function FolioPage() {
       `Dear ${booking.guests?.name ?? "Guest"},\n\n` +
       `Please find your ${isGst ? "tax invoice" : "receipt"} ${folio.invoice_number} for ` +
       `your stay from ${booking.check_in} to ${booking.check_out}.\n\n` +
-      `Grand Total: ${inr(folio.total_amount)}\n` +
+      `Grand Total: ${inrRound(folio.total_amount)}\n` +
       `Paid: ${inr(folio.paid_amount)}\n` +
-      `Balance: ${inr(folio.balance_amount)}\n\n` +
+      `Balance: ${inrRound(folio.balance_amount)}\n\n` +
       `Thank you for staying with us.\n${property?.name ?? ""}`
     );
     setEmailOpen(true);
@@ -1351,6 +1353,15 @@ function FolioPage() {
                     </tr>
                   )}
                   {isGst && <tr><td style={{ color: "#555" }}>GST</td><td style={{ textAlign: "right" }}>{inr(folio.gst_amount)}</td></tr>}
+                  {Number(folio.round_off_amount ?? 0) !== 0 && (
+                    <tr>
+                      <td style={{ color: "#555" }}>Round Off</td>
+                      <td style={{ textAlign: "right" }}>
+                        {Number(folio.round_off_amount) >= 0 ? "+ " : "- "}
+                        {inr(Math.abs(Number(folio.round_off_amount ?? 0)))}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
               {canEditNow && (
@@ -1363,7 +1374,7 @@ function FolioPage() {
               )}
               <div style={{ background: TEAL, color: "#fff" }} className="mt-2 flex items-center justify-between rounded px-4 py-3">
                 <span className="text-sm font-bold uppercase tracking-wider">Grand Total</span>
-                <span className="text-2xl font-extrabold tabular-nums">{inr(folio.total_amount)}</span>
+                <span className="text-2xl font-extrabold tabular-nums">{inrRound(folio.total_amount)}</span>
               </div>
               {!isGst && (
                 <div className="mt-1 text-right text-[10px] italic text-gray-500">Amount includes all applicable taxes</div>
@@ -1392,7 +1403,7 @@ function FolioPage() {
                     </tr>
                     <tr>
                       <td colSpan={3} style={{ fontWeight: 700, color: Number(folio.balance_amount) > 0.01 ? "#dc2626" : TEAL_DARK }}>Balance Due</td>
-                      <td style={{ textAlign: "right", fontWeight: 700, color: Number(folio.balance_amount) > 0.01 ? "#dc2626" : TEAL_DARK }}>{inr(folio.balance_amount)}</td>
+                      <td style={{ textAlign: "right", fontWeight: 700, color: Number(folio.balance_amount) > 0.01 ? "#dc2626" : TEAL_DARK }}>{inrRound(folio.balance_amount)}</td>
                     </tr>
                   </tbody>
                 </table>

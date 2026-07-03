@@ -239,6 +239,7 @@ export type Database = {
           package_rate: number
           pax: number
           property_id: string
+          round_off_amount: number
           start_time: string
           status: string
           total_amount: number
@@ -275,6 +276,7 @@ export type Database = {
           package_rate?: number
           pax?: number
           property_id: string
+          round_off_amount?: number
           start_time: string
           status?: string
           total_amount?: number
@@ -311,6 +313,7 @@ export type Database = {
           package_rate?: number
           pax?: number
           property_id?: string
+          round_off_amount?: number
           start_time?: string
           status?: string
           total_amount?: number
@@ -1391,6 +1394,7 @@ export type Database = {
           notes: string | null
           paid_amount: number
           property_id: string
+          round_off_amount: number
           settled_at: string | null
           status: string
           sub_total: number
@@ -1420,6 +1424,7 @@ export type Database = {
           notes?: string | null
           paid_amount?: number
           property_id: string
+          round_off_amount?: number
           settled_at?: string | null
           status?: string
           sub_total?: number
@@ -1449,6 +1454,7 @@ export type Database = {
           notes?: string | null
           paid_amount?: number
           property_id?: string
+          round_off_amount?: number
           settled_at?: string | null
           status?: string
           sub_total?: number

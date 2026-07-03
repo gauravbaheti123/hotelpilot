@@ -21,7 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
-import { inr, recomputeFolio } from "@/lib/billing";
+import { inr, inrRound, recomputeFolio } from "@/lib/billing";
 import { fireTrigger } from "@/lib/whatsapp";
 import { AlertTriangle, Plus, Trash2, Loader2, ArrowRightLeft, SplitSquareHorizontal } from "lucide-react";
 import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
@@ -204,7 +204,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
   // Pre-fill single amount once balance computed
   useEffect(() => {
     if (!loading && singleAmount === "" && totals.balance > 0) {
-      setSingleAmount(totals.balance.toFixed(2));
+      setSingleAmount(String(Math.round(totals.balance)));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, totals.balance]);
@@ -482,7 +482,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
 
             <div className="flex justify-between border-t-2 border-foreground pt-2 font-semibold text-base">
               <span>GRAND TOTAL</span>
-              <span>{inr(totals.grand)}</span>
+              <span>{inrRound(totals.grand)}</span>
             </div>
 
             <div className="rounded border p-3 space-y-1">
@@ -506,7 +506,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
               <div className="flex justify-between border-t pt-2 font-semibold">
                 <span>Balance Due</span>
                 <span className={totals.balance > 0 ? "text-destructive" : "text-emerald-600"}>
-                  {inr(totals.balance)}
+                  {inrRound(totals.balance)}
                 </span>
               </div>
             </div>

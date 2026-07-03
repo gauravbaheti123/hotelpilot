@@ -1,0 +1,2 @@
+ALTER TABLE public.folios ADD COLUMN IF NOT EXISTS round_off_amount numeric(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE public.banquet_bookings ADD COLUMN IF NOT EXISTS round_off_amount numeric(12,2) NOT NULL DEFAULT 0;

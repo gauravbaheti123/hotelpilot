@@ -75,15 +75,18 @@ export function recomputeFolio(
     }
   }
   const discount = legacyDiscount + billDiscAmt;
-  const total =
+  const totalRaw =
     gstMode === "gst"
       ? Math.max(0, sub - billDiscAmt - legacyDiscount + gst)
       : Math.max(0, sub - billDiscAmt - legacyDiscount);
+  const totalRounded = roundHalfUp(totalRaw);
+  const roundOff = round2(totalRounded - totalRaw);
   return {
     sub_total: round2(sub),
     discount_amount: round2(discount),
     gst_amount: round2(gstMode === "gst" ? gst : 0),
-    total_amount: round2(total),
+    total_amount: totalRounded,
+    round_off_amount: roundOff,
   };
 }
 
@@ -112,6 +115,25 @@ export function computeBillDiscountAmount(
 
 function round2(n: number) {
   return Math.round(n * 100) / 100;
+}
+
+/** Standard round-half-up to nearest integer (rupees). 0.50→+1, -0.50→0. */
+export function roundHalfUp(n: number): number {
+  return Math.sign(n) >= 0
+    ? Math.floor(n + 0.5)
+    : -Math.floor(-n + 0.5);
+}
+
+/** Compute rounded total + round-off delta from a raw total. */
+export function computeRoundOff(rawTotal: number): { total: number; round_off: number } {
+  const total = roundHalfUp(rawTotal);
+  return { total, round_off: round2(total - rawTotal) };
+}
+
+/** Currency string with no decimals — for the final rounded amount. */
+export function inrRound(n: number | string | null | undefined) {
+  const v = roundHalfUp(Number(n ?? 0));
+  return `₹${v.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 }
 
 export function inr(n: number | string | null | undefined) {
