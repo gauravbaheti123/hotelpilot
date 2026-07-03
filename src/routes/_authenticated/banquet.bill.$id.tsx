@@ -205,10 +205,17 @@ function BanquetBillPage() {
   };
   const roomSubtotalGross = bulk.reduce((s, r) => s + Number(r.rate || 0) * Number(r.nights || 0), 0);
   const roomLineDiscTotal = bulk.reduce((s, r) => s + roomDiscAmt(r), 0);
+  const extraDiscAmt = (e: ExtraCharge) => {
+    const base = Number(e.amount || 0);
+    const raw = Number(e.discount_amount ?? 0);
+    return Math.max(0, Math.min(raw, base));
+  };
+  const extrasSubtotalGross = extras.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const extrasLineDiscTotal = extras.reduce((s, e) => s + extraDiscAmt(e), 0);
   const subtotal =
-    lineBase.hall + lineBase.package + lineBase.fb + lineBase.extra + roomSubtotalGross;
+    lineBase.hall + lineBase.package + lineBase.fb + lineBase.extra + roomSubtotalGross + extrasSubtotalGross;
   const fixedLineDiscTotal = lineDiscAmt("hall") + lineDiscAmt("package") + lineDiscAmt("fb") + lineDiscAmt("extra");
-  const totalLineDisc = fixedLineDiscTotal + roomLineDiscTotal;
+  const totalLineDisc = fixedLineDiscTotal + roomLineDiscTotal + extrasLineDiscTotal;
   const netSubtotal = Math.max(0, subtotal - totalLineDisc);
   const billDisc: BillDiscount | null =
     b.discount_type && Number(b.discount_value) > 0
