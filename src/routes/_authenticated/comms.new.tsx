@@ -17,13 +17,14 @@ import {
 } from "@/lib/comms";
 import { ExternalLink, Send, Save } from "lucide-react";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/comms/new")({
   validateSearch: (s: Record<string, unknown>) => ({
     booking_id: typeof s.booking_id === "string" ? s.booking_id : undefined,
     guest_id: typeof s.guest_id === "string" ? s.guest_id : undefined,
   }),
   head: () => ({ meta: [{ title: "New Message — HotelPilot" }] }),
-  component: NewCommPage,
+  component: () => (<RequirePermission module="communications"><NewCommPage /></RequirePermission>),
 });
 
 interface Tpl { id: string; name: string; channel: string; subject: string | null; body: string }

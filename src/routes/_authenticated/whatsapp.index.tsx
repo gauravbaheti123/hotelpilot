@@ -12,9 +12,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { sendWhatsApp } from "@/lib/whatsapp";
 import { toast } from "sonner";
 
+import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/whatsapp/")({
   head: () => ({ meta: [{ title: "WhatsApp Inbox — HotelPilot" }] }),
-  component: WhatsAppInboxPage,
+  component: () => (<RequirePermission module="whatsapp_inbox"><WhatsAppInboxPage /></RequirePermission>),
 });
 
 interface Msg {

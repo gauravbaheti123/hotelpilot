@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
@@ -31,6 +31,15 @@ import { createOwnerLogin } from "@/lib/admin-users.functions";
 import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/properties")({
+  ssr: false,
+  // Owner + superadmin only — this route is standalone (not under /superadmin/*).
+  beforeLoad: async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data: u } = await supabase.auth.getUser();
+    if (!u.user) throw redirect({ to: "/login" });
+    const { data: allowed } = await supabase.rpc("is_owner_or_super", { _user_id: u.user.id });
+    if (!allowed) throw redirect({ to: "/dashboard" });
+  },
   head: () => ({ meta: [{ title: "Properties — HotelPilot" }] }),
   component: PropertiesPage,
 });
