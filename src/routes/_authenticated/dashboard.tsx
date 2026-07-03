@@ -535,6 +535,7 @@ function OwnerDashboard({
               <RoomGroups
                 rooms={rooms}
                 categories={categories}
+                grouping={grouping}
                 occupiedRoomIds={occupiedRoomIds}
                 pendingFoodByRoom={pendingFoodByRoom}
                 occInfoByRoom={occInfoByRoom}
@@ -584,6 +585,16 @@ function OwnerDashboard({
               <LegendDot style={{ backgroundColor: "#6d28d9" }} label="Event·In" />
               <LegendDot style={{ backgroundColor: "#fbbf24" }} label="Pending food" />
             </div>
+            <div className="mt-4 flex items-center gap-2 border-t pt-3">
+              <Label className="text-xs text-muted-foreground">Group rooms by</Label>
+              <Select value={grouping} onValueChange={(v) => changeGrouping(v as "category" | "floor")}>
+                <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="category">Category</SelectItem>
+                  <SelectItem value="floor">Floor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
 
@@ -607,6 +618,37 @@ function OwnerDashboard({
           />
           <Kpi label="Expected Arrivals" value={kpi.arrivals} icon={LogIn} />
           <Kpi label="Expected Departures" value={kpi.departures} icon={LogOut} />
+          <Kpi
+            label="Dirty Rooms"
+            value={rooms.filter((r) => r.housekeeping_status === "dirty").length}
+            icon={Sparkles}
+            iconClassName="text-amber-600"
+          />
+          <Kpi
+            label="Maintenance Rooms"
+            value={rooms.filter((r) => r.status === "maintenance" || r.housekeeping_status === "out_of_order").length}
+            icon={Wrench}
+            iconClassName="text-red-600"
+          />
+          <Kpi
+            label="Event / Wedding Rooms"
+            value={Array.from(eventBlockByRoom.values()).filter((e) => e.status !== "checked_out").length}
+            icon={PartyPopper}
+            iconClassName="text-purple-600"
+          />
+          <Kpi
+            label="Ready to Sell"
+            value={rooms.filter((r) =>
+              !occupiedRoomIds.has(r.id) &&
+              r.status !== "maintenance" &&
+              r.status !== "blocked" &&
+              r.housekeeping_status !== "dirty" &&
+              r.housekeeping_status !== "out_of_order" &&
+              !eventBlockByRoom.has(r.id)
+            ).length}
+            icon={CheckCircle2}
+            iconClassName="text-emerald-600"
+          />
         </div>
 
         <Card>
