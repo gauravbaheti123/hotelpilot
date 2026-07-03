@@ -255,6 +255,11 @@ function BanquetBillPage() {
     setDiscTarget({ kind: "room", rowId, base, description });
     setDiscOpen(true);
   }
+  function openExtraDiscount(rowId: string, base: number, description: string) {
+    if (base <= 0) return;
+    setDiscTarget({ kind: "extra", rowId, base, description });
+    setDiscOpen(true);
+  }
 
   async function persistBanquetDiscount(patch: Partial<Bq>) {
     if (!b) return { error: null as any };
