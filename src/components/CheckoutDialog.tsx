@@ -128,7 +128,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       return;
     }
 
-    const [{ data: f }, { data: c }, { data: p }, { data: pk }] = await Promise.all([
+    const [{ data: f }, { data: c }, { data: p }, { data: pk }, { data: pos }] = await Promise.all([
       supabase.from("folios").select("*").eq("id", folioId as any).single(),
       supabase.from("folio_charges").select("*").eq("folio_id", folioId as any),
       supabase.from("payments").select("*").eq("folio_id", folioId as any),
@@ -139,11 +139,17 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
         .eq("is_wiped", false)
         .neq("kot_copy", "restaurant_copy")
         .not("status", "in", "(billed,cancelled,void)"),
+      supabase
+        .from("pos_charges")
+        .select("id,category_name,description,qty,rate,amount,gst_rate,gst_amount")
+        .eq("booking_id", bookingId)
+        .eq("status", "pending"),
     ]);
     setFolio(f);
     setCharges(c ?? []);
     setPayments(p ?? []);
     setPendingKots((pk ?? []) as unknown as PendingKot[]);
+    setPendingPos((pos ?? []) as unknown as PendingPosCharge[]);
     setLoading(false);
   }, [bookingId]);
 
