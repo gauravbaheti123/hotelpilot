@@ -1482,7 +1482,6 @@ function FolioPage() {
           </DialogContent>
         </Dialog>
 
-        {/* ADD CHARGE */}
         {/* DISCOUNT (bill-level or line-item) */}
         <Dialog open={discOpen} onOpenChange={setDiscOpen}>
           <DialogContent>
