@@ -876,10 +876,48 @@ function FolioPage() {
     if (hasPending && !overrideApproved) {
       return toast.error("Resolve pending food orders before checkout");
     }
+    if (pendingPos.length > 0) {
+      return toast.error(`Add ${pendingPos.length} pending POS charge(s) to bill before checkout`);
+    }
     if (Number(folio.balance_amount) > 0.01) {
       return toast.error(`Collect ${inrRound(folio.balance_amount)} before checkout`);
     }
     setCheckoutOpen(true);
+  }
+
+  async function addPendingPosToBill(ids?: string[]) {
+    if (!folio || !booking) return;
+    const targets = ids && ids.length > 0
+      ? pendingPos.filter((p) => ids.includes(p.id))
+      : pendingPos;
+    if (targets.length === 0) return;
+    for (const pc of targets) {
+      const { data: inserted, error: cErr } = await supabase
+        .from("folio_charges")
+        .insert({
+          folio_id: folio.id,
+          charge_type: "extra",
+          description: `${pc.category_name} · ${pc.description}`,
+          qty: pc.qty,
+          rate: pc.rate,
+          amount: pc.amount,
+          gst_rate: pc.gst_rate,
+          gst_amount: pc.gst_amount,
+          source_table: "pos_charges",
+          source_id: pc.id,
+          created_by: user?.id ?? null,
+        } as any)
+        .select("id")
+        .single();
+      if (cErr) return toast.error(cErr.message);
+      await supabase.from("pos_charges")
+        .update({ status: "billed", folio_charge_id: (inserted as any).id, billed_at: new Date().toISOString() } as any)
+        .eq("id", pc.id);
+    }
+    const next = await refetchCharges();
+    await persistTotals(next, payments);
+    toast.success(`${targets.length} POS charge(s) added to bill`);
+    load();
   }
 
   async function handleDownloadPDF() {
