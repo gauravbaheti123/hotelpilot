@@ -64,8 +64,8 @@ interface Folio {
   total_amount: number; paid_amount: number; balance_amount: number;
   guest_gstin: string | null; guest_company: string | null;
   notes: string | null; property_id: string; bill_type: string | null;
-  discount_type?: "percent" | "amount" | null;
-  discount_value?: number | null;
+  discount_type?: "percent" | "amount";
+  discount_value?: number;
 }
 interface BookingCtx {
   id: string; booking_number: string; status: string;
