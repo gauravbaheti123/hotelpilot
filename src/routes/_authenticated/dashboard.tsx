@@ -218,7 +218,7 @@ function OwnerDashboard({
         .eq("property_id", propertyId).eq("status", "checked_in").eq("check_out", date),
       supabase.from("payments").select("amount").eq("property_id", propertyId)
         .gte("paid_at", `${date}T00:00:00`).lte("paid_at", `${date}T23:59:59`),
-      supabase.from("rooms").select("id, room_number, status, housekeeping_status, category_id")
+      supabase.from("rooms").select("id, room_number, status, housekeeping_status, category_id, floor")
         .eq("property_id", propertyId).eq("is_active", true).order("room_number"),
       // Date-wise occupied rooms: booking spans the selected date and is active
       supabase.from("booking_rooms").select("room_id, booking_id, bookings!inner(id, status, property_id, balance_amount, check_in, check_out, guests:guest_id(name))")
