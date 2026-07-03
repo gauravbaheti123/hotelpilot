@@ -352,6 +352,26 @@ function BanquetBillPage() {
         },
       });
       toast.success(value > 0 ? "Line discount applied" : "Line discount cleared");
+    } else if (discTarget.kind === "extra") {
+      const { error: eerr } = await supabase.from("banquet_extra_charges").update({
+        discount_type: value > 0 ? type : null,
+        discount_value: value > 0 ? value : 0,
+        discount_amount: value > 0 ? rupees : 0,
+      } as any).eq("id", discTarget.rowId);
+      if (eerr) { toast.error(eerr.message); return; }
+      await persistBanquetDiscount({});
+      logActivity({
+        property_id: b.property_id, user_id: user.id, user_name: userDisplayName(user as any),
+        action_type: "DISCOUNT_APPLIED", module: "Banquet",
+        reference_id: b.id, reference_label: b.banquet_number,
+        details: {
+          bill_number: b.banquet_number, level: "line_item",
+          line_description: discTarget.description,
+          discount_type: type, discount_value: value, discount_amount: rupees,
+          applied_by: userDisplayName(user as any), role: roles.join(","),
+        },
+      });
+      toast.success(value > 0 ? "Line discount applied" : "Line discount cleared");
     }
     load();
   }
