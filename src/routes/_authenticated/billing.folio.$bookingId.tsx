@@ -1483,6 +1483,84 @@ function FolioPage() {
         </Dialog>
 
         {/* ADD CHARGE */}
+        {/* DISCOUNT (bill-level or line-item) */}
+        <Dialog open={discOpen} onOpenChange={setDiscOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {discTarget.kind === "bill" ? "Apply bill-level discount" : "Apply line-item discount"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              {discTarget.kind === "line" && (
+                <div className="rounded-md border bg-muted/30 p-2 text-xs">
+                  <div className="font-medium">{discTarget.description}</div>
+                  <div className="text-muted-foreground">Line amount: {inr(discTarget.base)}</div>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Discount type</Label>
+                  <Select value={discType} onValueChange={(v) => setDiscType(v as any)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percent">Percent (%)</SelectItem>
+                      <SelectItem value="amount">Amount (₹)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Value</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step={discType === "percent" ? "0.01" : "1"}
+                    value={discValue}
+                    onChange={(e) => setDiscValue(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              {!unlimitedDisc() && (
+                <div className="text-xs text-muted-foreground">
+                  Max discount allowed for your role: {capPctForRole()}%
+                </div>
+              )}
+              {(() => {
+                const val = Number(discValue) || 0;
+                const base = discTarget.kind === "line"
+                  ? Math.abs(discTarget.base)
+                  : charges.reduce((s, c) => {
+                      if (c.charge_type === "discount" || c.charge_type === "tax") return s;
+                      const amt = Math.abs(Number(c.amount) || 0);
+                      const ld = Math.min(Number(c.discount_amount) || 0, amt);
+                      return s + (amt - ld);
+                    }, 0);
+                const rupees = discountToRupees(discType, val, base);
+                if (rupees <= 0) return null;
+                return (
+                  <div className="rounded-md border bg-emerald-50 p-2 text-xs text-emerald-800">
+                    Discount: -{inr(rupees)} on {inr(base)}
+                  </div>
+                );
+              })()}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setDiscOpen(false); setDiscValue(""); }}>
+                Cancel
+              </Button>
+              {((discTarget.kind === "bill" && Number(folio.discount_value) > 0) ||
+                (discTarget.kind === "line" && Number(discValue) > 0)) && (
+                <Button variant="ghost" onClick={() => { setDiscValue("0"); void saveDiscount(); }}>
+                  Remove
+                </Button>
+              )}
+              <Button onClick={saveDiscount}>Apply</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* ADD CHARGE */}
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogContent>
             <DialogHeader><DialogTitle>Add charge</DialogTitle></DialogHeader>
