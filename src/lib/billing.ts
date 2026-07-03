@@ -82,11 +82,32 @@ export function recomputeFolio(
   return {
     sub_total: round2(sub),
     discount_amount: round2(discount),
-    line_discount_amount: round2(lineDiscTotal),
-    bill_discount_amount: round2(billDiscAmt),
     gst_amount: round2(gstMode === "gst" ? gst : 0),
     total_amount: round2(total),
   };
+}
+
+/** Sum of line-item discount_amount across charges (rupees). */
+export function sumLineDiscounts(charges: ChargeLike[]): number {
+  let s = 0;
+  for (const c of charges) {
+    if (c.charge_type === "discount" || c.charge_type === "tax") continue;
+    const amt = Math.abs(Number(c.amount ?? 0));
+    s += Math.max(0, Math.min(Number(c.discount_amount ?? 0), amt));
+  }
+  return round2(s);
+}
+
+/** Compute bill-level discount amount given subtotal (after line discounts). */
+export function computeBillDiscountAmount(
+  netSubtotal: number,
+  billDiscount?: BillDiscount | null,
+): number {
+  if (!billDiscount || !billDiscount.value || billDiscount.value <= 0) return 0;
+  if (billDiscount.type === "percent") {
+    return round2(Math.max(0, Math.min(100, billDiscount.value)) * netSubtotal / 100);
+  }
+  return round2(Math.min(billDiscount.value, netSubtotal));
 }
 
 function round2(n: number) {
