@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useAuth, hasRole } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { userDisplayName } from "@/lib/activityLog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -56,7 +57,8 @@ interface EventPayment {
 function BanquetBillPage() {
   const { id } = Route.useParams();
   const router = useRouter();
-  const { user, roles } = useAuth();
+  const { user } = useAuth();
+  const { can } = usePermissions();
   const [b, setB] = useState<Bq | null>(null);
   const [bulk, setBulk] = useState<Bulk[]>([]);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
@@ -133,7 +135,7 @@ function BanquetBillPage() {
   const totalPaid = advance + paidViaEventPayments;
   const balance = Math.max(0, total - totalPaid);
   const isSettled = balance < 0.01;
-  const canShiftMis = hasRole(roles, "owner") || hasRole(roles, "manager") || hasRole(roles, "superadmin");
+  const canShiftMis = can("mis_ac", "create");
 
   async function handlePrint() {
     if (!b) return;

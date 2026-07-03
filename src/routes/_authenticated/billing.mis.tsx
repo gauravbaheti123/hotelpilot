@@ -12,7 +12,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
-import { useAuth, hasRole } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { inr } from "@/lib/billing";
 import { toast } from "sonner";
@@ -40,8 +41,9 @@ interface Row {
 
 function MISPage() {
   const { currentId: propertyId } = useCurrentProperty();
-  const { user, roles } = useAuth();
-  const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const { user } = useAuth();
+  const { can } = usePermissions();
+  const isOwner = can("mis_ac", "view");
 
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState("");
@@ -56,7 +58,8 @@ function MISPage() {
   const [delBusy, setDelBusy] = useState(false);
 
   // edit flow
-  const isManager = hasRole(roles, "manager") || hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const isManager = can("mis_ac", "edit");
+  const canDeleteRow = can("mis_ac", "delete");
   const [editRow, setEditRow] = useState<Row | null>(null);
   const [editGuest, setEditGuest] = useState("");
   const [editDesc, setEditDesc] = useState("");
@@ -253,7 +256,7 @@ function MISPage() {
                             <Pencil className="h-4 w-4" />
                           </Button>
                         )}
-                        {isOwner && (
+                        {canDeleteRow && (
                           <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
                             onClick={() => openDelete(r)}>
                             <Trash2 className="h-4 w-4" />

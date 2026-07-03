@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { recomputeFolio, inr } from "@/lib/billing";
@@ -50,6 +51,8 @@ function PosPage() {
   const search = useSearch({ from: "/_authenticated/pos/" });
   const { current } = useCurrentProperty();
   const { user } = useAuth();
+  const { can } = usePermissions();
+  const canCreateCharge = can("pos", "create");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [bookingId, setBookingId] = useState<string>(search.booking_id ?? "");
@@ -115,6 +118,7 @@ function PosPage() {
 
   async function post(navigateAfter: boolean) {
     if (!current) return;
+    if (!canCreateCharge) { toast.error("You do not have permission to post POS charges"); return; }
     if (!bookingId) { toast.error("Select a booking"); return; }
     if (lines.length === 0) { toast.error("Cart is empty"); return; }
     setBusy(true);
@@ -309,10 +313,10 @@ function PosPage() {
           </Card>
 
           <div className="flex flex-col gap-2">
-            <Button disabled={busy || lines.length === 0 || !bookingId} onClick={() => post(false)}>
+            <Button disabled={busy || lines.length === 0 || !bookingId || !canCreateCharge} onClick={() => post(false)}>
               <Send className="h-4 w-4 mr-1" /> Post to folio
             </Button>
-            <Button variant="outline" disabled={busy || lines.length === 0 || !bookingId} onClick={() => post(true)}>
+            <Button variant="outline" disabled={busy || lines.length === 0 || !bookingId || !canCreateCharge} onClick={() => post(true)}>
               <Receipt className="h-4 w-4 mr-1" /> Post &amp; open folio
             </Button>
             {bookingId && (

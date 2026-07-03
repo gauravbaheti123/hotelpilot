@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, hasRole } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
 import {
   FOLIO_STATUS_TONE,
@@ -87,6 +88,7 @@ function FolioPage() {
   const { bookingId } = Route.useParams();
   const router = useRouter();
   const { user, roles } = useAuth();
+  const { can } = usePermissions();
   const [booking, setBooking] = useState<BookingCtx | null>(null);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
   const [folio, setFolio] = useState<Folio | null>(null);
@@ -567,8 +569,8 @@ function FolioPage() {
   const isOpen = folio.status === "open";
   const pendingTotal = pendingKots.reduce((s, k) => s + Number(k.total_amount || 0), 0);
   const hasPending = pendingKots.length > 0;
-  const canVoid = hasRole(roles, "superadmin") || hasRole(roles, "owner") || hasRole(roles, "manager");
-  const canShiftMis = canVoid; // manager + owner + superadmin
+  const canVoid = can("invoices", "delete");
+  const canShiftMis = can("mis_ac", "create");
   // Feature 2: Manager / Owner may edit ANY bill regardless of status.
   // Receptionist keeps current behaviour (edit only while open).
   const canEditAnyStatus = canVoid;

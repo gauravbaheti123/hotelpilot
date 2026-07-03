@@ -10,7 +10,8 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { KOT_STATUS_LABEL, KOT_STATUS_TONE } from "@/lib/food";
 import { PlusCircle, Pencil, Ban, Trash2, AlertTriangle } from "lucide-react";
-import { useAuth, hasRole } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -34,9 +35,10 @@ interface Row {
 
 function AllKotsPage() {
   const { currentId: propertyId } = useCurrentProperty();
-  const { user, roles } = useAuth();
-  const canManage = hasRole(roles, "owner") || hasRole(roles, "manager") || hasRole(roles, "superadmin");
-  const canDelete = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const { user } = useAuth();
+  const { can } = usePermissions();
+  const canManage = can("all_kots", "edit");
+  const canDelete = can("all_kots", "delete");
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState("");
   const [editId, setEditId] = useState<string | null>(null);

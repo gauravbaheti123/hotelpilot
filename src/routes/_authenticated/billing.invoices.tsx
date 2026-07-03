@@ -14,6 +14,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { FOLIO_STATUS_TONE, inr } from "@/lib/billing";
 import { useAuth, hasRole } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { toast } from "sonner";
 import { Pencil, Trash2, FileSpreadsheet, Hash, AlertTriangle } from "lucide-react";
@@ -38,8 +39,12 @@ interface Row {
 function InvoicesPage() {
   const { currentId: propertyId } = useCurrentProperty();
   const { user, roles } = useAuth();
+  const { can } = usePermissions();
   const navigate = useNavigate();
-  const canEditDelete = hasRole(roles, "manager") || hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const canEdit = can("invoices", "edit");
+  const canDelete = can("invoices", "delete");
+  // Bill renumbering is intentionally owner-only — no dedicated permission key
+  // exists for renumbering, so keep the hardcoded role gate.
   const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
 
   const [rows, setRows] = useState<Row[]>([]);
@@ -310,7 +315,7 @@ function InvoicesPage() {
                   <div className={`text-sm font-medium ${voided ? "line-through text-muted-foreground" : ""}`}>{inr(r.total_amount)}</div>
                   <div className="text-xs text-muted-foreground">Bal {inr(r.balance_amount)}</div>
                 </div>
-                {canEditDelete && !voided && (
+                {(canEdit || canDelete) && !voided && (
                   <div className="flex items-center gap-1 ml-2">
                     {isOwner && (
                       <Button size="sm" variant="ghost" title="Edit bill number"
@@ -318,15 +323,19 @@ function InvoicesPage() {
                         <Hash className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button size="sm" variant="ghost"
-                      onClick={() => navigate({ to: "/billing/folio/$bookingId", params: { bookingId: r.booking_id } })}>
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost" title="Void bill"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setDelTarget(r)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {canEdit && (
+                      <Button size="sm" variant="ghost"
+                        onClick={() => navigate({ to: "/billing/folio/$bookingId", params: { bookingId: r.booking_id } })}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button size="sm" variant="ghost" title="Void bill"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setDelTarget(r)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 )}
                 {isOwner && voided && (
