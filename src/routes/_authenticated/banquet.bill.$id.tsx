@@ -379,7 +379,8 @@ function BanquetBillPage() {
   const discBase =
     discTarget.kind === "bill" ? netSubtotal :
     discTarget.kind === "line" ? discTarget.base :
-    discTarget.kind === "room" ? discTarget.base : 0;
+    discTarget.kind === "room" ? discTarget.base :
+    discTarget.kind === "extra" ? discTarget.base : 0;
   const discInitial: { type: DiscType; value: number } = (() => {
     if (discTarget.kind === "bill") {
       return { type: (b.discount_type as DiscType) ?? "percent", value: Number(b.discount_value ?? 0) };
@@ -392,12 +393,17 @@ function BanquetBillPage() {
       const r = bulk.find((x) => x.id === discTarget.rowId);
       return { type: (r?.discount_type as DiscType) ?? "percent", value: Number(r?.discount_value ?? 0) };
     }
+    if (discTarget.kind === "extra") {
+      const e = extras.find((x) => x.id === discTarget.rowId);
+      return { type: (e?.discount_type as DiscType) ?? "percent", value: Number(e?.discount_value ?? 0) };
+    }
     return { type: "percent", value: 0 };
   })();
   const discHasExisting =
     (discTarget.kind === "bill" && Number(b.discount_value ?? 0) > 0) ||
     (discTarget.kind === "line" && Number(lineDiscMap?.[discTarget.lineKey]?.value ?? 0) > 0) ||
-    (discTarget.kind === "room" && Number(bulk.find((x) => x.id === discTarget.rowId)?.discount_value ?? 0) > 0);
+    (discTarget.kind === "room" && Number(bulk.find((x) => x.id === discTarget.rowId)?.discount_value ?? 0) > 0) ||
+    (discTarget.kind === "extra" && Number(extras.find((x) => x.id === discTarget.rowId)?.discount_value ?? 0) > 0);
 
   async function handlePrint() {
     if (!b) return;
