@@ -317,6 +317,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     if (pendingKots.length > 0) {
       return toast.error("Add pending food orders to bill first");
     }
+    if (pendingPos.length > 0) {
+      return toast.error("Add pending POS charges to bill first");
+    }
 
     // Build payment rows
     const rows: { amount: number; mode: string; reference_no: string | null }[] = [];
