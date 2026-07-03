@@ -78,6 +78,7 @@ function BanquetBillPage() {
   const { can } = usePermissions();
   const [b, setB] = useState<Bq | null>(null);
   const [bulk, setBulk] = useState<Bulk[]>([]);
+  const [extras, setExtras] = useState<ExtraCharge[]>([]);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
   const [billType, setBillType] = useState<"gst_invoice" | "cash_bill">("gst_invoice");
   const [loading, setLoading] = useState(true);
@@ -125,6 +126,11 @@ function BanquetBillPage() {
     ]);
     setBulk(((br ?? []) as unknown) as Bulk[]);
     setProperty((p ?? null) as PropertyInfo | null);
+    const { data: ex } = await supabase.from("banquet_extra_charges")
+      .select("id,point_name,amount,discount_type,discount_value,discount_amount")
+      .eq("banquet_booking_id", id)
+      .order("sort_order", { ascending: true });
+    setExtras(((ex ?? []) as unknown) as ExtraCharge[]);
     const { data: pp } = await supabase.from("event_payments" as any)
       .select("id,amount,payment_mode,reference,paid_at,notes")
       .eq("event_id", id).order("paid_at", { ascending: false });
