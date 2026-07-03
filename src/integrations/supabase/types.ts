@@ -3432,6 +3432,35 @@ export type Database = {
         }
         Relationships: []
       }
+      property_settings: {
+        Row: {
+          created_at: string
+          property_id: string
+          room_grouping: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          property_id: string
+          room_grouping?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          property_id?: string
+          room_grouping?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_settings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_seasons: {
         Row: {
           applies_to_category_id: string | null
