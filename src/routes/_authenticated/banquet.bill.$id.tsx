@@ -100,6 +100,7 @@ function BanquetBillPage() {
     | { kind: "bill" }
     | { kind: "line"; lineKey: string; base: number; description: string }
     | { kind: "room"; rowId: string; base: number; description: string }
+    | { kind: "extra"; rowId: string; base: number; description: string }
   >({ kind: "bill" });
 
   const load = useCallback(async () => {
