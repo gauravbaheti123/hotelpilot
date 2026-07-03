@@ -1353,6 +1353,15 @@ function FolioPage() {
                     </tr>
                   )}
                   {isGst && <tr><td style={{ color: "#555" }}>GST</td><td style={{ textAlign: "right" }}>{inr(folio.gst_amount)}</td></tr>}
+                  {Number(folio.round_off_amount ?? 0) !== 0 && (
+                    <tr>
+                      <td style={{ color: "#555" }}>Round Off</td>
+                      <td style={{ textAlign: "right" }}>
+                        {Number(folio.round_off_amount) >= 0 ? "+ " : "- "}
+                        {inr(Math.abs(Number(folio.round_off_amount ?? 0)))}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
               {canEditNow && (
@@ -1365,7 +1374,7 @@ function FolioPage() {
               )}
               <div style={{ background: TEAL, color: "#fff" }} className="mt-2 flex items-center justify-between rounded px-4 py-3">
                 <span className="text-sm font-bold uppercase tracking-wider">Grand Total</span>
-                <span className="text-2xl font-extrabold tabular-nums">{inr(folio.total_amount)}</span>
+                <span className="text-2xl font-extrabold tabular-nums">{inrRound(folio.total_amount)}</span>
               </div>
               {!isGst && (
                 <div className="mt-1 text-right text-[10px] italic text-gray-500">Amount includes all applicable taxes</div>
@@ -1394,7 +1403,7 @@ function FolioPage() {
                     </tr>
                     <tr>
                       <td colSpan={3} style={{ fontWeight: 700, color: Number(folio.balance_amount) > 0.01 ? "#dc2626" : TEAL_DARK }}>Balance Due</td>
-                      <td style={{ textAlign: "right", fontWeight: 700, color: Number(folio.balance_amount) > 0.01 ? "#dc2626" : TEAL_DARK }}>{inr(folio.balance_amount)}</td>
+                      <td style={{ textAlign: "right", fontWeight: 700, color: Number(folio.balance_amount) > 0.01 ? "#dc2626" : TEAL_DARK }}>{inrRound(folio.balance_amount)}</td>
                     </tr>
                   </tbody>
                 </table>
