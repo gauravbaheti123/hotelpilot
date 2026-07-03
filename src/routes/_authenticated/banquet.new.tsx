@@ -139,6 +139,15 @@ function NewBanquetPage() {
     return { totalRooms, revenue, categories };
   }, [blockRows, cats]);
 
+  const summaryRoomRevenue = useMemo(() => {
+    if (roomMode === "bulk") return blockSummary.revenue;
+    if (roomMode === "single" && singleRoomId && Number(singleRate) > 0) {
+      const n = Math.max(1, nightsBetween(singleCheckIn, singleCheckOut));
+      return Number(singleRate) * n;
+    }
+    return 0;
+  }, [roomMode, blockSummary.revenue, singleRoomId, singleRate, singleCheckIn, singleCheckOut]);
+
   function addBlockRow() {
     setBlockRows((prev) => [...prev, {
       category_id: "", quantity: "1",
