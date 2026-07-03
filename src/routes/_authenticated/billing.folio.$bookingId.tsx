@@ -24,6 +24,7 @@ import {
   recomputeFolio,
   computeBillDiscountAmount,
   type BillDiscount,
+ inrRound,
 } from "@/lib/billing";
 import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent } from "lucide-react";
 import { AlertTriangle, ShieldAlert, ArrowRightLeft } from "lucide-react";
