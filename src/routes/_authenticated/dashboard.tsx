@@ -1029,7 +1029,8 @@ function RoomCard({
   const hintText =
     kind === "dirty" ? "🧹 Needs cleaning"
     : kind === "maintenance" ? "🔧 Under repair"
-    : kind === "blocked" ? "🎉 Event"
+    : kind === "blocked"
+      ? `🎉 ${eventInfo?.eventName ?? "Event"} — ${eventInfo?.guestName ?? "Unassigned"}`
     : null;
 
   return (
