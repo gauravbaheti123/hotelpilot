@@ -1,0 +1,1 @@
+CREATE POLICY "authenticated can read halls in their property" ON public.halls FOR SELECT TO authenticated USING (public.user_has_property(auth.uid(), property_id));
