@@ -46,6 +46,14 @@ interface Bulk {
   discount_value?: number | null;
   discount_amount?: number | null;
 }
+interface ExtraCharge {
+  id: string;
+  point_name: string;
+  amount: number;
+  discount_type: DiscType | null;
+  discount_value: number | null;
+  discount_amount: number | null;
+}
 interface PropertyInfo {
   name: string; gstin: string | null; address: string | null;
   city: string | null; state: string | null; pincode: string | null;
