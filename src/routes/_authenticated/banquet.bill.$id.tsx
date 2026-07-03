@@ -5,17 +5,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ArrowLeft, Printer, Download, MessageCircle, Plus, Trash2, ArrowRightLeft } from "lucide-react";
+import { ArrowLeft, Printer, Download, MessageCircle, Plus, Trash2, ArrowRightLeft, Percent } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, hasRole } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { inr } from "@/lib/billing";
+import { inr, computeBillDiscountAmount, type BillDiscount } from "@/lib/billing";
+import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
 import { fmtDate } from "@/lib/reportExports";
 import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
 
@@ -31,6 +32,9 @@ interface Bq {
   package_rate: number; hall_charge: number; fb_charge: number; extra_charge: number;
   discount_amount: number; total_amount: number; advance_amount: number; balance_amount: number;
   status: string; notes: string | null; event_name: string | null; bill_type: string;
+  discount_type?: DiscType | null;
+  discount_value?: number | null;
+  line_discounts?: Record<string, { type: DiscType; value: number; amount: number }> | null;
   halls: { name: string } | null;
   guests: { name: string; mobile: string | null; email: string | null; gst_number: string | null; company: string | null } | null;
 }
@@ -38,6 +42,9 @@ interface Bulk {
   id: string; rate: number; nights: number; check_in: string; check_out: string;
   rooms: { room_number: string } | null;
   room_categories: { name: string } | null;
+  discount_type?: DiscType | null;
+  discount_value?: number | null;
+  discount_amount?: number | null;
 }
 interface PropertyInfo {
   name: string; gstin: string | null; address: string | null;
@@ -78,12 +85,20 @@ function BanquetBillPage() {
   ]);
   const [misOpen, setMisOpen] = useState(false);
   const [misBusy, setMisBusy] = useState(false);
+  const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
+  const [discOpen, setDiscOpen] = useState(false);
+  const [discTarget, setDiscTarget] = useState<
+    | { kind: "bill" }
+    | { kind: "line"; lineKey: string; base: number; description: string }
+    | { kind: "room"; rowId: string; base: number; description: string }
+  >({ kind: "bill" });
 
   const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase.from("banquet_bookings").select(`
       id,property_id,banquet_number,function_type,event_date,start_time,end_time,pax,event_name,
       package_rate,hall_charge,fb_charge,extra_charge,discount_amount,total_amount,bill_type,
+      discount_type,discount_value,line_discounts,
       advance_amount,balance_amount,status,notes,
       halls(name),guests(name,mobile,email,gst_number,company)
     `).eq("id", id).single();
@@ -94,7 +109,7 @@ function BanquetBillPage() {
 
     const [{ data: br }, { data: p }] = await Promise.all([
       supabase.from("banquet_bulk_rooms")
-        .select("id,rate,nights,check_in,check_out,rooms(room_number),room_categories(name)")
+        .select("id,rate,nights,check_in,check_out,discount_type,discount_value,discount_amount,rooms(room_number),room_categories(name)")
         .eq("banquet_id", id),
       supabase.from("properties")
         .select("name,gstin,address,city,state,pincode,phone,email,wa_number,logo_url")
@@ -110,6 +125,18 @@ function BanquetBillPage() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Resolve current user's max-discount % for this property.
+  useEffect(() => {
+    (async () => {
+      if (!user?.id || !b?.property_id) return;
+      const { data: pct } = await supabase.rpc("user_max_discount_pct", {
+        _user_id: user.id, _property_id: b.property_id,
+      });
+      const n = Number(pct);
+      setMaxDiscPct(Number.isFinite(n) ? n : 0);
+    })();
+  }, [user?.id, b?.property_id]);
 
   async function saveBillType(next: "gst_invoice" | "cash_bill") {
     if (!b) return;
@@ -143,12 +170,38 @@ function BanquetBillPage() {
 
   const isGst = billType === "gst_invoice";
   const packageAmount = Number(b.package_rate || 0) * Number(b.pax || 0);
-  const roomSubtotal = bulk.reduce((s, r) => s + Number(r.rate || 0) * Number(r.nights || 0), 0);
+  // Line-item base amounts
+  const lineBase: Record<string, number> = {
+    hall: Number(b.hall_charge || 0),
+    package: packageAmount,
+    fb: Number(b.fb_charge || 0),
+    extra: Number(b.extra_charge || 0),
+  };
+  const lineDiscMap = (b.line_discounts ?? {}) as Record<string, { type: DiscType; value: number; amount: number }>;
+  const lineDiscAmt = (key: string) => {
+    const base = lineBase[key] ?? 0;
+    const raw = Number(lineDiscMap?.[key]?.amount ?? 0);
+    return Math.max(0, Math.min(raw, base));
+  };
+  const roomDiscAmt = (r: Bulk) => {
+    const base = Number(r.rate || 0) * Number(r.nights || 0);
+    const raw = Number(r.discount_amount ?? 0);
+    return Math.max(0, Math.min(raw, base));
+  };
+  const roomSubtotalGross = bulk.reduce((s, r) => s + Number(r.rate || 0) * Number(r.nights || 0), 0);
+  const roomLineDiscTotal = bulk.reduce((s, r) => s + roomDiscAmt(r), 0);
   const subtotal =
-    Number(b.hall_charge || 0) + packageAmount + Number(b.fb_charge || 0) +
-    roomSubtotal + Number(b.extra_charge || 0);
-  const discount = Number(b.discount_amount || 0);
-  const taxable = Math.max(0, subtotal - discount);
+    lineBase.hall + lineBase.package + lineBase.fb + lineBase.extra + roomSubtotalGross;
+  const fixedLineDiscTotal = lineDiscAmt("hall") + lineDiscAmt("package") + lineDiscAmt("fb") + lineDiscAmt("extra");
+  const totalLineDisc = fixedLineDiscTotal + roomLineDiscTotal;
+  const netSubtotal = Math.max(0, subtotal - totalLineDisc);
+  const billDisc: BillDiscount | null =
+    b.discount_type && Number(b.discount_value) > 0
+      ? { type: b.discount_type, value: Number(b.discount_value) }
+      : null;
+  const billDiscAmt = computeBillDiscountAmount(netSubtotal, billDisc);
+  const discount = Math.round((totalLineDisc + billDiscAmt) * 100) / 100;
+  const taxable = Math.max(0, netSubtotal - billDiscAmt);
   const gstRate = 0.12;
   const cgst = isGst ? Math.round((taxable * gstRate / 2) * 100) / 100 : 0;
   const sgst = cgst;
@@ -159,6 +212,140 @@ function BanquetBillPage() {
   const balance = Math.max(0, total - totalPaid);
   const isSettled = balance < 0.01;
   const canShiftMis = can("billing", "mis_shift");
+
+  // ---------- DISCOUNT HANDLERS ----------
+  const unlimitedDisc = () => hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+
+  function openBillDiscount() {
+    setDiscTarget({ kind: "bill" });
+    setDiscOpen(true);
+  }
+  function openLineDiscount(lineKey: string, base: number, description: string) {
+    if (base <= 0) return;
+    setDiscTarget({ kind: "line", lineKey, base, description });
+    setDiscOpen(true);
+  }
+  function openRoomDiscount(rowId: string, base: number, description: string) {
+    if (base <= 0) return;
+    setDiscTarget({ kind: "room", rowId, base, description });
+    setDiscOpen(true);
+  }
+
+  async function persistBanquetDiscount(patch: Partial<Bq>) {
+    if (!b) return { error: null as any };
+    // Recompute total_amount and balance based on new state
+    const nextLineDiscMap = (patch.line_discounts ?? b.line_discounts ?? {}) as Record<string, { type: DiscType; value: number; amount: number }>;
+    const nextDiscType = (patch.discount_type as DiscType | undefined) ?? b.discount_type ?? null;
+    const nextDiscValue = patch.discount_value !== undefined ? Number(patch.discount_value) : Number(b.discount_value ?? 0);
+    const nextFixedLineDisc =
+      Math.min(Number(nextLineDiscMap?.hall?.amount ?? 0), lineBase.hall) +
+      Math.min(Number(nextLineDiscMap?.package?.amount ?? 0), lineBase.package) +
+      Math.min(Number(nextLineDiscMap?.fb?.amount ?? 0), lineBase.fb) +
+      Math.min(Number(nextLineDiscMap?.extra?.amount ?? 0), lineBase.extra);
+    const nextNetSubtotal = Math.max(0, subtotal - nextFixedLineDisc - roomLineDiscTotal);
+    const nextBillDisc: BillDiscount | null =
+      nextDiscType && nextDiscValue > 0 ? { type: nextDiscType, value: nextDiscValue } : null;
+    const nextBillDiscAmt = computeBillDiscountAmount(nextNetSubtotal, nextBillDisc);
+    const nextTaxable = Math.max(0, nextNetSubtotal - nextBillDiscAmt);
+    const nextGst = isGst ? round2(nextTaxable * gstRate) : 0;
+    const nextTotal = round2(nextTaxable + nextGst);
+    const nextDiscountAmount = round2(nextFixedLineDisc + roomLineDiscTotal + nextBillDiscAmt);
+    const nextBalance = Math.max(0, round2(nextTotal - totalPaid));
+    return await supabase.from("banquet_bookings").update({
+      ...patch,
+      discount_amount: nextDiscountAmount,
+      total_amount: nextTotal,
+      balance_amount: nextBalance,
+    } as any).eq("id", b.id);
+  }
+
+  async function saveDiscount({ type, value, rupees }: { type: DiscType; value: number; rupees: number }) {
+    if (!b || !user) return;
+    if (discTarget.kind === "bill") {
+      const patch: Partial<Bq> = {
+        discount_type: value > 0 ? type : null,
+        discount_value: value > 0 ? value : 0,
+      };
+      const { error } = await persistBanquetDiscount(patch);
+      if (error) { toast.error(error.message); return; }
+      logActivity({
+        property_id: b.property_id, user_id: user.id, user_name: userDisplayName(user as any),
+        action_type: "DISCOUNT_APPLIED", module: "Banquet",
+        reference_id: b.id, reference_label: b.banquet_number,
+        details: {
+          bill_number: b.banquet_number, level: "bill",
+          discount_type: type, discount_value: value, discount_amount: rupees,
+          applied_by: userDisplayName(user as any), role: roles.join(","),
+        },
+      });
+      toast.success(value > 0 ? "Bill discount applied" : "Bill discount cleared");
+    } else if (discTarget.kind === "line") {
+      const nextMap = { ...(b.line_discounts ?? {}) } as Record<string, { type: DiscType; value: number; amount: number }>;
+      if (value > 0) nextMap[discTarget.lineKey] = { type, value, amount: rupees };
+      else delete nextMap[discTarget.lineKey];
+      const { error } = await persistBanquetDiscount({ line_discounts: nextMap });
+      if (error) { toast.error(error.message); return; }
+      logActivity({
+        property_id: b.property_id, user_id: user.id, user_name: userDisplayName(user as any),
+        action_type: "DISCOUNT_APPLIED", module: "Banquet",
+        reference_id: b.id, reference_label: b.banquet_number,
+        details: {
+          bill_number: b.banquet_number, level: "line_item",
+          line_description: discTarget.description,
+          discount_type: type, discount_value: value, discount_amount: rupees,
+          applied_by: userDisplayName(user as any), role: roles.join(","),
+        },
+      });
+      toast.success(value > 0 ? "Line discount applied" : "Line discount cleared");
+    } else if (discTarget.kind === "room") {
+      const { error: rerr } = await supabase.from("banquet_bulk_rooms").update({
+        discount_type: value > 0 ? type : null,
+        discount_value: value > 0 ? value : 0,
+        discount_amount: value > 0 ? rupees : 0,
+      } as any).eq("id", discTarget.rowId);
+      if (rerr) { toast.error(rerr.message); return; }
+      // Recompute total on the banquet booking to keep in sync
+      // Refresh room list first, then persist totals (uses in-scope roomLineDiscTotal only after reload)
+      await persistBanquetDiscount({});
+      logActivity({
+        property_id: b.property_id, user_id: user.id, user_name: userDisplayName(user as any),
+        action_type: "DISCOUNT_APPLIED", module: "Banquet",
+        reference_id: b.id, reference_label: b.banquet_number,
+        details: {
+          bill_number: b.banquet_number, level: "line_item",
+          line_description: discTarget.description,
+          discount_type: type, discount_value: value, discount_amount: rupees,
+          applied_by: userDisplayName(user as any), role: roles.join(","),
+        },
+      });
+      toast.success(value > 0 ? "Line discount applied" : "Line discount cleared");
+    }
+    load();
+  }
+
+  const discBase =
+    discTarget.kind === "bill" ? netSubtotal :
+    discTarget.kind === "line" ? discTarget.base :
+    discTarget.kind === "room" ? discTarget.base : 0;
+  const discInitial: { type: DiscType; value: number } = (() => {
+    if (discTarget.kind === "bill") {
+      return { type: (b.discount_type as DiscType) ?? "percent", value: Number(b.discount_value ?? 0) };
+    }
+    if (discTarget.kind === "line") {
+      const d = lineDiscMap?.[discTarget.lineKey];
+      return { type: (d?.type as DiscType) ?? "percent", value: Number(d?.value ?? 0) };
+    }
+    if (discTarget.kind === "room") {
+      const r = bulk.find((x) => x.id === discTarget.rowId);
+      return { type: (r?.discount_type as DiscType) ?? "percent", value: Number(r?.discount_value ?? 0) };
+    }
+    return { type: "percent", value: 0 };
+  })();
+  const discHasExisting =
+    (discTarget.kind === "bill" && Number(b.discount_value ?? 0) > 0) ||
+    (discTarget.kind === "line" && Number(lineDiscMap?.[discTarget.lineKey]?.value ?? 0) > 0) ||
+    (discTarget.kind === "room" && Number(bulk.find((x) => x.id === discTarget.rowId)?.discount_value ?? 0) > 0);
 
   async function handlePrint() {
     if (!b) return;
@@ -304,7 +491,7 @@ function BanquetBillPage() {
       `Hall: ${inr(b.hall_charge)}`,
       packageAmount > 0 ? `Package: ${inr(packageAmount)}` : "",
       Number(b.fb_charge) > 0 ? `F&B: ${inr(b.fb_charge)}` : "",
-      roomSubtotal > 0 ? `Rooms: ${inr(roomSubtotal)}` : "",
+      roomSubtotalGross > 0 ? `Rooms: ${inr(roomSubtotalGross)}` : "",
       isGst ? `GST: ${inr(cgst + sgst)}` : "",
       `*Total: ${inr(total)}*`,
       `Advance: ${inr(advance)}`,
@@ -428,38 +615,65 @@ function BanquetBillPage() {
 
               {/* Line items grouped */}
               <SectionTitle>Hall & Venue</SectionTitle>
-              <ItemTable rows={[
-                ["Hall Rent", b.hall_charge],
-                packageAmount > 0
-                  ? [`Package (${inr(b.package_rate)} per pax × ${b.pax} pax)`, packageAmount]
-                  : null,
-              ].filter(Boolean) as [string, number][]} />
+              <DiscLineTable
+                rows={[
+                  { label: "Hall Rent", amount: lineBase.hall, lineKey: "hall",
+                    disc: lineDiscAmt("hall"), discMeta: lineDiscMap?.hall },
+                  ...(packageAmount > 0 ? [{
+                    label: `Package (${inr(b.package_rate)} per pax × ${b.pax} pax)`,
+                    amount: lineBase.package, lineKey: "package",
+                    disc: lineDiscAmt("package"), discMeta: lineDiscMap?.package,
+                  }] : []),
+                ]}
+                onLineClick={(row) => openLineDiscount(row.lineKey, row.amount, row.label)}
+              />
 
               {Number(b.fb_charge) > 0 && (<>
                 <SectionTitle>Food & Beverage</SectionTitle>
-                <ItemTable rows={[["F&B Charges", b.fb_charge]]} />
+                <DiscLineTable
+                  rows={[{ label: "F&B Charges", amount: lineBase.fb, lineKey: "fb",
+                    disc: lineDiscAmt("fb"), discMeta: lineDiscMap?.fb }]}
+                  onLineClick={(row) => openLineDiscount(row.lineKey, row.amount, row.label)}
+                />
               </>)}
 
               {bulk.length > 0 && (<>
                 <SectionTitle>Room Block</SectionTitle>
-                <ItemTable rows={[
-                  ...bulk.map((r) => [
-                    `Room ${r.rooms?.room_number ?? r.room_categories?.name ?? "—"} (${r.nights} night × ${inr(r.rate)})`,
-                    Number(r.rate) * Number(r.nights),
-                  ] as [string, number]),
-                  ["Room Block Subtotal", roomSubtotal],
-                ]} />
+                <DiscLineTable
+                  rows={bulk.map((r) => ({
+                    label: `Room ${r.rooms?.room_number ?? r.room_categories?.name ?? "—"} (${r.nights} night × ${inr(r.rate)})`,
+                    amount: Number(r.rate) * Number(r.nights),
+                    lineKey: `room:${r.id}`,
+                    rowId: r.id,
+                    disc: roomDiscAmt(r),
+                    discMeta: r.discount_type && Number(r.discount_value) > 0
+                      ? { type: r.discount_type, value: Number(r.discount_value), amount: Number(r.discount_amount) }
+                      : null,
+                  }))}
+                  onLineClick={(row) => row.rowId && openRoomDiscount(row.rowId, row.amount, row.label)}
+                  footer={["Room Block Subtotal", roomSubtotalGross]}
+                />
               </>)}
 
               {Number(b.extra_charge) > 0 && (<>
                 <SectionTitle>Extras</SectionTitle>
-                <ItemTable rows={[["Extra Charges", b.extra_charge]]} />
+                <DiscLineTable
+                  rows={[{ label: "Extra Charges", amount: lineBase.extra, lineKey: "extra",
+                    disc: lineDiscAmt("extra"), discMeta: lineDiscMap?.extra }]}
+                  onLineClick={(row) => openLineDiscount(row.lineKey, row.amount, row.label)}
+                />
               </>)}
 
               {/* Summary */}
               <div className="mt-6 ml-auto w-full max-w-sm text-sm">
                 <SummaryRow label="Subtotal" value={inr(subtotal)} />
                 {discount > 0 && <SummaryRow label="Discount" value={`- ${inr(discount)}`} />}
+                <div className="no-print flex justify-end mt-1">
+                  <Button size="sm" variant="outline" onClick={openBillDiscount}>
+                    <Percent className="h-3.5 w-3.5 mr-1" />
+                    {Number(b.discount_value ?? 0) > 0 ? "Edit bill discount" : "Apply bill discount"}
+                  </Button>
+                </div>
                 {isGst && (<>
                   <SummaryRow label="CGST 6%" value={inr(cgst)} />
                   <SummaryRow label="SGST 6%" value={inr(sgst)} />
@@ -622,6 +836,20 @@ function BanquetBillPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <DiscountDialog
+          open={discOpen}
+          onOpenChange={setDiscOpen}
+          kind={discTarget.kind === "bill" ? "bill" : "line"}
+          lineDescription={discTarget.kind !== "bill" ? discTarget.description : undefined}
+          base={discBase}
+          initialType={discInitial.type}
+          initialValue={discInitial.value}
+          unlimited={unlimitedDisc()}
+          maxPct={maxDiscPct}
+          hasExisting={discHasExisting}
+          onSave={saveDiscount}
+        />
       </div>
     </AppShell>
   );
@@ -632,6 +860,64 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
     <div className="mt-4 mb-1 text-xs uppercase tracking-wider font-semibold" style={{ color: TEAL }}>
       {children}
     </div>
+  );
+}
+
+interface DiscLineRow {
+  label: string;
+  amount: number;
+  lineKey: string;
+  rowId?: string;
+  disc: number;
+  discMeta?: { type: DiscType; value: number; amount: number } | null;
+}
+
+function DiscLineTable({
+  rows, onLineClick, footer,
+}: {
+  rows: DiscLineRow[];
+  onLineClick: (row: DiscLineRow) => void;
+  footer?: [string, number];
+}) {
+  return (
+    <table className="w-full text-sm zebra">
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.lineKey} className="border-b">
+            <td className="py-2">
+              <div className="flex items-center gap-2">
+                <span>{r.label}</span>
+                <button type="button" onClick={() => onLineClick(r)}
+                  className="no-print inline-flex h-5 w-5 items-center justify-center rounded border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                  title="Apply line-item discount">
+                  <span className="text-[10px]">%</span>
+                </button>
+              </div>
+              {r.disc > 0 && r.discMeta && (
+                <div className="text-[11px] text-emerald-700">
+                  Discount {r.discMeta.type === "percent" ? `${r.discMeta.value}%` : `₹${r.discMeta.value}`}
+                  {" — "}-{inr(r.disc)}
+                </div>
+              )}
+            </td>
+            <td className="py-2 text-right tabular-nums">
+              {r.disc > 0 ? (
+                <>
+                  <span className="text-muted-foreground line-through mr-2">{inr(r.amount)}</span>
+                  {inr(Math.max(0, r.amount - r.disc))}
+                </>
+              ) : inr(r.amount)}
+            </td>
+          </tr>
+        ))}
+        {footer && (
+          <tr className="border-b">
+            <td className="py-2">{footer[0]}</td>
+            <td className="py-2 text-right tabular-nums">{inr(footer[1])}</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
   );
 }
 

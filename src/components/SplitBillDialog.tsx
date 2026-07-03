@@ -13,10 +13,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { inr, recomputeFolio } from "@/lib/billing";
+import { inr, recomputeFolio, computeBillDiscountAmount, type BillDiscount } from "@/lib/billing";
+import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, hasRole } from "@/hooks/use-auth";
 import { ArrowLeft, ArrowRight, Loader2, SplitSquareHorizontal } from "lucide-react";
+import { Percent } from "lucide-react";
 
 const PAY_MODES = [
   { v: "cash", label: "Cash" },
@@ -32,6 +34,9 @@ interface Charge {
   gst_rate: number; gst_amount: number;
   hsn_code?: string | null;
   source_table?: string | null; source_id?: string | null;
+  discount_type?: DiscType | null;
+  discount_value?: number | null;
+  discount_amount?: number | null;
 }
 
 interface Props {
@@ -62,6 +67,21 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   const [splitType, setSplitType] = useState<SplitType>("same");
   const [bill1Ids, setBill1Ids] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
+  const [discOpen, setDiscOpen] = useState(false);
+  const [discBillIdx, setDiscBillIdx] = useState<0 | 1>(0);
+
+  // Resolve current user's max-discount % once dialog opens
+  useEffect(() => {
+    (async () => {
+      if (!open || !user?.id || !booking?.property_id) return;
+      const { data: pct } = await supabase.rpc("user_max_discount_pct", {
+        _user_id: user.id, _property_id: booking.property_id,
+      });
+      const n = Number(pct);
+      setMaxDiscPct(Number.isFinite(n) ? n : 0);
+    })();
+  }, [open, user?.id, booking?.property_id]);
 
   const guestName = booking?.guests?.name ?? "Guest";
   const guestMobile = booking?.guests?.mobile ?? "";
@@ -158,7 +178,27 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         const party = i === 0 ? party1 : (splitType === "same" ? party1 : party2);
         const mode = party.bill_type === "gst_invoice" ? "gst" : "cash";
         const items = i === 0 ? bill1Charges : bill2Charges;
-        const totals = recomputeFolio(items as any, mode);
+        // Carry forward parent's bill-level discount proportionally to this split's net subtotal.
+        const parentBillDisc: BillDiscount | null =
+          folio?.discount_type && Number(folio?.discount_value) > 0
+            ? { type: folio.discount_type, value: Number(folio.discount_value) }
+            : null;
+        // Parent-wide net subtotal (after per-line discs)
+        const netSubOf = (arr: Charge[]) => arr.reduce((s, c) => {
+          if (c.charge_type === "discount" || c.charge_type === "tax") return s;
+          const amt = Math.abs(Number(c.amount) || 0);
+          const ld = Math.min(Number(c.discount_amount) || 0, amt);
+          return s + (amt - ld);
+        }, 0);
+        const parentNet = netSubOf(charges);
+        const parentBillDiscAmt = computeBillDiscountAmount(parentNet, parentBillDisc);
+        const thisNet = netSubOf(items);
+        const shareAmt =
+          parentBillDiscAmt > 0 && parentNet > 0
+            ? Math.round((parentBillDiscAmt * (thisNet / parentNet)) * 100) / 100
+            : 0;
+        const carryDisc: BillDiscount | null = shareAmt > 0 ? { type: "amount", value: shareAmt } : null;
+        const totals = recomputeFolio(items as any, mode, carryDisc);
         const { data: f, error: fErr } = await supabase.from("folios").insert({
           property_id: booking.property_id,
           booking_id: booking.id,
@@ -167,6 +207,8 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           guest_gstin: party.gstin || null,
           guest_company: splitType === "different" && i === 1 ? party.name : (folio.guest_company ?? null),
           notes: `Split bill ${i + 1}/2 of voided ${folio.invoice_number}${splitType === "different" ? ` — Party: ${party.name}` : ""}`,
+          discount_type: carryDisc?.type ?? null,
+          discount_value: carryDisc?.value ?? 0,
           ...totals,
           paid_amount: 0,
           balance_amount: totals.total_amount,
@@ -201,6 +243,9 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           hsn_code: (c as any).hsn_code ?? null,
           source_table: c.source_table ?? null,
           source_id: c.source_id ?? null,
+          discount_type: c.discount_type ?? null,
+          discount_value: c.discount_value ?? 0,
+          discount_amount: c.discount_amount ?? 0,
           created_by: user?.id ?? null,
         }));
         const { error: cErr } = await supabase.from("folio_charges").insert(rows as any);
@@ -342,7 +387,67 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
 
   const roomLabel = booking?.booking_rooms?.[0]?.rooms?.room_number ?? "—";
 
+  const unlimitedDisc = () => hasRole(roles, "owner") || hasRole(roles, "superadmin");
+
+  async function saveSplitBillDiscount({ type, value, rupees }: { type: DiscType; value: number; rupees: number }) {
+    const target = createdBills[discBillIdx];
+    if (!target) return;
+    // Re-fetch this folio's charges to recompute totals with the new bill discount
+    const { data: chargeRows } = await supabase.from("folio_charges")
+      .select("*").eq("folio_id", target.folio_id);
+    const rows = (chargeRows ?? []) as any[];
+    const gstMode = target.party.bill_type === "gst_invoice" ? "gst" : "cash";
+    const billDisc: BillDiscount | null = value > 0 ? { type, value } : null;
+    const totals = recomputeFolio(rows, gstMode, billDisc);
+    const { error } = await supabase.from("folios").update({
+      discount_type: value > 0 ? type : null,
+      discount_value: value > 0 ? value : 0,
+      ...totals,
+      balance_amount: totals.total_amount,
+    } as any).eq("id", target.folio_id);
+    if (error) { toast.error(error.message); return; }
+    // Update local state so the summary reflects the new total
+    setCreatedBills((arr) => arr.map((cb, idx) => idx === discBillIdx
+      ? { ...cb, total: Number(totals.total_amount) } : cb));
+    setPayRows((arr) => arr.map((r, idx) => idx === discBillIdx
+      ? { ...r, amount: Number(totals.total_amount).toFixed(2) } : r));
+    if (user) {
+      logActivity({
+        property_id: booking.property_id,
+        user_id: user.id,
+        user_name: userDisplayName(user as any),
+        action_type: "DISCOUNT_APPLIED",
+        module: "Billing",
+        reference_id: target.folio_id,
+        reference_label: target.invoice_number,
+        details: {
+          bill_number: target.invoice_number,
+          level: "bill",
+          discount_type: type,
+          discount_value: value,
+          discount_amount: rupees,
+          via: "split_bill",
+          applied_by: userDisplayName(user as any),
+          role: roles.join(","),
+        },
+      });
+    }
+    toast.success(value > 0 ? "Bill discount applied" : "Bill discount cleared");
+  }
+
+  // Net subtotal for the currently-targeted split bill (base for bill-level %/₹)
+  const discBase = (() => {
+    const items = discBillIdx === 0 ? bill1Charges : bill2Charges;
+    return items.reduce((s, c) => {
+      if (c.charge_type === "discount" || c.charge_type === "tax") return s;
+      const amt = Math.abs(Number(c.amount) || 0);
+      const ld = Math.min(Number(c.discount_amount) || 0, amt);
+      return s + (amt - ld);
+    }, 0);
+  })();
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -483,6 +588,13 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
                   </div>
                   <div className="font-semibold tabular-nums">{inr(b.total)}</div>
                 </div>
+                <div className="flex justify-end">
+                  <Button size="sm" variant="outline"
+                    onClick={() => { setDiscBillIdx(i as 0 | 1); setDiscOpen(true); }}>
+                    <Percent className="h-3.5 w-3.5 mr-1" />
+                    Apply discount on Bill {i + 1}
+                  </Button>
+                </div>
                 <div className="grid grid-cols-[1fr_1fr_1fr] gap-2">
                   <div>
                     <Label className="text-xs">Mode</Label>
@@ -517,6 +629,19 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         )}
       </DialogContent>
     </Dialog>
+    <DiscountDialog
+      open={discOpen}
+      onOpenChange={setDiscOpen}
+      kind="bill"
+      base={discBase}
+      initialType="percent"
+      initialValue={0}
+      unlimited={unlimitedDisc()}
+      maxPct={maxDiscPct}
+      onSave={saveSplitBillDiscount}
+      title={`Apply discount on Bill ${discBillIdx + 1}`}
+    />
+    </>
   );
 }
 

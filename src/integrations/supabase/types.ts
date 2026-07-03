@@ -220,6 +220,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           discount_amount: number
+          discount_type: string | null
+          discount_value: number
           end_time: string
           event_bill_id: string | null
           event_date: string
@@ -232,6 +234,7 @@ export type Database = {
           hall_charge: number
           hall_id: string
           id: string
+          line_discounts: Json
           notes: string | null
           package_rate: number
           pax: number
@@ -253,6 +256,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           discount_amount?: number
+          discount_type?: string | null
+          discount_value?: number
           end_time: string
           event_bill_id?: string | null
           event_date: string
@@ -265,6 +270,7 @@ export type Database = {
           hall_charge?: number
           hall_id: string
           id?: string
+          line_discounts?: Json
           notes?: string | null
           package_rate?: number
           pax?: number
@@ -286,6 +292,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           discount_amount?: number
+          discount_type?: string | null
+          discount_value?: number
           end_time?: string
           event_bill_id?: string | null
           event_date?: string
@@ -298,6 +306,7 @@ export type Database = {
           hall_charge?: number
           hall_id?: string
           id?: string
+          line_discounts?: Json
           notes?: string | null
           package_rate?: number
           pax?: number
@@ -339,6 +348,9 @@ export type Database = {
           check_in: string
           check_out: string
           created_at: string
+          discount_amount: number
+          discount_type: string | null
+          discount_value: number
           id: string
           nights: number
           rate: number
@@ -350,6 +362,9 @@ export type Database = {
           check_in: string
           check_out: string
           created_at?: string
+          discount_amount?: number
+          discount_type?: string | null
+          discount_value?: number
           id?: string
           nights?: number
           rate?: number
@@ -361,6 +376,9 @@ export type Database = {
           check_in?: string
           check_out?: string
           created_at?: string
+          discount_amount?: number
+          discount_type?: string | null
+          discount_value?: number
           id?: string
           nights?: number
           rate?: number
