@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
-import { userDisplayName } from "@/lib/activityLog";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { inr } from "@/lib/billing";
@@ -57,7 +57,9 @@ interface EventPayment {
 function BanquetBillPage() {
   const { id } = Route.useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  // Cash Bill toggle is strictly owner-only (superadmin excluded).
+  const isOwnerStrict = roles.includes("owner") && !roles.includes("superadmin");
   const { can } = usePermissions();
   const [b, setB] = useState<Bq | null>(null);
   const [bulk, setBulk] = useState<Bulk[]>([]);
@@ -111,8 +113,29 @@ function BanquetBillPage() {
 
   async function saveBillType(next: "gst_invoice" | "cash_bill") {
     if (!b) return;
+    if (next === "cash_bill" && !isOwnerStrict) {
+      toast.error("Only the property owner can generate a Cash Bill");
+      return;
+    }
     setBillType(next);
     await supabase.from("banquet_bookings").update({ bill_type: next }).eq("id", b.id);
+    if (next === "cash_bill" && user) {
+      logActivity({
+        property_id: b.property_id,
+        user_id: user.id,
+        user_name: userDisplayName(user as any),
+        action_type: "CASH_BILL_GENERATED",
+        module: "Banquet",
+        reference_id: b.id,
+        reference_label: b.banquet_number,
+        details: {
+          bill_number: b.banquet_number,
+          amount: Number(b.total_amount ?? 0),
+          party_name: b.guests?.name ?? b.event_name ?? null,
+          generated_by: user.id,
+        },
+      });
+    }
   }
 
   if (loading) return <AppShell title="Event Bill"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
@@ -320,13 +343,15 @@ function BanquetBillPage() {
           <div className="text-sm text-muted-foreground">
             {b.event_name ?? b.function_type} · {fmtDate(b.event_date)}
           </div>
-          <div className="ml-4 flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Bill Type:</span>
-            <ToggleGroup type="single" value={billType} onValueChange={(v) => v && saveBillType(v as any)}>
-              <ToggleGroupItem value="cash_bill" size="sm">Cash Bill</ToggleGroupItem>
-              <ToggleGroupItem value="gst_invoice" size="sm">GST Invoice</ToggleGroupItem>
-            </ToggleGroup>
-          </div>
+          {isOwnerStrict && (
+            <div className="ml-4 flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Bill Type:</span>
+              <ToggleGroup type="single" value={billType} onValueChange={(v) => v && saveBillType(v as any)}>
+                <ToggleGroupItem value="cash_bill" size="sm">Cash Bill</ToggleGroupItem>
+                <ToggleGroupItem value="gst_invoice" size="sm">GST Invoice</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+          )}
           <div className="ml-auto flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={printDraft}>
               <Printer className="h-4 w-4 mr-1" /> Print Draft
