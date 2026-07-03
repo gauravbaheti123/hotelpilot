@@ -219,6 +219,14 @@ function FolioPage() {
       .not("status", "in", "(billed,cancelled,void)");
     setPendingKots(((pk ?? []) as unknown as PendingKot[]));
 
+    // Load pending POS charges (custom expenses awaiting add-to-bill)
+    const { data: pos } = await supabase
+      .from("pos_charges")
+      .select("id,category_name,description,qty,rate,amount,gst_rate,gst_amount")
+      .eq("booking_id", bookingId)
+      .eq("status", "pending");
+    setPendingPos((pos ?? []) as any);
+
     setLoading(false);
   }, [bookingId]);
 
