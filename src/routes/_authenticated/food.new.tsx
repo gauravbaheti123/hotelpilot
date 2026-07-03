@@ -63,7 +63,7 @@ function NewKotPage() {
   const [activeCat, setActiveCat] = useState<string>("all");
   const [search, setSearch] = useState("");
 
-  const [kotType, setKotType] = useState<"restaurant" | "room">("restaurant");
+  const [kotType, setKotType] = useState<"restaurant" | "room">("room");
   const [tableNo, setTableNo] = useState("");
   const [bookingId, setBookingId] = useState("");
   const [notes, setNotes] = useState("");
