@@ -12,7 +12,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrossed, ChevronDown, ChevronRight, DoorOpen } from "lucide-react";
+import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrossed, ChevronDown, ChevronRight, DoorOpen, Sparkles, Wrench, PartyPopper, CheckCircle2 } from "lucide-react";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 // Bell moved to global header (AppShell). Reminders section removed here.
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
@@ -49,6 +49,7 @@ type Room = {
   status: "vacant" | "occupied" | "blocked" | "maintenance";
   housekeeping_status: "clean" | "dirty" | "inspected" | "out_of_order";
   category_id: string | null;
+  floor: string | null;
 };
 
 type RoomCategory = { id: string; name: string };
