@@ -256,7 +256,7 @@ function MISPage() {
                             <Pencil className="h-4 w-4" />
                           </Button>
                         )}
-                        {isOwner && (
+                        {canDeleteRow && (
                           <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive"
                             onClick={() => openDelete(r)}>
                             <Trash2 className="h-4 w-4" />
