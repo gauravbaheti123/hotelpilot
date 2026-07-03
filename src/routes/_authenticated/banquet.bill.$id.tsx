@@ -723,6 +723,24 @@ function BanquetBillPage() {
                 />
               </>)}
 
+              {extras.length > 0 && (<>
+                <SectionTitle>Extras</SectionTitle>
+                <DiscLineTable
+                  rows={extras.map((e) => ({
+                    label: e.point_name,
+                    amount: Number(e.amount || 0),
+                    lineKey: `extra:${e.id}`,
+                    rowId: e.id,
+                    disc: extraDiscAmt(e),
+                    discMeta: e.discount_type && Number(e.discount_value) > 0
+                      ? { type: e.discount_type, value: Number(e.discount_value), amount: Number(e.discount_amount) }
+                      : null,
+                  }))}
+                  onLineClick={(row) => row.rowId && openExtraDiscount(row.rowId, row.amount, row.label)}
+                  footer={extras.length > 1 ? ["Extras Subtotal", extrasSubtotalGross] : undefined}
+                />
+              </>)}
+
               {/* Summary */}
               <div className="mt-6 ml-auto w-full max-w-sm text-sm">
                 <SummaryRow label="Subtotal" value={inr(subtotal)} />
