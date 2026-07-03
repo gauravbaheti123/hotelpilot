@@ -22,8 +22,10 @@ import {
   PAYMENT_MODES,
   inr,
   recomputeFolio,
+  computeBillDiscountAmount,
+  type BillDiscount,
 } from "@/lib/billing";
-import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle } from "lucide-react";
+import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent } from "lucide-react";
 import { AlertTriangle, ShieldAlert, ArrowRightLeft } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
@@ -48,6 +50,9 @@ interface Charge {
   qty: number; rate: number; amount: number;
   gst_rate: number; gst_amount: number; charged_on: string;
   source_table: string | null; source_id: string | null;
+  discount_type?: "percent" | "amount" | null;
+  discount_value?: number | null;
+  discount_amount?: number | null;
 }
 interface Payment {
   id: string; amount: number; mode: string; reference_no: string | null;
@@ -59,6 +64,8 @@ interface Folio {
   total_amount: number; paid_amount: number; balance_amount: number;
   guest_gstin: string | null; guest_company: string | null;
   notes: string | null; property_id: string; bill_type: string | null;
+  discount_type?: "percent" | "amount";
+  discount_value?: number;
 }
 interface BookingCtx {
   id: string; booking_number: string; status: string;
@@ -117,6 +124,15 @@ function FolioPage() {
 
   const [voidOpen, setVoidOpen] = useState(false);
   const [voidReason, setVoidReason] = useState("");
+
+  // Discount dialog (bill-level or line-item)
+  const [discOpen, setDiscOpen] = useState(false);
+  const [discTarget, setDiscTarget] = useState<
+    | { kind: "bill" }
+    | { kind: "line"; chargeId: string; base: number; description: string }
+  >({ kind: "bill" });
+  const [discType, setDiscType] = useState<"percent" | "amount">("percent");
+  const [discValue, setDiscValue] = useState<string>("");
 
   // Pending KOT lock state
   const [pendingKots, setPendingKots] = useState<PendingKot[]>([]);
@@ -310,7 +326,13 @@ function FolioPage() {
   async function persistTotals(nextCharges: Charge[], nextPayments: Payment[], extraFolioPatch: Partial<Folio> = {}) {
     if (!folio) return;
     const mode = (extraFolioPatch.gst_mode as "cash" | "gst") ?? (folio.gst_mode as "cash" | "gst");
-    const t = recomputeFolio(nextCharges, mode);
+    const nextDiscType = (extraFolioPatch.discount_type as "percent" | "amount" | undefined)
+      ?? (folio.discount_type as "percent" | "amount" | undefined);
+    const nextDiscValue = extraFolioPatch.discount_value ?? folio.discount_value ?? 0;
+    const billDisc: BillDiscount | null = nextDiscType && nextDiscValue > 0
+      ? { type: nextDiscType, value: Number(nextDiscValue) }
+      : null;
+    const t = recomputeFolio(nextCharges, mode, billDisc);
     const paid = nextPayments.reduce((s, p) => s + Number(p.amount), 0);
     await supabase.from("folios").update({
       ...t,
@@ -438,6 +460,128 @@ function FolioPage() {
         },
       });
     }
+    load();
+  }
+
+  // ---------- DISCOUNT HANDLERS ----------
+  const unlimitedDisc = () => hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const capPctForRole = () => (unlimitedDisc() ? 100 : Math.max(0, Math.min(100, Number(maxDiscPct) || 0)));
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+
+  function openBillDiscount() {
+    if (!folio) return;
+    setDiscTarget({ kind: "bill" });
+    setDiscType((folio.discount_type as "percent" | "amount") ?? "percent");
+    setDiscValue(String(folio.discount_value ?? ""));
+    setDiscOpen(true);
+  }
+  function openLineDiscount(c: Charge) {
+    setDiscTarget({ kind: "line", chargeId: c.id, base: Number(c.amount), description: c.description });
+    setDiscType((c.discount_type as "percent" | "amount") ?? "percent");
+    setDiscValue(String(c.discount_value ?? ""));
+    setDiscOpen(true);
+  }
+
+  /** Convert (type,value,base) to a positive rupee amount, clamped to base. */
+  function discountToRupees(type: "percent" | "amount", value: number, base: number): number {
+    if (!value || value <= 0 || base <= 0) return 0;
+    if (type === "percent") return Math.max(0, Math.min(100, value)) * base / 100;
+    return Math.min(value, base);
+  }
+  /** Effective % of a base regardless of input type. */
+  function effectivePct(type: "percent" | "amount", value: number, base: number): number {
+    if (base <= 0 || !value || value <= 0) return 0;
+    if (type === "percent") return Math.max(0, Math.min(100, value));
+    return (value / base) * 100;
+  }
+
+  async function saveDiscount() {
+    if (!folio || !booking) return;
+    const val = Number(discValue);
+    if (!Number.isFinite(val) || val < 0) return toast.error("Enter a valid discount");
+    if (!isOpen && !canEditAnyStatus) return toast.error("Only manager/owner can edit a settled bill");
+
+    const cap = capPctForRole();
+
+    if (discTarget.kind === "bill") {
+      // base = sum of non-discount lines minus their per-line discounts
+      const base = charges.reduce((s, c) => {
+        if (c.charge_type === "discount" || c.charge_type === "tax") return s;
+        const amt = Math.abs(Number(c.amount) || 0);
+        const ld = Math.min(Number(c.discount_amount) || 0, amt);
+        return s + (amt - ld);
+      }, 0);
+      const pct = effectivePct(discType, val, base);
+      if (val > 0 && pct > cap + 0.01 && !unlimitedDisc()) {
+        return toast.error(`Max discount allowed for your role is ${cap}%`);
+      }
+      const rupees = discountToRupees(discType, val, base);
+      const { error } = await supabase.from("folios").update({
+        discount_type: val > 0 ? discType : null,
+        discount_value: val > 0 ? val : 0,
+      } as any).eq("id", folio.id);
+      if (error) return toast.error(error.message);
+      await persistTotals(charges, payments, {
+        discount_type: val > 0 ? discType : undefined,
+        discount_value: val > 0 ? val : 0,
+      } as Partial<Folio>);
+      logActivity({
+        property_id: booking.property_id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "DISCOUNT_APPLIED",
+        module: "Billing",
+        reference_id: folio.id,
+        reference_label: folio.invoice_number,
+        details: {
+          bill_number: folio.invoice_number,
+          level: "bill",
+          discount_type: discType,
+          discount_value: val,
+          discount_amount: round2(rupees),
+          applied_by: userDisplayName(user as any),
+          role: roles.join(","),
+        },
+      });
+      toast.success(val > 0 ? "Bill discount applied" : "Bill discount cleared");
+    } else {
+      const base = Math.abs(discTarget.base);
+      const pct = effectivePct(discType, val, base);
+      if (val > 0 && pct > cap + 0.01 && !unlimitedDisc()) {
+        return toast.error(`Max discount allowed for your role is ${cap}%`);
+      }
+      const rupees = discountToRupees(discType, val, base);
+      const { error } = await supabase.from("folio_charges").update({
+        discount_type: val > 0 ? discType : null,
+        discount_value: val > 0 ? val : 0,
+        discount_amount: round2(rupees),
+      } as any).eq("id", discTarget.chargeId);
+      if (error) return toast.error(error.message);
+      const next = await refetchCharges();
+      await persistTotals(next, payments);
+      logActivity({
+        property_id: booking.property_id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "DISCOUNT_APPLIED",
+        module: "Billing",
+        reference_id: folio.id,
+        reference_label: folio.invoice_number,
+        details: {
+          bill_number: folio.invoice_number,
+          level: "line_item",
+          line_description: discTarget.description,
+          discount_type: discType,
+          discount_value: val,
+          discount_amount: round2(rupees),
+          applied_by: userDisplayName(user as any),
+          role: roles.join(","),
+        },
+      });
+      toast.success(val > 0 ? "Line discount applied" : "Line discount cleared");
+    }
+    setDiscOpen(false);
+    setDiscValue("");
     load();
   }
 
@@ -1102,6 +1246,12 @@ function FolioPage() {
                     <td>
                       <div>{c.description}</div>
                       {isGst && <div style={{ fontSize: 10, color: "#666" }}>GST {Number(c.gst_rate)}%</div>}
+                      {Number(c.discount_amount) > 0 && (
+                        <div style={{ fontSize: 10, color: "#059669" }}>
+                          Discount {c.discount_type === "percent" ? `${Number(c.discount_value)}%` : `₹${Number(c.discount_value)}`}
+                          {" — "}-{inr(Number(c.discount_amount))}
+                        </div>
+                      )}
                     </td>
                     {isGst && (
                       <td style={{ fontSize: 11 }}>
@@ -1110,12 +1260,31 @@ function FolioPage() {
                     )}
                     <td style={{ textAlign: "right" }}>{Number(c.qty)}</td>
                     <td style={{ textAlign: "right" }}>{inr(c.rate)}</td>
-                    <td style={{ textAlign: "right", fontWeight: 600 }}>{inr(c.amount)}</td>
+                    <td style={{ textAlign: "right", fontWeight: 600 }}>
+                      {Number(c.discount_amount) > 0 ? (
+                        <>
+                          <span style={{ textDecoration: "line-through", color: "#999", fontWeight: 400, marginRight: 6 }}>{inr(c.amount)}</span>
+                          {inr(Number(c.amount) - Number(c.discount_amount))}
+                        </>
+                      ) : inr(c.amount)}
+                    </td>
                     {canEditNow && (
                       <td className="print:hidden" style={{ textAlign: "right" }}>
-                        <button onClick={() => removeCharge(c.id)} className="text-destructive">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          {c.charge_type !== "discount" && c.charge_type !== "tax" && (
+                            <button
+                              type="button"
+                              onClick={() => openLineDiscount(c)}
+                              className="text-emerald-700"
+                              title="Apply line-item discount"
+                            >
+                              <Percent className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          <button onClick={() => removeCharge(c.id)} className="text-destructive">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -1169,11 +1338,29 @@ function FolioPage() {
                 <tbody>
                   <tr><td style={{ color: "#555" }}>Sub-total</td><td style={{ textAlign: "right" }}>{inr(folio.sub_total)}</td></tr>
                   {Number(folio.discount_amount) > 0 && (
-                    <tr><td style={{ color: "#555" }}>Discount</td><td style={{ textAlign: "right" }}>- {inr(folio.discount_amount)}</td></tr>
+                    <tr>
+                      <td style={{ color: "#555" }}>
+                        Discount
+                        {folio.discount_type && Number(folio.discount_value) > 0 && (
+                          <span style={{ color: "#888", marginLeft: 4 }}>
+                            ({folio.discount_type === "percent" ? `${Number(folio.discount_value)}%` : `₹${Number(folio.discount_value)}`})
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "right" }}>- {inr(folio.discount_amount)}</td>
+                    </tr>
                   )}
                   {isGst && <tr><td style={{ color: "#555" }}>GST</td><td style={{ textAlign: "right" }}>{inr(folio.gst_amount)}</td></tr>}
                 </tbody>
               </table>
+              {canEditNow && (
+                <div className="print:hidden mt-2 flex justify-end">
+                  <Button size="sm" variant="outline" onClick={openBillDiscount}>
+                    <Percent className="h-3.5 w-3.5 mr-1" />
+                    {Number(folio.discount_amount) > 0 ? "Edit bill discount" : "Apply bill discount"}
+                  </Button>
+                </div>
+              )}
               <div style={{ background: TEAL, color: "#fff" }} className="mt-2 flex items-center justify-between rounded px-4 py-3">
                 <span className="text-sm font-bold uppercase tracking-wider">Grand Total</span>
                 <span className="text-2xl font-extrabold tabular-nums">{inr(folio.total_amount)}</span>
@@ -1291,6 +1478,83 @@ function FolioPage() {
               <Button onClick={sendEmail} style={{ background: TEAL, color: "#fff" }}>
                 <Mail className="h-4 w-4 mr-1" /> Open email client
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* DISCOUNT (bill-level or line-item) */}
+        <Dialog open={discOpen} onOpenChange={setDiscOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {discTarget.kind === "bill" ? "Apply bill-level discount" : "Apply line-item discount"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              {discTarget.kind === "line" && (
+                <div className="rounded-md border bg-muted/30 p-2 text-xs">
+                  <div className="font-medium">{discTarget.description}</div>
+                  <div className="text-muted-foreground">Line amount: {inr(discTarget.base)}</div>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Discount type</Label>
+                  <Select value={discType} onValueChange={(v) => setDiscType(v as any)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="percent">Percent (%)</SelectItem>
+                      <SelectItem value="amount">Amount (₹)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Value</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step={discType === "percent" ? "0.01" : "1"}
+                    value={discValue}
+                    onChange={(e) => setDiscValue(e.target.value)}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              {!unlimitedDisc() && (
+                <div className="text-xs text-muted-foreground">
+                  Max discount allowed for your role: {capPctForRole()}%
+                </div>
+              )}
+              {(() => {
+                const val = Number(discValue) || 0;
+                const base = discTarget.kind === "line"
+                  ? Math.abs(discTarget.base)
+                  : charges.reduce((s, c) => {
+                      if (c.charge_type === "discount" || c.charge_type === "tax") return s;
+                      const amt = Math.abs(Number(c.amount) || 0);
+                      const ld = Math.min(Number(c.discount_amount) || 0, amt);
+                      return s + (amt - ld);
+                    }, 0);
+                const rupees = discountToRupees(discType, val, base);
+                if (rupees <= 0) return null;
+                return (
+                  <div className="rounded-md border bg-emerald-50 p-2 text-xs text-emerald-800">
+                    Discount: -{inr(rupees)} on {inr(base)}
+                  </div>
+                );
+              })()}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setDiscOpen(false); setDiscValue(""); }}>
+                Cancel
+              </Button>
+              {((discTarget.kind === "bill" && Number(folio.discount_value) > 0) ||
+                (discTarget.kind === "line" && Number(discValue) > 0)) && (
+                <Button variant="ghost" onClick={() => { setDiscValue("0"); void saveDiscount(); }}>
+                  Remove
+                </Button>
+              )}
+              <Button onClick={saveDiscount}>Apply</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
