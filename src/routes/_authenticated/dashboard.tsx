@@ -12,7 +12,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrossed, ChevronDown, ChevronRight, DoorOpen } from "lucide-react";
+import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrossed, ChevronDown, ChevronRight, DoorOpen, Sparkles, Wrench, PartyPopper, CheckCircle2 } from "lucide-react";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 // Bell moved to global header (AppShell). Reminders section removed here.
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
@@ -49,6 +49,7 @@ type Room = {
   status: "vacant" | "occupied" | "blocked" | "maintenance";
   housekeeping_status: "clean" | "dirty" | "inspected" | "out_of_order";
   category_id: string | null;
+  floor: string | null;
 };
 
 type RoomCategory = { id: string; name: string };
@@ -198,6 +199,7 @@ function OwnerDashboard({
   const [bulkCheckinEvent, setBulkCheckinEvent] = useState<EventBlockSummary | null>(null);
   const [bulkCheckoutEvent, setBulkCheckoutEvent] = useState<EventBlockSummary | null>(null);
   const [singleAssignBlock, setSingleAssignBlock] = useState<EventBlockRecord | null>(null);
+  const [grouping, setGrouping] = useState<"category" | "floor">("category");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -205,6 +207,29 @@ function OwnerDashboard({
     supabase.from("profiles").select("name").eq("id", userId).maybeSingle()
       .then(({ data }) => { if (data?.name) setName(data.name); });
   }, [userId]);
+
+  // Load persisted room grouping preference for this property
+  useEffect(() => {
+    if (!propertyId) return;
+    let cancelled = false;
+    supabase.from("property_settings").select("room_grouping").eq("property_id", propertyId).maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const g = (data as any)?.room_grouping;
+        if (g === "floor" || g === "category") setGrouping(g);
+      });
+    return () => { cancelled = true; };
+  }, [propertyId]);
+
+  async function changeGrouping(next: "category" | "floor") {
+    setGrouping(next);
+    if (!propertyId) return;
+    const { error } = await supabase.from("property_settings").upsert(
+      { property_id: propertyId, room_grouping: next } as any,
+      { onConflict: "property_id" },
+    );
+    if (error) toast.error("Couldn't save grouping preference");
+  }
 
   const reload = useCallback(async () => {
     if (!propertyId) return;
@@ -217,7 +242,7 @@ function OwnerDashboard({
         .eq("property_id", propertyId).eq("status", "checked_in").eq("check_out", date),
       supabase.from("payments").select("amount").eq("property_id", propertyId)
         .gte("paid_at", `${date}T00:00:00`).lte("paid_at", `${date}T23:59:59`),
-      supabase.from("rooms").select("id, room_number, status, housekeeping_status, category_id")
+      supabase.from("rooms").select("id, room_number, status, housekeeping_status, category_id, floor")
         .eq("property_id", propertyId).eq("is_active", true).order("room_number"),
       // Date-wise occupied rooms: booking spans the selected date and is active
       supabase.from("booking_rooms").select("room_id, booking_id, bookings!inner(id, status, property_id, balance_amount, check_in, check_out, guests:guest_id(name))")
@@ -510,6 +535,7 @@ function OwnerDashboard({
               <RoomGroups
                 rooms={rooms}
                 categories={categories}
+                grouping={grouping}
                 occupiedRoomIds={occupiedRoomIds}
                 pendingFoodByRoom={pendingFoodByRoom}
                 occInfoByRoom={occInfoByRoom}
@@ -559,6 +585,16 @@ function OwnerDashboard({
               <LegendDot style={{ backgroundColor: "#6d28d9" }} label="Event·In" />
               <LegendDot style={{ backgroundColor: "#fbbf24" }} label="Pending food" />
             </div>
+            <div className="mt-4 flex items-center gap-2 border-t pt-3">
+              <Label className="text-xs text-muted-foreground">Group rooms by</Label>
+              <Select value={grouping} onValueChange={(v) => changeGrouping(v as "category" | "floor")}>
+                <SelectTrigger className="h-8 w-36 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="category">Category</SelectItem>
+                  <SelectItem value="floor">Floor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardContent>
         </Card>
 
@@ -582,6 +618,37 @@ function OwnerDashboard({
           />
           <Kpi label="Expected Arrivals" value={kpi.arrivals} icon={LogIn} />
           <Kpi label="Expected Departures" value={kpi.departures} icon={LogOut} />
+          <Kpi
+            label="Dirty Rooms"
+            value={rooms.filter((r) => r.housekeeping_status === "dirty").length}
+            icon={Sparkles}
+            iconClassName="text-amber-600"
+          />
+          <Kpi
+            label="Maintenance Rooms"
+            value={rooms.filter((r) => r.status === "maintenance" || r.housekeeping_status === "out_of_order").length}
+            icon={Wrench}
+            iconClassName="text-red-600"
+          />
+          <Kpi
+            label="Event / Wedding Rooms"
+            value={Array.from(eventBlockByRoom.values()).filter((e) => e.status !== "checked_out").length}
+            icon={PartyPopper}
+            iconClassName="text-purple-600"
+          />
+          <Kpi
+            label="Ready to Sell"
+            value={rooms.filter((r) =>
+              !occupiedRoomIds.has(r.id) &&
+              r.status !== "maintenance" &&
+              r.status !== "blocked" &&
+              r.housekeeping_status !== "dirty" &&
+              r.housekeeping_status !== "out_of_order" &&
+              !eventBlockByRoom.has(r.id)
+            ).length}
+            icon={CheckCircle2}
+            iconClassName="text-emerald-600"
+          />
         </div>
 
         <Card>
@@ -741,11 +808,12 @@ function OwnerDashboard({
 }
 
 function RoomGroups({
-  rooms, categories, occupiedRoomIds, pendingFoodByRoom, occInfoByRoom, eventBlockByRoom,
+  rooms, categories, grouping, occupiedRoomIds, pendingFoodByRoom, occInfoByRoom, eventBlockByRoom,
   onPick, onPickFood, onCheckout, onAssignEvent, onEventCheckIn,
 }: {
   rooms: Room[];
   categories: RoomCategory[];
+  grouping: "category" | "floor";
   occupiedRoomIds: Set<string>;
   pendingFoodByRoom: Map<string, PendingFood>;
   occInfoByRoom: Map<string, OccInfo>;
@@ -756,18 +824,35 @@ function RoomGroups({
   onAssignEvent: (blk: EventBlockRecord) => void;
   onEventCheckIn: (blk: EventBlockRecord) => void;
 }) {
-  const byCat = new Map<string, Room[]>();
-  const uncategorised: Room[] = [];
-  rooms.forEach((r) => {
-    if (!r.category_id) { uncategorised.push(r); return; }
-    const arr = byCat.get(r.category_id) ?? [];
-    arr.push(r);
-    byCat.set(r.category_id, arr);
-  });
-  const ordered = categories
-    .map((c) => ({ name: c.name, rooms: byCat.get(c.id) ?? [] }))
-    .filter((g) => g.rooms.length > 0);
-  if (uncategorised.length > 0) ordered.push({ name: "Uncategorised", rooms: uncategorised });
+  let ordered: { name: string; rooms: Room[] }[] = [];
+  if (grouping === "floor") {
+    const byFloor = new Map<string, Room[]>();
+    const unassigned: Room[] = [];
+    rooms.forEach((r) => {
+      const f = (r.floor ?? "").trim();
+      if (!f) { unassigned.push(r); return; }
+      const arr = byFloor.get(f) ?? [];
+      arr.push(r);
+      byFloor.set(f, arr);
+    });
+    ordered = Array.from(byFloor.keys())
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+      .map((f) => ({ name: `Floor ${f}`, rooms: byFloor.get(f) ?? [] }));
+    if (unassigned.length > 0) ordered.push({ name: "No floor set", rooms: unassigned });
+  } else {
+    const byCat = new Map<string, Room[]>();
+    const uncategorised: Room[] = [];
+    rooms.forEach((r) => {
+      if (!r.category_id) { uncategorised.push(r); return; }
+      const arr = byCat.get(r.category_id) ?? [];
+      arr.push(r);
+      byCat.set(r.category_id, arr);
+    });
+    ordered = categories
+      .map((c) => ({ name: c.name, rooms: byCat.get(c.id) ?? [] }))
+      .filter((g) => g.rooms.length > 0);
+    if (uncategorised.length > 0) ordered.push({ name: "Uncategorised", rooms: uncategorised });
+  }
 
   return (
     <div className="space-y-4">
@@ -1026,12 +1111,12 @@ function RoomCard({
   );
 }
 
-function Kpi({ label, value, icon: Icon }: { label: string; value: number | string; icon: any }) {
+function Kpi({ label, value, icon: Icon, iconClassName }: { label: string; value: number | string; icon: any; iconClassName?: string }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+        <Icon className={`h-4 w-4 ${iconClassName ?? "text-muted-foreground"}`} />
       </CardHeader>
       <CardContent><div className="text-2xl font-semibold">{value}</div></CardContent>
     </Card>
