@@ -138,6 +138,11 @@ function FolioPage() {
 
   // Pending KOT lock state
   const [pendingKots, setPendingKots] = useState<PendingKot[]>([]);
+  // Pending POS charges (custom expenses awaiting Add to Bill)
+  const [pendingPos, setPendingPos] = useState<Array<{
+    id: string; category_name: string; description: string;
+    qty: number; rate: number; amount: number; gst_rate: number; gst_amount: number;
+  }>>([]);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [overrideOpen, setOverrideOpen] = useState(false);
