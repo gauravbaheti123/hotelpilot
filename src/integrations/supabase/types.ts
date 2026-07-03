@@ -1272,6 +1272,9 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string
+          discount_amount: number
+          discount_type: string | null
+          discount_value: number
           folio_id: string
           gst_amount: number
           gst_rate: number
@@ -1292,6 +1295,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description: string
+          discount_amount?: number
+          discount_type?: string | null
+          discount_value?: number
           folio_id: string
           gst_amount?: number
           gst_rate?: number
@@ -1312,6 +1318,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string
+          discount_amount?: number
+          discount_type?: string | null
+          discount_value?: number
           folio_id?: string
           gst_amount?: number
           gst_rate?: number
@@ -1352,6 +1361,8 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           discount_amount: number
+          discount_type: string | null
+          discount_value: number
           gst_amount: number
           gst_mode: string
           guest_company: string | null
@@ -1379,6 +1390,8 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           discount_amount?: number
+          discount_type?: string | null
+          discount_value?: number
           gst_amount?: number
           gst_mode?: string
           guest_company?: string | null
@@ -1406,6 +1419,8 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           discount_amount?: number
+          discount_type?: string | null
+          discount_value?: number
           gst_amount?: number
           gst_mode?: string
           guest_company?: string | null
@@ -4569,6 +4584,10 @@ export type Database = {
         Returns: boolean
       }
       check_login_allowed: { Args: { _email: string }; Returns: Json }
+      current_user_max_discount_pct: {
+        Args: { _property_id: string }
+        Returns: number
+      }
       current_user_totp_required: { Args: never; Returns: boolean }
       delete_night_audit: { Args: { _id: string }; Returns: undefined }
       get_next_bill_number: {
