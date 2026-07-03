@@ -85,7 +85,6 @@ export function recomputeFolio(
     sub_total: round2(sub),
     discount_amount: round2(discount),
     gst_amount: round2(gstMode === "gst" ? gst : 0),
-    total_raw: round2(totalRaw),
     total_amount: totalRounded,
     round_off_amount: roundOff,
   };
