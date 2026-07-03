@@ -38,6 +38,8 @@ const SECTIONS: { title: string; modules: { key: string; label: string }[] }[] =
     { key: "restaurant_billing", label: "Restaurant Billing" },
     { key: "invoices", label: "Invoices" },
     { key: "mis_ac", label: "MIS A/c" },
+    { key: "billing", label: "Split Bill", singleAction: "split_bill" },
+    { key: "billing", label: "Shift to MIS", singleAction: "mis_shift" },
   ]},
   { title: "Reports", modules: [
     { key: "reports", label: "Reports" },
