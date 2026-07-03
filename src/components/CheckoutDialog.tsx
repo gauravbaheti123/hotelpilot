@@ -88,6 +88,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
   const [charges, setCharges] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [pendingKots, setPendingKots] = useState<PendingKot[]>([]);
+  const [pendingPos, setPendingPos] = useState<PendingPosCharge[]>([]);
 
   // Payment form
   const [splitMode, setSplitMode] = useState(false);
