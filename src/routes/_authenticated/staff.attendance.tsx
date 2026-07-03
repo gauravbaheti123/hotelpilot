@@ -17,6 +17,7 @@ import {
   ATTENDANCE_STATUSES, ATTENDANCE_LABEL, ATTENDANCE_TONE,
   type AttendanceStatus,
 } from "@/lib/staff-hr";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 export const Route = createFileRoute("/_authenticated/staff/attendance")({
   head: () => ({ meta: [{ title: "Attendance — HotelPilot" }] }),
@@ -79,7 +80,21 @@ function AttendancePage() {
       ? await supabase.from("attendance").update(payload).eq("id", existing.id)
       : await supabase.from("attendance").insert(payload as never);
     setSaving(null);
-    if (error) toast.error(error.message); else { toast.success("Marked"); loadAtt(); }
+    if (error) toast.error(error.message);
+    else {
+      logActivity({
+        property_id: propertyId,
+        user_id: u.user?.id ?? "",
+        user_name: userDisplayName(u.user as never),
+        action_type: "ATTENDANCE_MARKED",
+        module: "Staff",
+        reference_id: staffId,
+        reference_label: staff.find((s) => s.id === staffId)?.name ?? null,
+        details: { staff_id: staffId, date, status },
+      });
+      toast.success("Marked");
+      loadAtt();
+    }
   }
 
   async function markAllPresent() {
@@ -93,7 +108,22 @@ function AttendancePage() {
     }));
     const { error } = await supabase.from("attendance").insert(rows as never);
     if (error) toast.error(error.message);
-    else { toast.success(`Marked ${rows.length} present`); loadAtt(); }
+    else {
+      for (const t of targets) {
+        logActivity({
+          property_id: propertyId,
+          user_id: u.user?.id ?? "",
+          user_name: userDisplayName(u.user as never),
+          action_type: "ATTENDANCE_MARKED",
+          module: "Staff",
+          reference_id: t.id,
+          reference_label: t.name,
+          details: { staff_id: t.id, date, status: "present" },
+        });
+      }
+      toast.success(`Marked ${rows.length} present`);
+      loadAtt();
+    }
   }
 
   const summary = useMemo(() => {

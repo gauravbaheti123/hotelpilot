@@ -26,6 +26,7 @@ import { fireTrigger } from "@/lib/whatsapp";
 import { AlertTriangle, Plus, Trash2, Loader2, ArrowRightLeft, SplitSquareHorizontal } from "lucide-react";
 import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 import { SplitBillDialog } from "@/components/SplitBillDialog";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 const PAY_MODES = [
   { v: "cash", label: "Cash" },
@@ -296,6 +297,24 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
         setBusy(false);
         return toast.error(payErr.message);
       }
+      for (const r of rows) {
+        logActivity({
+          property_id: booking.property_id,
+          user_id: user?.id ?? "",
+          user_name: userDisplayName(user as never),
+          action_type: "PAYMENT_RECEIVED",
+          module: "Billing",
+          reference_id: folio.id,
+          reference_label: booking.booking_number ?? null,
+          details: {
+            booking_id: booking.id,
+            folio_id: folio.id,
+            amount: r.amount,
+            mode: r.mode,
+            source: "checkout",
+          },
+        });
+      }
     }
 
     // Refresh folio from DB — payments_sync trigger has already recomputed
@@ -335,10 +354,35 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       if (br.rooms?.id) roomIds.push(br.rooms.id);
     }
     if (roomIds.length > 0) {
+      const priorStatuses = (booking.booking_rooms ?? [])
+        .filter((br: any) => br.rooms?.id)
+        .map((br: any) => ({
+          room_id: br.rooms.id,
+          room_number: br.rooms.room_number ?? null,
+          old_status: br.rooms.status ?? "occupied",
+        }));
       await supabase
         .from("rooms")
         .update({ status: "vacant", housekeeping_status: "dirty" } as any)
         .in("id", roomIds);
+      for (const p of priorStatuses) {
+        logActivity({
+          property_id: booking.property_id,
+          user_id: user?.id ?? "",
+          user_name: userDisplayName(user as never),
+          action_type: "ROOM_STATUS_CHANGED",
+          module: "Rooms",
+          reference_id: p.room_id,
+          reference_label: p.room_number ? `Room ${p.room_number}` : null,
+          details: {
+            room_id: p.room_id,
+            room_number: p.room_number,
+            old_status: p.old_status,
+            new_status: "vacant",
+            booking_id: booking.id,
+          },
+        });
+      }
     }
 
     try {

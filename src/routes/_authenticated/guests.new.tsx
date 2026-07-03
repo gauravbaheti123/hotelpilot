@@ -12,6 +12,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { ID_PROOF_TYPES } from "@/lib/guests";
 import { toast } from "sonner";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/guests/new")({
@@ -54,6 +55,17 @@ function NewGuestPage() {
     }).select("id").single();
     setBusy(false);
     if (error) { toast.error(error.message); return; }
+    const { data: u } = await supabase.auth.getUser();
+    logActivity({
+      property_id: propertyId!,
+      user_id: u.user?.id ?? "",
+      user_name: userDisplayName(u.user as never),
+      action_type: "GUEST_CREATED",
+      module: "Guests",
+      reference_id: data!.id,
+      reference_label: name.trim(),
+      details: { guest_id: data!.id, guest_name: name.trim() },
+    });
     toast.success("Guest created");
     router.navigate({ to: "/guests/$id", params: { id: data!.id } });
   }

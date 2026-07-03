@@ -20,6 +20,8 @@ import { RequirePermission } from "@/components/RequirePermission";
 import {
   PAYMENT_MODES, PAYMENT_MODE_LABEL, PAYMENT_MODE_TONE, type PaymentMode,
 } from "@/lib/expenses";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/_authenticated/expenses/")({
   head: () => ({ meta: [{ title: "Expenses — HotelPilot" }] }),
@@ -46,6 +48,7 @@ function daysAgo(n: number) {
 
 function ExpensesPage() {
   const { currentId: propertyId } = useCurrentProperty();
+  const { user } = useAuth();
   const [rows, setRows] = useState<ExpenseRow[]>([]);
   const [from, setFrom] = useState(daysAgo(30));
   const [to, setTo] = useState(today());
@@ -89,8 +92,25 @@ function ExpensesPage() {
 
   async function remove(id: string) {
     if (!confirm("Delete this expense?")) return;
+    const prev = rows.find((r) => r.id === id);
     const { error } = await supabase.from("expenses").delete().eq("id", id);
     if (error) return toast.error(error.message);
+    if (propertyId && user && prev) {
+      logActivity({
+        property_id: propertyId,
+        user_id: user.id,
+        user_name: userDisplayName(user as never),
+        action_type: "EXPENSE_DELETED",
+        module: "Expenses",
+        reference_id: id,
+        reference_label: prev.description ?? prev.expense_categories?.name ?? null,
+        details: {
+          expense_id: id,
+          category: prev.expense_categories?.name ?? null,
+          amount: Number(prev.amount),
+        },
+      });
+    }
     toast.success("Deleted");
     load();
   }

@@ -469,6 +469,22 @@ function NewBookingPage() {
           paid_at: new Date().toISOString(),
           created_by: user?.id ?? null,
         } as any);
+        logActivity({
+          property_id: current.id,
+          user_id: user?.id ?? "",
+          user_name: userDisplayName(user as never),
+          action_type: "PAYMENT_RECEIVED",
+          module: "Billing",
+          reference_id: booking!.id,
+          reference_label: booking!.booking_number ?? null,
+          details: {
+            booking_id: booking!.id,
+            folio_id: (folioId as unknown as string) ?? null,
+            amount: advance,
+            mode: paymentMode,
+            source: "booking_advance",
+          },
+        });
       }
 
       toast.success(`Booking ${booking!.booking_number} created`);

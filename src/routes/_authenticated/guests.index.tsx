@@ -18,6 +18,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/guests/")({
@@ -111,6 +112,19 @@ function GuestsListPage() {
     const { error } = await supabase.from("guests").delete().eq("id", toDelete.id);
     setDeleting(false);
     if (error) { toast.error(error.message); return; }
+    if (propertyId) {
+      const { data: u } = await supabase.auth.getUser();
+      logActivity({
+        property_id: propertyId,
+        user_id: u.user?.id ?? "",
+        user_name: userDisplayName(u.user as never),
+        action_type: "GUEST_DELETED",
+        module: "Guests",
+        reference_id: toDelete.id,
+        reference_label: toDelete.name,
+        details: { guest_id: toDelete.id, guest_name: toDelete.name },
+      });
+    }
     toast.success("Guest deleted");
     setToDelete(null);
     load();
@@ -120,10 +134,26 @@ function GuestsListPage() {
     if (selected.size === 0) return;
     setBulkBusy(true);
     const ids = Array.from(selected);
+    const removed = rows.filter((r) => selected.has(r.id));
     const { error } = await supabase.from("guests").delete().in("id", ids);
     setBulkBusy(false);
     setBulkOpen(false);
     if (error) return toast.error(error.message);
+    if (propertyId) {
+      const { data: u } = await supabase.auth.getUser();
+      for (const r of removed) {
+        logActivity({
+          property_id: propertyId,
+          user_id: u.user?.id ?? "",
+          user_name: userDisplayName(u.user as never),
+          action_type: "GUEST_DELETED",
+          module: "Guests",
+          reference_id: r.id,
+          reference_label: r.name,
+          details: { guest_id: r.id, guest_name: r.name },
+        });
+      }
+    }
     toast.success(`${ids.length} guests deleted`);
     load();
   }

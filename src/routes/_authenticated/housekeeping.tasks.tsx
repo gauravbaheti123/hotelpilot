@@ -18,6 +18,8 @@ import {
 } from "@/lib/housekeeping";
 import { Link } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
+import { useAuth } from "@/hooks/use-auth";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/housekeeping/tasks")({
@@ -34,6 +36,7 @@ interface TaskRow {
 
 function TasksPage() {
   const { currentId: propertyId } = useCurrentProperty();
+  const { user } = useAuth();
   const [rows, setRows] = useState<TaskRow[]>([]);
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<"all" | TaskStatus>("pending");
@@ -59,6 +62,7 @@ function TasksPage() {
     r.task_type.includes(q.toLowerCase())), [rows, q]);
 
   async function setStatusOf(id: string, next: TaskStatus) {
+    const prev = rows.find((r) => r.id === id);
     const patch: {
       status: TaskStatus;
       completed_at?: string | null;
@@ -70,7 +74,28 @@ function TasksPage() {
       patch.completed_by = data.user?.id ?? null;
     }
     const { error } = await supabase.from("housekeeping_tasks").update(patch).eq("id", id);
-    if (error) toast.error(error.message); else { toast.success("Updated"); load(); }
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Updated");
+      if (propertyId && user && prev) {
+        logActivity({
+          property_id: propertyId,
+          user_id: user.id,
+          user_name: userDisplayName(user as never),
+          action_type: "HK_TASK_UPDATED",
+          module: "Housekeeping",
+          reference_id: id,
+          reference_label: prev.rooms?.room_number ? `Room ${prev.rooms.room_number}` : prev.task_type,
+          details: {
+            task_id: id,
+            room_id: (prev as unknown as { room_id?: string | null }).room_id ?? null,
+            old_status: prev.status,
+            new_status: next,
+          },
+        });
+      }
+      load();
+    }
   }
 
   if (!propertyId) return <AppShell title="Tasks"><EmptyPropertyState /></AppShell>;

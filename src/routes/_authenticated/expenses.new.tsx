@@ -14,6 +14,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { PAYMENT_MODES, PAYMENT_MODE_LABEL, type PaymentMode } from "@/lib/expenses";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/expenses/new")({
@@ -80,9 +81,21 @@ function NewExpensePage() {
       description: form.description.trim() || null,
       created_by: u.user?.id ?? null,
     };
-    const { error } = await supabase.from("expenses").insert(payload as never);
+    const { data: inserted, error } = await supabase.from("expenses")
+      .insert(payload as never).select("id").maybeSingle();
     setSaving(false);
     if (error) return toast.error(error.message);
+    const catName = cats.find((c) => c.id === form.category_id)?.name ?? null;
+    logActivity({
+      property_id: propertyId,
+      user_id: u.user?.id ?? "",
+      user_name: userDisplayName(u.user as never),
+      action_type: "EXPENSE_CREATED",
+      module: "Expenses",
+      reference_id: (inserted as { id?: string } | null)?.id ?? null,
+      reference_label: form.description.trim() || catName || null,
+      details: { expense_id: (inserted as { id?: string } | null)?.id ?? null, category: catName, amount: amt },
+    });
     toast.success("Expense saved");
     navigate({ to: "/expenses" });
   }

@@ -298,6 +298,22 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
             created_by: user?.id ?? null,
           } as any);
           // Paid / Balance / Status are recomputed by the payments_sync trigger.
+          logActivity({
+            property_id: booking.property_id,
+            user_id: user?.id ?? "",
+            user_name: userDisplayName(user as never),
+            action_type: "PAYMENT_RECEIVED",
+            module: "Billing",
+            reference_id: b.folio_id,
+            reference_label: booking.booking_number ?? null,
+            details: {
+              booking_id: booking.id,
+              folio_id: b.folio_id,
+              amount: amt,
+              mode: row.mode,
+              source: "split_bill",
+            },
+          });
         }
       }
       // Mark booking checked-out.

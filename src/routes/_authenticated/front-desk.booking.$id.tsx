@@ -398,13 +398,27 @@ function BookingDetailPage() {
     const br = b.booking_rooms[0];
     const newTotal = nights * (br?.rate ?? 0);
     const newBalance = Math.max(0, newTotal - b.advance_amount);
-
+    const oldCheckOut = b.check_out;
     const { error } = await supabase.from("bookings").update({
       check_out: newCheckOut,
       total_amount: newTotal,
       balance_amount: newBalance,
     }).eq("id", b.id);
     if (error) return toast.error(error.message);
+    logActivity({
+      property_id: b.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as never),
+      action_type: "BOOKING_DATE_EXTENDED",
+      module: "Front Desk",
+      reference_id: b.id,
+      reference_label: b.booking_number,
+      details: {
+        booking_id: b.id,
+        old_checkout_date: oldCheckOut,
+        new_checkout_date: newCheckOut,
+      },
+    });
     for (const r of b.booking_rooms) {
       await supabase.from("booking_rooms").update({ check_out: newCheckOut }).eq("id", r.id);
     }
