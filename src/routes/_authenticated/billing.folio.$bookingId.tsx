@@ -466,6 +466,7 @@ function FolioPage() {
   // ---------- DISCOUNT HANDLERS ----------
   const unlimitedDisc = () => hasRole(roles, "owner") || hasRole(roles, "superadmin");
   const capPctForRole = () => (unlimitedDisc() ? 100 : Math.max(0, Math.min(100, Number(maxDiscPct) || 0)));
+  const round2 = (n: number) => Math.round(n * 100) / 100;
 
   function openBillDiscount() {
     if (!folio) return;
