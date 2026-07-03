@@ -387,6 +387,65 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
 
   const roomLabel = booking?.booking_rooms?.[0]?.rooms?.room_number ?? "—";
 
+  const unlimitedDisc = () => hasRole(roles, "owner") || hasRole(roles, "superadmin");
+
+  async function saveSplitBillDiscount({ type, value, rupees }: { type: DiscType; value: number; rupees: number }) {
+    const target = createdBills[discBillIdx];
+    if (!target) return;
+    // Re-fetch this folio's charges to recompute totals with the new bill discount
+    const { data: chargeRows } = await supabase.from("folio_charges")
+      .select("*").eq("folio_id", target.folio_id);
+    const rows = (chargeRows ?? []) as any[];
+    const gstMode = target.party.bill_type === "gst_invoice" ? "gst" : "cash";
+    const billDisc: BillDiscount | null = value > 0 ? { type, value } : null;
+    const totals = recomputeFolio(rows, gstMode, billDisc);
+    const { error } = await supabase.from("folios").update({
+      discount_type: value > 0 ? type : null,
+      discount_value: value > 0 ? value : 0,
+      ...totals,
+      balance_amount: totals.total_amount,
+    } as any).eq("id", target.folio_id);
+    if (error) { toast.error(error.message); return; }
+    // Update local state so the summary reflects the new total
+    setCreatedBills((arr) => arr.map((cb, idx) => idx === discBillIdx
+      ? { ...cb, total: Number(totals.total_amount) } : cb));
+    setPayRows((arr) => arr.map((r, idx) => idx === discBillIdx
+      ? { ...r, amount: Number(totals.total_amount).toFixed(2) } : r));
+    if (user) {
+      logActivity({
+        property_id: booking.property_id,
+        user_id: user.id,
+        user_name: userDisplayName(user as any),
+        action_type: "DISCOUNT_APPLIED",
+        module: "Billing",
+        reference_id: target.folio_id,
+        reference_label: target.invoice_number,
+        details: {
+          bill_number: target.invoice_number,
+          level: "bill",
+          discount_type: type,
+          discount_value: value,
+          discount_amount: rupees,
+          via: "split_bill",
+          applied_by: userDisplayName(user as any),
+          role: roles.join(","),
+        },
+      });
+    }
+    toast.success(value > 0 ? "Bill discount applied" : "Bill discount cleared");
+  }
+
+  // Net subtotal for the currently-targeted split bill (base for bill-level %/₹)
+  const discBase = (() => {
+    const items = discBillIdx === 0 ? bill1Charges : bill2Charges;
+    return items.reduce((s, c) => {
+      if (c.charge_type === "discount" || c.charge_type === "tax") return s;
+      const amt = Math.abs(Number(c.amount) || 0);
+      const ld = Math.min(Number(c.discount_amount) || 0, amt);
+      return s + (amt - ld);
+    }, 0);
+  })();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
