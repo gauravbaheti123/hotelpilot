@@ -313,10 +313,10 @@ function PosPage() {
           </Card>
 
           <div className="flex flex-col gap-2">
-            <Button disabled={busy || lines.length === 0 || !bookingId} onClick={() => post(false)}>
+            <Button disabled={busy || lines.length === 0 || !bookingId || !canCreateCharge} onClick={() => post(false)}>
               <Send className="h-4 w-4 mr-1" /> Post to folio
             </Button>
-            <Button variant="outline" disabled={busy || lines.length === 0 || !bookingId} onClick={() => post(true)}>
+            <Button variant="outline" disabled={busy || lines.length === 0 || !bookingId || !canCreateCharge} onClick={() => post(true)}>
               <Receipt className="h-4 w-4 mr-1" /> Post &amp; open folio
             </Button>
             {bookingId && (
