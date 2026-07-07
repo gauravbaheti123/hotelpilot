@@ -25,6 +25,7 @@ import {
 import { CalendarDays } from "lucide-react";
 import { SuperadminDashboard as PlatformSuperadminDashboard } from "@/components/SuperadminDashboard";
 import { useSuperadminView } from "@/lib/superadmin-view";
+import { usePermissions } from "@/hooks/use-permissions";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/dashboard")({
