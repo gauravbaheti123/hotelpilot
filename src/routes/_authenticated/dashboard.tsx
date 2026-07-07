@@ -1161,7 +1161,7 @@ function roomTileStyle(r: Room, isOccupied: boolean): { bg: string; label: strin
 }
 
 function RoomStatusModal({
-  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout,
+  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onNewKot,
 }: {
   room: Room | null;
   kind: TileKind | null;
@@ -1172,10 +1172,14 @@ function RoomStatusModal({
   onOpenBooking: (bookingId: string) => void;
   onNewBooking: () => void;
   onCheckout: (bookingId: string) => void;
+  onNewKot: (bookingId: string) => void;
 }) {
   const [staffId, setStaffId] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const { can } = usePermissions();
+  const canCreateKot = can("new_kot", "create");
+  const showNewKot = !!bookingId && canCreateKot;
 
   useEffect(() => { setStaffId(""); setNotes(""); }, [room?.id]);
 
@@ -1262,11 +1266,21 @@ function RoomStatusModal({
             <Button variant="outline" disabled={!bookingId} onClick={() => bookingId && onOpenBooking(bookingId)}>View Booking</Button>
             <Button variant="outline" disabled={!bookingId}
               onClick={() => bookingId && onOpenBooking(bookingId)}>Room Shift</Button>
+            {showNewKot && (
+              <Button variant="outline" onClick={() => bookingId && onNewKot(bookingId)}>
+                <UtensilsCrossed className="h-4 w-4 mr-2" /> New KOT
+              </Button>
+            )}
           </div>
         )}
 
         {(kind === "dirty" || kind === "maintenance") && (
           <div className="grid gap-3">
+            {showNewKot && (
+              <Button variant="outline" onClick={() => bookingId && onNewKot(bookingId)}>
+                <UtensilsCrossed className="h-4 w-4 mr-2" /> New KOT
+              </Button>
+            )}
             <div className="grid gap-1.5">
               <Label>{kind === "dirty" ? "Cleaned by" : "Maintenance resolved by"}</Label>
               <SearchableSelect
