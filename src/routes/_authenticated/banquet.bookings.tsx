@@ -74,10 +74,30 @@ function BanquetBookingsPage() {
       email: user.email, password: pwd,
     });
     if (pErr) { setBusy(false); return toast.error("Password incorrect"); }
+    // Collect room_ids linked to this banquet BEFORE deleting the booking
+    // (child rows cascade-delete, so we snapshot first). Rooms currently
+    // flagged 'blocked' need to be reset to Vacant + Dirty so housekeeping
+    // verifies them before they go back on sale.
+    const roomIds = new Set<string>();
+    const [{ data: bulk }, { data: blocks }] = await Promise.all([
+      supabase.from("banquet_bulk_rooms").select("room_id").eq("banquet_id", delTarget.id),
+      supabase.from("event_room_blocks").select("room_id").eq("banquet_booking_id", delTarget.id),
+    ]);
+    (bulk ?? []).forEach((r: any) => { if (r.room_id) roomIds.add(r.room_id); });
+    (blocks ?? []).forEach((r: any) => { if (r.room_id) roomIds.add(r.room_id); });
+
     const { error } = await supabase.from("banquet_bookings")
       .delete().eq("id", delTarget.id);
     setBusy(false);
     if (error) return toast.error(error.message);
+    // Reset rooms still stuck at 'blocked' (skip rooms already occupied by
+    // a regular guest booking so we don't overwrite legitimate state).
+    if (roomIds.size > 0) {
+      await supabase.from("rooms")
+        .update({ status: "vacant", housekeeping_status: "dirty" } as any)
+        .in("id", Array.from(roomIds))
+        .eq("status", "blocked");
+    }
     toast.success(`Event Bill ${delTarget.banquet_number} permanently deleted`);
     setDelTarget(null); setPwd(""); setDelStep(1);
     load();
