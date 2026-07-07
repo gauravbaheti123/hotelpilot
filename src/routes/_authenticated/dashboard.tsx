@@ -607,18 +607,9 @@ function OwnerDashboard({
           <Kpi label="Occupied Rooms" value={kpi.occupied} icon={BedDouble} />
           <Kpi
             label="Available Rooms"
-            value={Math.max(
-              0,
-              rooms.length -
-                kpi.occupied -
-                rooms.filter(
-                  (r) =>
-                    r.status === "maintenance" ||
-                    r.status === "blocked" ||
-                    r.housekeeping_status === "dirty" ||
-                    r.housekeeping_status === "out_of_order",
-                ).length,
-            )}
+            value={rooms.filter((r) =>
+              ["vacant", "dirty", "maintenance"].includes(r.status as string),
+            ).length}
             icon={DoorOpen}
           />
           <Kpi label="Expected Arrivals" value={kpi.arrivals} icon={LogIn} />
@@ -644,12 +635,7 @@ function OwnerDashboard({
           <Kpi
             label="Ready to Sell"
             value={rooms.filter((r) =>
-              !occupiedRoomIds.has(r.id) &&
-              r.status !== "maintenance" &&
-              r.status !== "blocked" &&
-              r.housekeeping_status !== "dirty" &&
-              r.housekeeping_status !== "out_of_order" &&
-              !eventBlockByRoom.has(r.id)
+              r.status === "vacant" && r.housekeeping_status === "clean",
             ).length}
             icon={CheckCircle2}
             iconClassName="text-emerald-600"
