@@ -151,6 +151,7 @@ function GuestDetail() {
   return (
     <AppShell title={g.name}>
       <div className="flex flex-wrap items-center gap-2 mb-4">
+        {g.company && <span className="text-sm text-muted-foreground">{g.company}</span>}
         {g.is_blacklisted && <Badge variant="outline" className="bg-rose-100 text-rose-800 border-rose-300"><Ban className="h-3 w-3 mr-1" />Blacklisted</Badge>}
         {(g.tags ?? []).map((t) => <Badge key={t} variant="secondary">{t}</Badge>)}
         <div className="ml-auto flex gap-2">
