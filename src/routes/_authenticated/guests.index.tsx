@@ -29,17 +29,17 @@ export const Route = createFileRoute("/_authenticated/guests/")({
 interface Row {
   id: string; name: string; mobile: string | null; email: string | null;
   city: string | null; tags: string[] | null; is_blacklisted: boolean;
-  gst_number: string | null;
+  gst_number: string | null; company: string | null;
 }
 
 const EXPORT_COLUMNS = [
-  "Name","Mobile","Email","ID Proof Type","ID Proof Number",
+  "Name","Mobile","Email","Company Name","ID Proof Type","ID Proof Number",
   "Address","Guest Type","Visit Count","Last Stay","Notes",
 ] as const;
 
 const SAMPLE_CSV = [
   EXPORT_COLUMNS.join(","),
-  ["John Doe","9876543210","john@example.com","aadhaar","1234-5678-9012",
+  ["John Doe","9876543210","john@example.com","Growth Story Pvt Ltd","aadhaar","1234-5678-9012",
    "Mumbai","regular","","",""].join(","),
 ].join("\n");
 
@@ -98,7 +98,7 @@ function GuestsListPage() {
   async function load() {
     if (!propertyId) return;
     const { data } = await supabase.from("guests")
-      .select("id,name,mobile,email,city,tags,is_blacklisted,gst_number")
+      .select("id,name,mobile,email,city,tags,is_blacklisted,gst_number,company")
       .eq("property_id", propertyId)
       .order("created_at", { ascending: false }).limit(500);
     setRows((data ?? []) as Row[]);
@@ -161,7 +161,7 @@ function GuestsListPage() {
   async function exportCsv() {
     if (!propertyId) return;
     const { data } = await supabase.from("guests")
-      .select("name,mobile,email,id_proof_type,id_proof_number,address,tags,visit_count,notes,created_at")
+      .select("name,mobile,email,company,id_proof_type,id_proof_number,address,tags,visit_count,notes,created_at")
       .eq("property_id", propertyId).order("name");
     const ids = (data ?? []).map((g: any) => g.id).filter(Boolean);
     void ids;
@@ -170,6 +170,7 @@ function GuestsListPage() {
       const guestType = Array.isArray(g.tags) && g.tags.length ? String(g.tags[0]) : "regular";
       lines.push([
         csvEscape(g.name), csvEscape(g.mobile), csvEscape(g.email),
+        csvEscape(g.company),
         csvEscape(g.id_proof_type), csvEscape(g.id_proof_number),
         csvEscape(g.address), csvEscape(guestType),
         csvEscape(g.visit_count ?? 0), csvEscape(""), csvEscape(g.notes),
@@ -230,6 +231,7 @@ function GuestsListPage() {
         name,
         mobile,
         email: r["Email"]?.trim() || null,
+        company: r["Company Name"]?.trim() || r["Company"]?.trim() || null,
         id_proof_type: r["ID Proof Type"]?.trim() || null,
         id_proof_number: r["ID Proof Number"]?.trim() || null,
         address: r["Address"]?.trim() || null,
@@ -259,7 +261,8 @@ function GuestsListPage() {
       if (!term) return true;
       return r.name.toLowerCase().includes(term) ||
         (r.mobile ?? "").includes(term) ||
-        (r.email ?? "").toLowerCase().includes(term);
+        (r.email ?? "").toLowerCase().includes(term) ||
+        (r.company ?? "").toLowerCase().includes(term);
     });
   }, [rows, q, filter]);
 
@@ -279,7 +282,7 @@ function GuestsListPage() {
   return (
     <AppShell title="Guests">
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <Input placeholder="Search name / mobile / email…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-sm" />
+        <Input placeholder="Search name / mobile / email / company…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-sm" />
         <Chip label={`All (${rows.length})`} active={filter === "all"} onClick={() => setFilter("all")} />
         <Chip label="Corporate" active={filter === "corporate"} onClick={() => setFilter("corporate")} />
         <Chip label="Blacklist" active={filter === "blacklist"} onClick={() => setFilter("blacklist")} />
@@ -318,7 +321,7 @@ function GuestsListPage() {
                 {(g.tags ?? []).map((t) => <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>)}
               </div>
               <div className="text-xs text-muted-foreground truncate">
-                {[g.mobile, g.email, g.city].filter(Boolean).join(" · ") || "—"}
+                {[g.company, g.mobile, g.email, g.city].filter(Boolean).join(" · ") || "—"}
               </div>
             </Link>
             <div className="flex items-center gap-1 shrink-0">
