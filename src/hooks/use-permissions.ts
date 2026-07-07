@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./use-auth";
-import { usePropertyId } from "./use-property";
+import { useCurrentProperty } from "./use-property";
 
 // Standard CRUD actions rendered as columns in the permission grid.
 export type PermStdAction = "view" | "create" | "edit" | "delete";
@@ -34,7 +34,7 @@ export function usePermissions(): PermState & {
   refresh: () => void;
 } {
   const { user, roles, loading: authLoading } = useAuth();
-  const propertyId = usePropertyId();
+  const { currentId: propertyId } = useCurrentProperty();
   const isSuperadmin = roles.includes("superadmin");
   // Owners have full access to every module — bypass the permission map.
   const isOwner = roles.includes("owner");
@@ -65,6 +65,9 @@ export function usePermissions(): PermState & {
     }
 
     (async () => {
+      if (!cancelled) {
+        setState((prev) => ({ ...prev, loading: true, isSuperadmin: false }));
+      }
       // Find role_id assignments for this user (scoped to current property or global)
       const q = supabase
         .from("user_roles")
@@ -80,16 +83,25 @@ export function usePermissions(): PermState & {
         console.error("[usePermissions] user_roles read failed", assignsErr);
         return;
       }
-      const roleIds = (assigns ?? [])
-        .filter((r: any) => !propertyId || !r.property_id || r.property_id === propertyId)
-        .map((r: any) => r.role_id as string);
+      const assignments = ((assigns ?? []) as Array<{ role_id: string | null; property_id: string | null }>)
+        .filter((r) => !!r.role_id);
+
+      const matchingAssignments = propertyId
+        ? assignments.filter((r) => !r.property_id || r.property_id === propertyId)
+        : [];
+
+      // A stale selected property can survive from a previous login in localStorage.
+      // If it does not match any role assignment for the current user, fall back to
+      // the user's actual assignments instead of denying every permission.
+      const effectiveAssignments = matchingAssignments.length > 0 ? matchingAssignments : assignments;
+      const roleIds = Array.from(new Set(effectiveAssignments.map((r) => r.role_id as string)));
       if (roleIds.length === 0) {
         if (!cancelled) setState({ loading: false, isSuperadmin: false, map: {} });
         return;
       }
       const { data: rps, error: rpsErr } = await supabase
         .from("role_permissions")
-        .select("allowed, permissions(module, action)")
+        .select("allowed, permissions!role_permissions_permission_id_fkey(module, action)")
         .in("role_id", roleIds)
         .eq("allowed", true);
       if (rpsErr) {

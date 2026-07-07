@@ -54,6 +54,28 @@ export function useCurrentProperty() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!user || isSuperadmin) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("user_roles")
+        .select("property_id")
+        .eq("user_id", user.id)
+        .not("property_id", "is", null);
+      if (cancelled) return;
+      const assignedPropertyIds = Array.from(
+        new Set((data ?? []).map((row) => row.property_id).filter(Boolean) as string[]),
+      );
+      if (assignedPropertyIds.length > 0 && !assignedPropertyIds.includes(currentId ?? "")) {
+        setCurrentId(assignedPropertyIds[0]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, isSuperadmin, currentId]);
+
   // Auto-pick: non-superadmin users are locked to their linked property.
   // Superadmin keeps last-selected or falls back to first.
   useEffect(() => {

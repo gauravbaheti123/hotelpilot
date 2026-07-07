@@ -1,10 +1,12 @@
 import { ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { usePermissions, type PermAction } from "@/hooks/use-permissions";
 import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShieldAlert } from "lucide-react";
+import { LogOut, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 /**
  * Blocks rendering of a route unless the current user has the required
@@ -20,6 +22,7 @@ export function RequirePermission({
   action?: PermAction;
   children: ReactNode;
 }) {
+  const router = useRouter();
   const { loading: authLoading, roles } = useAuth();
   const { can, loading: permsLoading, isSuperadmin } = usePermissions();
 
@@ -35,6 +38,13 @@ export function RequirePermission({
 
   const allowed = roleBypass || isSuperadmin || can(module, action);
   if (allowed) return <>{children}</>;
+
+  async function handleSignOut() {
+    localStorage.removeItem("hp.currentPropertyId");
+    await supabase.auth.signOut();
+    toast.success("Signed out");
+    router.navigate({ to: "/login", replace: true });
+  }
 
   // Inline access-denied card — do NOT navigate away. Navigating to
   // /dashboard while the guard is itself mounted on /dashboard produced a
@@ -57,7 +67,10 @@ export function RequirePermission({
             </span>{" "}
             permission for your role.
           </p>
-          <div className="pt-2">
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button variant="outline" onClick={handleSignOut}>
+              <LogOut className="h-4 w-4" /> Sign out
+            </Button>
             <Link to="/dashboard">
               <Button variant="secondary">Go to Dashboard</Button>
             </Link>
