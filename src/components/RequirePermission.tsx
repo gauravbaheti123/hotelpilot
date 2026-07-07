@@ -31,7 +31,17 @@ export function RequirePermission({
   const roleBypass =
     roles.includes("superadmin") || roles.includes("owner");
 
-  if (module === "dashboard" && action === "view") {
+  const debugOn =
+    typeof window !== "undefined" &&
+    (() => {
+      try {
+        return window.localStorage.getItem("hp_debug") === "1";
+      } catch {
+        return false;
+      }
+    })();
+
+  if (debugOn && module === "dashboard" && action === "view") {
     console.log("[RequirePermission:debug] dashboard/view guard state", {
       module,
       action,
@@ -49,7 +59,7 @@ export function RequirePermission({
   if (authLoading || permsLoading) return null;
 
   const allowed = roleBypass || isSuperadmin || can(module, action);
-  if (module === "dashboard" && action === "view") {
+  if (debugOn && module === "dashboard" && action === "view") {
     console.log("[RequirePermission:debug] dashboard/view decision", {
       module,
       action,
