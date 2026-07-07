@@ -1052,3 +1052,191 @@ function PartyEditor({
     </div>
   );
 }
+
+function ModeCard({
+  active, title, hint, onClick,
+}: {
+  active: boolean;
+  title: string;
+  hint: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`text-left rounded border p-3 space-y-1 transition ${
+        active ? "border-primary bg-primary/5" : "hover:bg-accent/50"
+      }`}
+    >
+      <div className="text-sm font-semibold">{title}</div>
+      <div className="text-xs text-muted-foreground">{hint}</div>
+    </button>
+  );
+}
+
+interface ShareDistribution {
+  weights: number[];
+  nets: number[];
+  pcts: number[];
+  sumInput: number;
+  target: number;
+  valid: boolean;
+  remainder: number;
+}
+
+function ShareEditor({
+  splitMode, baseNet, baseGstRate, baseChargeCount, scopeLabel, parties, setParties,
+  distribution, showBillType, onBack, onNext, busy,
+}: {
+  splitMode: "percent" | "amount";
+  baseNet: number;
+  baseGstRate: number;
+  baseChargeCount: number;
+  scopeLabel: string;
+  parties: ShareParty[];
+  setParties: (p: ShareParty[] | ((prev: ShareParty[]) => ShareParty[])) => void;
+  distribution: ShareDistribution;
+  showBillType?: boolean;
+  onBack: () => void;
+  onNext: () => void;
+  busy: boolean;
+}) {
+  const isPct = splitMode === "percent";
+  const target = isPct ? 100 : baseNet;
+  const diff = distribution.sumInput - target;
+  return (
+    <div className="space-y-3">
+      <div className="text-sm font-medium">Step 2 — Parties &amp; Shares</div>
+      <div className="rounded border bg-muted/30 p-3 text-xs space-y-1">
+        <div>
+          Splitting: <span className="font-medium">{scopeLabel}</span>
+          {baseChargeCount > 1 && <span className="text-muted-foreground"> ({baseChargeCount} lines)</span>}
+        </div>
+        <div>
+          Base subtotal (pre-GST): <b>₹{baseNet.toFixed(2)}</b>
+          {baseGstRate > 0 && <span className="text-muted-foreground"> · GST rate {baseGstRate.toFixed(2)}%</span>}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {parties.map((p, i) => {
+          const partyNet = distribution.nets[i] ?? 0;
+          const partyPct = distribution.pcts[i] ?? 0;
+          return (
+            <div key={p.key} className="rounded border p-2 space-y-2">
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_120px_auto] items-end">
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider">Party {i + 1} name *</Label>
+                  <Input
+                    value={p.name}
+                    onChange={(e) => setParties((prev) => prev.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x))}
+                    placeholder={`Party ${i + 1}`}
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider">GSTIN / Mobile</Label>
+                  <Input
+                    value={p.gstin ?? p.mobile ?? ""}
+                    onChange={(e) => setParties((prev) => prev.map((x, idx) => idx === i ? { ...x, gstin: e.target.value } : x))}
+                    placeholder="Optional"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px] uppercase tracking-wider">
+                    {isPct ? "Share %" : "Amount ₹"}
+                  </Label>
+                  <Input
+                    type="number"
+                    value={p.share}
+                    onChange={(e) => setParties((prev) => prev.map((x, idx) => idx === i ? { ...x, share: e.target.value } : x))}
+                    placeholder={isPct ? "e.g. 50" : "e.g. 500"}
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-9 w-9 text-destructive"
+                    disabled={parties.length <= 2}
+                    onClick={() => setParties((prev) => prev.filter((_, idx) => idx !== i))}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+                <span>
+                  → Net ₹<span className="font-medium text-foreground">{partyNet.toFixed(2)}</span>
+                </span>
+                <span>
+                  Effective <span className="font-medium text-foreground">{partyPct.toFixed(2)}%</span>
+                </span>
+                {baseGstRate > 0 && (
+                  <span>
+                    GST @ {baseGstRate.toFixed(2)}% = ₹
+                    <span className="font-medium text-foreground">
+                      {(partyNet * baseGstRate / 100).toFixed(2)}
+                    </span>
+                  </span>
+                )}
+                {showBillType && (
+                  <BillTypeToggle
+                    value={p.bill_type}
+                    onChange={(v) => setParties((prev) => prev.map((x, idx) => idx === i ? { ...x, bill_type: v } : x))}
+                  />
+                )}
+                {i === parties.length - 1 && distribution.valid && Math.abs(diff) < 0.01 && (
+                  <span className="text-[10px] italic">
+                    Last party absorbs paise-level rounding so party totals equal the source exactly.
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center justify-between rounded border p-2 text-xs">
+        <div className="flex items-center gap-3">
+          <Button size="sm" variant="outline" onClick={() => setParties((prev) => [...prev, newParty()])}>
+            <Plus className="h-3.5 w-3.5 mr-1" /> Add party
+          </Button>
+          <span>
+            Sum: <span className="font-medium">
+              {isPct ? `${distribution.sumInput.toFixed(2)}%` : `₹${distribution.sumInput.toFixed(2)}`}
+            </span>
+            {" / "}
+            <span className="text-muted-foreground">
+              {isPct ? "100%" : `₹${target.toFixed(2)}`}
+            </span>
+          </span>
+        </div>
+        <Badge
+          variant="outline"
+          className={
+            distribution.valid
+              ? "border-emerald-400 text-emerald-700"
+              : "border-amber-400 text-amber-700"
+          }
+        >
+          {distribution.valid
+            ? "Balanced ✓"
+            : isPct
+              ? `Off by ${diff.toFixed(2)}%`
+              : `Off by ₹${diff.toFixed(2)}`}
+        </Badge>
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" onClick={onBack}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back
+        </Button>
+        <Button onClick={onNext} disabled={busy || !distribution.valid}>
+          {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+          Confirm &amp; Split
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
