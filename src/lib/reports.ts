@@ -177,6 +177,108 @@ export async function fetchGstInvoices(propertyId: string, from: string, to: str
   });
 }
 
+/**
+ * GST report — one row per (invoice, gst_rate). Groups folio_charges by their
+ * gst_rate so each row shows a clean slab (5/12/18…) instead of a blended
+ * average. Bill-level discounts (which reduce the folio's stored gst_amount
+ * below Σ line gst) are absorbed by scaling each slab's taxable + gst so the
+ * per-slab totals reconcile with folio.gst_amount, and the effective rate
+ * stays exactly at the slab's rate.
+ */
+export async function fetchGstInvoiceSlabs(
+  propertyId: string, from: string, to: string,
+): Promise<GstInvoiceSlabRow[]> {
+  const start = new Date(`${from}T00:00:00`).toISOString();
+  const endD = new Date(`${to}T00:00:00`);
+  endD.setDate(endD.getDate() + 1);
+  const end = endD.toISOString();
+  const { data } = await supabase.from("folios")
+    .select("id,invoice_number,created_at,guest_gstin,guest_company,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
+    .eq("property_id", propertyId)
+    .eq("gst_mode", "gst")
+    .neq("status", "void")
+    .gte("created_at", start)
+    .lt("created_at", end)
+    .order("created_at", { ascending: false });
+  const out: GstInvoiceSlabRow[] = [];
+  for (const raw of data ?? []) {
+    const f = raw as unknown as {
+      invoice_number: string; created_at: string;
+      guest_gstin: string | null; guest_company: string | null;
+      sub_total: number; gst_amount: number; total_amount: number;
+      bookings: { guests: { name: string } | null } | null;
+      folio_charges: Array<{
+        charge_type: string; amount: number | string;
+        gst_rate: number | string | null;
+        gst_amount: number | string | null;
+        discount_amount: number | string | null;
+      }> | null;
+    };
+    const bySlab = new Map<number, { taxable: number; gst: number }>();
+    let lineGstSum = 0;
+    for (const c of f.folio_charges ?? []) {
+      if (c.charge_type === "tax" || c.charge_type === "discount") continue;
+      const amt = Math.abs(Number(c.amount ?? 0));
+      if (amt <= 0) continue;
+      const ld = Math.max(0, Math.min(Number(c.discount_amount ?? 0), amt));
+      const net = amt - ld;
+      const rate = Number(c.gst_rate ?? 0);
+      const gFull = Number(c.gst_amount ?? 0);
+      const gNet = amt > 0 ? gFull * (net / amt) : gFull;
+      lineGstSum += gNet;
+      const cur = bySlab.get(rate) ?? { taxable: 0, gst: 0 };
+      cur.taxable += net;
+      cur.gst += gNet;
+      bySlab.set(rate, cur);
+    }
+    const folioGst = Number(f.gst_amount ?? 0);
+    // Scale factor so per-slab GST reconciles with the folio's stored gst_amount
+    // (handles bill-level discounts that shrink the folio total).
+    const factor = lineGstSum > 0 ? folioGst / lineGstSum : 1;
+    const rates = [...bySlab.keys()].sort((a, b) => a - b);
+    let first = true;
+    for (const rate of rates) {
+      const s = bySlab.get(rate)!;
+      // For 0%-rate lines, gst is 0 by definition — factor doesn't apply.
+      const gstScaled = rate > 0 ? round2(s.gst * factor) : 0;
+      const taxableScaled = rate > 0 ? round2(s.taxable * factor) : round2(s.taxable);
+      const cgst = round2(gstScaled / 2);
+      out.push({
+        invoice_number: f.invoice_number,
+        created_at: f.created_at,
+        guest_name: f.bookings?.guests?.name ?? null,
+        guest_gstin: f.guest_gstin,
+        guest_company: f.guest_company,
+        gst_rate: rate,
+        taxable: taxableScaled,
+        cgst,
+        sgst: cgst,
+        gst_total: gstScaled,
+        invoice_total: first ? Number(f.total_amount ?? 0) : 0,
+        is_first_of_invoice: first,
+      });
+      first = false;
+    }
+    // If the folio had no non-tax/discount charges at all, still emit one row
+    // so the invoice appears in the report (rare, but avoids silent dropouts).
+    if (bySlab.size === 0) {
+      out.push({
+        invoice_number: f.invoice_number,
+        created_at: f.created_at,
+        guest_name: f.bookings?.guests?.name ?? null,
+        guest_gstin: f.guest_gstin,
+        guest_company: f.guest_company,
+        gst_rate: 0,
+        taxable: Number(f.sub_total ?? 0),
+        cgst: 0, sgst: 0, gst_total: 0,
+        invoice_total: Number(f.total_amount ?? 0),
+        is_first_of_invoice: true,
+      });
+    }
+  }
+  return out;
+}
+
 export function todayIso(): string {
   const d = new Date();
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
