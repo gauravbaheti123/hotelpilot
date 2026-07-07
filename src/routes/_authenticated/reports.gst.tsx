@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCurrentProperty } from "@/hooks/use-property";
-import { fetchGstInvoices, type GstInvoiceRow } from "@/lib/reports";
+import { fetchGstInvoiceSlabs, type GstInvoiceSlabRow } from "@/lib/reports";
 import { ReportShell } from "@/components/ReportShell";
 import { RequirePermission } from "@/components/RequirePermission";
 import {
@@ -28,52 +28,53 @@ function monthBounds(month: string): [string, string] {
   return [f(start), f(end)];
 }
 
-interface DisplayRow extends GstInvoiceRow {
-  cgst: number; sgst: number; cgstPct: number; sgstPct: number;
-}
-
 function GstReportPage() {
   const { current } = useCurrentProperty();
   const propertyId = current?.id ?? null;
   const now = new Date();
   const [month, setMonth] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
-  const [rows, setRows] = useState<GstInvoiceRow[]>([]);
+  const [rows, setRows] = useState<GstInvoiceSlabRow[]>([]);
 
   const load = useCallback(async () => {
     if (!propertyId) return;
     const [f, t] = monthBounds(month);
-    setRows(await fetchGstInvoices(propertyId, f, t));
+    setRows(await fetchGstInvoiceSlabs(propertyId, f, t));
   }, [propertyId, month]);
 
   useEffect(() => { load(); }, [load]);
 
   const [from, to] = monthBounds(month);
 
-  const display: DisplayRow[] = useMemo(() => rows.map((r) => {
-    const cgst = Number(r.gst_amount) / 2;
-    const pct = r.sub_total > 0 ? Math.round((cgst / r.sub_total) * 10000) / 100 : 0;
-    return { ...r, cgst, sgst: cgst, cgstPct: pct, sgstPct: pct };
-  }), [rows]);
+  // Per-slab display: CGST% = SGST% = gst_rate / 2 (clean slab, no blending).
+  const display = useMemo(() => rows.map((r) => ({
+    ...r,
+    cgstPct: r.gst_rate / 2,
+    sgstPct: r.gst_rate / 2,
+  })), [rows]);
 
   const totals = useMemo(() => {
-    const sum = (k: "sub_total" | "gst_amount" | "total_amount") =>
-      rows.reduce((a, r) => a + Number(r[k] ?? 0), 0);
-    const gst = sum("gst_amount");
-    return { taxable: sum("sub_total"), gst, invoice: sum("total_amount"), cgst: gst / 2, sgst: gst / 2 };
+    let taxable = 0, gst = 0, invoice = 0;
+    for (const r of rows) {
+      taxable += Number(r.taxable ?? 0);
+      gst += Number(r.gst_total ?? 0);
+      invoice += Number(r.invoice_total ?? 0); // only counted on first slab row
+    }
+    return { taxable, gst, invoice, cgst: gst / 2, sgst: gst / 2 };
   }, [rows]);
 
-  const columns: ReportColumn<DisplayRow>[] = [
-    { key: "bill_no", header: "Bill No", get: (r) => r.invoice_number },
-    { key: "date", header: "Date", get: (r) => fmtDate(r.created_at) },
-    { key: "guest", header: "Guest Name", get: (r) => r.guest_name ?? "" },
-    { key: "gstin", header: "GSTIN", get: (r) => r.guest_gstin ?? "" },
-    { key: "tax", header: "Taxable", get: (r) => r.sub_total, currency: true },
+  type Display = GstInvoiceSlabRow & { cgstPct: number; sgstPct: number };
+  const columns: ReportColumn<Display>[] = [
+    { key: "bill_no", header: "Bill No", get: (r) => r.is_first_of_invoice ? r.invoice_number : "" },
+    { key: "date", header: "Date", get: (r) => r.is_first_of_invoice ? fmtDate(r.created_at) : "" },
+    { key: "guest", header: "Guest Name", get: (r) => r.is_first_of_invoice ? (r.guest_name ?? "") : "" },
+    { key: "gstin", header: "GSTIN", get: (r) => r.is_first_of_invoice ? (r.guest_gstin ?? "") : "" },
+    { key: "tax", header: "Taxable", get: (r) => r.taxable, currency: true },
     { key: "cgstpct", header: "CGST %", get: (r) => r.cgstPct },
     { key: "cgst", header: "CGST Amt", get: (r) => r.cgst, currency: true },
     { key: "sgstpct", header: "SGST %", get: (r) => r.sgstPct },
     { key: "sgst", header: "SGST Amt", get: (r) => r.sgst, currency: true },
-    { key: "totalgst", header: "Total GST", get: (r) => r.gst_amount, currency: true },
-    { key: "invtotal", header: "Invoice Total", get: (r) => r.total_amount, currency: true },
+    { key: "totalgst", header: "Total GST", get: (r) => r.gst_total, currency: true },
+    { key: "invtotal", header: "Invoice Total", get: (r) => r.is_first_of_invoice ? r.invoice_total : "", currency: true },
   ];
 
   const meta = { reportName: "GST Report", propertyName: current?.name ?? "Property", from, to,
@@ -86,13 +87,24 @@ function GstReportPage() {
     ] as [string, string|number][] };
 
   function tallyXml() {
-    const xml = buildTallySalesXml(display.map((r) => ({
-      date: r.created_at, voucher_number: r.invoice_number,
-      guest_name: r.guest_name ?? "Walk-In Guest",
-      taxable_amount: Number(r.sub_total),
-      cgst_amount: r.cgst, sgst_amount: r.sgst,
-      total_amount: Number(r.total_amount),
-    })));
+    // Tally: one voucher per invoice (aggregated across slabs).
+    const byInvoice = new Map<string, {
+      date: string; voucher_number: string; guest_name: string;
+      taxable_amount: number; cgst_amount: number; sgst_amount: number; total_amount: number;
+    }>();
+    for (const r of display) {
+      const v = byInvoice.get(r.invoice_number) ?? {
+        date: r.created_at, voucher_number: r.invoice_number,
+        guest_name: r.guest_name ?? "Walk-In Guest",
+        taxable_amount: 0, cgst_amount: 0, sgst_amount: 0, total_amount: 0,
+      };
+      v.taxable_amount += Number(r.taxable);
+      v.cgst_amount += r.cgst;
+      v.sgst_amount += r.sgst;
+      v.total_amount += Number(r.invoice_total ?? 0);
+      byInvoice.set(r.invoice_number, v);
+    }
+    const xml = buildTallySalesXml([...byInvoice.values()]);
     downloadXml(xml, buildFileName({ ...meta, reportName: "GST_Tally" }, "xml"));
   }
 
@@ -116,11 +128,16 @@ function GstReportPage() {
             {columns.map((c) => <th key={c.key} className={`px-2 py-2 text-left whitespace-nowrap ${c.currency ? "text-right" : ""}`}>{c.header}</th>)}
           </tr></thead>
           <tbody>
-            {display.map((r) => (
-              <tr key={r.invoice_number} className="border-t">
+            {display.map((r, idx) => (
+              <tr
+                key={`${r.invoice_number}-${r.gst_rate}-${idx}`}
+                className={r.is_first_of_invoice ? "border-t" : ""}
+              >
                 {columns.map((c) => (
                   <td key={c.key} className={`px-2 py-1.5 ${c.currency ? "text-right tabular-nums" : ""}`}>
-                    {c.currency ? fmtINR(c.get(r) as number) : c.get(r)}
+                    {c.currency
+                      ? (c.get(r) === "" ? "" : fmtINR(c.get(r) as number))
+                      : c.get(r)}
                   </td>
                 ))}
               </tr>
