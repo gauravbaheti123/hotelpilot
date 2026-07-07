@@ -116,11 +116,12 @@ function NightAuditPage() {
     // Occupied rooms (spans selected date)
     const occ = await supabase
       .from("booking_rooms")
-      .select("booking_id, room_id, rate, rooms(room_number, category_id), bookings!inner(check_in, check_out, status, property_id, guests(name))")
+      .select("booking_id, room_id, rate, rooms:room_id(room_number, category_id), bookings!inner(check_in, check_out, status, property_id, guests(name))")
       .eq("property_id", propertyId)
       .lte("bookings.check_in", date)
       .gt("bookings.check_out", date)
       .in("bookings.status", ["checked_in", "reserved"]);
+    if (occ.error) console.error("[night-audit] occupied rooms load failed:", occ.error);
     const occRows: OccupiedRow[] = (occ.data ?? []).map((r: any) => ({
       booking_id: r.booking_id,
       room_id: r.room_id,
