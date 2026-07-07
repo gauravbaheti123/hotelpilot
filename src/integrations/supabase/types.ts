@@ -4844,6 +4844,15 @@ export type Database = {
         }[]
       }
       has_open_kot: { Args: { _booking_id: string }; Returns: boolean }
+      has_permission: {
+        Args: {
+          _action: string
+          _module: string
+          _property_id: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
