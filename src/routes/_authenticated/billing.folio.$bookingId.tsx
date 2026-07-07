@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -109,6 +109,12 @@ function FolioPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
+
+  // Guards so auto-seed effects run at most once per folio load.
+  // Without these, a silent unique-constraint (409) failure on insert
+  // triggers load() → charges refresh → effect re-runs → infinite flicker.
+  const didSeedRoomChargesRef = useRef<string | null>(null);
+  const didPullKotChargesRef = useRef<string | null>(null);
 
   // dialogs
   const [addOpen, setAddOpen] = useState(false);
@@ -232,11 +238,19 @@ function FolioPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Reset seed guards when navigating between folios
+  useEffect(() => {
+    didSeedRoomChargesRef.current = null;
+    didPullKotChargesRef.current = null;
+  }, [bookingId]);
+
   // Auto-seed room charges if none present
   useEffect(() => {
     if (!folio || !booking || loading) return;
     if (charges.some((c) => c.charge_type === "room")) return;
     if (booking.booking_rooms.length === 0) return;
+    if (didSeedRoomChargesRef.current === folio.id) return;
+    didSeedRoomChargesRef.current = folio.id;
     (async () => {
       const rows = booking.booking_rooms.map((br) => {
         const nights = Math.max(1, Math.round(
@@ -257,8 +271,16 @@ function FolioPage() {
           source_id: br.id,
           created_by: user?.id ?? null,
         };
-      });
-      await supabase.from("folio_charges").insert(rows as any);
+      }).filter((r) => Number(r.rate) > 0);
+      if (rows.length === 0) return;
+      const { error } = await supabase.from("folio_charges").insert(rows as any);
+      if (error) {
+        // 23505 = unique_violation → charge already exists, no-op.
+        if ((error as any).code !== "23505") {
+          console.warn("[folio] auto-seed room charges failed:", error.message);
+        }
+        return;
+      }
       load();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -268,6 +290,7 @@ function FolioPage() {
   useEffect(() => {
     if (!folio || !booking || loading) return;
     if (folio.status !== "open") return;
+    if (didPullKotChargesRef.current === folio.id) return;
     (async () => {
       const { data: kots } = await supabase
         .from("kot_orders")
@@ -281,7 +304,11 @@ function FolioPage() {
         charges.filter((c) => c.source_table === "kot_orders").map((c) => c.source_id),
       );
       const toAdd = (kots as any[]).filter((k) => !existing.has(k.id));
-      if (toAdd.length === 0) return;
+      if (toAdd.length === 0) {
+        didPullKotChargesRef.current = folio.id;
+        return;
+      }
+      didPullKotChargesRef.current = folio.id;
       const rows = toAdd.map((k) => ({
         folio_id: folio.id,
         charge_type: "food",
@@ -297,14 +324,19 @@ function FolioPage() {
         created_by: user?.id ?? null,
       }));
       const { error } = await supabase.from("folio_charges").insert(rows as any);
-      if (error) return;
+      if (error) {
+        if ((error as any).code !== "23505") {
+          console.warn("[folio] auto-pull KOT charges failed:", error.message);
+        }
+        return;
+      }
       await supabase.from("kot_orders")
         .update({ status: "billed", billed_at: new Date().toISOString() })
         .in("id", toAdd.map((k: any) => k.id));
       load();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [folio?.id, booking?.id, loading, charges.length]);
+  }, [folio?.id, booking?.id, loading]);
 
   async function pullFoodCharges() {
     if (!folio || !booking) return;
