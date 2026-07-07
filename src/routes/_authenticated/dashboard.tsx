@@ -635,12 +635,7 @@ function OwnerDashboard({
           <Kpi
             label="Ready to Sell"
             value={rooms.filter((r) =>
-              !occupiedRoomIds.has(r.id) &&
-              r.status !== "maintenance" &&
-              r.status !== "blocked" &&
-              r.housekeeping_status !== "dirty" &&
-              r.housekeeping_status !== "out_of_order" &&
-              !eventBlockByRoom.has(r.id)
+              r.status === "vacant" && r.housekeeping_status === "clean",
             ).length}
             icon={CheckCircle2}
             iconClassName="text-emerald-600"
