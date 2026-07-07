@@ -71,7 +71,15 @@ export function usePermissions(): PermState & {
         .select("role_id, property_id")
         .eq("user_id", user.id)
         .not("role_id", "is", null);
-      const { data: assigns } = await q;
+      const { data: assigns, error: assignsErr } = await q;
+      if (assignsErr) {
+        // Do NOT flip loading→false with an empty map on transient errors —
+        // that would trigger downstream "Access denied" guards. Keep the
+        // hook in the loading state so the UI shows a spinner/skeleton
+        // instead of a definitive denial.
+        console.error("[usePermissions] user_roles read failed", assignsErr);
+        return;
+      }
       const roleIds = (assigns ?? [])
         .filter((r: any) => !propertyId || !r.property_id || r.property_id === propertyId)
         .map((r: any) => r.role_id as string);
@@ -79,11 +87,15 @@ export function usePermissions(): PermState & {
         if (!cancelled) setState({ loading: false, isSuperadmin: false, map: {} });
         return;
       }
-      const { data: rps } = await supabase
+      const { data: rps, error: rpsErr } = await supabase
         .from("role_permissions")
         .select("allowed, permissions(module, action)")
         .in("role_id", roleIds)
         .eq("allowed", true);
+      if (rpsErr) {
+        console.error("[usePermissions] role_permissions read failed", rpsErr);
+        return;
+      }
       const map: PermMap = {};
       for (const row of (rps ?? []) as any[]) {
         const p = row.permissions;
