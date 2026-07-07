@@ -22,6 +22,9 @@ import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/food/new")({
   head: () => ({ meta: [{ title: "New KOT — HotelPilot" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    bookingId: typeof search.bookingId === "string" ? search.bookingId : undefined,
+  }),
   component: () => (<RequirePermission module="new_kot"><NewKotPage /></RequirePermission>),
 });
 
@@ -30,6 +33,7 @@ interface MenuItem {
   kot_station: string; is_available: boolean; category_id: string | null;
   kitchen_type?: string;
   kitchen_printer_id?: string | null;
+  short_code?: string | null;
 }
 interface MenuCategory { id: string; name: string; kot_printer_id?: string | null }
 interface PrinterOption { id: string; name: string; location: string | null }
@@ -56,6 +60,7 @@ function NewKotPage() {
   const router = useRouter();
   const { user } = useAuth();
   const { currentId: propertyId } = useCurrentProperty();
+  const { bookingId: prefillBookingId } = Route.useSearch();
   const [items, setItems] = useState<MenuItem[]>([]);
   const [cats, setCats] = useState<MenuCategory[]>([]);
   const [printers, setPrinters] = useState<PrinterOption[]>([]);
@@ -83,7 +88,7 @@ function NewKotPage() {
     if (!propertyId) return;
     (async () => {
       const [mi, mc, pr, ih] = await Promise.all([
-        supabase.from("menu_items").select("id,name,price,gst_rate,kot_station,is_available,category_id,kitchen_type,kitchen_printer_id")
+        supabase.from("menu_items").select("id,name,price,gst_rate,kot_station,is_available,category_id,kitchen_type,kitchen_printer_id,short_code")
           .eq("property_id", propertyId).eq("is_available", true).order("name"),
         supabase.from("menu_categories").select("id,name,kot_printer_id").eq("property_id", propertyId).order("name"),
         supabase.from("printers").select("id,name,location")
@@ -102,10 +107,23 @@ function NewKotPage() {
     })();
   }, [propertyId]);
 
+  // Pre-fill from search params (e.g. Dashboard → New KOT quick-action).
+  useEffect(() => {
+    if (prefillBookingId) {
+      setKotType("room");
+      setBookingId(prefillBookingId);
+    }
+  }, [prefillBookingId]);
+
   const filtered = useMemo(() => {
     return items.filter((i) => {
       if (activeCat !== "all" && i.category_id !== activeCat) return false;
-      if (search && !i.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        const nameHit = i.name.toLowerCase().includes(q);
+        const codeHit = (i.short_code ?? "").toLowerCase().includes(q);
+        if (!nameHit && !codeHit) return false;
+      }
       return true;
     });
   }, [items, activeCat, search]);

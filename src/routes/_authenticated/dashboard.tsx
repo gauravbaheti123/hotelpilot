@@ -25,6 +25,7 @@ import {
 import { CalendarDays } from "lucide-react";
 import { SuperadminDashboard as PlatformSuperadminDashboard } from "@/components/SuperadminDashboard";
 import { useSuperadminView } from "@/lib/superadmin-view";
+import { usePermissions } from "@/hooks/use-permissions";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -782,6 +783,12 @@ function OwnerDashboard({
           } as any);
         }}
         onCheckout={(bid: string) => { setModalRoom(null); setCheckoutBookingId(bid); }}
+        onNewKot={(bid: string) => {
+          const roomNo = modalRoom?.room_number;
+          setModalRoom(null);
+          navigate({ to: "/food/new", search: { bookingId: bid } } as any);
+          if (roomNo) toast.success(`Opening New KOT for Room ${roomNo}`);
+        }}
       />
       <CheckoutDialog
         bookingId={checkoutBookingId}
@@ -1154,7 +1161,7 @@ function roomTileStyle(r: Room, isOccupied: boolean): { bg: string; label: strin
 }
 
 function RoomStatusModal({
-  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout,
+  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onNewKot,
 }: {
   room: Room | null;
   kind: TileKind | null;
@@ -1165,10 +1172,14 @@ function RoomStatusModal({
   onOpenBooking: (bookingId: string) => void;
   onNewBooking: () => void;
   onCheckout: (bookingId: string) => void;
+  onNewKot: (bookingId: string) => void;
 }) {
   const [staffId, setStaffId] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const { can } = usePermissions();
+  const canCreateKot = can("new_kot", "create");
+  const showNewKot = !!bookingId && canCreateKot;
 
   useEffect(() => { setStaffId(""); setNotes(""); }, [room?.id]);
 
@@ -1255,11 +1266,21 @@ function RoomStatusModal({
             <Button variant="outline" disabled={!bookingId} onClick={() => bookingId && onOpenBooking(bookingId)}>View Booking</Button>
             <Button variant="outline" disabled={!bookingId}
               onClick={() => bookingId && onOpenBooking(bookingId)}>Room Shift</Button>
+            {showNewKot && (
+              <Button variant="outline" onClick={() => bookingId && onNewKot(bookingId)}>
+                <UtensilsCrossed className="h-4 w-4 mr-2" /> New KOT
+              </Button>
+            )}
           </div>
         )}
 
         {(kind === "dirty" || kind === "maintenance") && (
           <div className="grid gap-3">
+            {showNewKot && (
+              <Button variant="outline" onClick={() => bookingId && onNewKot(bookingId)}>
+                <UtensilsCrossed className="h-4 w-4 mr-2" /> New KOT
+              </Button>
+            )}
             <div className="grid gap-1.5">
               <Label>{kind === "dirty" ? "Cleaned by" : "Maintenance resolved by"}</Label>
               <SearchableSelect
