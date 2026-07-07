@@ -139,3 +139,59 @@ export function inrRound(n: number | string | null | undefined) {
 export function inr(n: number | string | null | undefined) {
   return `₹${Number(n ?? 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
+
+/**
+ * Distribute `total` (rupees) across `weights` such that the sum of the
+ * returned shares equals `total` exactly at the paise level. Each share is
+ * rounded to 2 decimals; the remainder from rounding is absorbed by the LAST
+ * entry so downstream folio math reconciles.
+ *
+ * Example:
+ *   distributeWithRemainder(4000, [1,1,1]) → [1333.33, 1333.33, 1333.34]
+ *   distributeWithRemainder(1000, [40,60])  → [400.00, 600.00]
+ */
+export function distributeWithRemainder(total: number, weights: number[]): number[] {
+  const totalPaise = Math.round(Number(total) * 100);
+  const wSum = weights.reduce((s, w) => s + Math.max(0, Number(w) || 0), 0);
+  if (wSum <= 0 || weights.length === 0) return weights.map(() => 0);
+  const shares = weights.map((w) =>
+    Math.floor((totalPaise * Math.max(0, Number(w) || 0)) / wSum),
+  );
+  const remainder = totalPaise - shares.reduce((s, x) => s + x, 0);
+  shares[shares.length - 1] += remainder;
+  return shares.map((p) => Math.round(p) / 100);
+}
+
+/**
+ * Weighted average GST% across a set of charges. Uses each charge's net
+ * (amount − line discount) as the weight. Returns 0 for empty / zero-net
+ * inputs.
+ */
+export function weightedGstRate(charges: ChargeLike[]): number {
+  let net = 0;
+  let gst = 0;
+  for (const c of charges) {
+    if (c.charge_type === "discount" || c.charge_type === "tax") continue;
+    const amt = Math.abs(Number(c.amount ?? 0));
+    const ld = Math.max(0, Math.min(Number(c.discount_amount ?? 0), amt));
+    const n = amt - ld;
+    net += n;
+    const gAmt = Number(c.gst_amount ?? 0);
+    // Scale GST proportionally with the line's net
+    gst += amt > 0 ? gAmt * (n / amt) : gAmt;
+  }
+  if (net <= 0) return 0;
+  return round2((gst / net) * 100);
+}
+
+/** Net (pre-GST, after per-line discounts) subtotal for a set of charges. */
+export function netSubtotalOf(charges: ChargeLike[]): number {
+  let s = 0;
+  for (const c of charges) {
+    if (c.charge_type === "discount" || c.charge_type === "tax") continue;
+    const amt = Math.abs(Number(c.amount ?? 0));
+    const ld = Math.max(0, Math.min(Number(c.discount_amount ?? 0), amt));
+    s += amt - ld;
+  }
+  return round2(s);
+}

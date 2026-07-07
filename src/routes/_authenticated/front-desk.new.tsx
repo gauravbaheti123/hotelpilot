@@ -110,6 +110,10 @@ function NewBookingPage() {
   const [rate, setRate] = useState(0);
   const [rateManuallySet, setRateManuallySet] = useState(false);
   const [mealPlan, setMealPlan] = useState("EP");
+  // Future reservations often don't have a specific room picked yet — only the
+  // category. When true, room selection is bypassed and booking_rooms.room_id
+  // is stored as NULL. See feature: "Room-less Future Reservations".
+  const [assignLater, setAssignLater] = useState(false);
   const [source, setSource] = useState("walk_in");
   const [advance, setAdvance] = useState(0);
   const [paymentMode, setPaymentMode] = useState<string>("cash");
@@ -285,7 +289,9 @@ function NewBookingPage() {
     if (!name.trim()) return toast.error("Guest name required");
     if (!mobile.trim()) return toast.error("Mobile required");
     if (!categoryId) return toast.error("Pick a category");
-    if (!roomId) return toast.error("Pick a room");
+    if (!assignLater && !roomId) return toast.error("Pick a room (or tick 'Assign room later')");
+    if (assignLater && checkInNow)
+      return toast.error("Assign a room before checking in — a room is required to check in a guest");
     if (nightsBetween(checkIn, checkOut) < 1) return toast.error("Check-out must be after check-in");
 
     setSaving(true);
@@ -384,11 +390,13 @@ function NewBookingPage() {
         .single();
       if (bErr) throw bErr;
 
-      // 3) Booking room
+      // 3) Booking room — room_id may be NULL for future reservations that
+      // will get their specific room assigned later via AssignRoomDialog.
+      const effectiveRoomId = assignLater ? null : roomId;
       const { error: brErr } = await supabase.from("booking_rooms").insert({
         booking_id: booking!.id,
         property_id: current.id,
-        room_id: roomId,
+        room_id: effectiveRoomId,
         category_id: categoryId,
         tariff_id: tariffId || null,
         meal_plan: mealPlan,
@@ -397,13 +405,13 @@ function NewBookingPage() {
         children,
         check_in: checkIn,
         check_out: checkOut,
-        actual_check_in: checkInNow ? new Date().toISOString() : null,
+        actual_check_in: checkInNow && effectiveRoomId ? new Date().toISOString() : null,
       } as any);
       if (brErr) throw brErr;
 
-      // 4) If checked in, mark room occupied
-      if (checkInNow) {
-        await supabase.from("rooms").update({ status: "occupied" }).eq("id", roomId);
+      // 4) If checked in with an actual room, mark room occupied.
+      if (checkInNow && effectiveRoomId) {
+        await supabase.from("rooms").update({ status: "occupied" }).eq("id", effectiveRoomId);
       }
 
       // 4b) If this booking originated from an event block, sync that block.
@@ -498,7 +506,13 @@ function NewBookingPage() {
         ...ACTIVITY.BOOKING_CREATED,
         reference_id: booking!.id,
         reference_label: `${booking!.booking_number} — ${name}`,
-        details: { check_in: checkIn, check_out: checkOut, room_id: roomId, total },
+        details: {
+          check_in: checkIn,
+          check_out: checkOut,
+          room_id: effectiveRoomId,
+          unassigned: effectiveRoomId === null,
+          total,
+        },
       });
       if (checkInNow) {
         await logActivity({
@@ -769,7 +783,7 @@ function NewBookingPage() {
               <SearchableSelect
                 value={roomId}
                 onChange={setRoomId}
-                disabled={!categoryId}
+                disabled={!categoryId || assignLater}
                 placeholder={categoryId ? (availableRooms.length ? "Select vacant room" : "No vacant rooms") : "Pick category first"}
                 searchPlaceholder="Type room number…"
                 options={availableRooms.map((r) => ({
@@ -778,6 +792,18 @@ function NewBookingPage() {
                   keywords: cats.find((c) => c.id === r.category_id)?.name ?? "",
                 })) as SearchableOption[]}
               />
+              <label className="mt-1 flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={assignLater}
+                  onChange={(e) => {
+                    setAssignLater(e.target.checked);
+                    if (e.target.checked) setRoomId("");
+                  }}
+                />
+                Assign room later (for future reservations — a specific room can
+                be picked closer to check-in)
+              </label>
             </F>
             <F label="Tariff plan">
               <SearchableSelect
@@ -851,7 +877,13 @@ function NewBookingPage() {
 
         <div className="flex justify-end gap-2">
           <Button variant="outline" disabled={saving} onClick={() => save(false)}>Save as reservation</Button>
-          <Button disabled={saving} onClick={() => save(true)}>Save & check-in now</Button>
+          <Button
+            disabled={saving || assignLater}
+            onClick={() => save(true)}
+            title={assignLater ? "Assign a room to enable check-in" : undefined}
+          >
+            Save &amp; check-in now
+          </Button>
         </div>
       </div>
     </AppShell>

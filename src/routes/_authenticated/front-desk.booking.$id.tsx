@@ -36,6 +36,7 @@ import { verifyManagerPassword } from "@/lib/manager-verify";
 import { recomputeFolio } from "@/lib/billing";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { RequirePermission } from "@/components/RequirePermission";
+import { AssignRoomDialog } from "@/components/AssignRoomDialog";
 import {
   LogIn,
   LogOut,
@@ -45,6 +46,7 @@ import {
   Receipt,
   ShieldAlert,
   Check,
+  BedDouble,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/front-desk/booking/$id")({
@@ -159,6 +161,7 @@ function BookingDetailPage() {
 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [assignBrId, setAssignBrId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -225,6 +228,13 @@ function BookingDetailPage() {
 
   async function checkIn() {
     if (!b) return;
+    // Block check-in until every booking_room has a specific room assigned.
+    const missing = b.booking_rooms.find((br) => !br.room_id);
+    if (missing) {
+      toast.error("Assign a room to this reservation before checking in");
+      setAssignBrId(missing.id);
+      return;
+    }
     const now = new Date().toISOString();
     const { error } = await supabase.from("bookings").update({
       status: "checked_in" as any,
@@ -578,14 +588,28 @@ function BookingDetailPage() {
                 <div key={br.id} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
                   <div>
                     <div className="font-medium">
-                      Room {br.rooms?.room_number ?? "—"} · {br.room_categories?.name ?? "—"}
+                      {br.room_id ? (
+                        <>Room {br.rooms?.room_number ?? "—"} · {br.room_categories?.name ?? "—"}</>
+                      ) : (
+                        <>
+                          <Badge variant="outline" className="mr-2 border-amber-400 text-amber-700 text-[10px]">
+                            To be assigned
+                          </Badge>
+                          {br.room_categories?.name ?? "—"}
+                        </>
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {br.check_in} → {br.check_out} · {br.meal_plan} · ₹{br.rate}/night ·
                       {" "}{br.adults}A {br.children > 0 ? `${br.children}C` : ""}
                     </div>
                   </div>
-                  {canAct && canShift && (
+                  {canAct && !br.room_id && (
+                    <Button size="sm" onClick={() => setAssignBrId(br.id)}>
+                      <BedDouble className="h-3.5 w-3.5 mr-1" /> Assign Room
+                    </Button>
+                  )}
+                  {canAct && canShift && br.room_id && (
                     <Button size="sm" variant="ghost" onClick={() => openShift(br.id)}>
                       <ArrowLeftRight className="h-3.5 w-3.5 mr-1" /> Shift
                     </Button>
@@ -918,6 +942,26 @@ function BookingDetailPage() {
         onOpenChange={setCheckoutOpen}
         onDone={() => load()}
       />
+      {assignBrId && (() => {
+        const br = b.booking_rooms.find((x) => x.id === assignBrId);
+        if (!br) return null;
+        return (
+          <AssignRoomDialog
+            open={!!assignBrId}
+            onOpenChange={(o) => { if (!o) setAssignBrId(null); }}
+            bookingRoomId={br.id}
+            propertyId={b.property_id}
+            bookingId={b.id}
+            bookingNumber={b.booking_number}
+            categoryId={br.category_id}
+            categoryName={br.room_categories?.name ?? null}
+            currentRate={Number(br.rate)}
+            checkIn={br.check_in}
+            checkOut={br.check_out}
+            onDone={() => { setAssignBrId(null); load(); }}
+          />
+        );
+      })()}
     </AppShell>
   );
 }
