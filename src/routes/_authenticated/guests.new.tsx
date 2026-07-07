@@ -30,6 +30,7 @@ function NewGuestPage() {
   const [idType, setIdType] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [address, setAddress] = useState("");
+  const [company, setCompany] = useState("");
   const [guestType, setGuestType] = useState<"regular" | "corporate" | "vip">("regular");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -50,6 +51,7 @@ function NewGuestPage() {
       id_proof_type: idType || null,
       id_proof_number: idNumber.trim() || null,
       address: address.trim() || null,
+      company: company.trim() || null,
       notes: notes.trim() || null,
       tags,
     }).select("id").single();
@@ -99,6 +101,12 @@ function NewGuestPage() {
               </Select>
             </Field>
             <Field label="ID proof number"><Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} maxLength={40} /></Field>
+            <div className="md:col-span-2">
+              <Field label="Company Name">
+                <Input value={company} onChange={(e) => setCompany(e.target.value)} maxLength={200} placeholder="e.g. Growth Story Pvt Ltd" />
+                <p className="mt-1 text-[11px] text-muted-foreground">Optional — useful for corporate / business travelers</p>
+              </Field>
+            </div>
             <div className="md:col-span-2"><Field label="Address"><Textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} /></Field></div>
             <div className="md:col-span-2"><Field label="Notes"><Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} /></Field></div>
           </div>

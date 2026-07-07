@@ -151,6 +151,7 @@ function GuestDetail() {
   return (
     <AppShell title={g.name}>
       <div className="flex flex-wrap items-center gap-2 mb-4">
+        {g.company && <span className="text-sm text-muted-foreground">{g.company}</span>}
         {g.is_blacklisted && <Badge variant="outline" className="bg-rose-100 text-rose-800 border-rose-300"><Ban className="h-3 w-3 mr-1" />Blacklisted</Badge>}
         {(g.tags ?? []).map((t) => <Badge key={t} variant="secondary">{t}</Badge>)}
         <div className="ml-auto flex gap-2">
@@ -195,7 +196,10 @@ function GuestDetail() {
                 </Select>
               </Field>
               <Field label="ID number"><Input value={g.id_proof_number ?? ""} onChange={(e) => patch("id_proof_number", e.target.value)} maxLength={40} /></Field>
-              <Field label="Company"><Input value={g.company ?? ""} onChange={(e) => patch("company", e.target.value)} maxLength={200} /></Field>
+              <Field label="Company Name">
+                <Input value={g.company ?? ""} onChange={(e) => patch("company", e.target.value)} maxLength={200} placeholder="e.g. Growth Story Pvt Ltd" />
+                <p className="mt-1 text-[11px] text-muted-foreground">Optional — useful for corporate / business travelers</p>
+              </Field>
               <Field label="GSTIN"><Input value={g.gst_number ?? ""} onChange={(e) => patch("gst_number", e.target.value.toUpperCase())} maxLength={15} /></Field>
               <Field label="City"><Input value={g.city ?? ""} onChange={(e) => patch("city", e.target.value)} /></Field>
               <Field label="State"><Input value={g.state ?? ""} onChange={(e) => patch("state", e.target.value)} /></Field>
