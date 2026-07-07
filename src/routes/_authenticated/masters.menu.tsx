@@ -57,6 +57,7 @@ interface MenuItem {
   category_id: string | null;
   name: string;
   code: string | null;
+  short_code: string | null;
   price: number;
   gst_rate: number;
   hsn_code: string | null;
@@ -135,11 +136,20 @@ function MenuPage() {
 
   async function saveItem() {
     if (!editingItem?.name || !current) return toast.error("Name required");
+    const sc = (editingItem.short_code ?? "").trim();
+    if (sc) {
+      const dup = items.find(
+        (x) => x.id !== editingItem.id
+          && (x.short_code ?? "").trim().toLowerCase() === sc.toLowerCase(),
+      );
+      if (dup) return toast.error(`This short code is already used by ${dup.name}`);
+    }
     const payload: any = {
       property_id: current.id,
       category_id: editingItem.category_id ?? null,
       name: editingItem.name,
       code: editingItem.code ?? null,
+      short_code: sc || null,
       price: Number(editingItem.price ?? 0),
       gst_rate: Number(editingItem.gst_rate ?? 5),
       hsn_code: editingItem.hsn_code ?? null,
@@ -376,6 +386,16 @@ function MenuPage() {
                         <Input value={editingItem.name ?? ""}
                           onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })} />
                       </Field>
+                      <Field label="Short Code">
+                        <Input
+                          value={editingItem.short_code ?? ""}
+                          onChange={(e) => setEditingItem({ ...editingItem, short_code: e.target.value })}
+                          placeholder="e.g. MC"
+                        />
+                        <p className="text-[11px] text-muted-foreground mt-1">
+                          Optional — lets staff search this item quickly using a short code instead of the full name
+                        </p>
+                      </Field>
                       <Field label="Code">
                         <Input value={editingItem.code ?? ""}
                           onChange={(e) => setEditingItem({ ...editingItem, code: e.target.value })} />
@@ -473,7 +493,16 @@ function MenuPage() {
                           i.is_veg ? "border-emerald-600 bg-emerald-500/30" : "border-rose-600 bg-rose-500/30"
                         }`} />
                       </TableCell>
-                      <TableCell className="font-medium">{i.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <span>{i.name}</span>
+                          {i.short_code && (
+                            <Badge variant="outline" className="text-[10px] uppercase">
+                              {i.short_code}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>{cats.find((c) => c.id === i.category_id)?.name ?? "—"}</TableCell>
                       <TableCell>₹{i.price}</TableCell>
                       <TableCell>{i.gst_rate}%</TableCell>
