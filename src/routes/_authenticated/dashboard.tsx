@@ -26,6 +26,11 @@ import { CalendarDays } from "lucide-react";
 import { SuperadminDashboard as PlatformSuperadminDashboard } from "@/components/SuperadminDashboard";
 import { useSuperadminView } from "@/lib/superadmin-view";
 import { usePermissions } from "@/hooks/use-permissions";
+import {
+  AssignRoomDialog,
+  loadUnassignedReservations,
+  type UnassignedReservation,
+} from "@/components/AssignRoomDialog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -201,6 +206,8 @@ function OwnerDashboard({
   const [bulkCheckoutEvent, setBulkCheckoutEvent] = useState<EventBlockSummary | null>(null);
   const [singleAssignBlock, setSingleAssignBlock] = useState<EventBlockRecord | null>(null);
   const [grouping, setGrouping] = useState<"category" | "floor">("category");
+  const [unassigned, setUnassigned] = useState<UnassignedReservation[]>([]);
+  const [assignTarget, setAssignTarget] = useState<UnassignedReservation | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -399,6 +406,15 @@ function OwnerDashboard({
         setEventBlockByRoom(map);
       } catch (e) {
         console.warn("loadEventSummaries failed", e);
+      }
+
+      // Load reservations without an assigned room (future stays only). These
+      // do NOT attach to any room tile — they surface in a separate panel.
+      try {
+        const unas = await loadUnassignedReservations(propertyId);
+        setUnassigned(unas);
+      } catch (e) {
+        console.warn("loadUnassignedReservations failed", e);
       }
   }, [propertyId, viewDate]);
 
@@ -751,6 +767,68 @@ function OwnerDashboard({
             showBalance
           />
         </div>
+
+        {unassigned.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <BedDouble className="h-4 w-4" />
+                Unassigned Reservations
+                <span className="inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 rounded-full bg-blue-500 text-white text-xs font-semibold">
+                  {unassigned.length}
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs uppercase text-muted-foreground">
+                      <th className="py-2 pr-3">Booking #</th>
+                      <th className="py-2 pr-3">Guest</th>
+                      <th className="py-2 pr-3">Category</th>
+                      <th className="py-2 pr-3">Stay</th>
+                      <th className="py-2 pr-3">Pax</th>
+                      <th className="py-2 pr-3 text-right">Rate</th>
+                      <th className="py-2 pr-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {unassigned.map((r) => (
+                      <tr key={r.booking_room_id} className="border-t">
+                        <td className="py-2 pr-3 font-medium">
+                          <Link
+                            to="/front-desk/booking/$id"
+                            params={{ id: r.booking_id }}
+                            className="text-primary hover:underline"
+                          >
+                            {r.booking_number}
+                          </Link>
+                        </td>
+                        <td className="py-2 pr-3">{r.guest_name ?? "—"}</td>
+                        <td className="py-2 pr-3">{r.category_name}</td>
+                        <td className="py-2 pr-3 text-xs">
+                          {r.check_in} → {r.check_out}
+                        </td>
+                        <td className="py-2 pr-3 text-xs">
+                          {r.adults}A{r.children > 0 ? ` ${r.children}C` : ""}
+                        </td>
+                        <td className="py-2 pr-3 text-right">
+                          ₹{r.rate.toLocaleString("en-IN")}
+                        </td>
+                        <td className="py-2 pr-3 text-right">
+                          <Button size="sm" onClick={() => setAssignTarget(r)}>
+                            Assign Room
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
       <RoomStatusModal
         room={modalRoom}
@@ -800,6 +878,22 @@ function OwnerDashboard({
         onClose={() => setSingleAssignBlock(null)}
         onDone={() => { setSingleAssignBlock(null); reload(); }}
       />
+      {assignTarget && propertyId && (
+        <AssignRoomDialog
+          open={!!assignTarget}
+          onOpenChange={(o) => { if (!o) setAssignTarget(null); }}
+          bookingRoomId={assignTarget.booking_room_id}
+          propertyId={propertyId}
+          bookingId={assignTarget.booking_id}
+          bookingNumber={assignTarget.booking_number}
+          categoryId={assignTarget.category_id}
+          categoryName={assignTarget.category_name}
+          currentRate={assignTarget.rate}
+          checkIn={assignTarget.check_in}
+          checkOut={assignTarget.check_out}
+          onDone={() => { setAssignTarget(null); reload(); }}
+        />
+      )}
     </AppShell>
   );
 }

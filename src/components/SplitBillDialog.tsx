@@ -13,11 +13,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { inr, inrRound, recomputeFolio, computeBillDiscountAmount, type BillDiscount } from "@/lib/billing";
+import {
+  inr, inrRound, recomputeFolio, computeBillDiscountAmount,
+  distributeWithRemainder, weightedGstRate, netSubtotalOf,
+  type BillDiscount,
+} from "@/lib/billing";
 import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { useAuth, hasRole } from "@/hooks/use-auth";
-import { ArrowLeft, ArrowRight, Loader2, SplitSquareHorizontal } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, SplitSquareHorizontal, Plus, Trash2 } from "lucide-react";
 import { Percent } from "lucide-react";
 
 const PAY_MODES = [
@@ -50,6 +54,17 @@ interface Props {
 
 type SplitType = "same" | "different";
 
+// New: split MODE — the historic 2-party item flow is "item"; the new modes
+// share the entire bill (or a specific charge line) across N parties either
+// by percentage or by ₹ amount.
+type SplitMode = "item" | "percent" | "amount";
+type SplitScope = "whole" | "charge";
+
+interface ShareParty extends PartyDetails {
+  key: string;
+  share: string; // free-form input (% in percent mode, ₹ in amount mode)
+}
+
 interface PartyDetails {
   name: string;
   mobile?: string;
@@ -59,17 +74,37 @@ interface PartyDetails {
 
 interface PaymentRow { mode: string; amount: string; reference: string }
 
+function newParty(base: Partial<PartyDetails> = {}): ShareParty {
+  return {
+    key: Math.random().toString(36).slice(2),
+    name: base.name ?? "",
+    mobile: base.mobile ?? "",
+    gstin: base.gstin ?? "",
+    bill_type: base.bill_type ?? "gst_invoice",
+    share: "",
+  };
+}
+
+function round2(n: number) {
+  return Math.round(Number(n || 0) * 100) / 100;
+}
+
 export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, onDone }: Props) {
   const { user, roles } = useAuth();
   // Cash Bill toggle is strictly owner-only (superadmin excluded).
   const isOwnerStrict = roles.includes("owner") && !roles.includes("superadmin");
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [splitType, setSplitType] = useState<SplitType>("same");
+  const [splitMode, setSplitMode] = useState<SplitMode>("item");
+  const [splitScope, setSplitScope] = useState<SplitScope>("whole");
+  const [scopeChargeId, setScopeChargeId] = useState<string>("");
   const [bill1Ids, setBill1Ids] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
   const [discOpen, setDiscOpen] = useState(false);
-  const [discBillIdx, setDiscBillIdx] = useState<0 | 1>(0);
+  const [discBillIdx, setDiscBillIdx] = useState<number>(0);
+  // Parties list for percent/amount modes (min 2, no hard max).
+  const [parties, setParties] = useState<ShareParty[]>([]);
 
   // Resolve current user's max-discount % once dialog opens
   useEffect(() => {
@@ -111,6 +146,9 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     if (!open) return;
     setStep(1);
     setSplitType("same");
+    setSplitMode("item");
+    setSplitScope("whole");
+    setScopeChargeId("");
     setBusy(false);
     setCreatedBills([]);
     setParty1({ name: guestName, mobile: guestMobile, gstin: guestGstin, bill_type: folioGst });
@@ -118,6 +156,10 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       name: "", mobile: "", gstin: "",
       bill_type: isOwnerStrict ? "cash_bill" : "gst_invoice",
     });
+    setParties([
+      newParty({ name: guestName, mobile: guestMobile, gstin: guestGstin, bill_type: folioGst }),
+      newParty({ name: "", mobile: "", gstin: "", bill_type: isOwnerStrict ? "cash_bill" : "gst_invoice" }),
+    ]);
     const ids = new Set<string>();
     for (const c of charges) {
       if (c.charge_type !== "food") ids.add(c.id);
@@ -132,6 +174,51 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
 
   const bill1Charges = useMemo(() => charges.filter((c) => bill1Ids.has(c.id)), [charges, bill1Ids]);
   const bill2Charges = useMemo(() => charges.filter((c) => !bill1Ids.has(c.id)), [charges, bill1Ids]);
+
+  // === Base charges for share (% / ₹) modes ===
+  //   whole  → every non-tax charge line
+  //   charge → the single selected charge line
+  const baseCharges = useMemo(() => {
+    if (splitMode === "item") return [] as Charge[];
+    if (splitScope === "charge") {
+      const found = charges.find((c) => c.id === scopeChargeId);
+      return found ? [found] : [];
+    }
+    // Include everything except explicit tax rows; discounts and negatives
+    // are folded into the net subtotal by netSubtotalOf.
+    return charges.filter((c) => c.charge_type !== "tax");
+  }, [charges, splitMode, splitScope, scopeChargeId]);
+
+  const baseNet = useMemo(() => netSubtotalOf(baseCharges as any), [baseCharges]);
+  const baseGstRate = useMemo(() => weightedGstRate(baseCharges as any), [baseCharges]);
+
+  // Live-computed distribution for the parties list.
+  const shareDistribution = useMemo(() => {
+    if (splitMode === "item" || parties.length === 0 || baseNet <= 0) {
+      return {
+        weights: [] as number[],
+        nets: [] as number[],
+        pcts: [] as number[],
+        sumInput: 0,
+        target: splitMode === "percent" ? 100 : baseNet,
+        valid: false,
+        remainder: 0,
+      };
+    }
+    const raw = parties.map((p) => Math.max(0, Number(p.share) || 0));
+    const sumInput = raw.reduce((s, x) => s + x, 0);
+    // In amount mode: weights ARE the amounts. In percent mode: weights ARE
+    // the percentages. distributeWithRemainder normalises either way, and
+    // absorbs the paise remainder into the last party.
+    const nets = distributeWithRemainder(baseNet, raw);
+    const pcts = nets.map((n) => (baseNet > 0 ? (n / baseNet) * 100 : 0));
+    const target = splitMode === "percent" ? 100 : baseNet;
+    // Validity: sum of the user's raw inputs must land within a tiny epsilon
+    // of the target. Percent target = 100, amount target = baseNet.
+    const valid = Math.abs(sumInput - target) < (splitMode === "percent" ? 0.01 : 0.5);
+    const remainder = Math.abs(nets.length ? nets[nets.length - 1] - (baseNet / (nets.length || 1)) : 0);
+    return { weights: raw, nets, pcts, sumInput, target, valid, remainder };
+  }, [parties, baseNet, splitMode]);
 
   const bill1Total = useMemo(
     () => recomputeFolio(bill1Charges as any, party1.bill_type === "gst_invoice" ? "gst" : "cash").total_amount,
@@ -163,6 +250,9 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
 
   async function confirmSplit() {
     if (!folio || !booking) return;
+    if (splitMode !== "item") {
+      return confirmShareSplit();
+    }
     if (bill1Charges.length === 0 || bill2Charges.length === 0) {
       return toast.error("Both bills must have at least one line item");
     }
@@ -270,10 +360,9 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       }
 
       setCreatedBills(created);
-      setPayRows([
-        { mode: "cash", amount: created[0].total.toFixed(2), reference: "" },
-        { mode: "cash", amount: created[1].total.toFixed(2), reference: "" },
-      ]);
+      setPayRows(
+        created.map((cb) => ({ mode: "cash", amount: cb.total.toFixed(2), reference: "" })),
+      );
       logActivity({
         property_id: booking.property_id,
         user_id: user?.id ?? "",
@@ -320,11 +409,178 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     }
   }
 
-  async function completeCheckout() {
-    if (createdBills.length !== 2) return;
+  /**
+   * Confirm handler for the new %/Amount modes. Creates one folio per party
+   * with a SINGLE lump-sum "Share of Bill" charge line, then voids the
+   * original folio via the safe helper. GST is applied proportionally to
+   * each share at the weighted average GST rate of the base scope, so the
+   * per-party GST totals reconcile back to the original bill's GST.
+   *
+   * Rounding: distributeWithRemainder guarantees `sum(shares) === base` at
+   * the paise level; the last party absorbs the remainder.
+   */
+  async function confirmShareSplit() {
+    if (!folio || !booking) return;
+    if (parties.length < 2) return toast.error("Add at least two parties");
+    if (parties.some((p) => !p.name.trim())) return toast.error("Every party needs a name");
+    if (baseCharges.length === 0) return toast.error("Nothing to split — pick a charge line or use the whole bill");
+    if (!shareDistribution.valid) {
+      return toast.error(
+        splitMode === "percent"
+          ? `Percentages must total 100 (currently ${shareDistribution.sumInput.toFixed(2)})`
+          : `Amounts must total ₹${baseNet.toFixed(2)} (currently ₹${shareDistribution.sumInput.toFixed(2)})`,
+      );
+    }
+
     setBusy(true);
     try {
-      for (let i = 0; i < 2; i++) {
+      const scopeLabel = splitScope === "charge"
+        ? (baseCharges[0]?.description ?? "charge")
+        : "Bill";
+      const nets = shareDistribution.nets; // rupees, sums exactly to baseNet
+      const gstRate = baseGstRate;
+      const created: typeof createdBills = [];
+      const newFolioIds: string[] = [];
+      for (let i = 0; i < parties.length; i++) {
+        const party = parties[i];
+        const mode = party.bill_type === "gst_invoice" ? "gst" : "cash";
+        const partyNet = Number(nets[i] ?? 0);
+        const partyGst = mode === "gst"
+          ? round2(partyNet * gstRate / 100)
+          : 0;
+        const partyPct = round2(shareDistribution.pcts[i] ?? 0);
+        const description = splitScope === "charge"
+          ? `Share of ${scopeLabel} — ${partyPct}% of ${folio.invoice_number}`
+          : `Share of Bill — ${partyPct}% of ${folio.invoice_number}`;
+        const partyTotal = mode === "gst" ? round2(partyNet + partyGst) : round2(partyNet);
+        const { data: f, error: fErr } = await supabase.from("folios").insert({
+          property_id: booking.property_id,
+          booking_id: booking.id,
+          gst_mode: mode,
+          bill_type: party.bill_type,
+          guest_gstin: party.gstin || null,
+          guest_company: party.name,
+          notes: `Split bill ${i + 1}/${parties.length} (${splitMode === "percent" ? "%" : "₹"}) of voided ${folio.invoice_number} — Party: ${party.name}`,
+          discount_type: null,
+          discount_value: 0,
+          sub_total: partyNet,
+          discount_amount: 0,
+          gst_amount: partyGst,
+          total_amount: partyTotal,
+          round_off_amount: 0,
+          paid_amount: 0,
+          balance_amount: partyTotal,
+          created_by: user?.id ?? null,
+        } as any).select("id,invoice_number,total_amount").single();
+        if (fErr) {
+          if (newFolioIds.length > 0) {
+            await supabase.from("folios").delete().in("id", newFolioIds);
+          }
+          throw fErr;
+        }
+        const newId = (f as any).id as string;
+        newFolioIds.push(newId);
+
+        // Single lump-sum charge line describing this party's share.
+        const chargeRow = {
+          folio_id: newId,
+          charge_type: "share",
+          description,
+          qty: 1,
+          rate: partyNet,
+          amount: partyNet,
+          gst_rate: gstRate,
+          gst_amount: partyGst,
+          source_table: "folios",
+          source_id: folio.id,
+          created_by: user?.id ?? null,
+        };
+        const { error: cErr } = await supabase.from("folio_charges").insert([chargeRow] as any);
+        if (cErr) {
+          await supabase.from("folios").delete().in("id", newFolioIds);
+          throw cErr;
+        }
+
+        created.push({
+          folio_id: newId,
+          invoice_number: (f as any).invoice_number,
+          party,
+          total: Number((f as any).total_amount ?? partyTotal),
+        });
+      }
+
+      // Void the source only after every share folio is safely persisted.
+      const { error: voidErr } = await supabase.rpc("void_folio_safe" as any, {
+        _folio_id: folio.id,
+        _reason: `Split by ${splitMode} into ${parties.length} bills (${splitScope})`,
+        _user_id: user?.id ?? null,
+      });
+      if (voidErr) {
+        await supabase.from("folios").delete().in("id", newFolioIds);
+        throw voidErr;
+      }
+
+      setCreatedBills(created);
+      setPayRows(
+        created.map((cb) => ({ mode: "cash", amount: cb.total.toFixed(2), reference: "" })),
+      );
+      logActivity({
+        property_id: booking.property_id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "BILL_SPLIT",
+        module: "Billing",
+        reference_id: booking.id,
+        reference_label: `${folio.invoice_number} → ${created.map((c) => c.invoice_number).join(" + ")}`,
+        details: {
+          original_bill: folio.invoice_number,
+          split_mode: splitMode,
+          split_scope: splitScope,
+          scope_charge_id: splitScope === "charge" ? scopeChargeId : null,
+          base_net: baseNet,
+          base_gst_rate: gstRate,
+          parties: created.map((c) => ({
+            bill_number: c.invoice_number,
+            party: c.party.name,
+            amount: c.total,
+          })),
+        },
+      });
+      toast.success(`Created ${created.length} bill${created.length > 1 ? "s" : ""}`);
+      for (const cb of created) {
+        if (cb.party.bill_type === "cash_bill" && user) {
+          logActivity({
+            property_id: booking.property_id,
+            user_id: user.id,
+            user_name: userDisplayName(user as any),
+            action_type: "CASH_BILL_GENERATED",
+            module: "Billing",
+            reference_id: cb.folio_id,
+            reference_label: cb.invoice_number,
+            details: {
+              bill_number: cb.invoice_number,
+              amount: cb.total,
+              party_name: cb.party.name,
+              generated_by: user.id,
+              via: `split_bill_${splitMode}`,
+            },
+          });
+        }
+      }
+      setStep(4);
+      onDone?.(newFolioIds);
+    } catch (e: any) {
+      toast.error(e.message ?? "Could not split bill");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function completeCheckout() {
+    if (createdBills.length < 2) return;
+    setBusy(true);
+    try {
+      for (let i = 0; i < createdBills.length; i++) {
         const b = createdBills[i];
         const row = payRows[i];
         const amt = Number(row.amount);
@@ -466,7 +722,35 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
 
         {step === 1 && (
           <div className="space-y-4">
-            <div className="text-sm font-medium">Step 1 — Select Split Type</div>
+            <div className="text-sm font-medium">Step 1 — Split Mode</div>
+            <div className="space-y-2">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                How do you want to split?
+              </Label>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <ModeCard
+                  active={splitMode === "item"}
+                  title="Item-wise"
+                  hint="Assign each charge line to one of two bills"
+                  onClick={() => setSplitMode("item")}
+                />
+                <ModeCard
+                  active={splitMode === "percent"}
+                  title="By %"
+                  hint="Split across N parties by percentage"
+                  onClick={() => setSplitMode("percent")}
+                />
+                <ModeCard
+                  active={splitMode === "amount"}
+                  title="By Amount ₹"
+                  hint="Split across N parties by exact ₹"
+                  onClick={() => setSplitMode("amount")}
+                />
+              </div>
+            </div>
+            {splitMode === "item" && (
+              <>
+            <div className="text-xs font-medium text-muted-foreground pt-2">Party type</div>
             <RadioGroup value={splitType} onValueChange={(v) => setSplitType(v as SplitType)} className="gap-3">
               <label className="flex items-start gap-3 rounded border p-3 cursor-pointer hover:bg-accent">
                 <RadioGroupItem value="same" id="same" className="mt-0.5" />
@@ -483,14 +767,64 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
                 </div>
               </label>
             </RadioGroup>
+              </>
+            )}
+            {splitMode !== "item" && (
+              <div className="space-y-2 pt-2">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Scope</Label>
+                <RadioGroup value={splitScope} onValueChange={(v) => setSplitScope(v as SplitScope)} className="gap-2">
+                  <label className="flex items-start gap-3 rounded border p-3 cursor-pointer hover:bg-accent">
+                    <RadioGroupItem value="whole" className="mt-0.5" />
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">Split entire bill</div>
+                      <div className="text-xs text-muted-foreground">
+                        Full bill net ₹{netSubtotalOf(charges.filter((c) => c.charge_type !== "tax") as any).toFixed(2)}
+                        {" "}(GST {weightedGstRate(charges.filter((c) => c.charge_type !== "tax") as any).toFixed(2)}%)
+                      </div>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 rounded border p-3 cursor-pointer hover:bg-accent">
+                    <RadioGroupItem value="charge" className="mt-0.5" />
+                    <div className="flex-1 space-y-2">
+                      <div className="text-sm font-medium">Split a specific charge</div>
+                      <Select
+                        value={scopeChargeId}
+                        onValueChange={(v) => { setScopeChargeId(v); setSplitScope("charge"); }}
+                        disabled={splitScope !== "charge"}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder="Pick a charge line…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {charges.filter((c) => c.charge_type !== "tax" && c.charge_type !== "discount").map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.description} — {inr(c.amount)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </label>
+                </RadioGroup>
+              </div>
+            )}
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button onClick={() => setStep(2)}>Next <ArrowRight className="h-4 w-4 ml-1" /></Button>
+              <Button
+                onClick={() => {
+                  if (splitMode !== "item" && splitScope === "charge" && !scopeChargeId) {
+                    return toast.error("Pick a charge line to split");
+                  }
+                  setStep(2);
+                }}
+              >
+                Next <ArrowRight className="h-4 w-4 ml-1" />
+              </Button>
             </DialogFooter>
           </div>
         )}
 
-        {step === 2 && (
+        {step === 2 && splitMode === "item" && (
           <div className="space-y-3">
             <div className="text-sm font-medium">Step 2 — Assign Line Items</div>
             <div className="flex flex-wrap gap-2">
@@ -543,7 +877,24 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           </div>
         )}
 
-        {step === 3 && (
+        {step === 2 && splitMode !== "item" && (
+          <ShareEditor
+            splitMode={splitMode}
+            baseNet={baseNet}
+            baseGstRate={baseGstRate}
+            baseChargeCount={baseCharges.length}
+            scopeLabel={splitScope === "charge" ? (baseCharges[0]?.description ?? "charge") : "Entire bill"}
+            parties={parties}
+            setParties={setParties}
+            distribution={shareDistribution}
+            showBillType={isOwnerStrict}
+            onBack={() => setStep(1)}
+            onNext={confirmSplit}
+            busy={busy}
+          />
+        )}
+
+        {step === 3 && splitMode === "item" && (
           <div className="space-y-4">
             <div className="text-sm font-medium">Step 3 — Party Details</div>
             <PartyEditor label="Bill 1 Party" party={party1} setParty={setParty1} disabledName={splitType === "same"} showBillType={isOwnerStrict} />
