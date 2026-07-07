@@ -45,15 +45,16 @@ function Page() {
     if (!propertyId) return;
     let q = supabase.from("booking_rooms").select(`
       id,rate,check_in,check_out,
-      rooms!inner(id,room_number,property_id),
+      rooms:room_id(id,room_number),
       room_categories(name),
       tariff:tariff_id(name),
       bookings(id,status,total_amount,balance_amount,guests(name))
-    `).eq("rooms.property_id", propertyId)
+    `).eq("property_id", propertyId)
       .gte("check_in", from).lte("check_in", to);
     if (catId !== "all") q = q.eq("category_id", catId);
     if (roomId !== "all") q = q.eq("room_id", roomId);
-    const { data } = await q;
+    const { data, error } = await q;
+    if (error) { console.error("[room-wise] load failed:", error); setRows([]); return; }
     const out: Row[] = ((data ?? []) as any[]).map((br) => {
       const inD = new Date(br.check_in), outD = new Date(br.check_out);
       const nights = Math.max(1, Math.round((+outD - +inD) / 86400000));
