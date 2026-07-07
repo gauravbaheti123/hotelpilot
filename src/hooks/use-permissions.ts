@@ -11,6 +11,8 @@ export type PermAction = PermStdAction | (string & {});
 export type PermMap = Record<string, Record<string, boolean>>;
 
 const PERMS_EVENT = "hp:permissions-changed";
+const DEBUG_PERMISSION_MODULE = "dashboard";
+const DEBUG_PERMISSION_ACTION = "view";
 
 /** Notify all mounted usePermissions() hooks to re-fetch. */
 export function invalidatePermissions() {
@@ -75,6 +77,12 @@ export function usePermissions(): PermState & {
         .eq("user_id", user.id)
         .not("role_id", "is", null);
       const { data: assigns, error: assignsErr } = await q;
+      console.log("[usePermissions:debug] user_roles result", {
+        user_id: user.id,
+        property_id_used_for_check: propertyId,
+        assignments: assigns ?? [],
+        error: assignsErr,
+      });
       if (assignsErr) {
         // Do NOT flip loading→false with an empty map on transient errors —
         // that would trigger downstream "Access denied" guards. Keep the
@@ -95,6 +103,14 @@ export function usePermissions(): PermState & {
       // the user's actual assignments instead of denying every permission.
       const effectiveAssignments = matchingAssignments.length > 0 ? matchingAssignments : assignments;
       const roleIds = Array.from(new Set(effectiveAssignments.map((r) => r.role_id as string)));
+      console.log("[usePermissions:debug] resolved role_ids", {
+        user_id: user.id,
+        property_id_used_for_check: propertyId,
+        all_assignments: assignments,
+        matching_assignments_for_property: matchingAssignments,
+        effective_assignments_used: effectiveAssignments,
+        resolved_role_ids: roleIds,
+      });
       if (roleIds.length === 0) {
         if (!cancelled) setState({ loading: false, isSuperadmin: false, map: {} });
         return;
@@ -104,6 +120,19 @@ export function usePermissions(): PermState & {
         .select("allowed, permissions!role_permissions_permission_id_fkey(module, action)")
         .in("role_id", roleIds)
         .eq("allowed", true);
+      const permissionRows = (rps ?? []) as any[];
+      const dashboardViewRows = permissionRows.filter((row) => {
+        const p = row.permissions;
+        return p?.module === DEBUG_PERMISSION_MODULE && p?.action === DEBUG_PERMISSION_ACTION;
+      });
+      console.log("[usePermissions:debug] role_permissions result", {
+        user_id: user.id,
+        property_id_used_for_check: propertyId,
+        resolved_role_ids: roleIds,
+        error: rpsErr,
+        dashboard_view_rows: dashboardViewRows,
+        fetched_permissions: permissionRows,
+      });
       if (rpsErr) {
         console.error("[usePermissions] role_permissions read failed", rpsErr);
         return;
@@ -115,6 +144,13 @@ export function usePermissions(): PermState & {
         if (!map[p.module]) map[p.module] = { view: false, create: false, edit: false, delete: false };
         map[p.module][p.action as string] = true;
       }
+      console.log("[usePermissions:debug] permission map built", {
+        user_id: user.id,
+        property_id_used_for_check: propertyId,
+        resolved_role_ids: roleIds,
+        dashboard_view_in_map: map[DEBUG_PERMISSION_MODULE]?.[DEBUG_PERMISSION_ACTION] === true,
+        map,
+      });
       if (!cancelled) setState({ loading: false, isSuperadmin: false, map });
     })();
 
@@ -125,7 +161,19 @@ export function usePermissions(): PermState & {
 
   const can = (module: string, action: PermAction = "view") => {
     if (state.isSuperadmin) return true;
-    return !!state.map[module]?.[action];
+    const allowed = !!state.map[module]?.[action];
+    if (module === DEBUG_PERMISSION_MODULE && action === DEBUG_PERMISSION_ACTION) {
+      console.log("[usePermissions:debug] can() evaluated", {
+        module,
+        action,
+        allowed,
+        loading: state.loading,
+        isSuperadmin: state.isSuperadmin,
+        map_entry: state.map[module],
+        full_map: state.map,
+      });
+    }
+    return allowed;
   };
 
   return { ...state, can, refresh };

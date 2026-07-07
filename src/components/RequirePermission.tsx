@@ -31,12 +31,33 @@ export function RequirePermission({
   const roleBypass =
     roles.includes("superadmin") || roles.includes("owner");
 
+  if (module === "dashboard" && action === "view") {
+    console.log("[RequirePermission:debug] dashboard/view guard state", {
+      module,
+      action,
+      authLoading,
+      permsLoading,
+      roles,
+      roleBypass,
+      isSuperadmin,
+    });
+  }
+
   // Only render a definitive decision once BOTH auth and permissions have
   // resolved. Rendering "Access denied" on a transient loading/error state
   // is what caused the site-wide blank-page bug for non-owner roles.
   if (authLoading || permsLoading) return null;
 
   const allowed = roleBypass || isSuperadmin || can(module, action);
+  if (module === "dashboard" && action === "view") {
+    console.log("[RequirePermission:debug] dashboard/view decision", {
+      module,
+      action,
+      allowed,
+      roleBypass,
+      isSuperadmin,
+    });
+  }
   if (allowed) return <>{children}</>;
 
   async function handleSignOut() {
