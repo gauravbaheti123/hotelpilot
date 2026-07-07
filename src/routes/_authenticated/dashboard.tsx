@@ -1248,11 +1248,11 @@ function RoomStatusModal({
         {kind === "vacant" && (
           <div className="grid gap-2">
             <Button variant="outline" disabled={busy}
-              onClick={() => update({ housekeeping_status: "dirty" }, null, "marked as Dirty")}>
+              onClick={() => update({ status: "vacant", housekeeping_status: "dirty" }, null, "marked as Dirty")}>
               Mark as Dirty
             </Button>
             <Button variant="outline" disabled={busy}
-              onClick={() => update({ status: "maintenance" }, null, "marked as Maintenance")}>
+              onClick={() => update({ status: "maintenance", housekeeping_status: "dirty" }, null, "marked as Maintenance")}>
               Mark as Maintenance
             </Button>
             <Button disabled={busy} onClick={onNewBooking}>New Booking</Button>
