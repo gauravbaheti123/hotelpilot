@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -99,6 +99,11 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     { mode: "cash", amount: "", reference: "" },
     { mode: "upi", amount: "", reference: "" },
   ]);
+  // Guard so the auto-seed effect can only execute once per dialog-open.
+  // Without this, a failed / no-op insert leaves `charges` empty and the
+  // effect keeps re-firing every time `loading` toggles, producing the
+  // Checkout Summary "loading/loaded" flicker reported for all checkouts.
+  const didSeedRoomCharges = useRef(false);
 
   const load = useCallback(async () => {
     if (!bookingId) return;
@@ -159,6 +164,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       setSingleAmount("");
       setSingleRef("");
       setSingleMode("cash");
+      didSeedRoomCharges.current = false;
       load();
     }
   }, [open, bookingId, load]);
@@ -166,8 +172,21 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
   // Auto seed room charges if missing
   useEffect(() => {
     if (!open || loading || !folio || !booking) return;
+    if (didSeedRoomCharges.current) return;
     if (charges.some((c: any) => c.charge_type === "room")) return;
     if (!booking.booking_rooms?.length) return;
+    // Skip bookings that still have any unassigned room (Feature: room-less
+    // future reservations). Nightly audit will post the room charge once a
+    // real room is assigned; auto-seeding a NaN/₹0 charge here would trip
+    // the unique-per-day index and loop forever.
+    const hasUnassigned = booking.booking_rooms.some(
+      (br: any) => !br.room_id || !br.rate,
+    );
+    if (hasUnassigned) {
+      didSeedRoomCharges.current = true;
+      return;
+    }
+    didSeedRoomCharges.current = true;
     (async () => {
       const rows = booking.booking_rooms.map((br: any) => {
         const nights = Math.max(
@@ -191,7 +210,16 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
           created_by: user?.id ?? null,
         };
       });
-      await supabase.from("folio_charges").insert(rows as any);
+      const { error: seedErr } = await supabase
+        .from("folio_charges")
+        .insert(rows as any);
+      if (seedErr) {
+        // Surface the failure once — do NOT call load() again, which would
+        // toggle `loading` and re-arm this effect. The ref guard also
+        // protects against a stale re-render.
+        console.error("[CheckoutDialog] auto-seed room charges failed", seedErr);
+        return;
+      }
       load();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
