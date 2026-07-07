@@ -127,6 +127,23 @@ export interface GstInvoiceRow {
   total_amount: number;
 }
 
+export interface GstInvoiceSlabRow {
+  invoice_number: string;
+  created_at: string;
+  guest_name: string | null;
+  guest_gstin: string | null;
+  guest_company: string | null;
+  gst_rate: number;          // e.g. 5, 12, 18
+  taxable: number;
+  cgst: number;
+  sgst: number;
+  gst_total: number;
+  invoice_total: number;     // filled only on the first slab row of each invoice
+  is_first_of_invoice: boolean;
+}
+
+function round2(n: number) { return Math.round(n * 100) / 100; }
+
 export async function fetchGstInvoices(propertyId: string, from: string, to: string): Promise<GstInvoiceRow[]> {
   const start = new Date(`${from}T00:00:00`).toISOString();
   const endD = new Date(`${to}T00:00:00`);
