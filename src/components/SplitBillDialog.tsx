@@ -941,7 +941,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
                 </div>
                 <div className="flex justify-end">
                   <Button size="sm" variant="outline"
-                    onClick={() => { setDiscBillIdx(i as 0 | 1); setDiscOpen(true); }}>
+                    onClick={() => { setDiscBillIdx(i); setDiscOpen(true); }}>
                     <Percent className="h-3.5 w-3.5 mr-1" />
                     Apply discount on Bill {i + 1}
                   </Button>
