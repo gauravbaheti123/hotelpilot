@@ -67,6 +67,11 @@ export function useCurrentProperty() {
       const assignedPropertyIds = Array.from(
         new Set((data ?? []).map((row) => row.property_id).filter(Boolean) as string[]),
       );
+      console.log("[useCurrentProperty:debug] assigned properties", {
+        user_id: user.id,
+        current_property_id_before_sync: currentId,
+        assigned_property_ids: assignedPropertyIds,
+      });
       if (assignedPropertyIds.length > 0 && !assignedPropertyIds.includes(currentId ?? "")) {
         setCurrentId(assignedPropertyIds[0]);
       }
@@ -84,6 +89,12 @@ export function useCurrentProperty() {
     if (!isSuperadmin && properties.length > 0) {
       // Non-superadmin: always force to first visible property (RLS limits to linked only)
       const linked = properties[0];
+      console.log("[useCurrentProperty:debug] visible properties sync", {
+        user_id: user.id,
+        current_property_id_before_sync: currentId,
+        visible_property_ids: properties.map((p) => p.id),
+        selected_visible_property_id: linked?.id ?? null,
+      });
       if (linked && currentId !== linked.id) setCurrentId(linked.id);
       return;
     }
