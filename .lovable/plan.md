@@ -1,98 +1,68 @@
+# Pending Issues Checklist — Site Audit
 
-# Split Bill (%/Amount) + Room-less Reservations
+## 1. Receptionist RBAC / "Access Denied" bug
+- **Status:** 3 fix attempts kiye gaye (`RequirePermission.tsx`, `use-permissions.ts`, `use-property.ts`), but user ne end-to-end confirm nahi kiya ki actual login pe dashboard ab load hota hai.
+- **Pending actions:**
+  - `counter@hotelbrij.in` (role_id `25ab518f-8c00-4b8f-961a-3f47f83018c0`) se live login karke Dashboard + Front Desk + Housekeeping load verify karna.
+  - Console pe `[permissions]` debug logs check karke `property_id`, `role_id`, aur fetched `role_permissions` rows ka actual snapshot dekhna.
+  - Fail-open vs fail-closed policy confirm karna: loading/error states me "Access Denied" NAHI render hona chahiye — sirf definitive `allowed=false` par.
+  - Spot-check ek aur non-owner role (housekeeping/manager) pe bhi same guard.
 
-Both features shipped in one turn. Additive only — existing item-wise / type-wise split, existing room-assigned bookings, existing RBAC and billing math stay untouched.
+## 2. Split Bill — %/Amount mode
+- **Status:** Code likha gaya (`SplitBillDialog.tsx` + `billing.ts` helpers), TS pass, lekin runtime QA baaki.
+- **Pending actions:**
+  - Whole-bill %-split (2 parties, 3 parties, uneven %) — sum validator, last-party paise remainder verify.
+  - Whole-bill ₹-split — same checks.
+  - Per-charge-line %/₹ split (agar wizard me line-scope enabled hai) — regression test item-wise flow ke sath.
+  - **GST proportionality:** Har party ke lump-sum share pe `weightedGstRate(baseCharges)` apply hota hai — sum of per-party GST == original bill GST (paise tak) verify karna zaroori hai.
+  - Folios created (`charge_type='share'`) → payment step N-row → check-out flow end-to-end.
+  - Print/receipt template me new `share` line-item sahi render ho raha hai ya nahi.
 
-## Feature 1 — Percentage / Amount Split
+## 3. Room-less Future Reservations
+- **Status:** Code shipped (`front-desk.new.tsx`, `AssignRoomDialog.tsx`, `dashboard.tsx`, `front-desk.booking.$id.tsx`). No DB migration.
+- **Pending actions:**
+  - New booking with "Assign room later" checkbox → `booking_rooms.room_id = NULL` row created, category/tariff/rate set.
+  - Dashboard "Unassigned Reservations" panel: sahi bookings dikhti hain, "Assign Room" button open karta hai dialog.
+  - AssignRoomDialog: same-category vacant rooms first, other-category prompt with rate confirmation, overlap trigger safety.
+  - Booking detail page: per-row "To be assigned" badge, check-in guard (null room → dialog opens, block proceed).
+  - "Save & check-in now" disabled while assign-later on — verify.
+  - Existing bookings with pre-assigned rooms: zero regression.
+  - Activity log entries: `unassigned: true` on create, `ROOM_ASSIGNED` on assign.
 
-### UX flow (SplitBillDialog)
-Add a **mode selector** on step 1 alongside the existing item-wise split:
-- Item-wise (existing 2-party flow — unchanged)
-- **Split by %** (new)
-- **Split by Amount ₹** (new)
+## 4. Full Audit — Other Findings To Verify
+Ye items code review + tooling se dikhne wale potential gaps hain, user-reported nahi. Har ek ko confirm/dismiss karna hai:
 
-For the two new modes, add a **scope** control:
-- Split entire bill (all non-discount/non-tax charges lumped)
-- Split a specific charge (dropdown of current charge lines)
+**Auth / RBAC layer**
+- `RequirePermission` fail-open behavior sirf dashboard ke liye lagayi hai ya global? Har protected page (POS, Banquet, Reports, Night Audit, Expenses) pe consistent hai verify karo.
+- Owner-only pages (Roles/Permissions editor, Users, Property Settings) pe permission gate strict hai ya sirf UI hide? Server-side RLS bhi enforce ho.
+- `_authenticated/route.tsx` integration-managed — kisi ne edit toh nahi kiya check karo.
 
-Then a dynamic **Parties list** (min 2, Add/Remove, default 2):
-- Name (required for party 2+), optional mobile/GSTIN, bill_type (cash_bill/gst_invoice — same owner-only guard as today)
-- % or ₹ input per party (depending on mode)
-- Live-computed counterpart shown inline (% shows ₹, ₹ shows %)
-- Sum validator with a coloured chip: percent must equal 100.00, amount must equal target subtotal
-- **Rounding**: last party absorbs the paise remainder so party sums exactly match the base. A muted note "Last party adjusted by ₹0.0X for rounding" is rendered when a remainder is applied.
+**Data & RLS**
+- 70+ tables me `role_permissions`, `user_roles`, `permissions` pe `has_permission()` / `has_role()` security-definer function use ho raha hai — recursive policy risk audit.
+- `booking_rooms.room_id NULL` ke saath koi query hai jo `NOT NULL` maan ke chal rahi ho (housekeeping tasks, night audit, rate seasons)? Grep karna hoga.
+- `folios` / `folio_charges` me new `charge_type='share'` value ka enum/check-constraint constraint allow karta hai — verify.
 
-Confirm is disabled until the sum validates and every party has a name.
+**Frontend regressions ka risk**
+- `routeTree.gen.ts` kayi baar edit hua — manual edit ka koi trace na ho.
+- `SplitBillDialog.tsx` large refactor — item-wise + type-wise legacy path untouched, snapshot test na hone ki wajah se manual verify zaroori.
+- Dashboard "Unassigned Reservations" query performance (index on `booking_rooms(room_id) WHERE room_id IS NULL`?).
 
-### Persistence model (per user's answer)
-Each party gets its **own folio with a single lump-sum "Share of Bill" charge line**:
-- `charge_type = 'share'`, description like "Share of Bill — 40% of BILL003" (or "Share of Room Charge — ₹1,333.33 of BILL003")
-- `amount = party_share_net` (pre-GST net)
-- `gst_rate = weightedGstRate(baseCharges)` — the effective GST% of the base scope (charge GST / charge net). If mixed rates, use the weighted average so per-party GST re-sums to the original GST total.
-- `gst_amount = round2(amount * gst_rate / 100)` for gst_invoice folios, 0 for cash_bill
-- The last party's amount/GST is nudged by the paise remainder so totals reconcile.
+**SEO / metadata (secondary)**
+- Public routes (`/`, marketing) pe `head()` me app-specific title/description/og set hai ya default "Lovable App".
+- og:image sirf leaf routes pe, absolute https.
 
-Reuse the existing folio-creation path in `confirmSplit`:
-- Extract a helper `createSplitFolios(parties, chargeRowsFactory)` from the current 2-party loop so both the existing item-wise flow and the new %/amount flow feed the same insert code (folios insert → folio_charges insert → `void_folio_safe` on the source → activity log → step-4 payment collection).
-- Rollback on any error stays as-is.
+**Console / network signals**
+- Preview me abhi koi errors log nahi hue (session replay clean), lekin logged-in flows par aur signals chahiye — receptionist login turn pe repro karna.
 
-Activity log gets a new `split_mode` detail (`item` | `percent` | `amount`) and, for scoped splits, the `scope_charge_id`.
+---
 
-Payment step (step 4) becomes N-row instead of hardcoded 2 — reuse the same row component in a loop.
+## Recommended Next Step
+Sabse pehle **Item 1 (Receptionist RBAC)** ko live verify karo — kyunki agar wo still broken hai, non-owner users kuch bhi test nahi kar payenge (including Split Bill aur Assign Room). Uske baad Item 2 → 3 → 4 order me QA.
 
-### RBAC
-No new checks. The dialog is already gated by `billing/split_bill`; the new modes ride on the same button.
+Agar aap approve karte hain, main build mode me:
+1. Playwright script se receptionist login karke dashboard + guarded pages ke screenshots + console dump lunga.
+2. Split Bill %/₹ ka scripted E2E chalaunga (2 parties, GST-match assert).
+3. Room-less booking create → assign → check-in ka happy path chalaunga.
+4. Findings ke basis pe surgical fixes.
 
-### Files touched
-- `src/components/SplitBillDialog.tsx` — the bulk of the work: mode/scope state, dynamic parties array, sum validators, refactored `confirmSplit` and `completeCheckout` for N parties, weighted-GST helper.
-- `src/lib/billing.ts` — add `weightedGstRate(charges)` and `distributeWithRemainder(total, weights)` pure helpers with tests-shaped signatures.
-- No DB changes; `folio_charges.charge_type = 'share'` fits the existing free-text column.
-
-## Feature 2 — Room-less Future Reservations
-
-### Data model
-`booking_rooms.room_id` is already nullable and the overlap trigger already `RETURN NEW`s when `room_id IS NULL` — verified. No migration needed for that. One tiny migration to relax the `booking_rooms` insert path if any NOT NULL FK exists (spot-check confirms it doesn't). If the linter flags anything, we add it in the same turn.
-
-An unassigned reservation is stored as a `bookings` row + one `booking_rooms` row per requested room with:
-- `category_id` set, `tariff_id` optional, `rate` set (drives billing)
-- `room_id = NULL`
-- `status = 'active'`
-
-### New Booking form (`front-desk.new.tsx`)
-- Room Category stays required.
-- Room-number dropdown gets a "To be assigned later" sentinel option at the top. Selecting it stores `roomId = null` for that entry.
-- Submit path passes `room_id: roomId || null` into the `booking_rooms` insert. Rate/tariff/category logic unchanged.
-- Activity log for booking creation includes `unassigned: true` when applicable.
-
-### Dashboard — Unassigned Reservations panel
-On `dashboard.tsx`, add a new card **Unassigned Reservations** above/beside the room-status board (only rendered when count > 0):
-- Query: `bookings` joined with `booking_rooms` where any `booking_rooms.room_id IS NULL` and `booking.status IN ('reserved','checked_in')` and `check_out >= today`.
-- Rows: guest name, category name, check-in → check-out, adults/children, "Assign Room" button.
-- Room tiles are unaffected — a booking without a room does not attach to any tile.
-
-### Assign Room dialog (new component `AssignRoomDialog`)
-Opens from the panel and from the booking detail page:
-- Lists vacant rooms of the same category first (labelled "Suggested — same category"), then vacant rooms of other categories under a collapsed "Other categories" section.
-- The top suggestion (first vacant same-category room) is pre-selected.
-- Confirm updates the target `booking_rooms.id` with the chosen `room_id`; if a different category is picked, it also updates `category_id` and prompts to confirm keeping vs. updating `rate` (reusing the same rate-choice pattern as room-shift: "keep rate" vs "apply category default").
-- Overlap trigger enforces conflict safety at DB level.
-- Activity log: `ROOM_ASSIGNED` with from=null, to=room_id.
-
-### Booking detail (`front-desk.booking.$id.tsx`)
-- For each `booking_rooms` row with `room_id = null`, replace the room-number cell with an "Assign Room" button that opens `AssignRoomDialog` for that row.
-- Check-in action: if the booking has any `booking_rooms.room_id IS NULL`, block check-in and open `AssignRoomDialog` first. Only after every row has a room can check-in proceed. Existing check-in code path otherwise unchanged.
-
-### Files touched
-- `src/routes/_authenticated/front-desk.new.tsx` — sentinel option, nullable submit.
-- `src/routes/_authenticated/front-desk.booking.$id.tsx` — assign-room CTA + check-in guard.
-- `src/routes/_authenticated/dashboard.tsx` — new Unassigned Reservations panel + query.
-- `src/components/AssignRoomDialog.tsx` — new.
-
-## Verification
-- `bunx tsgo --noEmit` after each feature.
-- Manual reasoning walk-through for Split by %: three parties on ₹10,000 GST invoice at 12% → 33.33% / 33.33% / 33.34%; net = 3333.33/3333.33/3333.34, GST = 400/400/400.02, totals = 3733.33/3733.33/3733.36; sum = 10,000.02… → remainder is applied on the net side before GST so total re-sums to 10,000.00 exactly. Helper is written to guarantee `sum(shares) === total` at the paise level.
-- Manual walk-through for unassigned booking: create → dashboard shows it in the panel → Assign Room picker → assign → check-in works.
-
-## Out of scope
-- No changes to item-wise split flow, RBAC, billing formulas outside split bill, or unrelated modules.
-- No changes to `src/integrations/supabase/*` generated files, and no schema migration unless the linter demands one.
+Koi bhi step skip karna ho ya priority badalni ho toh batao.
