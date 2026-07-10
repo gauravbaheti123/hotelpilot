@@ -123,7 +123,7 @@ function PrintersPage() {
         { value: "58mm", label: "58mm" },
         { value: "80mm", label: "80mm" },
         { value: "A4", label: "A4" },
-        { value: "4x6in", label: "Premium Label 4x6in" },
+        { value: "8x6cm", label: "Premium Label 8x6cm" },
       ],
       defaultValue: "80mm",
     },
