@@ -349,6 +349,244 @@ function ProductsTab() {
   );
 }
 
+// ---------- Premium Label ----------
+function PremiumLabel({
+  product,
+  company,
+  packedOn,
+  expiryOn,
+  batchNo,
+  mrp,
+}: {
+  product: LabelProduct;
+  company: CompanySettings | null;
+  packedOn: string;
+  expiryOn: string;
+  batchNo: string;
+  mrp: string;
+}) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const nutrition = useMemo(() => normalizeNutrition(product.nutrition_info), [product]);
+  const barcodeValue = useMemo(() => {
+    const bn = batchNo || product.batch_no || product.id.slice(0, 8);
+    return `${bn}-${packedOn.replace(/-/g, "")}`;
+  }, [batchNo, product, packedOn]);
+
+  useEffect(() => {
+    if (!svgRef.current) return;
+    try {
+      JsBarcode(svgRef.current, barcodeValue, {
+        format: "CODE128",
+        displayValue: true,
+        fontSize: 9,
+        height: 30,
+        margin: 0,
+      });
+    } catch {}
+  }, [barcodeValue]);
+
+  const companyName = product.company_name_override || company?.company_name || "Brij Sweets";
+  const address = product.address_override || company?.address || "";
+  const email = product.email_override || company?.email || "";
+  const care = product.customer_care_override || company?.customer_care_number || "";
+  const fssai = product.fssai_lic_override || product.fssai_no || company?.fssai_lic_no || "";
+  const servingSize = product.serving_size_g ?? null;
+
+  const rows = NUTRIENTS.filter((n) => (nutrition[n.key]?.value ?? 0) > 0 || nutrition[n.key]?.show_rda);
+
+  return (
+    <div className="premium-label">
+      <div className="p-head">
+        <div className="p-brand">{companyName}</div>
+        <div className="p-name">{product.name}</div>
+        {product.net_weight && <div className="p-net">Net Wt: {product.net_weight}</div>}
+      </div>
+      <div className="cards">
+        <div className="card">
+          <h4>Nutrition Facts</h4>
+          <div style={{ fontSize: "7.5pt", color: "#444" }}>
+            Serving Size: {servingSize ? `${servingSize} g` : "—"}
+            {product.servings_per_package ? ` · Servings/Pack: ${product.servings_per_package}` : ""}
+          </div>
+          <table className="nf-table">
+            <thead>
+              <tr>
+                <td></td>
+                <td className="right" style={{ fontWeight: 700 }}>Per 100g</td>
+                <td className="right" style={{ fontWeight: 700 }}>%RDA*</td>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((n) => {
+                const cell = nutrition[n.key]!;
+                return (
+                  <tr key={n.key}>
+                    <td>{n.label}</td>
+                    <td className="right">{cell.value}</td>
+                    <td className="right">{cell.show_rda ? computeRda(cell.value, servingSize, n.key) : ".."}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div style={{ fontSize: "6.5pt", marginTop: "1mm", color: "#555" }}>
+            *%RDA based on 2000 kcal reference diet per serving.
+          </div>
+        </div>
+        <div className="card">
+          <h4>Ingredients</h4>
+          <div>{product.ingredients || "—"}</div>
+          {product.allergen_info && (
+            <div style={{ marginTop: "1mm" }}>
+              <strong>Allergens:</strong> {product.allergen_info}
+            </div>
+          )}
+          {product.storage_instructions && (
+            <div style={{ marginTop: "1mm" }}>
+              <strong>Storage:</strong> {product.storage_instructions}
+            </div>
+          )}
+          <h4 style={{ marginTop: "2mm" }}>Marketed By</h4>
+          <div style={{ fontWeight: 600 }}>{companyName}</div>
+          {address && <div>{address}</div>}
+          {email && <div>Email: {email}</div>}
+          {care && <div>Customer Care: {care}</div>}
+          {fssai && <div style={{ marginTop: "1mm" }}>FSSAI Lic. No. {fssai}</div>}
+        </div>
+      </div>
+      <div className="p-foot">
+        <div>
+          <div><strong>Packed:</strong> {packedOn}</div>
+          <div><strong>Best Before:</strong> {expiryOn}</div>
+          {(batchNo || product.batch_no) && (
+            <div><strong>Batch:</strong> {batchNo || product.batch_no}</div>
+          )}
+          {mrp && <div><strong>MRP:</strong> ₹{mrp} (incl. of all taxes)</div>}
+        </div>
+        <div className="barcode">
+          <svg ref={svgRef} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Company Settings Tab ----------
+function CompanySettingsTab() {
+  const { current } = useCurrentProperty();
+  const { can } = usePermissions();
+  const [form, setForm] = useState<Partial<CompanySettings>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const canEdit = can("label_printing", "edit");
+
+  useEffect(() => {
+    if (!current) return;
+    setLoading(true);
+    supabase
+      .from("label_company_settings" as any)
+      .select("*")
+      .eq("property_id", current.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setForm((data as any) ?? { property_id: current.id });
+        setLoading(false);
+      });
+  }, [current?.id]);
+
+  async function save() {
+    if (!current) return;
+    setSaving(true);
+    const payload = {
+      property_id: current.id,
+      company_name: form.company_name || null,
+      address: form.address || null,
+      email: form.email || null,
+      customer_care_number: form.customer_care_number || null,
+      fssai_lic_no: form.fssai_lic_no || null,
+      facebook_url: form.facebook_url || null,
+      instagram_url: form.instagram_url || null,
+    };
+    const { error } = await supabase
+      .from("label_company_settings" as any)
+      .upsert(payload, { onConflict: "property_id" });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Company details saved");
+  }
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Company Details (Premium Label defaults)</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Field label="Company Name">
+            <Input
+              value={form.company_name ?? ""}
+              onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+              disabled={!canEdit}
+            />
+          </Field>
+          <Field label="Email">
+            <Input
+              value={form.email ?? ""}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              disabled={!canEdit}
+            />
+          </Field>
+          <Field label="Address" className="md:col-span-2">
+            <Textarea
+              rows={2}
+              value={form.address ?? ""}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              disabled={!canEdit}
+            />
+          </Field>
+          <Field label="Customer Care Number">
+            <Input
+              value={form.customer_care_number ?? ""}
+              onChange={(e) => setForm({ ...form, customer_care_number: e.target.value })}
+              disabled={!canEdit}
+            />
+          </Field>
+          <Field label="FSSAI Lic No">
+            <Input
+              value={form.fssai_lic_no ?? ""}
+              onChange={(e) => setForm({ ...form, fssai_lic_no: e.target.value })}
+              disabled={!canEdit}
+            />
+          </Field>
+          <Field label="Facebook URL">
+            <Input
+              value={form.facebook_url ?? ""}
+              onChange={(e) => setForm({ ...form, facebook_url: e.target.value })}
+              disabled={!canEdit}
+            />
+          </Field>
+          <Field label="Instagram URL">
+            <Input
+              value={form.instagram_url ?? ""}
+              onChange={(e) => setForm({ ...form, instagram_url: e.target.value })}
+              disabled={!canEdit}
+            />
+          </Field>
+        </div>
+        {canEdit && (
+          <div className="pt-2">
+            <Button onClick={save} disabled={saving}>
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ProductDialog({
   open,
   onOpenChange,
