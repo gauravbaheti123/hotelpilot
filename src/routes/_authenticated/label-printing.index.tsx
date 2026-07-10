@@ -660,6 +660,8 @@ function PrintLabelTab() {
   const [mrp, setMrp] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [template, setTemplate] = useState<"thermal" | "premium">("thermal");
+  const [company, setCompany] = useState<CompanySettings | null>(null);
 
   useEffect(() => {
     if (!current) return;
@@ -673,6 +675,12 @@ function PrintLabelTab() {
         if (error) return toast.error(error.message);
         setProducts((data ?? []) as any);
       });
+    supabase
+      .from("label_company_settings" as any)
+      .select("*")
+      .eq("property_id", current.id)
+      .maybeSingle()
+      .then(({ data }) => setCompany((data as any) ?? null));
   }, [current?.id]);
 
   const filtered = useMemo(() => {
@@ -691,6 +699,7 @@ function PrintLabelTab() {
     setSelected(p);
     setBatchNo(p.batch_no ?? "");
     setMrp(p.mrp != null ? String(p.mrp) : "");
+    setTemplate((p.default_label_template as any) === "premium" ? "premium" : "thermal");
   }
 
   async function printAndSave() {
@@ -707,6 +716,7 @@ function PrintLabelTab() {
       mrp: mrp === "" ? null : Number(mrp),
       notes: notes || null,
       printed_by: user?.id ?? null,
+      template_used: template,
     });
     setSaving(false);
     if (error) return toast.error(error.message);
