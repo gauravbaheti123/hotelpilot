@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { usePermissions } from "@/hooks/use-permissions";
 import { RequirePermission } from "@/components/RequirePermission";
+import { AppShell } from "@/components/AppShell";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -192,13 +193,11 @@ interface LabelBatch {
 
 function LabelPrintingPage() {
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold">Label Printing</h1>
-        <p className="text-sm text-muted-foreground">
+    <AppShell title="Label Printing">
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground -mt-2">
           Manage packaged products and print thermal labels with barcode.
         </p>
-      </div>
       <Tabs defaultValue="print">
         <TabsList>
           <TabsTrigger value="print">Print Label</TabsTrigger>
@@ -219,7 +218,8 @@ function LabelPrintingPage() {
           <CompanySettingsTab />
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </AppShell>
   );
 }
 
