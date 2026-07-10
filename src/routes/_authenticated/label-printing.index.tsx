@@ -67,6 +67,7 @@ type NutrientKey =
 interface NutrientCell {
   value: number;
   show_rda: boolean;
+  rda_override?: number | null;
 }
 type NutritionInfo = Partial<Record<NutrientKey, NutrientCell>>;
 
@@ -115,9 +116,13 @@ function normalizeNutrition(raw: any): NutritionInfo {
       out[n.key] = {
         value: Number(v.value) || 0,
         show_rda: v.show_rda ?? n.defaultShow,
+        rda_override:
+          v.rda_override === null || v.rda_override === undefined || v.rda_override === ""
+            ? null
+            : Number(v.rda_override),
       };
     } else {
-      out[n.key] = { value: 0, show_rda: n.defaultShow };
+      out[n.key] = { value: 0, show_rda: n.defaultShow, rda_override: null };
     }
   }
   // Backfill from legacy flat fields when new structure absent/zero.
@@ -376,8 +381,8 @@ function PremiumLabel({
       JsBarcode(svgRef.current, barcodeValue, {
         format: "CODE128",
         displayValue: true,
-        fontSize: 9,
-        height: 30,
+        fontSize: 6,
+        height: 14,
         margin: 0,
       });
     } catch {}
@@ -402,32 +407,37 @@ function PremiumLabel({
       <div className="cards">
         <div className="card">
           <h4>Nutrition Facts</h4>
-          <div style={{ fontSize: "7.5pt", color: "#444" }}>
+          <div style={{ fontSize: "5pt", color: "#444" }}>
             Serving Size: {servingSize ? `${servingSize} g` : "—"}
             {product.servings_per_package ? ` · Servings/Pack: ${product.servings_per_package}` : ""}
           </div>
           <table className="nf-table">
             <thead>
               <tr>
-                <td></td>
-                <td className="right" style={{ fontWeight: 700 }}>Per 100g</td>
-                <td className="right" style={{ fontWeight: 700 }}>%RDA*</td>
+                <th className="left nutrient-col">&nbsp;</th>
+                <th className="right value-col">Per 100g</th>
+                <th className="right rda-col">%RDA*</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((n) => {
                 const cell = nutrition[n.key]!;
+                let rdaDisplay: string;
+                if (!cell.show_rda) rdaDisplay = "..";
+                else if (cell.rda_override != null && !Number.isNaN(cell.rda_override))
+                  rdaDisplay = String(cell.rda_override);
+                else rdaDisplay = computeRda(cell.value, servingSize, n.key);
                 return (
                   <tr key={n.key}>
-                    <td>{n.label}</td>
+                    <td className="left">{n.label}</td>
                     <td className="right">{cell.value}</td>
-                    <td className="right">{cell.show_rda ? computeRda(cell.value, servingSize, n.key) : ".."}</td>
+                    <td className="right">{rdaDisplay}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          <div style={{ fontSize: "6.5pt", marginTop: "1mm", color: "#555" }}>
+          <div style={{ fontSize: "4.5pt", marginTop: "0.3mm", color: "#555" }}>
             *%RDA based on 2000 kcal reference diet per serving.
           </div>
         </div>
@@ -435,25 +445,24 @@ function PremiumLabel({
           <h4>Ingredients</h4>
           <div>{product.ingredients || "—"}</div>
           {product.allergen_info && (
-            <div style={{ marginTop: "1mm" }}>
+            <div style={{ marginTop: "0.3mm" }}>
               <strong>Allergens:</strong> {product.allergen_info}
             </div>
           )}
           {product.storage_instructions && (
-            <div style={{ marginTop: "1mm" }}>
+            <div style={{ marginTop: "0.3mm" }}>
               <strong>Storage:</strong> {product.storage_instructions}
             </div>
           )}
-          <h4 style={{ marginTop: "2mm" }}>Marketed By</h4>
-          <div style={{ fontWeight: 600 }}>{companyName}</div>
+          <div style={{ fontWeight: 600, marginTop: "0.6mm" }}>{companyName}</div>
           {address && <div>{address}</div>}
           {email && <div>Email: {email}</div>}
           {care && <div>Customer Care: {care}</div>}
-          {fssai && <div style={{ marginTop: "1mm" }}>FSSAI Lic. No. {fssai}</div>}
+          {fssai && <div style={{ marginTop: "0.3mm" }}>FSSAI Lic. No. {fssai}</div>}
         </div>
       </div>
       <div className="p-foot">
-        <div>
+        <div className="p-meta">
           <div><strong>Packed:</strong> {packedOn}</div>
           <div><strong>Best Before:</strong> {expiryOn}</div>
           {(batchNo || product.batch_no) && (
@@ -765,7 +774,7 @@ function ProductDialog({
           <div className="text-sm font-medium mb-2">Nutrition Information (per 100g)</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {NUTRIENTS.map((n) => {
-              const cell = nutrition[n.key] ?? { value: 0, show_rda: n.defaultShow };
+              const cell = nutrition[n.key] ?? { value: 0, show_rda: n.defaultShow, rda_override: null };
               return (
                 <div key={n.key} className="flex items-center gap-2 border rounded px-2 py-1.5">
                   <div className="flex-1 text-xs">{n.label}</div>
@@ -778,6 +787,7 @@ function ProductDialog({
                       setNutrition({
                         ...nutrition,
                         [n.key]: {
+                          ...cell,
                           value: e.target.value === "" ? 0 : Number(e.target.value),
                           show_rda: cell.show_rda,
                         },
@@ -790,12 +800,30 @@ function ProductDialog({
                       onCheckedChange={(v) =>
                         setNutrition({
                           ...nutrition,
-                          [n.key]: { value: cell.value, show_rda: !!v },
+                          [n.key]: { ...cell, value: cell.value, show_rda: !!v },
                         })
                       }
                     />
                     %RDA
                   </label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    className="h-8 w-20"
+                    placeholder="auto"
+                    disabled={!cell.show_rda}
+                    value={cell.rda_override ?? ""}
+                    onChange={(e) =>
+                      setNutrition({
+                        ...nutrition,
+                        [n.key]: {
+                          ...cell,
+                          rda_override: e.target.value === "" ? null : Number(e.target.value),
+                        },
+                      })
+                    }
+                    title="Manual %RDA override (leave blank for auto)"
+                  />
                 </div>
               );
             })}
@@ -1008,7 +1036,7 @@ function PrintLabelTab() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="thermal">Thermal Barcode Sticker</SelectItem>
-                    <SelectItem value="premium">Premium Full Label (4×6 in)</SelectItem>
+                    <SelectItem value="premium">Premium Full Label (8×6 cm)</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
@@ -1101,25 +1129,33 @@ function PrintLabelTab() {
         .label-sheet .fssai { text-align: center; font-size: 7pt; margin-top: 0.5mm; }
 
         .premium-label {
-          width: 4in; min-height: 6in;
-          padding: 4mm; border: 1px dashed #999; margin: 0 0 4mm 0;
+          width: 8cm; height: 6cm;
+          padding: 1.5mm; border: 1px dashed #999; margin: 0 0 3mm 0;
           font-family: "Helvetica Neue", Arial, sans-serif; color: #111;
           background: #fff; box-sizing: border-box;
           page-break-after: always; page-break-inside: avoid;
-          display: flex; flex-direction: column; gap: 2mm;
+          display: flex; flex-direction: column; gap: 0.6mm;
+          font-size: 5pt; line-height: 1.15; overflow: hidden;
         }
         .premium-label .p-head { text-align: center; }
-        .premium-label .p-brand { font-weight: 800; font-size: 13pt; letter-spacing: 0.5px; }
-        .premium-label .p-name { font-weight: 700; font-size: 11pt; margin-top: 1mm; }
-        .premium-label .p-net { font-size: 9pt; color: #333; }
-        .premium-label .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 2mm; }
-        .premium-label .card { border: 1px solid #111; border-radius: 2mm; padding: 2mm; font-size: 8pt; line-height: 1.25; }
-        .premium-label .card h4 { margin: 0 0 1mm 0; font-size: 9pt; border-bottom: 1px solid #111; padding-bottom: 1mm; }
-        .premium-label .nf-table { width: 100%; border-collapse: collapse; margin-top: 1mm; font-size: 8pt; }
-        .premium-label .nf-table td { padding: 0.6mm 0; border-bottom: 0.3mm solid #ddd; }
-        .premium-label .nf-table td.right { text-align: right; font-variant-numeric: tabular-nums; }
-        .premium-label .p-foot { display: flex; justify-content: space-between; align-items: end; gap: 2mm; font-size: 7.5pt; margin-top: auto; }
-        .premium-label .p-foot .barcode svg { height: 12mm; }
+        .premium-label .p-brand { font-weight: 800; font-size: 8pt; letter-spacing: 0.2px; }
+        .premium-label .p-name { font-weight: 700; font-size: 6.5pt; margin-top: 0.2mm; }
+        .premium-label .p-net { font-size: 5pt; color: #333; }
+        .premium-label .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1mm; align-items: stretch; }
+        .premium-label .card { border: 0.5px solid #111; border-radius: 0.6mm; padding: 0.8mm; font-size: 5pt; line-height: 1.15; overflow: hidden; }
+        .premium-label .card h4 { margin: 0 0 0.4mm 0; font-size: 6pt; border-bottom: 0.5px solid #111; padding-bottom: 0.3mm; }
+        .premium-label .nf-table { width: 100%; border-collapse: collapse; margin-top: 0.3mm; font-size: 5pt; table-layout: fixed; }
+        .premium-label .nf-table th, .premium-label .nf-table td { padding: 0.4mm 0.5mm; border: 0.5px solid #111; }
+        .premium-label .nf-table th { font-weight: 700; background: #f5f5f5; }
+        .premium-label .nf-table .left { text-align: left; }
+        .premium-label .nf-table .right { text-align: right; font-variant-numeric: tabular-nums; }
+        .premium-label .nf-table .nutrient-col { width: 55%; }
+        .premium-label .nf-table .value-col { width: 22%; }
+        .premium-label .nf-table .rda-col { width: 23%; }
+        .premium-label .p-foot { display: flex; justify-content: space-between; align-items: center; gap: 1mm; font-size: 5pt; margin-top: auto; border-top: 0.5px solid #111; padding-top: 0.5mm; }
+        .premium-label .p-foot .p-meta { flex: 1; }
+        .premium-label .p-foot .barcode { display: flex; justify-content: center; align-items: center; }
+        .premium-label .p-foot .barcode svg { height: 8mm; width: auto; max-width: 32mm; }
 
         @media print {
           @page { size: 50mm auto; margin: 0; }
@@ -1132,7 +1168,10 @@ function PrintLabelTab() {
         }
       `}</style>
       {template === "premium" && (
-        <style>{`@media print { @page { size: 4in 6in; margin: 0; } }`}</style>
+        <style>{`@media print {
+          @page { size: 8cm 6cm; margin: 0; }
+          .premium-label { width: 8cm; height: 6cm; border: none; margin: 0; page-break-after: always; }
+        }`}</style>
       )}
     </div>
   );
