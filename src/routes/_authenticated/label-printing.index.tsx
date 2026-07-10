@@ -22,8 +22,24 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Printer as PrinterIcon, Search } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Printer as PrinterIcon,
+  Search,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/label-printing/")({
   head: () => ({ meta: [{ title: "Label Printing — HotelPilot" }] }),
@@ -33,6 +49,103 @@ export const Route = createFileRoute("/_authenticated/label-printing/")({
     </RequirePermission>
   ),
 });
+
+// ---- Nutrition schema ----
+type NutrientKey =
+  | "energy_kcal"
+  | "total_fat_g"
+  | "saturated_fat_g"
+  | "trans_fat_g"
+  | "cholesterol_mg"
+  | "monounsaturated_fat_g"
+  | "polyunsaturated_fat_g"
+  | "sodium_mg"
+  | "carbohydrate_g"
+  | "total_sugars_g"
+  | "protein_g";
+
+interface NutrientCell {
+  value: number;
+  show_rda: boolean;
+}
+type NutritionInfo = Partial<Record<NutrientKey, NutrientCell>>;
+
+const NUTRIENTS: { key: NutrientKey; label: string; defaultShow: boolean }[] = [
+  { key: "energy_kcal", label: "Energy (kcal)", defaultShow: false },
+  { key: "total_fat_g", label: "Total Fat (g)", defaultShow: true },
+  { key: "saturated_fat_g", label: "Saturated Fat (g)", defaultShow: true },
+  { key: "trans_fat_g", label: "Trans Fat (g)", defaultShow: false },
+  { key: "cholesterol_mg", label: "Cholesterol (mg)", defaultShow: true },
+  { key: "monounsaturated_fat_g", label: "Monounsaturated Fatty Acids (g)", defaultShow: true },
+  { key: "polyunsaturated_fat_g", label: "Polyunsaturated Fatty Acids (g)", defaultShow: true },
+  { key: "sodium_mg", label: "Sodium (mg)", defaultShow: true },
+  { key: "carbohydrate_g", label: "Carbohydrate (g)", defaultShow: true },
+  { key: "total_sugars_g", label: "Total Sugars (g)", defaultShow: false },
+  { key: "protein_g", label: "Protein (g)", defaultShow: false },
+];
+
+const RDA_REFERENCE: Record<NutrientKey, number> = {
+  energy_kcal: 2000,
+  total_fat_g: 67,
+  saturated_fat_g: 22,
+  trans_fat_g: 2.2,
+  cholesterol_mg: 300,
+  monounsaturated_fat_g: 20,
+  polyunsaturated_fat_g: 20,
+  sodium_mg: 2000,
+  carbohydrate_g: 300,
+  total_sugars_g: 50,
+  protein_g: 50,
+};
+
+function normalizeNutrition(raw: any): NutritionInfo {
+  const out: NutritionInfo = {};
+  const src = (raw ?? {}) as Record<string, any>;
+  // Legacy flat mapping
+  const legacyMap: Record<string, NutrientKey> = {
+    energy_kcal: "energy_kcal",
+    protein_g: "protein_g",
+    fat_g: "total_fat_g",
+    carbs_g: "carbohydrate_g",
+    sugar_g: "total_sugars_g",
+  };
+  for (const n of NUTRIENTS) {
+    const v = src[n.key];
+    if (v && typeof v === "object" && "value" in v) {
+      out[n.key] = {
+        value: Number(v.value) || 0,
+        show_rda: v.show_rda ?? n.defaultShow,
+      };
+    } else {
+      out[n.key] = { value: 0, show_rda: n.defaultShow };
+    }
+  }
+  // Backfill from legacy flat fields when new structure absent/zero.
+  for (const [legacy, key] of Object.entries(legacyMap)) {
+    const legacyVal = src[legacy];
+    if (typeof legacyVal === "number" && !out[key]?.value) {
+      out[key] = { value: legacyVal, show_rda: out[key]?.show_rda ?? true };
+    }
+  }
+  return out;
+}
+
+function computeRda(perHundred: number, servingSize: number | null | undefined, key: NutrientKey): string {
+  if (!servingSize || !perHundred) return "..";
+  const pct = ((perHundred * servingSize) / 100 / RDA_REFERENCE[key]) * 100;
+  return pct.toFixed(2);
+}
+
+interface CompanySettings {
+  property_id: string;
+  company_name: string | null;
+  address: string | null;
+  email: string | null;
+  customer_care_number: string | null;
+  fssai_lic_no: string | null;
+  facebook_url: string | null;
+  instagram_url: string | null;
+}
 
 interface LabelProduct {
   id: string;
@@ -47,6 +160,15 @@ interface LabelProduct {
   allergen_info: string | null;
   net_weight: string | null;
   is_active: boolean;
+  nutrition_info?: any;
+  serving_size_g?: number | null;
+  servings_per_package?: number | null;
+  default_label_template?: string | null;
+  company_name_override?: string | null;
+  address_override?: string | null;
+  email_override?: string | null;
+  customer_care_override?: string | null;
+  fssai_lic_override?: string | null;
 }
 
 interface LabelBatch {
@@ -59,6 +181,7 @@ interface LabelBatch {
   mrp: number | null;
   notes: string | null;
   created_at: string;
+  template_used?: string | null;
   label_products?: { name: string } | null;
 }
 
@@ -76,6 +199,7 @@ function LabelPrintingPage() {
           <TabsTrigger value="print">Print Label</TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="history">Print History</TabsTrigger>
+          <TabsTrigger value="settings">Company Details</TabsTrigger>
         </TabsList>
         <TabsContent value="print" className="mt-4">
           <PrintLabelTab />
@@ -85,6 +209,9 @@ function LabelPrintingPage() {
         </TabsContent>
         <TabsContent value="history" className="mt-4">
           <HistoryTab />
+        </TabsContent>
+        <TabsContent value="settings" className="mt-4">
+          <CompanySettingsTab />
         </TabsContent>
       </Tabs>
     </div>
@@ -220,6 +347,244 @@ function ProductsTab() {
   );
 }
 
+// ---------- Premium Label ----------
+function PremiumLabel({
+  product,
+  company,
+  packedOn,
+  expiryOn,
+  batchNo,
+  mrp,
+}: {
+  product: LabelProduct;
+  company: CompanySettings | null;
+  packedOn: string;
+  expiryOn: string;
+  batchNo: string;
+  mrp: string;
+}) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const nutrition = useMemo(() => normalizeNutrition(product.nutrition_info), [product]);
+  const barcodeValue = useMemo(() => {
+    const bn = batchNo || product.batch_no || product.id.slice(0, 8);
+    return `${bn}-${packedOn.replace(/-/g, "")}`;
+  }, [batchNo, product, packedOn]);
+
+  useEffect(() => {
+    if (!svgRef.current) return;
+    try {
+      JsBarcode(svgRef.current, barcodeValue, {
+        format: "CODE128",
+        displayValue: true,
+        fontSize: 9,
+        height: 30,
+        margin: 0,
+      });
+    } catch {}
+  }, [barcodeValue]);
+
+  const companyName = product.company_name_override || company?.company_name || "Brij Sweets";
+  const address = product.address_override || company?.address || "";
+  const email = product.email_override || company?.email || "";
+  const care = product.customer_care_override || company?.customer_care_number || "";
+  const fssai = product.fssai_lic_override || product.fssai_no || company?.fssai_lic_no || "";
+  const servingSize = product.serving_size_g ?? null;
+
+  const rows = NUTRIENTS.filter((n) => (nutrition[n.key]?.value ?? 0) > 0 || nutrition[n.key]?.show_rda);
+
+  return (
+    <div className="premium-label">
+      <div className="p-head">
+        <div className="p-brand">{companyName}</div>
+        <div className="p-name">{product.name}</div>
+        {product.net_weight && <div className="p-net">Net Wt: {product.net_weight}</div>}
+      </div>
+      <div className="cards">
+        <div className="card">
+          <h4>Nutrition Facts</h4>
+          <div style={{ fontSize: "7.5pt", color: "#444" }}>
+            Serving Size: {servingSize ? `${servingSize} g` : "—"}
+            {product.servings_per_package ? ` · Servings/Pack: ${product.servings_per_package}` : ""}
+          </div>
+          <table className="nf-table">
+            <thead>
+              <tr>
+                <td></td>
+                <td className="right" style={{ fontWeight: 700 }}>Per 100g</td>
+                <td className="right" style={{ fontWeight: 700 }}>%RDA*</td>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((n) => {
+                const cell = nutrition[n.key]!;
+                return (
+                  <tr key={n.key}>
+                    <td>{n.label}</td>
+                    <td className="right">{cell.value}</td>
+                    <td className="right">{cell.show_rda ? computeRda(cell.value, servingSize, n.key) : ".."}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <div style={{ fontSize: "6.5pt", marginTop: "1mm", color: "#555" }}>
+            *%RDA based on 2000 kcal reference diet per serving.
+          </div>
+        </div>
+        <div className="card">
+          <h4>Ingredients</h4>
+          <div>{product.ingredients || "—"}</div>
+          {product.allergen_info && (
+            <div style={{ marginTop: "1mm" }}>
+              <strong>Allergens:</strong> {product.allergen_info}
+            </div>
+          )}
+          {product.storage_instructions && (
+            <div style={{ marginTop: "1mm" }}>
+              <strong>Storage:</strong> {product.storage_instructions}
+            </div>
+          )}
+          <h4 style={{ marginTop: "2mm" }}>Marketed By</h4>
+          <div style={{ fontWeight: 600 }}>{companyName}</div>
+          {address && <div>{address}</div>}
+          {email && <div>Email: {email}</div>}
+          {care && <div>Customer Care: {care}</div>}
+          {fssai && <div style={{ marginTop: "1mm" }}>FSSAI Lic. No. {fssai}</div>}
+        </div>
+      </div>
+      <div className="p-foot">
+        <div>
+          <div><strong>Packed:</strong> {packedOn}</div>
+          <div><strong>Best Before:</strong> {expiryOn}</div>
+          {(batchNo || product.batch_no) && (
+            <div><strong>Batch:</strong> {batchNo || product.batch_no}</div>
+          )}
+          {mrp && <div><strong>MRP:</strong> ₹{mrp} (incl. of all taxes)</div>}
+        </div>
+        <div className="barcode">
+          <svg ref={svgRef} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Company Settings Tab ----------
+function CompanySettingsTab() {
+  const { current } = useCurrentProperty();
+  const { can } = usePermissions();
+  const [form, setForm] = useState<Partial<CompanySettings>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const canEdit = can("label_printing", "edit");
+
+  useEffect(() => {
+    if (!current) return;
+    setLoading(true);
+    supabase
+      .from("label_company_settings" as any)
+      .select("*")
+      .eq("property_id", current.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setForm((data as any) ?? { property_id: current.id });
+        setLoading(false);
+      });
+  }, [current?.id]);
+
+  async function save() {
+    if (!current) return;
+    setSaving(true);
+    const payload = {
+      property_id: current.id,
+      company_name: form.company_name || null,
+      address: form.address || null,
+      email: form.email || null,
+      customer_care_number: form.customer_care_number || null,
+      fssai_lic_no: form.fssai_lic_no || null,
+      facebook_url: form.facebook_url || null,
+      instagram_url: form.instagram_url || null,
+    };
+    const { error } = await supabase
+      .from("label_company_settings" as any)
+      .upsert(payload, { onConflict: "property_id" });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Company details saved");
+  }
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Company Details (Premium Label defaults)</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Field label="Company Name">
+            <Input
+              value={form.company_name ?? ""}
+              onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+              disabled={!canEdit}
+            />
+          </Field>
+          <Field label="Email">
+            <Input
+              value={form.email ?? ""}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              disabled={!canEdit}
+            />
+          </Field>
+          <Field label="Address" className="md:col-span-2">
+            <Textarea
+              rows={2}
+              value={form.address ?? ""}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              disabled={!canEdit}
+            />
+          </Field>
+          <Field label="Customer Care Number">
+            <Input
+              value={form.customer_care_number ?? ""}
+              onChange={(e) => setForm({ ...form, customer_care_number: e.target.value })}
+              disabled={!canEdit}
+            />
+          </Field>
+          <Field label="FSSAI Lic No">
+            <Input
+              value={form.fssai_lic_no ?? ""}
+              onChange={(e) => setForm({ ...form, fssai_lic_no: e.target.value })}
+              disabled={!canEdit}
+            />
+          </Field>
+          <Field label="Facebook URL">
+            <Input
+              value={form.facebook_url ?? ""}
+              onChange={(e) => setForm({ ...form, facebook_url: e.target.value })}
+              disabled={!canEdit}
+            />
+          </Field>
+          <Field label="Instagram URL">
+            <Input
+              value={form.instagram_url ?? ""}
+              onChange={(e) => setForm({ ...form, instagram_url: e.target.value })}
+              disabled={!canEdit}
+            />
+          </Field>
+        </div>
+        {canEdit && (
+          <div className="pt-2">
+            <Button onClick={save} disabled={saving}>
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ProductDialog({
   open,
   onOpenChange,
@@ -244,8 +609,15 @@ function ProductDialog({
       allergen_info: "",
       net_weight: "",
       is_active: true,
+      serving_size_g: null,
+      servings_per_package: null,
+      default_label_template: "thermal",
     },
   );
+  const [nutrition, setNutrition] = useState<NutritionInfo>(() =>
+    normalizeNutrition(initial?.nutrition_info),
+  );
+  const [overridesOpen, setOverridesOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function save() {
@@ -264,6 +636,23 @@ function ProductDialog({
       allergen_info: form.allergen_info || null,
       net_weight: form.net_weight || null,
       is_active: form.is_active ?? true,
+      serving_size_g:
+        form.serving_size_g === null || form.serving_size_g === undefined || (form.serving_size_g as any) === ""
+          ? null
+          : Number(form.serving_size_g),
+      servings_per_package:
+        form.servings_per_package === null ||
+        form.servings_per_package === undefined ||
+        (form.servings_per_package as any) === ""
+          ? null
+          : Number(form.servings_per_package),
+      default_label_template: form.default_label_template || "thermal",
+      company_name_override: form.company_name_override || null,
+      address_override: form.address_override || null,
+      email_override: form.email_override || null,
+      customer_care_override: form.customer_care_override || null,
+      fssai_lic_override: form.fssai_lic_override || null,
+      nutrition_info: nutrition,
     };
     const q = initial
       ? supabase.from("label_products" as any).update(payload).eq("id", initial.id)
@@ -277,7 +666,7 @@ function ProductDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit Product" : "New Product"}</DialogTitle>
         </DialogHeader>
@@ -308,6 +697,41 @@ function ProductDialog({
           <Field label="Net Weight">
             <Input value={form.net_weight ?? ""} onChange={(e) => setForm({ ...form, net_weight: e.target.value })} />
           </Field>
+          <Field label="Serving Size (g)">
+            <Input
+              type="number"
+              value={form.serving_size_g ?? ""}
+              onChange={(e) =>
+                setForm({ ...form, serving_size_g: e.target.value === "" ? null : Number(e.target.value) })
+              }
+            />
+          </Field>
+          <Field label="Servings Per Package">
+            <Input
+              type="number"
+              value={form.servings_per_package ?? ""}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  servings_per_package: e.target.value === "" ? null : Number(e.target.value),
+                })
+              }
+            />
+          </Field>
+          <Field label="Default Label Template" className="md:col-span-2">
+            <Select
+              value={form.default_label_template ?? "thermal"}
+              onValueChange={(v) => setForm({ ...form, default_label_template: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="thermal">Thermal Barcode Sticker</SelectItem>
+                <SelectItem value="premium">Premium Full Label</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
           <Field label="Storage Instructions" className="md:col-span-2">
             <Input
               value={form.storage_instructions ?? ""}
@@ -335,6 +759,100 @@ function ProductDialog({
             <Label>Active</Label>
           </div>
         </div>
+
+        {/* Nutrition Information */}
+        <div className="mt-2 border rounded p-3">
+          <div className="text-sm font-medium mb-2">Nutrition Information (per 100g)</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {NUTRIENTS.map((n) => {
+              const cell = nutrition[n.key] ?? { value: 0, show_rda: n.defaultShow };
+              return (
+                <div key={n.key} className="flex items-center gap-2 border rounded px-2 py-1.5">
+                  <div className="flex-1 text-xs">{n.label}</div>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    className="h-8 w-24"
+                    value={cell.value === 0 && !cell.show_rda ? "" : cell.value}
+                    onChange={(e) =>
+                      setNutrition({
+                        ...nutrition,
+                        [n.key]: {
+                          value: e.target.value === "" ? 0 : Number(e.target.value),
+                          show_rda: cell.show_rda,
+                        },
+                      })
+                    }
+                  />
+                  <label className="flex items-center gap-1 text-xs whitespace-nowrap">
+                    <Checkbox
+                      checked={cell.show_rda}
+                      onCheckedChange={(v) =>
+                        setNutrition({
+                          ...nutrition,
+                          [n.key]: { value: cell.value, show_rda: !!v },
+                        })
+                      }
+                    />
+                    %RDA
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Label Overrides */}
+        <div className="mt-2 border rounded">
+          <button
+            type="button"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium hover:bg-muted/50"
+            onClick={() => setOverridesOpen((v) => !v)}
+          >
+            {overridesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            Label Overrides (fall back to Company Details if empty)
+          </button>
+          {overridesOpen && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 border-t">
+              <Field label="Company Name">
+                <Input
+                  value={form.company_name_override ?? ""}
+                  placeholder="(using property default)"
+                  onChange={(e) => setForm({ ...form, company_name_override: e.target.value })}
+                />
+              </Field>
+              <Field label="Email">
+                <Input
+                  value={form.email_override ?? ""}
+                  placeholder="(using property default)"
+                  onChange={(e) => setForm({ ...form, email_override: e.target.value })}
+                />
+              </Field>
+              <Field label="Address" className="md:col-span-2">
+                <Input
+                  value={form.address_override ?? ""}
+                  placeholder="(using property default)"
+                  onChange={(e) => setForm({ ...form, address_override: e.target.value })}
+                />
+              </Field>
+              <Field label="Customer Care Number">
+                <Input
+                  value={form.customer_care_override ?? ""}
+                  placeholder="(using property default)"
+                  onChange={(e) => setForm({ ...form, customer_care_override: e.target.value })}
+                />
+              </Field>
+              <Field label="FSSAI Lic No">
+                <Input
+                  value={form.fssai_lic_override ?? ""}
+                  placeholder="(using property default)"
+                  onChange={(e) => setForm({ ...form, fssai_lic_override: e.target.value })}
+                />
+              </Field>
+            </div>
+          )}
+        </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
@@ -378,6 +896,8 @@ function PrintLabelTab() {
   const [mrp, setMrp] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [template, setTemplate] = useState<"thermal" | "premium">("thermal");
+  const [company, setCompany] = useState<CompanySettings | null>(null);
 
   useEffect(() => {
     if (!current) return;
@@ -391,6 +911,12 @@ function PrintLabelTab() {
         if (error) return toast.error(error.message);
         setProducts((data ?? []) as any);
       });
+    supabase
+      .from("label_company_settings" as any)
+      .select("*")
+      .eq("property_id", current.id)
+      .maybeSingle()
+      .then(({ data }) => setCompany((data as any) ?? null));
   }, [current?.id]);
 
   const filtered = useMemo(() => {
@@ -409,6 +935,7 @@ function PrintLabelTab() {
     setSelected(p);
     setBatchNo(p.batch_no ?? "");
     setMrp(p.mrp != null ? String(p.mrp) : "");
+    setTemplate((p.default_label_template as any) === "premium" ? "premium" : "thermal");
   }
 
   async function printAndSave() {
@@ -425,6 +952,7 @@ function PrintLabelTab() {
       mrp: mrp === "" ? null : Number(mrp),
       notes: notes || null,
       printed_by: user?.id ?? null,
+      template_used: template,
     });
     setSaving(false);
     if (error) return toast.error(error.message);
@@ -475,6 +1003,15 @@ function PrintLabelTab() {
 
           {selected && (
             <div className="space-y-3 pt-2">
+              <Field label="Template">
+                <Select value={template} onValueChange={(v) => setTemplate(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="thermal">Thermal Barcode Sticker</SelectItem>
+                    <SelectItem value="premium">Premium Full Label (4×6 in)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Packed On">
                   <Input type="date" value={packedOn} onChange={(e) => setPackedOn(e.target.value)} />
@@ -513,14 +1050,26 @@ function PrintLabelTab() {
         <div className="label-print-area">
           {selected ? (
             Array.from({ length: quantity }).map((_, i) => (
-              <LabelSheet
-                key={i}
-                product={selected}
-                packedOn={packedOn}
-                expiryOn={expiryOn}
-                batchNo={batchNo}
-                mrp={mrp}
-              />
+              template === "premium" ? (
+                <PremiumLabel
+                  key={i}
+                  product={selected}
+                  company={company}
+                  packedOn={packedOn}
+                  expiryOn={expiryOn}
+                  batchNo={batchNo}
+                  mrp={mrp}
+                />
+              ) : (
+                <LabelSheet
+                  key={i}
+                  product={selected}
+                  packedOn={packedOn}
+                  expiryOn={expiryOn}
+                  batchNo={batchNo}
+                  mrp={mrp}
+                />
+              )
             ))
           ) : (
             <div className="text-sm text-muted-foreground border rounded p-6 text-center no-print">
@@ -550,6 +1099,28 @@ function PrintLabelTab() {
         .label-sheet .ingredients { font-size: 7pt; margin-top: 1mm; line-height: 1.15; }
         .label-sheet .barcode { display: flex; justify-content: center; margin-top: 1mm; }
         .label-sheet .fssai { text-align: center; font-size: 7pt; margin-top: 0.5mm; }
+
+        .premium-label {
+          width: 4in; min-height: 6in;
+          padding: 4mm; border: 1px dashed #999; margin: 0 0 4mm 0;
+          font-family: "Helvetica Neue", Arial, sans-serif; color: #111;
+          background: #fff; box-sizing: border-box;
+          page-break-after: always; page-break-inside: avoid;
+          display: flex; flex-direction: column; gap: 2mm;
+        }
+        .premium-label .p-head { text-align: center; }
+        .premium-label .p-brand { font-weight: 800; font-size: 13pt; letter-spacing: 0.5px; }
+        .premium-label .p-name { font-weight: 700; font-size: 11pt; margin-top: 1mm; }
+        .premium-label .p-net { font-size: 9pt; color: #333; }
+        .premium-label .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 2mm; }
+        .premium-label .card { border: 1px solid #111; border-radius: 2mm; padding: 2mm; font-size: 8pt; line-height: 1.25; }
+        .premium-label .card h4 { margin: 0 0 1mm 0; font-size: 9pt; border-bottom: 1px solid #111; padding-bottom: 1mm; }
+        .premium-label .nf-table { width: 100%; border-collapse: collapse; margin-top: 1mm; font-size: 8pt; }
+        .premium-label .nf-table td { padding: 0.6mm 0; border-bottom: 0.3mm solid #ddd; }
+        .premium-label .nf-table td.right { text-align: right; font-variant-numeric: tabular-nums; }
+        .premium-label .p-foot { display: flex; justify-content: space-between; align-items: end; gap: 2mm; font-size: 7.5pt; margin-top: auto; }
+        .premium-label .p-foot .barcode svg { height: 12mm; }
+
         @media print {
           @page { size: 50mm auto; margin: 0; }
           body * { visibility: hidden !important; }
@@ -557,8 +1128,12 @@ function PrintLabelTab() {
           .label-print-area { position: absolute; left: 0; top: 0; }
           .no-print { display: none !important; }
           .label-sheet { border: none; margin: 0; }
+          .premium-label { border: none; margin: 0; }
         }
       `}</style>
+      {template === "premium" && (
+        <style>{`@media print { @page { size: 4in 6in; margin: 0; } }`}</style>
+      )}
     </div>
   );
 }
