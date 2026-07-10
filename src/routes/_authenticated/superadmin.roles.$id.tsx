@@ -55,6 +55,7 @@ const SECTIONS: { title: string; modules: { key: string; label: string; singleAc
   { title: "Staff HR", modules: [{ key: "staff_hr", label: "Staff HR" }] },
   { title: "Banquet", modules: [{ key: "banquet", label: "Banquet/Events" }] },
   { title: "Master Data", modules: [{ key: "master_data", label: "Master Data" }] },
+  { title: "Label Printing", modules: [{ key: "label_printing", label: "Label Printing" }] },
   { title: "Settings & Admin", modules: [
     { key: "settings_business", label: "Settings - Business" },
     { key: "settings_whatsapp", label: "Settings - WhatsApp" },
