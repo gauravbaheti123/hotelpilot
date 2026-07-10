@@ -1,0 +1,708 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import JsBarcode from "jsbarcode";
+import { format, addDays, parseISO } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import { useCurrentProperty } from "@/hooks/use-property";
+import { usePermissions } from "@/hooks/use-permissions";
+import { RequirePermission } from "@/components/RequirePermission";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { Plus, Pencil, Trash2, Printer as PrinterIcon, Search } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+export const Route = createFileRoute("/_authenticated/label-printing/")({
+  head: () => ({ meta: [{ title: "Label Printing — HotelPilot" }] }),
+  component: () => (
+    <RequirePermission module="label_printing">
+      <LabelPrintingPage />
+    </RequirePermission>
+  ),
+});
+
+interface LabelProduct {
+  id: string;
+  property_id: string;
+  name: string;
+  mrp: number | null;
+  batch_no: string | null;
+  ingredients: string | null;
+  fssai_no: string | null;
+  shelf_life_days: number;
+  storage_instructions: string | null;
+  allergen_info: string | null;
+  net_weight: string | null;
+  is_active: boolean;
+}
+
+interface LabelBatch {
+  id: string;
+  product_id: string;
+  quantity: number;
+  packed_on: string;
+  expiry_on: string;
+  batch_no: string | null;
+  mrp: number | null;
+  notes: string | null;
+  created_at: string;
+  label_products?: { name: string } | null;
+}
+
+function LabelPrintingPage() {
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-semibold">Label Printing</h1>
+        <p className="text-sm text-muted-foreground">
+          Manage packaged products and print thermal labels with barcode.
+        </p>
+      </div>
+      <Tabs defaultValue="print">
+        <TabsList>
+          <TabsTrigger value="print">Print Label</TabsTrigger>
+          <TabsTrigger value="products">Products</TabsTrigger>
+          <TabsTrigger value="history">Print History</TabsTrigger>
+        </TabsList>
+        <TabsContent value="print" className="mt-4">
+          <PrintLabelTab />
+        </TabsContent>
+        <TabsContent value="products" className="mt-4">
+          <ProductsTab />
+        </TabsContent>
+        <TabsContent value="history" className="mt-4">
+          <HistoryTab />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// ---------- Products Tab ----------
+function ProductsTab() {
+  const { current } = useCurrentProperty();
+  const { can } = usePermissions();
+  const [rows, setRows] = useState<LabelProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<LabelProduct | null>(null);
+  const [open, setOpen] = useState(false);
+
+  async function load() {
+    if (!current) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("label_products" as any)
+      .select("*")
+      .eq("property_id", current.id)
+      .order("name");
+    setLoading(false);
+    if (error) return toast.error(error.message);
+    setRows((data ?? []) as any);
+  }
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.id]);
+
+  async function remove(id: string) {
+    if (!confirm("Delete this product?")) return;
+    const { error } = await supabase.from("label_products" as any).delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Deleted");
+    load();
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-base">Products</CardTitle>
+        {can("label_printing", "create") && (
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditing(null);
+              setOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4 mr-1" /> New Product
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No products yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="py-2 pr-3">Name</th>
+                  <th className="py-2 pr-3">MRP</th>
+                  <th className="py-2 pr-3">Shelf (days)</th>
+                  <th className="py-2 pr-3">FSSAI</th>
+                  <th className="py-2 pr-3">Status</th>
+                  <th className="py-2 pr-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id} className="border-b last:border-b-0">
+                    <td className="py-2 pr-3 font-medium">{r.name}</td>
+                    <td className="py-2 pr-3">{r.mrp != null ? `₹${r.mrp}` : "—"}</td>
+                    <td className="py-2 pr-3">{r.shelf_life_days}</td>
+                    <td className="py-2 pr-3">{r.fssai_no ?? "—"}</td>
+                    <td className="py-2 pr-3">
+                      {r.is_active ? (
+                        <Badge>Active</Badge>
+                      ) : (
+                        <Badge variant="secondary">Inactive</Badge>
+                      )}
+                    </td>
+                    <td className="py-2 pr-3 text-right space-x-1">
+                      {can("label_printing", "edit") && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={() => {
+                            setEditing(r);
+                            setOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {can("label_printing", "delete") && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-destructive"
+                          onClick={() => remove(r.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+      {open && (
+        <ProductDialog
+          open={open}
+          onOpenChange={setOpen}
+          initial={editing}
+          onSaved={() => {
+            setOpen(false);
+            load();
+          }}
+        />
+      )}
+    </Card>
+  );
+}
+
+function ProductDialog({
+  open,
+  onOpenChange,
+  initial,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  initial: LabelProduct | null;
+  onSaved: () => void;
+}) {
+  const { current } = useCurrentProperty();
+  const [form, setForm] = useState<Partial<LabelProduct>>(
+    initial ?? {
+      name: "",
+      mrp: null,
+      batch_no: "",
+      ingredients: "",
+      fssai_no: "",
+      shelf_life_days: 7,
+      storage_instructions: "",
+      allergen_info: "",
+      net_weight: "",
+      is_active: true,
+    },
+  );
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!current) return;
+    if (!form.name?.trim()) return toast.error("Name is required");
+    setSaving(true);
+    const payload: any = {
+      property_id: current.id,
+      name: form.name.trim(),
+      mrp: form.mrp === null || form.mrp === undefined || (form.mrp as any) === "" ? null : Number(form.mrp),
+      batch_no: form.batch_no || null,
+      ingredients: form.ingredients || null,
+      fssai_no: form.fssai_no || null,
+      shelf_life_days: Number(form.shelf_life_days ?? 7),
+      storage_instructions: form.storage_instructions || null,
+      allergen_info: form.allergen_info || null,
+      net_weight: form.net_weight || null,
+      is_active: form.is_active ?? true,
+    };
+    const q = initial
+      ? supabase.from("label_products" as any).update(payload).eq("id", initial.id)
+      : supabase.from("label_products" as any).insert(payload);
+    const { error } = await q;
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(initial ? "Product updated" : "Product created");
+    onSaved();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{initial ? "Edit Product" : "New Product"}</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Field label="Name *">
+            <Input value={form.name ?? ""} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </Field>
+          <Field label="MRP (₹)">
+            <Input
+              type="number"
+              value={form.mrp ?? ""}
+              onChange={(e) => setForm({ ...form, mrp: e.target.value === "" ? null : Number(e.target.value) })}
+            />
+          </Field>
+          <Field label="Batch No.">
+            <Input value={form.batch_no ?? ""} onChange={(e) => setForm({ ...form, batch_no: e.target.value })} />
+          </Field>
+          <Field label="Shelf Life (days)">
+            <Input
+              type="number"
+              value={form.shelf_life_days ?? 7}
+              onChange={(e) => setForm({ ...form, shelf_life_days: Number(e.target.value) })}
+            />
+          </Field>
+          <Field label="FSSAI No.">
+            <Input value={form.fssai_no ?? ""} onChange={(e) => setForm({ ...form, fssai_no: e.target.value })} />
+          </Field>
+          <Field label="Net Weight">
+            <Input value={form.net_weight ?? ""} onChange={(e) => setForm({ ...form, net_weight: e.target.value })} />
+          </Field>
+          <Field label="Storage Instructions" className="md:col-span-2">
+            <Input
+              value={form.storage_instructions ?? ""}
+              onChange={(e) => setForm({ ...form, storage_instructions: e.target.value })}
+            />
+          </Field>
+          <Field label="Allergen Info" className="md:col-span-2">
+            <Input
+              value={form.allergen_info ?? ""}
+              onChange={(e) => setForm({ ...form, allergen_info: e.target.value })}
+            />
+          </Field>
+          <Field label="Ingredients" className="md:col-span-2">
+            <Textarea
+              rows={3}
+              value={form.ingredients ?? ""}
+              onChange={(e) => setForm({ ...form, ingredients: e.target.value })}
+            />
+          </Field>
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={form.is_active ?? true}
+              onCheckedChange={(v) => setForm({ ...form, is_active: v })}
+            />
+            <Label>Active</Label>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={save} disabled={saving}>
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Field({
+  label,
+  children,
+  className,
+}: {
+  label: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={className}>
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <div className="mt-1">{children}</div>
+    </div>
+  );
+}
+
+// ---------- Print Tab ----------
+function PrintLabelTab() {
+  const { current } = useCurrentProperty();
+  const { user } = useAuth();
+  const [query, setQuery] = useState("");
+  const [products, setProducts] = useState<LabelProduct[]>([]);
+  const [selected, setSelected] = useState<LabelProduct | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [packedOn, setPackedOn] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [batchNo, setBatchNo] = useState("");
+  const [mrp, setMrp] = useState<string>("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!current) return;
+    supabase
+      .from("label_products" as any)
+      .select("*")
+      .eq("property_id", current.id)
+      .eq("is_active", true)
+      .order("name")
+      .then(({ data, error }) => {
+        if (error) return toast.error(error.message);
+        setProducts((data ?? []) as any);
+      });
+  }, [current?.id]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => p.name.toLowerCase().includes(q));
+  }, [products, query]);
+
+  const expiryOn = useMemo(() => {
+    if (!selected || !packedOn) return "";
+    const d = parseISO(packedOn);
+    return format(addDays(d, selected.shelf_life_days), "yyyy-MM-dd");
+  }, [selected, packedOn]);
+
+  function pick(p: LabelProduct) {
+    setSelected(p);
+    setBatchNo(p.batch_no ?? "");
+    setMrp(p.mrp != null ? String(p.mrp) : "");
+  }
+
+  async function printAndSave() {
+    if (!current || !selected) return toast.error("Select a product");
+    if (quantity < 1) return toast.error("Quantity must be at least 1");
+    setSaving(true);
+    const { error } = await supabase.from("label_print_batches" as any).insert({
+      property_id: current.id,
+      product_id: selected.id,
+      quantity,
+      packed_on: packedOn,
+      expiry_on: expiryOn,
+      batch_no: batchNo || null,
+      mrp: mrp === "" ? null : Number(mrp),
+      notes: notes || null,
+      printed_by: user?.id ?? null,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(`Logged ${quantity} label(s)`);
+    doPrint();
+  }
+
+  function doPrint() {
+    window.print();
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4">
+      <Card className="no-print">
+        <CardHeader>
+          <CardTitle className="text-base">Select Product</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="relative">
+            <Search className="h-4 w-4 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search product…"
+              className="pl-8"
+            />
+          </div>
+          <div className="max-h-56 overflow-y-auto border rounded">
+            {filtered.length === 0 ? (
+              <p className="p-3 text-sm text-muted-foreground">No products found.</p>
+            ) : (
+              filtered.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => pick(p)}
+                  className={`w-full text-left px-3 py-2 border-b last:border-b-0 hover:bg-muted/50 ${
+                    selected?.id === p.id ? "bg-muted" : ""
+                  }`}
+                >
+                  <div className="font-medium text-sm">{p.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Shelf {p.shelf_life_days}d {p.mrp != null ? `· ₹${p.mrp}` : ""}
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+
+          {selected && (
+            <div className="space-y-3 pt-2">
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Packed On">
+                  <Input type="date" value={packedOn} onChange={(e) => setPackedOn(e.target.value)} />
+                </Field>
+                <Field label="Expiry (auto)">
+                  <Input value={expiryOn} readOnly />
+                </Field>
+                <Field label="Quantity">
+                  <Input
+                    type="number"
+                    min={1}
+                    value={quantity}
+                    onChange={(e) => setQuantity(Math.max(1, Number(e.target.value)))}
+                  />
+                </Field>
+                <Field label="MRP (₹)">
+                  <Input type="number" value={mrp} onChange={(e) => setMrp(e.target.value)} />
+                </Field>
+                <Field label="Batch No." className="col-span-2">
+                  <Input value={batchNo} onChange={(e) => setBatchNo(e.target.value)} />
+                </Field>
+                <Field label="Notes" className="col-span-2">
+                  <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
+                </Field>
+              </div>
+              <Button onClick={printAndSave} disabled={saving} className="w-full">
+                <PrinterIcon className="h-4 w-4 mr-1" /> {saving ? "Saving…" : "Print & Save"}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div>
+        <div className="text-sm text-muted-foreground mb-2 no-print">Preview</div>
+        <div className="label-print-area">
+          {selected ? (
+            Array.from({ length: quantity }).map((_, i) => (
+              <LabelSheet
+                key={i}
+                product={selected}
+                packedOn={packedOn}
+                expiryOn={expiryOn}
+                batchNo={batchNo}
+                mrp={mrp}
+              />
+            ))
+          ) : (
+            <div className="text-sm text-muted-foreground border rounded p-6 text-center no-print">
+              Select a product to preview label.
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        .label-sheet {
+          width: 50mm;
+          padding: 2mm 3mm;
+          border: 1px dashed #999;
+          margin: 0 0 3mm 0;
+          font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+          font-size: 8pt;
+          color: #000;
+          background: #fff;
+          page-break-inside: avoid;
+        }
+        .label-sheet .brand { font-weight: 700; font-size: 10pt; text-align: center; }
+        .label-sheet .pname { font-weight: 600; font-size: 9pt; text-align: center; margin: 1mm 0; }
+        .label-sheet .row { display: flex; justify-content: space-between; gap: 2mm; margin: 0.3mm 0; }
+        .label-sheet .k { color: #333; }
+        .label-sheet .v { font-weight: 600; }
+        .label-sheet .ingredients { font-size: 7pt; margin-top: 1mm; line-height: 1.15; }
+        .label-sheet .barcode { display: flex; justify-content: center; margin-top: 1mm; }
+        .label-sheet .fssai { text-align: center; font-size: 7pt; margin-top: 0.5mm; }
+        @media print {
+          @page { size: 50mm auto; margin: 0; }
+          body * { visibility: hidden !important; }
+          .label-print-area, .label-print-area * { visibility: visible !important; }
+          .label-print-area { position: absolute; left: 0; top: 0; }
+          .no-print { display: none !important; }
+          .label-sheet { border: none; margin: 0; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function LabelSheet({
+  product,
+  packedOn,
+  expiryOn,
+  batchNo,
+  mrp,
+}: {
+  product: LabelProduct;
+  packedOn: string;
+  expiryOn: string;
+  batchNo: string;
+  mrp: string;
+}) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const barcodeValue = useMemo(() => {
+    const bn = batchNo || product.batch_no || product.id.slice(0, 8);
+    return `${bn}-${packedOn.replace(/-/g, "")}`;
+  }, [batchNo, product, packedOn]);
+
+  useEffect(() => {
+    if (!svgRef.current) return;
+    try {
+      JsBarcode(svgRef.current, barcodeValue, {
+        format: "CODE128",
+        displayValue: true,
+        fontSize: 10,
+        height: 30,
+        margin: 0,
+      });
+    } catch (e) {
+      // silent
+    }
+  }, [barcodeValue]);
+
+  return (
+    <div className="label-sheet">
+      <div className="brand">BRIJ SWEETS</div>
+      <div className="pname">{product.name}</div>
+      {product.net_weight && (
+        <div className="row">
+          <span className="k">Net Wt:</span>
+          <span className="v">{product.net_weight}</span>
+        </div>
+      )}
+      {mrp && (
+        <div className="row">
+          <span className="k">MRP:</span>
+          <span className="v">₹{mrp}</span>
+        </div>
+      )}
+      <div className="row">
+        <span className="k">Packed:</span>
+        <span className="v">{packedOn}</span>
+      </div>
+      <div className="row">
+        <span className="k">Best Before:</span>
+        <span className="v">{expiryOn}</span>
+      </div>
+      {(batchNo || product.batch_no) && (
+        <div className="row">
+          <span className="k">Batch:</span>
+          <span className="v">{batchNo || product.batch_no}</span>
+        </div>
+      )}
+      {product.ingredients && <div className="ingredients">Ingredients: {product.ingredients}</div>}
+      {product.allergen_info && <div className="ingredients">Allergens: {product.allergen_info}</div>}
+      {product.storage_instructions && (
+        <div className="ingredients">Storage: {product.storage_instructions}</div>
+      )}
+      <div className="barcode">
+        <svg ref={svgRef} />
+      </div>
+      {product.fssai_no && <div className="fssai">FSSAI Lic. No. {product.fssai_no}</div>}
+    </div>
+  );
+}
+
+// ---------- History Tab ----------
+function HistoryTab() {
+  const { current } = useCurrentProperty();
+  const [rows, setRows] = useState<LabelBatch[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!current) return;
+    setLoading(true);
+    supabase
+      .from("label_print_batches" as any)
+      .select("*, label_products(name)")
+      .eq("property_id", current.id)
+      .order("created_at", { ascending: false })
+      .limit(200)
+      .then(({ data, error }) => {
+        setLoading(false);
+        if (error) return toast.error(error.message);
+        setRows((data ?? []) as any);
+      });
+  }, [current?.id]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Print History</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No print records yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="py-2 pr-3">When</th>
+                  <th className="py-2 pr-3">Product</th>
+                  <th className="py-2 pr-3">Qty</th>
+                  <th className="py-2 pr-3">Packed</th>
+                  <th className="py-2 pr-3">Expiry</th>
+                  <th className="py-2 pr-3">Batch</th>
+                  <th className="py-2 pr-3">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id} className="border-b last:border-b-0">
+                    <td className="py-2 pr-3">{format(new Date(r.created_at), "dd MMM yyyy, HH:mm")}</td>
+                    <td className="py-2 pr-3 font-medium">{r.label_products?.name ?? "—"}</td>
+                    <td className="py-2 pr-3">{r.quantity}</td>
+                    <td className="py-2 pr-3">{r.packed_on}</td>
+                    <td className="py-2 pr-3">{r.expiry_on}</td>
+                    <td className="py-2 pr-3">{r.batch_no ?? "—"}</td>
+                    <td className="py-2 pr-3">{r.notes ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
