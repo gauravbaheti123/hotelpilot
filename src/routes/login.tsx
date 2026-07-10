@@ -12,6 +12,7 @@ import {
   lockoutMessage,
 } from "@/lib/auth-security";
 import { currentUserTotpRequired, clearTotpVerified } from "@/lib/totp";
+import { resolvePostLoginRedirect } from "@/lib/post-login-redirect";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -34,7 +35,10 @@ function LoginPage() {
       if (!data.session) return;
       const needs = await currentUserTotpRequired();
       if (needs) navigate({ to: "/totp-challenge" });
-      else navigate({ to: "/dashboard" });
+      else {
+        const to = await resolvePostLoginRedirect(data.session.user.id);
+        navigate({ to });
+      }
     });
   }, [navigate]);
 
@@ -60,7 +64,10 @@ function LoginPage() {
         navigate({ to: "/totp-challenge" });
       } else {
         toast.success("Welcome back");
-        navigate({ to: "/dashboard" });
+        const { data: sess } = await supabase.auth.getSession();
+        const uid = sess.session?.user.id;
+        const to = uid ? await resolvePostLoginRedirect(uid) : "/dashboard";
+        navigate({ to });
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
