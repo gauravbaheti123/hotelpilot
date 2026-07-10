@@ -454,24 +454,25 @@ function PremiumLabel({
               <strong>Storage:</strong> {product.storage_instructions}
             </div>
           )}
-          <div style={{ fontWeight: 600, marginTop: "0.6mm" }}>{companyName}</div>
-          {address && <div>{address}</div>}
-          {email && <div>Email: {email}</div>}
-          {care && <div>Customer Care: {care}</div>}
-          {fssai && <div style={{ marginTop: "0.3mm" }}>FSSAI Lic. No. {fssai}</div>}
-        </div>
-      </div>
-      <div className="p-foot">
-        <div className="p-meta">
-          <div><strong>Packed:</strong> {packedOn}</div>
-          <div><strong>Best Before:</strong> {expiryOn}</div>
-          {(batchNo || product.batch_no) && (
-            <div><strong>Batch:</strong> {batchNo || product.batch_no}</div>
-          )}
-          {mrp && <div><strong>MRP:</strong> ₹{mrp} (incl. of all taxes)</div>}
-        </div>
-        <div className="barcode">
-          <svg ref={svgRef} />
+          <div className="pack-block">
+            {product.net_weight && <div>Net Wt: {product.net_weight}</div>}
+            {mrp && <div>MRP: ₹{mrp} (incl. of all taxes)</div>}
+            <div>Packed: {packedOn}</div>
+            <div>Best Before: {expiryOn}</div>
+            {(batchNo || product.batch_no) && (
+              <div>Batch: {batchNo || product.batch_no}</div>
+            )}
+          </div>
+          <div className="barcode-inline">
+            <svg ref={svgRef} />
+          </div>
+          <div className="company-block">
+            <div style={{ fontWeight: 700 }}>{companyName}</div>
+            {address && <div>Address- {address}</div>}
+            {email && <div>Email id: {email}</div>}
+            {care && <div>Customer care number- {care}</div>}
+            {fssai && <div>FSSAI Lic. No. {fssai}</div>}
+          </div>
         </div>
       </div>
     </div>
