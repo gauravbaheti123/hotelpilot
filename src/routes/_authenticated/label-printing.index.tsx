@@ -993,7 +993,7 @@ function PrintLabelTab() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-6 w-full">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(320px,420px)_1fr] gap-8 items-start">
       <Card className="no-print">
         <CardHeader>
           <CardTitle className="text-base">Select Product</CardTitle>
@@ -1073,7 +1073,7 @@ function PrintLabelTab() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col items-center lg:items-start">
+      <div className="flex flex-col items-center lg:items-start w-full max-w-[550px]">
         <div className="text-sm text-muted-foreground mb-2 no-print self-start">Preview</div>
         <div className="label-print-area w-full flex flex-col items-center">
           {selected ? (
