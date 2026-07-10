@@ -2311,6 +2311,50 @@ export type Database = {
           },
         ]
       }
+      label_company_settings: {
+        Row: {
+          address: string | null
+          company_name: string | null
+          customer_care_number: string | null
+          email: string | null
+          facebook_url: string | null
+          fssai_lic_no: string | null
+          instagram_url: string | null
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          company_name?: string | null
+          customer_care_number?: string | null
+          email?: string | null
+          facebook_url?: string | null
+          fssai_lic_no?: string | null
+          instagram_url?: string | null
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          company_name?: string | null
+          customer_care_number?: string | null
+          email?: string | null
+          facebook_url?: string | null
+          fssai_lic_no?: string | null
+          instagram_url?: string | null
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "label_company_settings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       label_print_batches: {
         Row: {
           batch_no: string | null
@@ -2324,6 +2368,7 @@ export type Database = {
           product_id: string
           property_id: string
           quantity: number
+          template_used: string | null
         }
         Insert: {
           batch_no?: string | null
@@ -2337,6 +2382,7 @@ export type Database = {
           product_id: string
           property_id: string
           quantity: number
+          template_used?: string | null
         }
         Update: {
           batch_no?: string | null
@@ -2350,6 +2396,7 @@ export type Database = {
           product_id?: string
           property_id?: string
           quantity?: number
+          template_used?: string | null
         }
         Relationships: [
           {
@@ -2370,10 +2417,16 @@ export type Database = {
       }
       label_products: {
         Row: {
+          address_override: string | null
           allergen_info: string | null
           batch_no: string | null
+          company_name_override: string | null
           created_at: string
           created_by: string | null
+          customer_care_override: string | null
+          default_label_template: string | null
+          email_override: string | null
+          fssai_lic_override: string | null
           fssai_no: string | null
           id: string
           ingredients: string | null
@@ -2381,16 +2434,25 @@ export type Database = {
           mrp: number | null
           name: string
           net_weight: string | null
+          nutrition_info: Json | null
           property_id: string
+          serving_size_g: number | null
+          servings_per_package: number | null
           shelf_life_days: number
           storage_instructions: string | null
           updated_at: string
         }
         Insert: {
+          address_override?: string | null
           allergen_info?: string | null
           batch_no?: string | null
+          company_name_override?: string | null
           created_at?: string
           created_by?: string | null
+          customer_care_override?: string | null
+          default_label_template?: string | null
+          email_override?: string | null
+          fssai_lic_override?: string | null
           fssai_no?: string | null
           id?: string
           ingredients?: string | null
@@ -2398,16 +2460,25 @@ export type Database = {
           mrp?: number | null
           name: string
           net_weight?: string | null
+          nutrition_info?: Json | null
           property_id: string
+          serving_size_g?: number | null
+          servings_per_package?: number | null
           shelf_life_days?: number
           storage_instructions?: string | null
           updated_at?: string
         }
         Update: {
+          address_override?: string | null
           allergen_info?: string | null
           batch_no?: string | null
+          company_name_override?: string | null
           created_at?: string
           created_by?: string | null
+          customer_care_override?: string | null
+          default_label_template?: string | null
+          email_override?: string | null
+          fssai_lic_override?: string | null
           fssai_no?: string | null
           id?: string
           ingredients?: string | null
@@ -2415,7 +2486,10 @@ export type Database = {
           mrp?: number | null
           name?: string
           net_weight?: string | null
+          nutrition_info?: Json | null
           property_id?: string
+          serving_size_g?: number | null
+          servings_per_package?: number | null
           shelf_life_days?: number
           storage_instructions?: string | null
           updated_at?: string
