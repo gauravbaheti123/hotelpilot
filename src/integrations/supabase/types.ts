@@ -2311,6 +2311,125 @@ export type Database = {
           },
         ]
       }
+      label_print_batches: {
+        Row: {
+          batch_no: string | null
+          created_at: string
+          expiry_on: string
+          id: string
+          mrp: number | null
+          notes: string | null
+          packed_on: string
+          printed_by: string | null
+          product_id: string
+          property_id: string
+          quantity: number
+        }
+        Insert: {
+          batch_no?: string | null
+          created_at?: string
+          expiry_on: string
+          id?: string
+          mrp?: number | null
+          notes?: string | null
+          packed_on?: string
+          printed_by?: string | null
+          product_id: string
+          property_id: string
+          quantity: number
+        }
+        Update: {
+          batch_no?: string | null
+          created_at?: string
+          expiry_on?: string
+          id?: string
+          mrp?: number | null
+          notes?: string | null
+          packed_on?: string
+          printed_by?: string | null
+          product_id?: string
+          property_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "label_print_batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "label_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "label_print_batches_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      label_products: {
+        Row: {
+          allergen_info: string | null
+          batch_no: string | null
+          created_at: string
+          created_by: string | null
+          fssai_no: string | null
+          id: string
+          ingredients: string | null
+          is_active: boolean
+          mrp: number | null
+          name: string
+          net_weight: string | null
+          property_id: string
+          shelf_life_days: number
+          storage_instructions: string | null
+          updated_at: string
+        }
+        Insert: {
+          allergen_info?: string | null
+          batch_no?: string | null
+          created_at?: string
+          created_by?: string | null
+          fssai_no?: string | null
+          id?: string
+          ingredients?: string | null
+          is_active?: boolean
+          mrp?: number | null
+          name: string
+          net_weight?: string | null
+          property_id: string
+          shelf_life_days?: number
+          storage_instructions?: string | null
+          updated_at?: string
+        }
+        Update: {
+          allergen_info?: string | null
+          batch_no?: string | null
+          created_at?: string
+          created_by?: string | null
+          fssai_no?: string | null
+          id?: string
+          ingredients?: string | null
+          is_active?: boolean
+          mrp?: number | null
+          name?: string
+          net_weight?: string | null
+          property_id?: string
+          shelf_life_days?: number
+          storage_instructions?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "label_products_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_categories: {
         Row: {
           created_at: string
