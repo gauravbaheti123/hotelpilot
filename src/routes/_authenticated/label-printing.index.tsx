@@ -22,8 +22,26 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Printer as PrinterIcon, Search } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Printer as PrinterIcon,
+  Search,
+  Facebook,
+  Instagram,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/label-printing/")({
   head: () => ({ meta: [{ title: "Label Printing — HotelPilot" }] }),
@@ -33,6 +51,103 @@ export const Route = createFileRoute("/_authenticated/label-printing/")({
     </RequirePermission>
   ),
 });
+
+// ---- Nutrition schema ----
+type NutrientKey =
+  | "energy_kcal"
+  | "total_fat_g"
+  | "saturated_fat_g"
+  | "trans_fat_g"
+  | "cholesterol_mg"
+  | "monounsaturated_fat_g"
+  | "polyunsaturated_fat_g"
+  | "sodium_mg"
+  | "carbohydrate_g"
+  | "total_sugars_g"
+  | "protein_g";
+
+interface NutrientCell {
+  value: number;
+  show_rda: boolean;
+}
+type NutritionInfo = Partial<Record<NutrientKey, NutrientCell>>;
+
+const NUTRIENTS: { key: NutrientKey; label: string; defaultShow: boolean }[] = [
+  { key: "energy_kcal", label: "Energy (kcal)", defaultShow: false },
+  { key: "total_fat_g", label: "Total Fat (g)", defaultShow: true },
+  { key: "saturated_fat_g", label: "Saturated Fat (g)", defaultShow: true },
+  { key: "trans_fat_g", label: "Trans Fat (g)", defaultShow: false },
+  { key: "cholesterol_mg", label: "Cholesterol (mg)", defaultShow: true },
+  { key: "monounsaturated_fat_g", label: "Monounsaturated Fatty Acids (g)", defaultShow: true },
+  { key: "polyunsaturated_fat_g", label: "Polyunsaturated Fatty Acids (g)", defaultShow: true },
+  { key: "sodium_mg", label: "Sodium (mg)", defaultShow: true },
+  { key: "carbohydrate_g", label: "Carbohydrate (g)", defaultShow: true },
+  { key: "total_sugars_g", label: "Total Sugars (g)", defaultShow: false },
+  { key: "protein_g", label: "Protein (g)", defaultShow: false },
+];
+
+const RDA_REFERENCE: Record<NutrientKey, number> = {
+  energy_kcal: 2000,
+  total_fat_g: 67,
+  saturated_fat_g: 22,
+  trans_fat_g: 2.2,
+  cholesterol_mg: 300,
+  monounsaturated_fat_g: 20,
+  polyunsaturated_fat_g: 20,
+  sodium_mg: 2000,
+  carbohydrate_g: 300,
+  total_sugars_g: 50,
+  protein_g: 50,
+};
+
+function normalizeNutrition(raw: any): NutritionInfo {
+  const out: NutritionInfo = {};
+  const src = (raw ?? {}) as Record<string, any>;
+  // Legacy flat mapping
+  const legacyMap: Record<string, NutrientKey> = {
+    energy_kcal: "energy_kcal",
+    protein_g: "protein_g",
+    fat_g: "total_fat_g",
+    carbs_g: "carbohydrate_g",
+    sugar_g: "total_sugars_g",
+  };
+  for (const n of NUTRIENTS) {
+    const v = src[n.key];
+    if (v && typeof v === "object" && "value" in v) {
+      out[n.key] = {
+        value: Number(v.value) || 0,
+        show_rda: v.show_rda ?? n.defaultShow,
+      };
+    } else {
+      out[n.key] = { value: 0, show_rda: n.defaultShow };
+    }
+  }
+  // Backfill from legacy flat fields when new structure absent/zero.
+  for (const [legacy, key] of Object.entries(legacyMap)) {
+    const legacyVal = src[legacy];
+    if (typeof legacyVal === "number" && !out[key]?.value) {
+      out[key] = { value: legacyVal, show_rda: out[key]?.show_rda ?? true };
+    }
+  }
+  return out;
+}
+
+function computeRda(perHundred: number, servingSize: number | null | undefined, key: NutrientKey): string {
+  if (!servingSize || !perHundred) return "..";
+  const pct = ((perHundred * servingSize) / 100 / RDA_REFERENCE[key]) * 100;
+  return pct.toFixed(2);
+}
+
+interface CompanySettings {
+  property_id: string;
+  company_name: string | null;
+  address: string | null;
+  email: string | null;
+  customer_care_number: string | null;
+  fssai_lic_no: string | null;
+  facebook_url: string | null;
+  instagram_url: string | null;
+}
 
 interface LabelProduct {
   id: string;
@@ -47,6 +162,15 @@ interface LabelProduct {
   allergen_info: string | null;
   net_weight: string | null;
   is_active: boolean;
+  nutrition_info?: any;
+  serving_size_g?: number | null;
+  servings_per_package?: number | null;
+  default_label_template?: string | null;
+  company_name_override?: string | null;
+  address_override?: string | null;
+  email_override?: string | null;
+  customer_care_override?: string | null;
+  fssai_lic_override?: string | null;
 }
 
 interface LabelBatch {
@@ -59,6 +183,7 @@ interface LabelBatch {
   mrp: number | null;
   notes: string | null;
   created_at: string;
+  template_used?: string | null;
   label_products?: { name: string } | null;
 }
 
@@ -76,6 +201,7 @@ function LabelPrintingPage() {
           <TabsTrigger value="print">Print Label</TabsTrigger>
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="history">Print History</TabsTrigger>
+          <TabsTrigger value="settings">Company Details</TabsTrigger>
         </TabsList>
         <TabsContent value="print" className="mt-4">
           <PrintLabelTab />
@@ -85,6 +211,9 @@ function LabelPrintingPage() {
         </TabsContent>
         <TabsContent value="history" className="mt-4">
           <HistoryTab />
+        </TabsContent>
+        <TabsContent value="settings" className="mt-4">
+          <CompanySettingsTab />
         </TabsContent>
       </Tabs>
     </div>
