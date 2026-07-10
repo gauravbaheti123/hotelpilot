@@ -993,7 +993,7 @@ function PrintLabelTab() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-6 w-full">
       <Card className="no-print">
         <CardHeader>
           <CardTitle className="text-base">Select Product</CardTitle>
@@ -1073,9 +1073,9 @@ function PrintLabelTab() {
         </CardContent>
       </Card>
 
-      <div>
-        <div className="text-sm text-muted-foreground mb-2 no-print">Preview</div>
-        <div className="label-print-area">
+      <div className="flex flex-col items-center lg:items-start">
+        <div className="text-sm text-muted-foreground mb-2 no-print self-start">Preview</div>
+        <div className="label-print-area w-full flex flex-col items-center">
           {selected ? (
             Array.from({ length: quantity }).map((_, i) => (
               template === "premium" ? (
@@ -1152,7 +1152,7 @@ function PrintLabelTab() {
         .premium-label .nf-table .nutrient-col { width: 55%; }
         .premium-label .nf-table .value-col { width: 22%; }
         .premium-label .nf-table .rda-col { width: 23%; }
-        .premium-label .pack-block { margin-top: 0.6mm; font-size: 5pt; line-height: 1.25; }
+        .premium-label .pack-block { margin-top: 2mm; font-size: 5pt; line-height: 1.25; }
         .premium-label .pack-block > div { margin: 0.1mm 0; }
         .premium-label .barcode-inline { display: flex; justify-content: center; align-items: center; margin: 0.6mm 0; }
         .premium-label .barcode-inline svg { height: 7mm; width: auto; max-width: 34mm; }
