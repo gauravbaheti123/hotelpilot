@@ -814,14 +814,26 @@ function PrintLabelTab() {
         <div className="label-print-area">
           {selected ? (
             Array.from({ length: quantity }).map((_, i) => (
-              <LabelSheet
-                key={i}
-                product={selected}
-                packedOn={packedOn}
-                expiryOn={expiryOn}
-                batchNo={batchNo}
-                mrp={mrp}
-              />
+              template === "premium" ? (
+                <PremiumLabel
+                  key={i}
+                  product={selected}
+                  company={company}
+                  packedOn={packedOn}
+                  expiryOn={expiryOn}
+                  batchNo={batchNo}
+                  mrp={mrp}
+                />
+              ) : (
+                <LabelSheet
+                  key={i}
+                  product={selected}
+                  packedOn={packedOn}
+                  expiryOn={expiryOn}
+                  batchNo={batchNo}
+                  mrp={mrp}
+                />
+              )
             ))
           ) : (
             <div className="text-sm text-muted-foreground border rounded p-6 text-center no-print">
