@@ -774,7 +774,7 @@ function ProductDialog({
           <div className="text-sm font-medium mb-2">Nutrition Information (per 100g)</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {NUTRIENTS.map((n) => {
-              const cell = nutrition[n.key] ?? { value: 0, show_rda: n.defaultShow };
+              const cell = nutrition[n.key] ?? { value: 0, show_rda: n.defaultShow, rda_override: null };
               return (
                 <div key={n.key} className="flex items-center gap-2 border rounded px-2 py-1.5">
                   <div className="flex-1 text-xs">{n.label}</div>
@@ -787,6 +787,7 @@ function ProductDialog({
                       setNutrition({
                         ...nutrition,
                         [n.key]: {
+                          ...cell,
                           value: e.target.value === "" ? 0 : Number(e.target.value),
                           show_rda: cell.show_rda,
                         },
@@ -799,12 +800,30 @@ function ProductDialog({
                       onCheckedChange={(v) =>
                         setNutrition({
                           ...nutrition,
-                          [n.key]: { value: cell.value, show_rda: !!v },
+                          [n.key]: { ...cell, value: cell.value, show_rda: !!v },
                         })
                       }
                     />
                     %RDA
                   </label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    className="h-8 w-20"
+                    placeholder="auto"
+                    disabled={!cell.show_rda}
+                    value={cell.rda_override ?? ""}
+                    onChange={(e) =>
+                      setNutrition({
+                        ...nutrition,
+                        [n.key]: {
+                          ...cell,
+                          rda_override: e.target.value === "" ? null : Number(e.target.value),
+                        },
+                      })
+                    }
+                    title="Manual %RDA override (leave blank for auto)"
+                  />
                 </div>
               );
             })}
