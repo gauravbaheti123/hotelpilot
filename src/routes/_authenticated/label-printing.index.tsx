@@ -28,8 +28,6 @@ import {
   Trash2,
   Printer as PrinterIcon,
   Search,
-  Facebook,
-  Instagram,
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
