@@ -373,8 +373,15 @@ function ProductDialog({
       allergen_info: "",
       net_weight: "",
       is_active: true,
+      serving_size_g: null,
+      servings_per_package: null,
+      default_label_template: "thermal",
     },
   );
+  const [nutrition, setNutrition] = useState<NutritionInfo>(() =>
+    normalizeNutrition(initial?.nutrition_info),
+  );
+  const [overridesOpen, setOverridesOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function save() {
@@ -393,6 +400,23 @@ function ProductDialog({
       allergen_info: form.allergen_info || null,
       net_weight: form.net_weight || null,
       is_active: form.is_active ?? true,
+      serving_size_g:
+        form.serving_size_g === null || form.serving_size_g === undefined || (form.serving_size_g as any) === ""
+          ? null
+          : Number(form.serving_size_g),
+      servings_per_package:
+        form.servings_per_package === null ||
+        form.servings_per_package === undefined ||
+        (form.servings_per_package as any) === ""
+          ? null
+          : Number(form.servings_per_package),
+      default_label_template: form.default_label_template || "thermal",
+      company_name_override: form.company_name_override || null,
+      address_override: form.address_override || null,
+      email_override: form.email_override || null,
+      customer_care_override: form.customer_care_override || null,
+      fssai_lic_override: form.fssai_lic_override || null,
+      nutrition_info: nutrition,
     };
     const q = initial
       ? supabase.from("label_products" as any).update(payload).eq("id", initial.id)
@@ -406,7 +430,7 @@ function ProductDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{initial ? "Edit Product" : "New Product"}</DialogTitle>
         </DialogHeader>
@@ -437,6 +461,41 @@ function ProductDialog({
           <Field label="Net Weight">
             <Input value={form.net_weight ?? ""} onChange={(e) => setForm({ ...form, net_weight: e.target.value })} />
           </Field>
+          <Field label="Serving Size (g)">
+            <Input
+              type="number"
+              value={form.serving_size_g ?? ""}
+              onChange={(e) =>
+                setForm({ ...form, serving_size_g: e.target.value === "" ? null : Number(e.target.value) })
+              }
+            />
+          </Field>
+          <Field label="Servings Per Package">
+            <Input
+              type="number"
+              value={form.servings_per_package ?? ""}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  servings_per_package: e.target.value === "" ? null : Number(e.target.value),
+                })
+              }
+            />
+          </Field>
+          <Field label="Default Label Template" className="md:col-span-2">
+            <Select
+              value={form.default_label_template ?? "thermal"}
+              onValueChange={(v) => setForm({ ...form, default_label_template: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="thermal">Thermal Barcode Sticker</SelectItem>
+                <SelectItem value="premium">Premium Full Label</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
           <Field label="Storage Instructions" className="md:col-span-2">
             <Input
               value={form.storage_instructions ?? ""}
@@ -464,6 +523,100 @@ function ProductDialog({
             <Label>Active</Label>
           </div>
         </div>
+
+        {/* Nutrition Information */}
+        <div className="mt-2 border rounded p-3">
+          <div className="text-sm font-medium mb-2">Nutrition Information (per 100g)</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {NUTRIENTS.map((n) => {
+              const cell = nutrition[n.key] ?? { value: 0, show_rda: n.defaultShow };
+              return (
+                <div key={n.key} className="flex items-center gap-2 border rounded px-2 py-1.5">
+                  <div className="flex-1 text-xs">{n.label}</div>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    className="h-8 w-24"
+                    value={cell.value === 0 && !cell.show_rda ? "" : cell.value}
+                    onChange={(e) =>
+                      setNutrition({
+                        ...nutrition,
+                        [n.key]: {
+                          value: e.target.value === "" ? 0 : Number(e.target.value),
+                          show_rda: cell.show_rda,
+                        },
+                      })
+                    }
+                  />
+                  <label className="flex items-center gap-1 text-xs whitespace-nowrap">
+                    <Checkbox
+                      checked={cell.show_rda}
+                      onCheckedChange={(v) =>
+                        setNutrition({
+                          ...nutrition,
+                          [n.key]: { value: cell.value, show_rda: !!v },
+                        })
+                      }
+                    />
+                    %RDA
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Label Overrides */}
+        <div className="mt-2 border rounded">
+          <button
+            type="button"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium hover:bg-muted/50"
+            onClick={() => setOverridesOpen((v) => !v)}
+          >
+            {overridesOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            Label Overrides (fall back to Company Details if empty)
+          </button>
+          {overridesOpen && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 border-t">
+              <Field label="Company Name">
+                <Input
+                  value={form.company_name_override ?? ""}
+                  placeholder="(using property default)"
+                  onChange={(e) => setForm({ ...form, company_name_override: e.target.value })}
+                />
+              </Field>
+              <Field label="Email">
+                <Input
+                  value={form.email_override ?? ""}
+                  placeholder="(using property default)"
+                  onChange={(e) => setForm({ ...form, email_override: e.target.value })}
+                />
+              </Field>
+              <Field label="Address" className="md:col-span-2">
+                <Input
+                  value={form.address_override ?? ""}
+                  placeholder="(using property default)"
+                  onChange={(e) => setForm({ ...form, address_override: e.target.value })}
+                />
+              </Field>
+              <Field label="Customer Care Number">
+                <Input
+                  value={form.customer_care_override ?? ""}
+                  placeholder="(using property default)"
+                  onChange={(e) => setForm({ ...form, customer_care_override: e.target.value })}
+                />
+              </Field>
+              <Field label="FSSAI Lic No">
+                <Input
+                  value={form.fssai_lic_override ?? ""}
+                  placeholder="(using property default)"
+                  onChange={(e) => setForm({ ...form, fssai_lic_override: e.target.value })}
+                />
+              </Field>
+            </div>
+          )}
+        </div>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
