@@ -863,6 +863,28 @@ function PrintLabelTab() {
         .label-sheet .ingredients { font-size: 7pt; margin-top: 1mm; line-height: 1.15; }
         .label-sheet .barcode { display: flex; justify-content: center; margin-top: 1mm; }
         .label-sheet .fssai { text-align: center; font-size: 7pt; margin-top: 0.5mm; }
+
+        .premium-label {
+          width: 4in; min-height: 6in;
+          padding: 4mm; border: 1px dashed #999; margin: 0 0 4mm 0;
+          font-family: "Helvetica Neue", Arial, sans-serif; color: #111;
+          background: #fff; box-sizing: border-box;
+          page-break-after: always; page-break-inside: avoid;
+          display: flex; flex-direction: column; gap: 2mm;
+        }
+        .premium-label .p-head { text-align: center; }
+        .premium-label .p-brand { font-weight: 800; font-size: 13pt; letter-spacing: 0.5px; }
+        .premium-label .p-name { font-weight: 700; font-size: 11pt; margin-top: 1mm; }
+        .premium-label .p-net { font-size: 9pt; color: #333; }
+        .premium-label .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 2mm; }
+        .premium-label .card { border: 1px solid #111; border-radius: 2mm; padding: 2mm; font-size: 8pt; line-height: 1.25; }
+        .premium-label .card h4 { margin: 0 0 1mm 0; font-size: 9pt; border-bottom: 1px solid #111; padding-bottom: 1mm; }
+        .premium-label .nf-table { width: 100%; border-collapse: collapse; margin-top: 1mm; font-size: 8pt; }
+        .premium-label .nf-table td { padding: 0.6mm 0; border-bottom: 0.3mm solid #ddd; }
+        .premium-label .nf-table td.right { text-align: right; font-variant-numeric: tabular-nums; }
+        .premium-label .p-foot { display: flex; justify-content: space-between; align-items: end; gap: 2mm; font-size: 7.5pt; margin-top: auto; }
+        .premium-label .p-foot .barcode svg { height: 12mm; }
+
         @media print {
           @page { size: 50mm auto; margin: 0; }
           body * { visibility: hidden !important; }
@@ -870,8 +892,12 @@ function PrintLabelTab() {
           .label-print-area { position: absolute; left: 0; top: 0; }
           .no-print { display: none !important; }
           .label-sheet { border: none; margin: 0; }
+          .premium-label { border: none; margin: 0; }
         }
       `}</style>
+      {template === "premium" && (
+        <style>{`@media print { @page { size: 4in 6in; margin: 0; } }`}</style>
+      )}
     </div>
   );
 }
