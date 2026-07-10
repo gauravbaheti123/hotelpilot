@@ -67,6 +67,7 @@ type NutrientKey =
 interface NutrientCell {
   value: number;
   show_rda: boolean;
+  rda_override?: number | null;
 }
 type NutritionInfo = Partial<Record<NutrientKey, NutrientCell>>;
 
@@ -115,9 +116,13 @@ function normalizeNutrition(raw: any): NutritionInfo {
       out[n.key] = {
         value: Number(v.value) || 0,
         show_rda: v.show_rda ?? n.defaultShow,
+        rda_override:
+          v.rda_override === null || v.rda_override === undefined || v.rda_override === ""
+            ? null
+            : Number(v.rda_override),
       };
     } else {
-      out[n.key] = { value: 0, show_rda: n.defaultShow };
+      out[n.key] = { value: 0, show_rda: n.defaultShow, rda_override: null };
     }
   }
   // Backfill from legacy flat fields when new structure absent/zero.
@@ -376,8 +381,8 @@ function PremiumLabel({
       JsBarcode(svgRef.current, barcodeValue, {
         format: "CODE128",
         displayValue: true,
-        fontSize: 9,
-        height: 30,
+        fontSize: 6,
+        height: 14,
         margin: 0,
       });
     } catch {}
@@ -402,32 +407,37 @@ function PremiumLabel({
       <div className="cards">
         <div className="card">
           <h4>Nutrition Facts</h4>
-          <div style={{ fontSize: "7.5pt", color: "#444" }}>
+          <div style={{ fontSize: "5pt", color: "#444" }}>
             Serving Size: {servingSize ? `${servingSize} g` : "—"}
             {product.servings_per_package ? ` · Servings/Pack: ${product.servings_per_package}` : ""}
           </div>
           <table className="nf-table">
             <thead>
               <tr>
-                <td></td>
-                <td className="right" style={{ fontWeight: 700 }}>Per 100g</td>
-                <td className="right" style={{ fontWeight: 700 }}>%RDA*</td>
+                <th className="left nutrient-col">&nbsp;</th>
+                <th className="right value-col">Per 100g</th>
+                <th className="right rda-col">%RDA*</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((n) => {
                 const cell = nutrition[n.key]!;
+                let rdaDisplay: string;
+                if (!cell.show_rda) rdaDisplay = "..";
+                else if (cell.rda_override != null && !Number.isNaN(cell.rda_override))
+                  rdaDisplay = String(cell.rda_override);
+                else rdaDisplay = computeRda(cell.value, servingSize, n.key);
                 return (
                   <tr key={n.key}>
-                    <td>{n.label}</td>
+                    <td className="left">{n.label}</td>
                     <td className="right">{cell.value}</td>
-                    <td className="right">{cell.show_rda ? computeRda(cell.value, servingSize, n.key) : ".."}</td>
+                    <td className="right">{rdaDisplay}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          <div style={{ fontSize: "6.5pt", marginTop: "1mm", color: "#555" }}>
+          <div style={{ fontSize: "4.5pt", marginTop: "0.3mm", color: "#555" }}>
             *%RDA based on 2000 kcal reference diet per serving.
           </div>
         </div>
@@ -435,25 +445,24 @@ function PremiumLabel({
           <h4>Ingredients</h4>
           <div>{product.ingredients || "—"}</div>
           {product.allergen_info && (
-            <div style={{ marginTop: "1mm" }}>
+            <div style={{ marginTop: "0.3mm" }}>
               <strong>Allergens:</strong> {product.allergen_info}
             </div>
           )}
           {product.storage_instructions && (
-            <div style={{ marginTop: "1mm" }}>
+            <div style={{ marginTop: "0.3mm" }}>
               <strong>Storage:</strong> {product.storage_instructions}
             </div>
           )}
-          <h4 style={{ marginTop: "2mm" }}>Marketed By</h4>
-          <div style={{ fontWeight: 600 }}>{companyName}</div>
+          <div style={{ fontWeight: 600, marginTop: "0.6mm" }}>{companyName}</div>
           {address && <div>{address}</div>}
           {email && <div>Email: {email}</div>}
           {care && <div>Customer Care: {care}</div>}
-          {fssai && <div style={{ marginTop: "1mm" }}>FSSAI Lic. No. {fssai}</div>}
+          {fssai && <div style={{ marginTop: "0.3mm" }}>FSSAI Lic. No. {fssai}</div>}
         </div>
       </div>
       <div className="p-foot">
-        <div>
+        <div className="p-meta">
           <div><strong>Packed:</strong> {packedOn}</div>
           <div><strong>Best Before:</strong> {expiryOn}</div>
           {(batchNo || product.batch_no) && (
