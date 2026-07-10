@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
+import { resolvePostLoginRedirect } from "@/lib/post-login-redirect";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import {
@@ -79,8 +80,10 @@ function Index() {
   const scrolled = useScrolled();
   useReveal();
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard" });
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return;
+      const to = await resolvePostLoginRedirect(data.session.user.id);
+      navigate({ to });
     });
   }, [navigate]);
 
