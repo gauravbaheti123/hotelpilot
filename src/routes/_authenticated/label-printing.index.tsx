@@ -402,7 +402,6 @@ function PremiumLabel({
       <div className="p-head">
         <div className="p-brand">{companyName}</div>
         <div className="p-name">{product.name}</div>
-        {product.net_weight && <div className="p-net">Net Wt: {product.net_weight}</div>}
       </div>
       <div className="cards">
         <div className="card">
