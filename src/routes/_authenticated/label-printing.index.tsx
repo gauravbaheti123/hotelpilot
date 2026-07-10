@@ -1073,9 +1073,9 @@ function PrintLabelTab() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col items-center lg:items-start w-full max-w-[550px]">
+      <div className="flex flex-col items-center lg:items-start w-full max-w-[720px]">
         <div className="text-sm text-muted-foreground mb-2 no-print self-start">Preview</div>
-        <div className="label-print-area w-full flex flex-col items-center">
+        <div className="label-print-area label-preview-screen w-full flex flex-col items-center">
           {selected ? (
             Array.from({ length: quantity }).map((_, i) => (
               template === "premium" ? (
@@ -1167,6 +1167,10 @@ function PrintLabelTab() {
           .no-print { display: none !important; }
           .label-sheet { border: none; margin: 0; }
           .premium-label { border: none; margin: 0; }
+          .label-preview-screen { zoom: 1 !important; }
+        }
+        @media screen {
+          .label-preview-screen { zoom: 1.6; }
         }
       `}</style>
       {template === "premium" && (
