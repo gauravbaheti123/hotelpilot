@@ -56,6 +56,7 @@ import {
   KeyRound,
   ScrollText,
   Menu,
+  Tag,
 } from "lucide-react";
 import { ShieldAlert } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -137,6 +138,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/expenses", label: "Expenses", icon: Wallet, module: "expenses" },
       { to: "/staff", label: "Staff HR", icon: Users, module: "staff_hr" },
       { to: "/banquet/bookings", label: "Banquet", icon: PartyPopper, module: "banquet" },
+      { to: "/label-printing", label: "Label Printing", icon: Tag, module: "label_printing" },
       { to: "/masters", label: "Master Data", icon: LayoutGrid, module: "master_data" },
       { to: "/settings", label: "Settings", icon: Settings,
         modules: ["settings_business", "settings_invoice", "settings_whatsapp", "user_management", "roles_permissions"] },
