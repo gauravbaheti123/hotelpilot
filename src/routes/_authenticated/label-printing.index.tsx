@@ -402,7 +402,6 @@ function PremiumLabel({
       <div className="p-head">
         <div className="p-brand">{companyName}</div>
         <div className="p-name">{product.name}</div>
-        {product.net_weight && <div className="p-net">Net Wt: {product.net_weight}</div>}
       </div>
       <div className="cards">
         <div className="card">
@@ -438,7 +437,7 @@ function PremiumLabel({
             </tbody>
           </table>
           <div style={{ fontSize: "4.5pt", marginTop: "0.3mm", color: "#555" }}>
-            *%RDA based on 2000 kcal reference diet per serving.
+            *The % Daily Value (DV) tells you how much a nutrient in a serving food contributes to a daily diet. 2000 calories a day used for general.
           </div>
         </div>
         <div className="card">
@@ -454,24 +453,25 @@ function PremiumLabel({
               <strong>Storage:</strong> {product.storage_instructions}
             </div>
           )}
-          <div style={{ fontWeight: 600, marginTop: "0.6mm" }}>{companyName}</div>
-          {address && <div>{address}</div>}
-          {email && <div>Email: {email}</div>}
-          {care && <div>Customer Care: {care}</div>}
-          {fssai && <div style={{ marginTop: "0.3mm" }}>FSSAI Lic. No. {fssai}</div>}
-        </div>
-      </div>
-      <div className="p-foot">
-        <div className="p-meta">
-          <div><strong>Packed:</strong> {packedOn}</div>
-          <div><strong>Best Before:</strong> {expiryOn}</div>
-          {(batchNo || product.batch_no) && (
-            <div><strong>Batch:</strong> {batchNo || product.batch_no}</div>
-          )}
-          {mrp && <div><strong>MRP:</strong> ₹{mrp} (incl. of all taxes)</div>}
-        </div>
-        <div className="barcode">
-          <svg ref={svgRef} />
+          <div className="pack-block">
+            {product.net_weight && <div>Net Wt: {product.net_weight}</div>}
+            {mrp && <div>MRP: ₹{mrp} (incl. of all taxes)</div>}
+            <div>Packed: {packedOn}</div>
+            <div>Best Before: {expiryOn}</div>
+            {(batchNo || product.batch_no) && (
+              <div>Batch: {batchNo || product.batch_no}</div>
+            )}
+          </div>
+          <div className="barcode-inline">
+            <svg ref={svgRef} />
+          </div>
+          <div className="company-block">
+            <div style={{ fontWeight: 700 }}>{companyName}</div>
+            {address && <div>Address- {address}</div>}
+            {email && <div>Email id: {email}</div>}
+            {care && <div>Customer care number- {care}</div>}
+            {fssai && <div>FSSAI Lic. No. {fssai}</div>}
+          </div>
         </div>
       </div>
     </div>
@@ -1129,7 +1129,7 @@ function PrintLabelTab() {
         .label-sheet .fssai { text-align: center; font-size: 7pt; margin-top: 0.5mm; }
 
         .premium-label {
-          width: 8cm; height: 6cm;
+          width: 8cm; height: 7cm;
           padding: 1.5mm; border: 1px dashed #999; margin: 0 0 3mm 0;
           font-family: "Helvetica Neue", Arial, sans-serif; color: #111;
           background: #fff; box-sizing: border-box;
@@ -1152,10 +1152,12 @@ function PrintLabelTab() {
         .premium-label .nf-table .nutrient-col { width: 55%; }
         .premium-label .nf-table .value-col { width: 22%; }
         .premium-label .nf-table .rda-col { width: 23%; }
-        .premium-label .p-foot { display: flex; justify-content: space-between; align-items: center; gap: 1mm; font-size: 5pt; margin-top: auto; border-top: 0.5px solid #111; padding-top: 0.5mm; }
-        .premium-label .p-foot .p-meta { flex: 1; }
-        .premium-label .p-foot .barcode { display: flex; justify-content: center; align-items: center; }
-        .premium-label .p-foot .barcode svg { height: 8mm; width: auto; max-width: 32mm; }
+        .premium-label .pack-block { margin-top: 0.6mm; font-size: 5pt; line-height: 1.25; }
+        .premium-label .pack-block > div { margin: 0.1mm 0; }
+        .premium-label .barcode-inline { display: flex; justify-content: center; align-items: center; margin: 0.6mm 0; }
+        .premium-label .barcode-inline svg { height: 7mm; width: auto; max-width: 34mm; }
+        .premium-label .company-block { margin-top: 2.4mm; font-size: 5pt; line-height: 1.25; }
+        .premium-label .company-block > div { margin: 0.1mm 0; }
 
         @media print {
           @page { size: 50mm auto; margin: 0; }
@@ -1169,8 +1171,8 @@ function PrintLabelTab() {
       `}</style>
       {template === "premium" && (
         <style>{`@media print {
-          @page { size: 8cm 6cm; margin: 0; }
-          .premium-label { width: 8cm; height: 6cm; border: none; margin: 0; page-break-after: always; }
+          @page { size: 8cm 7cm; margin: 0; }
+          .premium-label { width: 8cm; height: 7cm; border: none; margin: 0; page-break-after: always; }
         }`}</style>
       )}
     </div>

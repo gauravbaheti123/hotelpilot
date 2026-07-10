@@ -7,8 +7,8 @@ export function getPrintStyles(paperSize: string | null | undefined): string {
   if (size === "A4") {
     return `@page { size: A4; margin: 10mm; }`;
   }
-  if (size === ("8x6cm" as any)) {
-    return `@page { size: 8cm 6cm; margin: 0; }
+  if (size === ("8x7cm" as any) || size === ("8x6cm" as any)) {
+    return `@page { size: 8cm 7cm; margin: 0; }
             body { width: 8cm; font-size: 6pt; }`;
   }
   return `@page { size: ${size} auto; margin: 3mm; }
