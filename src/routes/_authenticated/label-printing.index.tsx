@@ -767,6 +767,15 @@ function PrintLabelTab() {
 
           {selected && (
             <div className="space-y-3 pt-2">
+              <Field label="Template">
+                <Select value={template} onValueChange={(v) => setTemplate(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="thermal">Thermal Barcode Sticker</SelectItem>
+                    <SelectItem value="premium">Premium Full Label (4×6 in)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Packed On">
                   <Input type="date" value={packedOn} onChange={(e) => setPackedOn(e.target.value)} />
