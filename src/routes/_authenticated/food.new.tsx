@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { computeKotTotals } from "@/lib/food";
 import { Plus, Minus, Trash2 } from "lucide-react";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
+import { buildKotPrintPlan, runKotPrintJobs, type PrinterInfo } from "@/lib/kotPrint";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/food/new")({
@@ -36,7 +37,14 @@ interface MenuItem {
   short_code?: string | null;
 }
 interface MenuCategory { id: string; name: string; kot_printer_id?: string | null }
-interface PrinterOption { id: string; name: string; location: string | null }
+interface PrinterOption {
+  id: string;
+  name: string;
+  location: string | null;
+  paper_size: string | null;
+  printer_role: string;
+  type: string;
+}
 interface InHouseRow {
   id: string; booking_id: string; room_id: string;
   rooms: { room_number: string } | null;
@@ -64,6 +72,7 @@ function NewKotPage() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [cats, setCats] = useState<MenuCategory[]>([]);
   const [printers, setPrinters] = useState<PrinterOption[]>([]);
+  const [counterPrinter, setCounterPrinter] = useState<PrinterOption | null>(null);
   const [inhouse, setInhouse] = useState<InHouseRow[]>([]);
   const [activeCat, setActiveCat] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -87,12 +96,14 @@ function NewKotPage() {
   useEffect(() => {
     if (!propertyId) return;
     (async () => {
-      const [mi, mc, pr, ih] = await Promise.all([
+      const [mi, mc, pr, cc, ih] = await Promise.all([
         supabase.from("menu_items").select("id,name,price,gst_rate,kot_station,is_available,category_id,kitchen_type,kitchen_printer_id,short_code")
           .eq("property_id", propertyId).eq("is_available", true).order("name"),
         supabase.from("menu_categories").select("id,name,kot_printer_id").eq("property_id", propertyId).order("name"),
-        supabase.from("printers").select("id,name,location")
+        supabase.from("printers").select("id,name,location,paper_size,printer_role,type")
           .eq("property_id", propertyId).eq("is_active", true).in("type", ["kot", "both"]).order("name"),
+        supabase.from("printers").select("id,name,location,paper_size,printer_role,type")
+          .eq("property_id", propertyId).eq("is_active", true).eq("printer_role", "Counter Copy").maybeSingle(),
         supabase.from("booking_rooms")
           .select("id,booking_id,room_id,status,rooms!booking_rooms_room_id_fkey(room_number),bookings!inner(id,booking_number,status,guests(name,mobile))")
           .eq("property_id", propertyId)
@@ -103,6 +114,7 @@ function NewKotPage() {
       setItems((mi.data ?? []) as MenuItem[]);
       setCats((mc.data ?? []) as MenuCategory[]);
       setPrinters((pr.data ?? []) as PrinterOption[]);
+      setCounterPrinter((cc.data ?? null) as PrinterOption | null);
       setInhouse((ih.data ?? []) as unknown as InHouseRow[]);
     })();
   }, [propertyId]);
@@ -129,6 +141,23 @@ function NewKotPage() {
   }, [items, activeCat, search]);
 
   const totals = useMemo(() => computeKotTotals(cart), [cart]);
+
+  const printPlanPreview = useMemo(() => {
+    if (cart.length === 0) return { names: [] as string[], warnings: [] as string[] };
+    const planItems = cart.map((c) => ({
+      item_name: c.item_name, qty: c.qty, rate: c.rate, notes: c.notes ?? null,
+      printer_id: c.printer_id,
+    }));
+    const infoPrinters: PrinterInfo[] = printers.map((p) => ({
+      id: p.id, name: p.name, paper_size: p.paper_size, printer_role: p.printer_role,
+    }));
+    const cc: PrinterInfo | null = counterPrinter
+      ? { id: counterPrinter.id, name: counterPrinter.name, paper_size: counterPrinter.paper_size, printer_role: counterPrinter.printer_role }
+      : null;
+    const { jobs, warnings } = buildKotPrintPlan(planItems, infoPrinters, cc, "kitchen+counter");
+    const names = jobs.map((j) => `${j.printer.name} (${j.badge === "COUNTER COPY" ? "counter" : "kitchen"})`);
+    return { names, warnings };
+  }, [cart, printers, counterPrinter]);
 
   function addItem(it: MenuItem) {
     setCart((prev) => {
