@@ -174,6 +174,14 @@ function NewKotPage() {
       const printerId = it.kitchen_printer_id ?? cat?.kot_printer_id ?? null;
       const printer = printers.find((p) => p.id === printerId);
       const printerName = printer?.name ?? (it.kot_station || "kitchen");
+      console.log("[kotPrint] resolve item →", {
+        name: it.name,
+        kitchen_printer_id: it.kitchen_printer_id,
+        category_id: it.category_id,
+        category_kot_printer_id: cat?.kot_printer_id ?? null,
+        resolvedPrinterId: printerId,
+        resolvedPrinterName: printer?.name ?? null,
+      });
       return [...prev, {
         menu_item_id: it.id, item_name: it.name, qty: 1,
         rate: Number(it.price), gst_rate: Number(it.gst_rate ?? 5),
