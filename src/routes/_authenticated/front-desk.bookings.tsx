@@ -25,7 +25,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_TONE } from "@/lib/front-desk";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, FileText } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/front-desk/bookings")({
@@ -131,6 +131,7 @@ function BookingsPage() {
                     <TableHead>Total</TableHead>
                     <TableHead>Balance</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -163,6 +164,13 @@ function BookingsPage() {
                             {BOOKING_STATUS_LABEL[r.status] ?? r.status}
                           </Badge>
                         )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link to="/bookings/$bookingId/grc" params={{ bookingId: r.id }}>
+                          <Button size="sm" variant="ghost" title="Guest Registration Card">
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        </Link>
                       </TableCell>
                     </TableRow>
                   ))}

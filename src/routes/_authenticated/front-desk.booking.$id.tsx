@@ -47,6 +47,7 @@ import {
   ShieldAlert,
   Check,
   BedDouble,
+  FileText,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/front-desk/booking/$id")({
@@ -527,6 +528,9 @@ function BookingDetailPage() {
             <div className="flex gap-2">
               <Link to="/billing/folio/$bookingId" params={{ bookingId: b.id }}>
                 <Button variant="outline"><Receipt className="h-4 w-4 mr-1" /> Folio</Button>
+              </Link>
+              <Link to="/bookings/$bookingId/grc" params={{ bookingId: b.id }}>
+                <Button variant="outline"><FileText className="h-4 w-4 mr-1" /> Print GRC</Button>
               </Link>
               {canCheckIn && <Button onClick={checkIn}><LogIn className="h-4 w-4 mr-1" /> Check-in</Button>}
               {canCheckOut && <Button onClick={() => setCheckoutOpen(true)}><LogOut className="h-4 w-4 mr-1" /> Check-out</Button>}

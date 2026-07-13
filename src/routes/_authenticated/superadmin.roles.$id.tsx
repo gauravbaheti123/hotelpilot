@@ -26,6 +26,7 @@ const SECTIONS: { title: string; modules: { key: string; label: string; singleAc
     { key: "bookings", label: "Bookings" },
     { key: "calendar", label: "Calendar" },
     { key: "inhouse", label: "In-house" },
+    { key: "grc", label: "GRC (Guest Registration Card)" },
   ]},
   { title: "Food & KOT", modules: [
     { key: "food_dashboard", label: "Food Dashboard" },

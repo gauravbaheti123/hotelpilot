@@ -1540,6 +1540,81 @@ export type Database = {
           },
         ]
       }
+      grc_records: {
+        Row: {
+          address: string | null
+          arrival_from: string | null
+          billing_instruction: string | null
+          booking_id: string
+          company: string | null
+          created_at: string
+          created_by: string | null
+          designation: string | null
+          discount_note: string | null
+          duty_manager_name: string | null
+          grc_number: string | null
+          id: string
+          mode_of_payment: string | null
+          preceding_to: string | null
+          property_id: string
+          purpose_of_visit: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          arrival_from?: string | null
+          billing_instruction?: string | null
+          booking_id: string
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          designation?: string | null
+          discount_note?: string | null
+          duty_manager_name?: string | null
+          grc_number?: string | null
+          id?: string
+          mode_of_payment?: string | null
+          preceding_to?: string | null
+          property_id: string
+          purpose_of_visit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          arrival_from?: string | null
+          billing_instruction?: string | null
+          booking_id?: string
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          designation?: string | null
+          discount_note?: string | null
+          duty_manager_name?: string | null
+          grc_number?: string | null
+          id?: string
+          mode_of_payment?: string | null
+          preceding_to?: string | null
+          property_id?: string
+          purpose_of_visit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grc_records_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grc_records_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gst_slabs: {
         Row: {
           active: boolean
@@ -3534,6 +3609,7 @@ export type Database = {
           fiscal_year_start: string | null
           food_gst_rate: number
           fssai: string | null
+          grc_terms: string | null
           gstin: string | null
           id: string
           invoice_footer: string | null
@@ -3591,6 +3667,7 @@ export type Database = {
           fiscal_year_start?: string | null
           food_gst_rate?: number
           fssai?: string | null
+          grc_terms?: string | null
           gstin?: string | null
           id?: string
           invoice_footer?: string | null
@@ -3648,6 +3725,7 @@ export type Database = {
           fiscal_year_start?: string | null
           food_gst_rate?: number
           fssai?: string | null
+          grc_terms?: string | null
           gstin?: string | null
           id?: string
           invoice_footer?: string | null
