@@ -221,7 +221,7 @@ function GrcPage() {
         </Card>
 
         {/* Print layout */}
-        <div className="grc-print bg-white text-black border-2 border-black p-4 text-[12px] leading-tight">
+        <div id="grc-print-area" className="grc-print bg-white text-black border-2 border-black p-4 text-[12px] leading-tight">
           <div className="flex items-start gap-3 border-b-2 border-black pb-2 mb-2">
             {property?.logo_url && (
               <img src={property.logo_url} alt="" className="h-14 w-14 object-contain" />
