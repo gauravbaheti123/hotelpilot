@@ -11,8 +11,12 @@ export function getPrintStyles(paperSize: string | null | undefined): string {
     return `@page { size: 8cm 7cm; margin: 0; }
             body { width: 8cm; font-size: 6pt; }`;
   }
-  return `@page { size: ${size} auto; margin: 3mm; }
-          body { width: ${size}; font-size: 11px; }`;
+  // Thermal roll: page height MUST be `auto` so the driver cuts right after
+  // content. Also reset html/body layout — any inherited min-height/height
+  // from the app shell would stretch the printable area to a full page.
+  return `@page { size: ${size} auto; margin: 2mm; }
+          html, body { width: ${size}; min-height: 0 !important; height: auto !important; margin: 0; padding: 0; }
+          body { font-size: 11px; }`;
 }
 
 /**
