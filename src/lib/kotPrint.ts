@@ -50,10 +50,19 @@ function renderKotHtml(
   printerName: string,
 ): string {
   const total = items.reduce((s, i) => s + i.qty * i.rate, 0);
-  return `<html><head><title>${esc(header.kot_number)}</title>
-<style>${getPrintStyles(paperSize)}
-html,body{margin:0;padding:0;height:auto;min-height:0}
-body{font:12px monospace;padding:6px;width:auto}
+  // NOTE: @page rule MUST be the very first rule in the stylesheet and
+  // scoped to this iframe's own document — the parent page's print CSS
+  // does not cascade into the iframe. Keep html/body height:auto so the
+  // thermal driver cuts right after content.
+  const pageCss = getPrintStyles(paperSize);
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(header.kot_number)}</title>
+<style>
+${pageCss}
+@media print {
+  html, body { width: ${paperSize}; min-height: 0 !important; height: auto !important; }
+}
+html,body{margin:0;padding:0;height:auto;min-height:0;width:${paperSize}}
+body{font:12px monospace;padding:4px;box-sizing:border-box}
 h2{margin:0 0 4px;font-size:14px}
 .badge{display:inline-block;padding:2px 6px;border:1px solid #000;font-weight:bold;margin-bottom:4px;font-size:11px;letter-spacing:0.5px}
 hr{border:none;border-top:1px dashed #999;margin:6px 0}
