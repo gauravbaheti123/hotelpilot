@@ -155,26 +155,34 @@ export async function runKotPrintJobs(header: KotHeader, jobs: PrintJob[]): Prom
       job.badge,
       job.printer.name,
     );
+    // Remove any leftover parent-doc print stylesheet (e.g. hp-dynamic-print
+    // from A4 flows) so it can't cascade onto the print dialog if the browser
+    // falls back to the top-level document's page rules.
+    document.getElementById("hp-dynamic-print")?.remove();
     const iframe = document.createElement("iframe");
+    iframe.setAttribute("aria-hidden", "true");
     iframe.style.position = "fixed";
     iframe.style.right = "0";
     iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
+    // Give iframe a real (but off-screen) size — a 0×0 iframe can make some
+    // browsers skip layout entirely and fall back to the parent's page size.
+    iframe.style.width = "80mm";
+    iframe.style.height = "200mm";
     iframe.style.border = "0";
-    iframe.style.visibility = "hidden";
+    iframe.style.opacity = "0";
+    iframe.style.pointerEvents = "none";
+    // Use srcdoc so the iframe has its own isolated document with our @page
+    // rules — document.write() into an about:blank iframe can inherit quirks
+    // and, in some browsers, the parent's print page settings.
+    iframe.srcdoc = html;
     document.body.appendChild(iframe);
-    const doc = iframe.contentDocument;
-    if (!doc) {
-      console.warn("[kotPrint] iframe has no contentDocument, skipping job", job.printer.name);
-      iframe.remove();
-      continue;
-    }
-    doc.open();
-    doc.write(html);
-    doc.close();
-    // Wait for content to lay out (fonts/images not critical here but give it a beat).
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise<void>((resolve) => {
+      const done = () => resolve();
+      iframe.addEventListener("load", done, { once: true });
+      setTimeout(done, 800);
+    });
+    // Extra beat for layout after load.
+    await new Promise((r) => setTimeout(r, 100));
     const win = iframe.contentWindow;
     if (!win) {
       iframe.remove();
