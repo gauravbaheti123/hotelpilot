@@ -163,6 +163,9 @@ function KotDetailPage() {
       toast.error("Nothing to print.");
       return;
     }
+    const names = jobs.map((j) => `${j.printer.name} (${j.badge === "COUNTER COPY" ? "counter" : "kitchen"})`);
+    toast.info(`Printing to: ${names.join(", ")}`);
+    console.log("[kotPrint] reprint starting", { mode, jobs: jobs.length, targets: names });
     await runKotPrintJobs(
       {
         kot_number: k.kot_number,
