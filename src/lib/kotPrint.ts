@@ -128,7 +128,16 @@ export function buildKotPrintPlan(
 }
 
 export async function runKotPrintJobs(header: KotHeader, jobs: PrintJob[]): Promise<void> {
-  for (const job of jobs) {
+  // Use hidden iframes rather than window.open(): popup blockers silently kill
+  // window.open calls that follow an awaited async operation (e.g. Supabase
+  // insert), and browsers typically allow only one popup per user gesture, so
+  // sequential popups collapse into a single dialog. Iframes bypass both.
+  for (let i = 0; i < jobs.length; i++) {
+    const job = jobs[i];
+    console.log(`[kotPrint] job ${i + 1}/${jobs.length} → ${job.printer.name} (${job.badge})`, {
+      items: job.items.length,
+      paper_size: job.printer.paper_size,
+    });
     const html = renderKotHtml(
       header,
       job.items,
@@ -136,24 +145,58 @@ export async function runKotPrintJobs(header: KotHeader, jobs: PrintJob[]): Prom
       job.badge,
       job.printer.name,
     );
-    const w = window.open("", "_blank", "width=380,height=640");
-    if (!w) return;
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    await new Promise((r) => setTimeout(r, 250));
-    try {
-      w.print();
-    } catch {
-      /* ignore */
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.style.visibility = "hidden";
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument;
+    if (!doc) {
+      console.warn("[kotPrint] iframe has no contentDocument, skipping job", job.printer.name);
+      iframe.remove();
+      continue;
     }
-    setTimeout(() => {
-      try {
-        w.close();
-      } catch {
-        /* ignore */
-      }
-    }, 800);
-    await new Promise((r) => setTimeout(r, 400));
+    doc.open();
+    doc.write(html);
+    doc.close();
+    // Wait for content to lay out (fonts/images not critical here but give it a beat).
+    await new Promise((r) => setTimeout(r, 200));
+    const win = iframe.contentWindow;
+    if (!win) {
+      iframe.remove();
+      continue;
+    }
+    try {
+      await new Promise<void>((resolve) => {
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          resolve();
+        };
+        try {
+          win.addEventListener("afterprint", finish, { once: true });
+        } catch {
+          /* ignore */
+        }
+        // Fallback timeout in case afterprint never fires (some drivers/browsers).
+        setTimeout(finish, 1500);
+        try {
+          win.focus();
+          win.print();
+        } catch (err) {
+          console.error("[kotPrint] print() failed", err);
+          finish();
+        }
+      });
+    } finally {
+      setTimeout(() => iframe.remove(), 200);
+    }
+    // Small gap between successive dialogs.
+    await new Promise((r) => setTimeout(r, 300));
   }
 }
