@@ -129,7 +129,7 @@ function paperSizeToConfig(paperSize: QZPaperSize) {
       size: { width: 58, height: 0 },
       margins: 2,
       density: 203,
-      scaleContent: false,
+      scaleContent: true,
       rasterize: true,
     };
   }
@@ -139,9 +139,15 @@ function paperSizeToConfig(paperSize: QZPaperSize) {
     size: { width: 80, height: 0 },
     margins: 2,
     density: 203,
-    scaleContent: false,
+    scaleContent: true,
     rasterize: true,
   };
+}
+
+function paperWidthMm(paperSize: QZPaperSize): number {
+  if (paperSize === "A4") return 210;
+  if (paperSize === "58mm") return 58;
+  return 80;
 }
 
 /**
@@ -174,8 +180,18 @@ export async function printToPrinter(
     throw new Error(`Printer "${printerName}" not found via QZ Tray.`);
   }
   const cfg = qz.configs.create(found, paperSizeToConfig(paperSize));
+  const widthMm = paperWidthMm(paperSize);
   await qz.print(cfg, [
-    { type: "pixel", format: "html", flavor: "plain", data: htmlContent },
+    {
+      type: "pixel",
+      format: "html",
+      flavor: "plain",
+      data: htmlContent,
+      // Tell QZ the CSS layout width in mm so the HTML renders at the
+      // paper's physical width (with scaleContent above bringing it down
+      // to fit exactly), instead of laying out at browser-default 816px.
+      options: { pageWidth: widthMm, pageHeight: 0 },
+    },
   ]);
 }
 
