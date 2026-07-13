@@ -301,6 +301,38 @@ function NewKotPage() {
       }
 
       toast.success(printNow ? "KOT printed" : "KOT saved");
+
+      if (printNow) {
+        const { data: kotRow } = await supabase
+          .from("kot_orders").select("kot_number,created_at").eq("id", kot!.id).single();
+        const planItems = cart.map((c) => ({
+          item_name: c.item_name, qty: c.qty, rate: c.rate, notes: c.notes ?? null,
+          printer_id: c.printer_id,
+        }));
+        const infoPrinters: PrinterInfo[] = printers.map((p) => ({
+          id: p.id, name: p.name, paper_size: p.paper_size, printer_role: p.printer_role,
+        }));
+        const cc: PrinterInfo | null = counterPrinter
+          ? { id: counterPrinter.id, name: counterPrinter.name, paper_size: counterPrinter.paper_size, printer_role: counterPrinter.printer_role }
+          : null;
+        const { jobs, warnings } = buildKotPrintPlan(planItems, infoPrinters, cc, "kitchen+counter");
+        for (const w of warnings) toast.warning(w);
+        if (jobs.length > 0) {
+          await runKotPrintJobs(
+            {
+              kot_number: kotRow?.kot_number ?? "",
+              kot_type: kotType,
+              table_no: kotType === "restaurant" ? tableNo : null,
+              room_number: kotType === "room" ? (br?.rooms?.room_number ?? null) : null,
+              guest_name: kotType === "room" ? (br?.bookings?.guests?.name ?? null) : null,
+              notes: notes || null,
+              created_at: kotRow?.created_at ?? new Date().toISOString(),
+            },
+            jobs,
+          );
+        }
+      }
+
       // Rotate the client_ref so the same form can be reused for the next KOT.
       setClientRef(
         (typeof crypto !== "undefined" && "randomUUID" in crypto)
