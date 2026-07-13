@@ -318,6 +318,9 @@ function NewKotPage() {
         const { jobs, warnings } = buildKotPrintPlan(planItems, infoPrinters, cc, "kitchen+counter");
         for (const w of warnings) toast.warning(w);
         if (jobs.length > 0) {
+          const names = jobs.map((j) => `${j.printer.name} (${j.badge === "COUNTER COPY" ? "counter" : "kitchen"})`);
+          toast.info(`Printing to: ${names.join(", ")}`);
+          console.log("[kotPrint] auto-print starting", { jobs: jobs.length, targets: names });
           await runKotPrintJobs(
             {
               kot_number: kotRow?.kot_number ?? "",
@@ -330,6 +333,8 @@ function NewKotPage() {
             },
             jobs,
           );
+        } else {
+          toast.warning("No printers resolved for this KOT — check Master Data → Printers.");
         }
       }
 
