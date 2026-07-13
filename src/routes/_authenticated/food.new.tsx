@@ -151,10 +151,19 @@ function NewKotPage() {
 
   const printPlanPreview = useMemo(() => {
     if (cart.length === 0) return { names: [] as string[], warnings: [] as string[] };
-    const planItems = cart.map((c) => ({
-      item_name: c.item_name, qty: c.qty, rate: c.rate, notes: c.notes ?? null,
-      printer_id: c.printer_id,
-    }));
+    const planItems = cart.map((c) => {
+      // Re-resolve at plan-time using latest items+cats state — protects
+      // against a stale null printer_id captured when the item was added
+      // before menu_categories finished loading.
+      const src = items.find((i) => i.id === c.menu_item_id);
+      const cat = src ? cats.find((x) => x.id === src.category_id) : undefined;
+      const resolved =
+        c.printer_id ?? src?.kitchen_printer_id ?? cat?.kot_printer_id ?? null;
+      return {
+        item_name: c.item_name, qty: c.qty, rate: c.rate, notes: c.notes ?? null,
+        printer_id: resolved,
+      };
+    });
     const infoPrinters: PrinterInfo[] = printers.map((p) => ({
       id: p.id, name: p.name, paper_size: p.paper_size, printer_role: p.printer_role,
     }));
@@ -164,7 +173,7 @@ function NewKotPage() {
     const { jobs, warnings } = buildKotPrintPlan(planItems, infoPrinters, cc, "kitchen+counter");
     const names = jobs.map((j) => `${j.printer.name} (${j.badge === "COUNTER COPY" ? "counter" : "kitchen"})`);
     return { names, warnings };
-  }, [cart, printers, counterPrinter]);
+  }, [cart, printers, counterPrinter, items, cats]);
 
   function addItem(it: MenuItem) {
     setCart((prev) => {
