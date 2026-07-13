@@ -83,14 +83,21 @@ function KotDetailPage() {
         supabase.from("printers").select("id,name,paper_size,printer_role,type")
           .eq("property_id", current.id).eq("is_active", true).in("type", ["kot", "both"]),
         supabase.from("printers").select("id,name,paper_size,printer_role,type")
-          .eq("property_id", current.id).eq("is_active", true).eq("printer_role", "Counter Copy").maybeSingle(),
+          .eq("property_id", current.id).eq("is_active", true).eq("printer_role", "Counter Copy").limit(1),
       ]);
+      const ccRow = (cc.data as any[] | null)?.[0] ?? null;
+      console.log("[kotPrint] counter copy fetch (detail)", {
+        property_id: current.id,
+        error: cc.error?.message ?? null,
+        rows: cc.data?.length ?? 0,
+        row: ccRow,
+      });
       setPrinters(((pr.data ?? []) as any[]).map((p) => ({
         id: p.id, name: p.name, paper_size: p.paper_size, printer_role: p.printer_role,
       })));
-      setCounterPrinter(cc.data ? {
-        id: (cc.data as any).id, name: (cc.data as any).name,
-        paper_size: (cc.data as any).paper_size, printer_role: (cc.data as any).printer_role,
+      setCounterPrinter(ccRow ? {
+        id: ccRow.id, name: ccRow.name,
+        paper_size: ccRow.paper_size, printer_role: ccRow.printer_role,
       } : null);
     })();
   }, [current?.id]);

@@ -96,14 +96,14 @@ function NewKotPage() {
   useEffect(() => {
     if (!propertyId) return;
     (async () => {
-      const [mi, mc, pr, cc, ih] = await Promise.all([
+      const [mi, mc, pr, ccRes, ih] = await Promise.all([
         supabase.from("menu_items").select("id,name,price,gst_rate,kot_station,is_available,category_id,kitchen_type,kitchen_printer_id,short_code")
           .eq("property_id", propertyId).eq("is_available", true).order("name"),
         supabase.from("menu_categories").select("id,name,kot_printer_id").eq("property_id", propertyId).order("name"),
         supabase.from("printers").select("id,name,location,paper_size,printer_role,type")
           .eq("property_id", propertyId).eq("is_active", true).in("type", ["kot", "both"]).order("name"),
         supabase.from("printers").select("id,name,location,paper_size,printer_role,type")
-          .eq("property_id", propertyId).eq("is_active", true).eq("printer_role", "Counter Copy").maybeSingle(),
+          .eq("property_id", propertyId).eq("is_active", true).eq("printer_role", "Counter Copy").limit(1),
         supabase.from("booking_rooms")
           .select("id,booking_id,room_id,status,rooms!booking_rooms_room_id_fkey(room_number),bookings!inner(id,booking_number,status,guests(name,mobile))")
           .eq("property_id", propertyId)
@@ -111,10 +111,17 @@ function NewKotPage() {
           .eq("bookings.status", "checked_in")
           .order("room_id"),
       ]);
+      const ccRow = (ccRes.data as any[] | null)?.[0] ?? null;
+      console.log("[kotPrint] counter copy fetch", {
+        property_id: propertyId,
+        error: ccRes.error?.message ?? null,
+        rows: ccRes.data?.length ?? 0,
+        row: ccRow,
+      });
       setItems((mi.data ?? []) as MenuItem[]);
       setCats((mc.data ?? []) as MenuCategory[]);
       setPrinters((pr.data ?? []) as PrinterOption[]);
-      setCounterPrinter((cc.data ?? null) as PrinterOption | null);
+      setCounterPrinter(ccRow as PrinterOption | null);
       setInhouse((ih.data ?? []) as unknown as InHouseRow[]);
     })();
   }, [propertyId]);
