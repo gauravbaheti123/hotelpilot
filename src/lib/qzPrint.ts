@@ -4,10 +4,14 @@
 // 8181/8182) and sends HTML print jobs directly to a Windows printer by
 // exact name — no browser print dialog.
 //
-// Unsigned mode: we bypass certificate signing so the app runs without a
-// private key on the client. QZ Tray shows a one-time "Action Required"
-// prompt the first time; users tick "Remember this decision" and Allow.
+// Signed mode: the public certificate is embedded client-side; each
+// signing challenge is forwarded to the `qz-sign` Supabase edge function
+// which signs it with the private key (never exposed to the browser).
+// With the certificate imported/trusted in QZ Tray, the "Untrusted
+// website" popup disappears.
 import qz from "qz-tray";
+import { supabase } from "@/integrations/supabase/client";
+import { QZ_PUBLIC_CERTIFICATE } from "./qzCertificate";
 
 export type QZPaperSize = "58mm" | "80mm" | "A4" | string;
 
@@ -17,7 +21,7 @@ export type QZStatus = {
 };
 
 let connectingPromise: Promise<QZStatus> | null = null;
-let unsignedConfigured = false;
+let securityConfigured = false;
 const listeners = new Set<(s: QZStatus) => void>();
 let lastStatus: QZStatus = { connected: false };
 
@@ -38,14 +42,30 @@ export function subscribeQZStatus(fn: (s: QZStatus) => void): () => void {
   return () => listeners.delete(fn);
 }
 
-function configureUnsigned() {
-  if (unsignedConfigured) return;
-  unsignedConfigured = true;
+function configureSecurity() {
+  if (securityConfigured) return;
+  securityConfigured = true;
   try {
-    // No certificate — QZ Tray will prompt the user once.
-    qz.security.setCertificatePromise((resolve: any) => resolve());
-    // Reject signing — again, QZ prompts the user for permission.
-    qz.security.setSignaturePromise(() => (resolve: any) => resolve());
+    // Serve our public certificate to QZ Tray on handshake.
+    qz.security.setCertificatePromise((resolve: any, _reject: any) => {
+      resolve(QZ_PUBLIC_CERTIFICATE);
+    });
+    // Sign each challenge via the qz-sign edge function. The private key
+    // never leaves the server.
+    qz.security.setSignatureAlgorithm?.("SHA1");
+    qz.security.setSignaturePromise((toSign: string) => {
+      return (resolve: any, reject: any) => {
+        supabase.functions
+          .invoke("qz-sign", { body: { toSign } })
+          .then(({ data, error }) => {
+            if (error) return reject(error);
+            const sig = (data as { signature?: string } | null)?.signature;
+            if (!sig) return reject(new Error("qz-sign returned no signature"));
+            resolve(sig);
+          })
+          .catch(reject);
+      };
+    });
   } catch (err) {
     console.warn("[qz] security config failed", err);
   }
@@ -62,7 +82,7 @@ export async function connectQZ(): Promise<QZStatus> {
     return s;
   }
   if (connectingPromise) return connectingPromise;
-  configureUnsigned();
+  configureSecurity();
   connectingPromise = (async () => {
     try {
       await qz.websocket.connect({ retries: 0, delay: 0 });
