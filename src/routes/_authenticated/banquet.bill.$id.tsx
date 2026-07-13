@@ -19,6 +19,7 @@ import { inr, inrRound, roundHalfUp, computeBillDiscountAmount, type BillDiscoun
 import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
 import { fmtDate } from "@/lib/reportExports";
 import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
+import { printDomViaQZ } from "@/lib/qzDomPrint";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/banquet/bill/$id")({
@@ -411,7 +412,13 @@ function BanquetBillPage() {
     const safe = (b.guests?.name ?? b.event_name ?? b.banquet_number).replace(/[^\w]+/g, "");
     document.title = `INV-${b.banquet_number}-${safe}`;
     const paperSize = await fetchPrinterPaperSize(b.property_id, "bill");
-    withPrintStyles(paperSize, () => window.print());
+    await printDomViaQZ({
+      elementId: "invoice-print-area",
+      propertyId: b.property_id,
+      paperSizeOverride: paperSize,
+      title: document.title,
+      fallback: () => withPrintStyles(paperSize, () => window.print()),
+    });
     setTimeout(() => { document.title = prev; }, 500);
   }
 

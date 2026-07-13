@@ -1,4 +1,6 @@
 import { getPrintStyles } from "./printStyles";
+import { isQZConnected, connectQZ, printToPrinter } from "./qzPrint";
+import { toast } from "sonner";
 
 export type PrinterInfo = {
   id: string;
@@ -138,6 +140,36 @@ export function buildKotPrintPlan(
 }
 
 export async function runKotPrintJobs(header: KotHeader, jobs: PrintJob[]): Promise<void> {
+  // Preferred path: silent print via QZ Tray. Falls back to hidden-iframe
+  // window.print() if the agent isn't running or a job fails.
+  let qzOk = isQZConnected();
+  if (!qzOk) {
+    const st = await connectQZ();
+    qzOk = st.connected;
+    if (!qzOk) {
+      toast.info("Printer service (QZ Tray) not connected. Falling back to browser print dialog.");
+    }
+  }
+  if (qzOk) {
+    let anyFailed = false;
+    for (let i = 0; i < jobs.length; i++) {
+      const job = jobs[i];
+      const paperSize = job.printer.paper_size ?? "80mm";
+      const html = renderKotHtml(header, job.items, paperSize, job.badge, job.printer.name);
+      try {
+        console.log(`[kotPrint/qz] ${i + 1}/${jobs.length} → ${job.printer.name} (${job.badge})`);
+        await printToPrinter(job.printer.name, html, paperSize);
+      } catch (err: any) {
+        console.error("[kotPrint/qz] failed", err);
+        toast.error(`QZ print failed for ${job.printer.name}: ${err?.message ?? err}`);
+        anyFailed = true;
+        break;
+      }
+    }
+    if (!anyFailed) return;
+    toast.info("Falling back to browser print dialog for remaining jobs.");
+  }
+
   // Use hidden iframes rather than window.open(): popup blockers silently kill
   // window.open calls that follow an awaited async operation (e.g. Supabase
   // insert), and browsers typically allow only one popup per user gesture, so

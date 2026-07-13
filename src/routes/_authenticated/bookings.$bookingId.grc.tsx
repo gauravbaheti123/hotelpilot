@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { RequirePermission } from "@/components/RequirePermission";
 import { toast } from "sonner";
 import { Printer, Save, ArrowLeft } from "lucide-react";
+import { printDomViaQZ } from "@/lib/qzDomPrint";
 
 export const Route = createFileRoute("/_authenticated/bookings/$bookingId/grc")({
   head: () => ({ meta: [{ title: "Guest Registration Card — HotelPilot" }] }),
@@ -142,7 +143,16 @@ function GrcPage() {
 
   async function saveAndPrint() {
     const num = await save();
-    if (num) setTimeout(() => window.print(), 100);
+    if (!num) return;
+    setTimeout(() => {
+      void printDomViaQZ({
+        elementId: "grc-print-area",
+        propertyId: booking?.property_id,
+        paperSizeOverride: "A4",
+        title: `GRC-${num}`,
+        fallback: () => window.print(),
+      });
+    }, 100);
   }
 
   if (loading) return <AppShell title="Guest Registration Card"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
@@ -211,7 +221,7 @@ function GrcPage() {
         </Card>
 
         {/* Print layout */}
-        <div className="grc-print bg-white text-black border-2 border-black p-4 text-[12px] leading-tight">
+        <div id="grc-print-area" className="grc-print bg-white text-black border-2 border-black p-4 text-[12px] leading-tight">
           <div className="flex items-start gap-3 border-b-2 border-black pb-2 mb-2">
             {property?.logo_url && (
               <img src={property.logo_url} alt="" className="h-14 w-14 object-contain" />
