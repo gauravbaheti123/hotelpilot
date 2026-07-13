@@ -66,6 +66,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { RemindersBell } from "./Reminders";
 import { useSuperadminView } from "@/lib/superadmin-view";
+import { QZStatusIndicator } from "./QZStatusIndicator";
 
 interface NavItem {
   to: string;
@@ -406,6 +407,7 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
             {user?.id && (
               <RemindersBell propertyId={propertyId} userId={user.id} />
             )}
+            <QZStatusIndicator />
             {!inAdminMode && (
               <div className="hidden sm:block"><PropertySelector /></div>
             )}
