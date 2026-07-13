@@ -1,7 +1,7 @@
 // Signs strings sent by QZ Tray's setSignaturePromise using our private key.
 // The private key lives in the QZ_PRIVATE_KEY secret and is NEVER logged or
-// returned. Response is a base64 RSA-SHA512 signature — qz-tray 2.1+ uses
-// SHA-512 as the default signature algorithm.
+// returned. Response is a base64 RSA-SHA512 signature — qzPrint.ts explicitly
+// sets QZ Tray's signature algorithm to SHA512 before connecting.
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
