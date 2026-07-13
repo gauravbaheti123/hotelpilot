@@ -485,6 +485,18 @@ function NewKotPage() {
                 <Button variant="outline" className="flex-1" disabled={saving} onClick={() => save(false)}>Save draft</Button>
                 <Button className="flex-1" disabled={saving} onClick={() => save(true)}>Save & print</Button>
               </div>
+              {cart.length > 0 && (
+                <div className="pt-2 text-xs space-y-1">
+                  {printPlanPreview.names.length > 0 && (
+                    <div className="text-muted-foreground">
+                      Printing to: <span className="font-medium">{printPlanPreview.names.join(", ")}</span>
+                    </div>
+                  )}
+                  {printPlanPreview.warnings.map((w, i) => (
+                    <div key={i} className="text-amber-600">{w}</div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
