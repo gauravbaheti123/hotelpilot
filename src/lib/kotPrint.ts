@@ -50,10 +50,19 @@ function renderKotHtml(
   printerName: string,
 ): string {
   const total = items.reduce((s, i) => s + i.qty * i.rate, 0);
-  return `<html><head><title>${esc(header.kot_number)}</title>
-<style>${getPrintStyles(paperSize)}
-html,body{margin:0;padding:0;height:auto;min-height:0}
-body{font:12px monospace;padding:6px;width:auto}
+  // NOTE: @page rule MUST be the very first rule in the stylesheet and
+  // scoped to this iframe's own document — the parent page's print CSS
+  // does not cascade into the iframe. Keep html/body height:auto so the
+  // thermal driver cuts right after content.
+  const pageCss = getPrintStyles(paperSize);
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(header.kot_number)}</title>
+<style>
+${pageCss}
+@media print {
+  html, body { width: ${paperSize}; min-height: 0 !important; height: auto !important; }
+}
+html,body{margin:0;padding:0;height:auto;min-height:0;width:${paperSize}}
+body{font:12px monospace;padding:4px;box-sizing:border-box}
 h2{margin:0 0 4px;font-size:14px}
 .badge{display:inline-block;padding:2px 6px;border:1px solid #000;font-weight:bold;margin-bottom:4px;font-size:11px;letter-spacing:0.5px}
 hr{border:none;border-top:1px dashed #999;margin:6px 0}
@@ -146,26 +155,34 @@ export async function runKotPrintJobs(header: KotHeader, jobs: PrintJob[]): Prom
       job.badge,
       job.printer.name,
     );
+    // Remove any leftover parent-doc print stylesheet (e.g. hp-dynamic-print
+    // from A4 flows) so it can't cascade onto the print dialog if the browser
+    // falls back to the top-level document's page rules.
+    document.getElementById("hp-dynamic-print")?.remove();
     const iframe = document.createElement("iframe");
+    iframe.setAttribute("aria-hidden", "true");
     iframe.style.position = "fixed";
     iframe.style.right = "0";
     iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
+    // Give iframe a real (but off-screen) size — a 0×0 iframe can make some
+    // browsers skip layout entirely and fall back to the parent's page size.
+    iframe.style.width = "80mm";
+    iframe.style.height = "200mm";
     iframe.style.border = "0";
-    iframe.style.visibility = "hidden";
+    iframe.style.opacity = "0";
+    iframe.style.pointerEvents = "none";
+    // Use srcdoc so the iframe has its own isolated document with our @page
+    // rules — document.write() into an about:blank iframe can inherit quirks
+    // and, in some browsers, the parent's print page settings.
+    iframe.srcdoc = html;
     document.body.appendChild(iframe);
-    const doc = iframe.contentDocument;
-    if (!doc) {
-      console.warn("[kotPrint] iframe has no contentDocument, skipping job", job.printer.name);
-      iframe.remove();
-      continue;
-    }
-    doc.open();
-    doc.write(html);
-    doc.close();
-    // Wait for content to lay out (fonts/images not critical here but give it a beat).
-    await new Promise((r) => setTimeout(r, 200));
+    await new Promise<void>((resolve) => {
+      const done = () => resolve();
+      iframe.addEventListener("load", done, { once: true });
+      setTimeout(done, 800);
+    });
+    // Extra beat for layout after load.
+    await new Promise((r) => setTimeout(r, 100));
     const win = iframe.contentWindow;
     if (!win) {
       iframe.remove();
