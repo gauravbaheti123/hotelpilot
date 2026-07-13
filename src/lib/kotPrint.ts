@@ -52,7 +52,8 @@ function renderKotHtml(
   const total = items.reduce((s, i) => s + i.qty * i.rate, 0);
   return `<html><head><title>${esc(header.kot_number)}</title>
 <style>${getPrintStyles(paperSize)}
-body{font:12px monospace;padding:8px}
+html,body{margin:0;padding:0;height:auto;min-height:0}
+body{font:12px monospace;padding:6px;width:auto}
 h2{margin:0 0 4px;font-size:14px}
 .badge{display:inline-block;padding:2px 6px;border:1px solid #000;font-weight:bold;margin-bottom:4px;font-size:11px;letter-spacing:0.5px}
 hr{border:none;border-top:1px dashed #999;margin:6px 0}
