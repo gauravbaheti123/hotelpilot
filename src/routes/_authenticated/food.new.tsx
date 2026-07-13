@@ -329,10 +329,17 @@ function NewKotPage() {
       if (printNow) {
         const { data: kotRow } = await supabase
           .from("kot_orders").select("kot_number,created_at").eq("id", kot!.id).single();
-        const planItems = cart.map((c) => ({
-          item_name: c.item_name, qty: c.qty, rate: c.rate, notes: c.notes ?? null,
-          printer_id: c.printer_id,
-        }));
+        const planItems = cart.map((c) => {
+          const src = items.find((i) => i.id === c.menu_item_id);
+          const cat = src ? cats.find((x) => x.id === src.category_id) : undefined;
+          const resolved =
+            c.printer_id ?? src?.kitchen_printer_id ?? cat?.kot_printer_id ?? null;
+          return {
+            item_name: c.item_name, qty: c.qty, rate: c.rate, notes: c.notes ?? null,
+            printer_id: resolved,
+          };
+        });
+        console.log("[kotPrint] save-time plan items", planItems);
         const infoPrinters: PrinterInfo[] = printers.map((p) => ({
           id: p.id, name: p.name, paper_size: p.paper_size, printer_role: p.printer_role,
         }));
