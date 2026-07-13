@@ -86,6 +86,7 @@ export async function connectQZ(): Promise<QZStatus> {
   }
   if (connectingPromise) return connectingPromise;
   configureSecurity();
+  console.log("[qz] security configured:", securityConfigured, "— connecting…");
   connectingPromise = (async () => {
     try {
       await qz.websocket.connect({ retries: 0, delay: 0 });
