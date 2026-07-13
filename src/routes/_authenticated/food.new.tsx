@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { computeKotTotals } from "@/lib/food";
 import { Plus, Minus, Trash2 } from "lucide-react";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
+import { buildKotPrintPlan, runKotPrintJobs, type PrinterInfo } from "@/lib/kotPrint";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/food/new")({
@@ -36,7 +37,14 @@ interface MenuItem {
   short_code?: string | null;
 }
 interface MenuCategory { id: string; name: string; kot_printer_id?: string | null }
-interface PrinterOption { id: string; name: string; location: string | null }
+interface PrinterOption {
+  id: string;
+  name: string;
+  location: string | null;
+  paper_size: string | null;
+  printer_role: string;
+  type: string;
+}
 interface InHouseRow {
   id: string; booking_id: string; room_id: string;
   rooms: { room_number: string } | null;
@@ -64,6 +72,7 @@ function NewKotPage() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [cats, setCats] = useState<MenuCategory[]>([]);
   const [printers, setPrinters] = useState<PrinterOption[]>([]);
+  const [counterPrinter, setCounterPrinter] = useState<PrinterOption | null>(null);
   const [inhouse, setInhouse] = useState<InHouseRow[]>([]);
   const [activeCat, setActiveCat] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -87,12 +96,14 @@ function NewKotPage() {
   useEffect(() => {
     if (!propertyId) return;
     (async () => {
-      const [mi, mc, pr, ih] = await Promise.all([
+      const [mi, mc, pr, cc, ih] = await Promise.all([
         supabase.from("menu_items").select("id,name,price,gst_rate,kot_station,is_available,category_id,kitchen_type,kitchen_printer_id,short_code")
           .eq("property_id", propertyId).eq("is_available", true).order("name"),
         supabase.from("menu_categories").select("id,name,kot_printer_id").eq("property_id", propertyId).order("name"),
-        supabase.from("printers").select("id,name,location")
+        supabase.from("printers").select("id,name,location,paper_size,printer_role,type")
           .eq("property_id", propertyId).eq("is_active", true).in("type", ["kot", "both"]).order("name"),
+        supabase.from("printers").select("id,name,location,paper_size,printer_role,type")
+          .eq("property_id", propertyId).eq("is_active", true).eq("printer_role", "Counter Copy").maybeSingle(),
         supabase.from("booking_rooms")
           .select("id,booking_id,room_id,status,rooms!booking_rooms_room_id_fkey(room_number),bookings!inner(id,booking_number,status,guests(name,mobile))")
           .eq("property_id", propertyId)
@@ -103,6 +114,7 @@ function NewKotPage() {
       setItems((mi.data ?? []) as MenuItem[]);
       setCats((mc.data ?? []) as MenuCategory[]);
       setPrinters((pr.data ?? []) as PrinterOption[]);
+      setCounterPrinter((cc.data ?? null) as PrinterOption | null);
       setInhouse((ih.data ?? []) as unknown as InHouseRow[]);
     })();
   }, [propertyId]);
@@ -129,6 +141,23 @@ function NewKotPage() {
   }, [items, activeCat, search]);
 
   const totals = useMemo(() => computeKotTotals(cart), [cart]);
+
+  const printPlanPreview = useMemo(() => {
+    if (cart.length === 0) return { names: [] as string[], warnings: [] as string[] };
+    const planItems = cart.map((c) => ({
+      item_name: c.item_name, qty: c.qty, rate: c.rate, notes: c.notes ?? null,
+      printer_id: c.printer_id,
+    }));
+    const infoPrinters: PrinterInfo[] = printers.map((p) => ({
+      id: p.id, name: p.name, paper_size: p.paper_size, printer_role: p.printer_role,
+    }));
+    const cc: PrinterInfo | null = counterPrinter
+      ? { id: counterPrinter.id, name: counterPrinter.name, paper_size: counterPrinter.paper_size, printer_role: counterPrinter.printer_role }
+      : null;
+    const { jobs, warnings } = buildKotPrintPlan(planItems, infoPrinters, cc, "kitchen+counter");
+    const names = jobs.map((j) => `${j.printer.name} (${j.badge === "COUNTER COPY" ? "counter" : "kitchen"})`);
+    return { names, warnings };
+  }, [cart, printers, counterPrinter]);
 
   function addItem(it: MenuItem) {
     setCart((prev) => {
@@ -272,6 +301,38 @@ function NewKotPage() {
       }
 
       toast.success(printNow ? "KOT printed" : "KOT saved");
+
+      if (printNow) {
+        const { data: kotRow } = await supabase
+          .from("kot_orders").select("kot_number,created_at").eq("id", kot!.id).single();
+        const planItems = cart.map((c) => ({
+          item_name: c.item_name, qty: c.qty, rate: c.rate, notes: c.notes ?? null,
+          printer_id: c.printer_id,
+        }));
+        const infoPrinters: PrinterInfo[] = printers.map((p) => ({
+          id: p.id, name: p.name, paper_size: p.paper_size, printer_role: p.printer_role,
+        }));
+        const cc: PrinterInfo | null = counterPrinter
+          ? { id: counterPrinter.id, name: counterPrinter.name, paper_size: counterPrinter.paper_size, printer_role: counterPrinter.printer_role }
+          : null;
+        const { jobs, warnings } = buildKotPrintPlan(planItems, infoPrinters, cc, "kitchen+counter");
+        for (const w of warnings) toast.warning(w);
+        if (jobs.length > 0) {
+          await runKotPrintJobs(
+            {
+              kot_number: kotRow?.kot_number ?? "",
+              kot_type: kotType,
+              table_no: kotType === "restaurant" ? tableNo : null,
+              room_number: kotType === "room" ? (br?.rooms?.room_number ?? null) : null,
+              guest_name: kotType === "room" ? (br?.bookings?.guests?.name ?? null) : null,
+              notes: notes || null,
+              created_at: kotRow?.created_at ?? new Date().toISOString(),
+            },
+            jobs,
+          );
+        }
+      }
+
       // Rotate the client_ref so the same form can be reused for the next KOT.
       setClientRef(
         (typeof crypto !== "undefined" && "randomUUID" in crypto)
@@ -424,6 +485,18 @@ function NewKotPage() {
                 <Button variant="outline" className="flex-1" disabled={saving} onClick={() => save(false)}>Save draft</Button>
                 <Button className="flex-1" disabled={saving} onClick={() => save(true)}>Save & print</Button>
               </div>
+              {cart.length > 0 && (
+                <div className="pt-2 text-xs space-y-1">
+                  {printPlanPreview.names.length > 0 && (
+                    <div className="text-muted-foreground">
+                      Printing to: <span className="font-medium">{printPlanPreview.names.join(", ")}</span>
+                    </div>
+                  )}
+                  {printPlanPreview.warnings.map((w, i) => (
+                    <div key={i} className="text-amber-600">{w}</div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

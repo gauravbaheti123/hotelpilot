@@ -13,7 +13,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { KOT_STATUS_LABEL, KOT_STATUS_TONE, computeKotTotals } from "@/lib/food";
-import { fetchPrinterPaperSize, getPrintStyles } from "@/lib/printStyles";
+import { buildKotPrintPlan, runKotPrintJobs, type PrinterInfo, type PrintMode } from "@/lib/kotPrint";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { DeliveryProof } from "@/components/DeliveryProof";
 import { Printer, Check, Ban, ArrowLeft } from "lucide-react";
@@ -27,6 +27,11 @@ export const Route = createFileRoute("/_authenticated/food/kot/$id")({
 interface Item {
   id: string; item_name: string; qty: number; rate: number;
   amount: number; gst_rate: number; kot_station: string; notes: string | null; is_void: boolean;
+  menu_items?: {
+    kitchen_printer_id: string | null;
+    category_id: string | null;
+    menu_categories: { kot_printer_id: string | null } | null;
+  } | null;
 }
 interface Kot {
   id: string; kot_number: string; kot_type: string; table_no: string | null;
@@ -51,6 +56,8 @@ function KotDetailPage() {
   const [loading, setLoading] = useState(true);
   const [voidOpen, setVoidOpen] = useState(false);
   const [voidReason, setVoidReason] = useState("");
+  const [printers, setPrinters] = useState<PrinterInfo[]>([]);
+  const [counterPrinter, setCounterPrinter] = useState<PrinterInfo | null>(null);
 
   async function load() {
     setLoading(true);
@@ -59,7 +66,8 @@ function KotDetailPage() {
         notes,void_reason,created_at,printed_at,served_at,billed_at,booking_id,
         delivery_proof_url,delivery_photo_taken_at,delivery_photo_taken_by,
         rooms(room_number),bookings(booking_number),
-        kot_items(id,item_name,qty,rate,amount,gst_rate,kot_station,notes,is_void)`)
+        kot_items(id,item_name,qty,rate,amount,gst_rate,kot_station,notes,is_void,
+          menu_items(kitchen_printer_id,category_id,menu_categories(kot_printer_id)))`)
       .eq("id", id).single();
     if (error) toast.error(error.message);
     setK((data ?? null) as unknown as Kot);
@@ -67,6 +75,25 @@ function KotDetailPage() {
   }
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [id]);
+
+  useEffect(() => {
+    if (!current?.id) return;
+    (async () => {
+      const [pr, cc] = await Promise.all([
+        supabase.from("printers").select("id,name,paper_size,printer_role,type")
+          .eq("property_id", current.id).eq("is_active", true).in("type", ["kot", "both"]),
+        supabase.from("printers").select("id,name,paper_size,printer_role,type")
+          .eq("property_id", current.id).eq("is_active", true).eq("printer_role", "Counter Copy").maybeSingle(),
+      ]);
+      setPrinters(((pr.data ?? []) as any[]).map((p) => ({
+        id: p.id, name: p.name, paper_size: p.paper_size, printer_role: p.printer_role,
+      })));
+      setCounterPrinter(cc.data ? {
+        id: (cc.data as any).id, name: (cc.data as any).name,
+        paper_size: (cc.data as any).paper_size, printer_role: (cc.data as any).printer_role,
+      } : null);
+    })();
+  }, [current?.id]);
 
   async function setStatus(next: "printed" | "served" | "billed") {
     if (!k) return;
@@ -115,37 +142,39 @@ function KotDetailPage() {
   if (!k) return <AppShell title="KOT"><p className="text-sm text-muted-foreground">Not found.</p></AppShell>;
 
   const editable = k.status === "open" || k.status === "printed";
-  const stations = Array.from(new Set(k.kot_items.map((i) => i.kot_station)));
 
-  async function printSlip(station?: string) {
+  async function reprint(mode: PrintMode) {
     if (!k) return;
-    const paperSize = await fetchPrinterPaperSize(current?.id, "kot");
-    const esc = (s: unknown) => String(s ?? "")
-      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-    const target = station ? k.kot_items.filter((i) => i.kot_station === station && !i.is_void) : k.kot_items.filter((i) => !i.is_void);
-    const html = `
-      <html><head><title>${esc(k.kot_number)}</title>
-      <style>${getPrintStyles(paperSize)}
-      body{font:12px monospace;padding:8px}h2{margin:0 0 4px;font-size:14px}hr{border:none;border-top:1px dashed #999;margin:6px 0}.row{display:flex;justify-content:space-between}</style>
-      </head><body>
-      <h2>KOT ${esc(k.kot_number)}</h2>
-      <div>${new Date(k.created_at).toLocaleString()}</div>
-      <div>${k.kot_type === "room" ? `Room ${esc(k.rooms?.room_number ?? "—")}` : `Table ${esc(k.table_no ?? "—")}`}</div>
-      ${k.guest_name ? `<div>Guest: ${esc(k.guest_name)}</div>` : ""}
-      ${station ? `<div><strong>Station: ${esc(station.toUpperCase())}</strong></div>` : ""}
-      <hr/>
-      ${target.map((i) => `<div class="row"><span>${i.qty} × ${esc(i.item_name)}</span><span>₹${(i.qty*i.rate).toFixed(0)}</span></div>${i.notes ? `<div style="padding-left:8px;color:#555">- ${esc(i.notes)}</div>` : ""}`).join("")}
-      <hr/>
-      <div class="row"><span>Total</span><span>₹${Number(k.total_amount).toFixed(2)}</span></div>
-      ${k.notes ? `<div><em>${esc(k.notes)}</em></div>` : ""}
-      </body></html>`;
-    const w = window.open("", "_blank", "width=320,height=600");
-    if (!w) return;
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    w.print();
+    const planItems = k.kot_items
+      .filter((i) => !i.is_void)
+      .map((i) => ({
+        item_name: i.item_name,
+        qty: Number(i.qty),
+        rate: Number(i.rate),
+        notes: i.notes,
+        printer_id:
+          i.menu_items?.kitchen_printer_id ??
+          i.menu_items?.menu_categories?.kot_printer_id ??
+          null,
+      }));
+    const { jobs, warnings } = buildKotPrintPlan(planItems, printers, counterPrinter, mode);
+    for (const w of warnings) toast.warning(w);
+    if (jobs.length === 0) {
+      toast.error("Nothing to print.");
+      return;
+    }
+    await runKotPrintJobs(
+      {
+        kot_number: k.kot_number,
+        kot_type: k.kot_type,
+        table_no: k.table_no,
+        room_number: k.rooms?.room_number ?? null,
+        guest_name: k.guest_name,
+        notes: k.notes,
+        created_at: k.created_at,
+      },
+      jobs,
+    );
   }
 
   return (
@@ -162,12 +191,15 @@ function KotDetailPage() {
           <div className="flex-1" />
           {k.status !== "void" && k.status !== "billed" && (
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => printSlip()}><Printer className="h-4 w-4 mr-1" /> Print all</Button>
-              {stations.map((st) => (
-                <Button key={st} size="sm" variant="outline" onClick={() => printSlip(st)}>
-                  <Printer className="h-4 w-4 mr-1" /> {st}
-                </Button>
-              ))}
+              <Button size="sm" variant="outline" onClick={() => reprint("kitchen+counter")}>
+                <Printer className="h-4 w-4 mr-1" /> Reprint All
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => reprint("kitchen")}>
+                <Printer className="h-4 w-4 mr-1" /> Reprint Kitchen Copy
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => reprint("counter")}>
+                <Printer className="h-4 w-4 mr-1" /> Reprint Counter Copy
+              </Button>
               {k.status === "open" && <Button size="sm" onClick={() => setStatus("printed")}>Mark printed</Button>}
               {k.status === "printed" && <Button size="sm" onClick={() => setStatus("served")}><Check className="h-4 w-4 mr-1" /> Served</Button>}
               {k.status === "served" && <Button size="sm" onClick={() => setStatus("billed")}>Mark billed</Button>}

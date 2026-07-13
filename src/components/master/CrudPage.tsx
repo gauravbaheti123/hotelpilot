@@ -70,6 +70,11 @@ export interface CrudPageProps<T extends { id: string }> {
   initialNew?: Record<string, any>;
   filterEq?: Record<string, any>;
   headerActions?: ReactNode;
+  /**
+   * Optional pre-save hook. Return a string to abort with an error toast,
+   * or null/undefined to proceed. `editing` includes an `id` when updating.
+   */
+  validate?: (payload: Record<string, any>, rows: T[]) => Promise<string | null | undefined> | string | null | undefined;
 }
 
 export function CrudPage<T extends { id: string }>({
@@ -82,6 +87,7 @@ export function CrudPage<T extends { id: string }>({
   initialNew,
   filterEq,
   headerActions,
+  validate,
 }: CrudPageProps<T>) {
   const { roles } = useAuth();
   const canManage =
@@ -158,6 +164,15 @@ export function CrudPage<T extends { id: string }>({
     fields.forEach((f) => {
       if (f.required && payload[f.name] == null) payload[f.name] = editing[f.name];
     });
+
+    if (validate) {
+      const withId = editing.id ? { ...payload, id: editing.id } : payload;
+      const err = await validate(withId, rows);
+      if (err) {
+        toast.error(err);
+        return;
+      }
+    }
 
     let error;
     if (editing.id) {
