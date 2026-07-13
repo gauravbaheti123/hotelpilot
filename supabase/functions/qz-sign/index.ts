@@ -1,7 +1,7 @@
 // Signs strings sent by QZ Tray's setSignaturePromise using our private key.
 // The private key lives in the QZ_PRIVATE_KEY secret and is NEVER logged or
-// returned. Response is a base64 RSA-SHA1 signature, which is QZ Tray's
-// default signature algorithm for the classic certificate flow.
+// returned. Response is a base64 RSA-SHA512 signature — qz-tray 2.1+ uses
+// SHA-512 as the default signature algorithm.
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -33,7 +33,7 @@ async function importPrivateKey(pem: string): Promise<CryptoKey> {
   return await crypto.subtle.importKey(
     "pkcs8",
     der,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-1" },
+    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-512" },
     false,
     ["sign"],
   );
