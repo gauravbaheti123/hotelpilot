@@ -57,6 +57,7 @@ Deno.serve(async (req) => {
         headers: { ...CORS, "content-type": "application/json" },
       });
     }
+    console.log("[qz-sign] signing request received; payload length:", toSign.length);
     const pem = Deno.env.get("QZ_PRIVATE_KEY");
     if (!pem) {
       return new Response(JSON.stringify({ error: "private_key_not_configured" }), {

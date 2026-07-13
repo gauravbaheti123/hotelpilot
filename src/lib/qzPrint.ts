@@ -22,6 +22,9 @@ export type QZStatus = {
 
 let connectingPromise: Promise<QZStatus> | null = null;
 let securityConfigured = false;
+let certificatePromiseConfigured = false;
+let signaturePromiseConfigured = false;
+let lastConnectedWithSecurity = false;
 const listeners = new Set<(s: QZStatus) => void>();
 let lastStatus: QZStatus = { connected: false };
 
@@ -42,9 +45,16 @@ export function subscribeQZStatus(fn: (s: QZStatus) => void): () => void {
   return () => listeners.delete(fn);
 }
 
-function configureSecurity() {
-  if (securityConfigured) return;
-  securityConfigured = true;
+function getQZSigningAlgorithm(): string {
+  try { return qz.security.getSignatureAlgorithm?.() ?? "unknown"; } catch { return "unknown"; }
+}
+
+function qzSecurityState() {
+  return `securityConfigured=${securityConfigured}, certificatePromiseConfigured=${certificatePromiseConfigured}, signaturePromiseConfigured=${signaturePromiseConfigured}, algorithm=${getQZSigningAlgorithm()}`;
+}
+
+function configureSecurity(): boolean {
+  if (securityConfigured && certificatePromiseConfigured && signaturePromiseConfigured) return true;
   try {
     console.log(
       "[qz] configuring security — cert length:",
@@ -52,25 +62,47 @@ function configureSecurity() {
     );
     // Serve our public certificate to QZ Tray on handshake.
     qz.security.setCertificatePromise((resolve: any, _reject: any) => {
+      console.log("[qz] certificate promise invoked — cert length:", QZ_PUBLIC_CERTIFICATE?.length ?? 0);
       resolve(QZ_PUBLIC_CERTIFICATE);
-    });
+    }, { rejectOnFailure: true });
+    certificatePromiseConfigured = true;
+    // QZ Tray's JS client defaults to SHA1; our qz-sign function signs
+    // SHA-512, so explicitly advertise SHA512 before any websocket connect.
+    qz.security.setSignatureAlgorithm?.("SHA512");
     // Sign each challenge via the qz-sign edge function using SHA-512
-    // (qz-tray 2.1+ default). The private key never leaves the server.
+    // (declared above). The private key never leaves the server.
     qz.security.setSignaturePromise((toSign: string) => {
+      console.log("[qz] signature promise invoked — payload length:", toSign?.length ?? 0);
       return (resolve: any, reject: any) => {
         supabase.functions
           .invoke("qz-sign", { body: { toSign } })
           .then(({ data, error }) => {
-            if (error) return reject(error);
+            if (error) {
+              console.error("[qz] qz-sign returned error", error);
+              return reject(error);
+            }
             const sig = (data as { signature?: string } | null)?.signature;
-            if (!sig) return reject(new Error("qz-sign returned no signature"));
+            if (!sig) {
+              console.error("[qz] qz-sign returned no signature", data);
+              return reject(new Error("qz-sign returned no signature"));
+            }
+            console.log("[qz] signature received — length:", sig.length);
             resolve(sig);
           })
-          .catch(reject);
+          .catch((err) => {
+            console.error("[qz] qz-sign invoke failed", err);
+            reject(err);
+          });
       };
     });
+    signaturePromiseConfigured = true;
+    securityConfigured = true;
+    console.log("[qz] security configured:", qzSecurityState());
+    return true;
   } catch (err) {
+    securityConfigured = false;
     console.warn("[qz] security config failed", err);
+    return false;
   }
 }
 
@@ -79,21 +111,37 @@ export function isQZConnected(): boolean {
 }
 
 export async function connectQZ(): Promise<QZStatus> {
-  if (isQZConnected()) {
-    const s = { connected: true };
+  console.log(`[qz] connectQZ start — ${qzSecurityState()}, active=${isQZConnected()}`);
+  const configured = configureSecurity();
+  if (!configured) {
+    const s = { connected: false, error: "QZ security setup failed" };
     setStatus(s);
     return s;
   }
+  if (isQZConnected()) {
+    if (!lastConnectedWithSecurity) {
+      // A websocket can survive a dev hot update or an older unsigned connect
+      // in the same tab. Certificate/signature promises are only used during
+      // connection setup, so an already-open unsigned socket must be replaced.
+      console.warn("[qz] active websocket predates signed setup; reconnecting with certificate/signature promises");
+      try { await qz.websocket.disconnect(); } catch { /* ignore */ }
+    } else {
+    const s = { connected: true };
+    setStatus(s);
+    return s;
+    }
+  }
   if (connectingPromise) return connectingPromise;
-  configureSecurity();
-  console.log("[qz] security configured:", securityConfigured, "— connecting…");
+  console.log(`[qz] before qz.websocket.connect — ${qzSecurityState()}`);
   connectingPromise = (async () => {
     try {
       await qz.websocket.connect({ retries: 0, delay: 0 });
+      lastConnectedWithSecurity = true;
       const s = { connected: true };
       setStatus(s);
       return s;
     } catch (err: any) {
+      lastConnectedWithSecurity = false;
       const s = { connected: false, error: String(err?.message ?? err) };
       setStatus(s);
       return s;
@@ -107,6 +155,7 @@ export async function connectQZ(): Promise<QZStatus> {
 export async function disconnectQZ(): Promise<void> {
   if (!isQZConnected()) return;
   try { await qz.websocket.disconnect(); } catch { /* ignore */ }
+  lastConnectedWithSecurity = false;
   setStatus({ connected: false });
 }
 
