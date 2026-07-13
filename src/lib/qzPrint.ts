@@ -46,13 +46,16 @@ function configureSecurity() {
   if (securityConfigured) return;
   securityConfigured = true;
   try {
+    console.log(
+      "[qz] configuring security — cert length:",
+      QZ_PUBLIC_CERTIFICATE?.length ?? 0,
+    );
     // Serve our public certificate to QZ Tray on handshake.
     qz.security.setCertificatePromise((resolve: any, _reject: any) => {
       resolve(QZ_PUBLIC_CERTIFICATE);
     });
-    // Sign each challenge via the qz-sign edge function. The private key
-    // never leaves the server.
-    qz.security.setSignatureAlgorithm?.("SHA1");
+    // Sign each challenge via the qz-sign edge function using SHA-512
+    // (qz-tray 2.1+ default). The private key never leaves the server.
     qz.security.setSignaturePromise((toSign: string) => {
       return (resolve: any, reject: any) => {
         supabase.functions
@@ -83,6 +86,7 @@ export async function connectQZ(): Promise<QZStatus> {
   }
   if (connectingPromise) return connectingPromise;
   configureSecurity();
+  console.log("[qz] security configured:", securityConfigured, "— connecting…");
   connectingPromise = (async () => {
     try {
       await qz.websocket.connect({ retries: 0, delay: 0 });
