@@ -139,6 +139,17 @@ function PrintersPage() {
       fields={fields}
       columns={columns}
       orderBy={{ column: "name" }}
+      validate={(payload, rows) => {
+        if (payload.printer_role === "Counter Copy") {
+          const clash = rows.find(
+            (r) => r.printer_role === "Counter Copy" && r.id !== payload.id,
+          );
+          if (clash) {
+            return `A Counter Copy printer is already set: ${clash.name}. Only one counter copy printer allowed per property.`;
+          }
+        }
+        return null;
+      }}
       headerActions={
         <ManageRolesDialog
           roles={roles}
