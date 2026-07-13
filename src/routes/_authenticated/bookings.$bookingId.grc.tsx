@@ -158,9 +158,22 @@ function GrcPage() {
       <style>{`
         @media print {
           @page { size: A4 portrait; margin: 10mm; }
+          html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; height: auto !important; overflow: visible !important; }
+          body * { visibility: hidden !important; }
+          .grc-print, .grc-print * { visibility: visible !important; }
+          .grc-print {
+            position: absolute !important;
+            left: 0; top: 0;
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 8mm !important;
+            border: 2px solid #000 !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+            page-break-inside: avoid;
+          }
           .no-print { display: none !important; }
-          .grc-print { border: 2px solid #000 !important; }
-          body { background: white !important; }
         }
       `}</style>
 
