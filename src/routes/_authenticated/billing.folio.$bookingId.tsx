@@ -73,6 +73,7 @@ interface Folio {
 interface BookingCtx {
   id: string; booking_number: string; status: string;
   check_in: string; check_out: string; total_amount: number;
+  actual_check_in?: string | null; actual_check_out?: string | null;
   property_id: string; adults: number | null; children: number | null;
   guests: {
     name: string; mobile: string | null; gst_number: string | null; company: string | null;
@@ -201,6 +202,7 @@ function FolioPage() {
     const { data: b, error: be } = await supabase
       .from("bookings")
       .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,
+        actual_check_in,actual_check_out,
         guests(name,mobile,gst_number,company,id_proof_type,id_proof_number,nationality),
         booking_rooms(id,rate,check_in,check_out,rooms!booking_rooms_room_id_fkey(room_number),room_categories(name,gst_rate))`)
       .eq("id", bookingId).single();
