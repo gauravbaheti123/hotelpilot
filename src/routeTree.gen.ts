@@ -72,6 +72,7 @@ import { Route as AuthenticatedMastersRoomsRouteImport } from './routes/_authent
 import { Route as AuthenticatedMastersRateSeasonsRouteImport } from './routes/_authenticated/masters.rate-seasons'
 import { Route as AuthenticatedMastersPrintersRouteImport } from './routes/_authenticated/masters.printers'
 import { Route as AuthenticatedMastersPosCategoriesRouteImport } from './routes/_authenticated/masters.pos-categories'
+import { Route as AuthenticatedMastersPaymentMethodsRouteImport } from './routes/_authenticated/masters.payment-methods'
 import { Route as AuthenticatedMastersMessageTemplatesRouteImport } from './routes/_authenticated/masters.message-templates'
 import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenticated/masters.menu'
 import { Route as AuthenticatedMastersHallsRouteImport } from './routes/_authenticated/masters.halls'
@@ -467,6 +468,12 @@ const AuthenticatedMastersPosCategoriesRoute =
     path: '/masters/pos-categories',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMastersPaymentMethodsRoute =
+  AuthenticatedMastersPaymentMethodsRouteImport.update({
+    id: '/masters/payment-methods',
+    path: '/masters/payment-methods',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMastersMessageTemplatesRoute =
   AuthenticatedMastersMessageTemplatesRouteImport.update({
     id: '/masters/message-templates',
@@ -734,6 +741,7 @@ export interface FileRoutesByFullPath {
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/masters/message-templates': typeof AuthenticatedMastersMessageTemplatesRoute
+  '/masters/payment-methods': typeof AuthenticatedMastersPaymentMethodsRoute
   '/masters/pos-categories': typeof AuthenticatedMastersPosCategoriesRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
@@ -836,6 +844,7 @@ export interface FileRoutesByTo {
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/masters/message-templates': typeof AuthenticatedMastersMessageTemplatesRoute
+  '/masters/payment-methods': typeof AuthenticatedMastersPaymentMethodsRoute
   '/masters/pos-categories': typeof AuthenticatedMastersPosCategoriesRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
@@ -940,6 +949,7 @@ export interface FileRoutesById {
   '/_authenticated/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/_authenticated/masters/menu': typeof AuthenticatedMastersMenuRoute
   '/_authenticated/masters/message-templates': typeof AuthenticatedMastersMessageTemplatesRoute
+  '/_authenticated/masters/payment-methods': typeof AuthenticatedMastersPaymentMethodsRoute
   '/_authenticated/masters/pos-categories': typeof AuthenticatedMastersPosCategoriesRoute
   '/_authenticated/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/_authenticated/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
@@ -1044,6 +1054,7 @@ export interface FileRouteTypes {
     | '/masters/halls'
     | '/masters/menu'
     | '/masters/message-templates'
+    | '/masters/payment-methods'
     | '/masters/pos-categories'
     | '/masters/printers'
     | '/masters/rate-seasons'
@@ -1146,6 +1157,7 @@ export interface FileRouteTypes {
     | '/masters/halls'
     | '/masters/menu'
     | '/masters/message-templates'
+    | '/masters/payment-methods'
     | '/masters/pos-categories'
     | '/masters/printers'
     | '/masters/rate-seasons'
@@ -1249,6 +1261,7 @@ export interface FileRouteTypes {
     | '/_authenticated/masters/halls'
     | '/_authenticated/masters/menu'
     | '/_authenticated/masters/message-templates'
+    | '/_authenticated/masters/payment-methods'
     | '/_authenticated/masters/pos-categories'
     | '/_authenticated/masters/printers'
     | '/_authenticated/masters/rate-seasons'
@@ -1765,6 +1778,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMastersPosCategoriesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/masters/payment-methods': {
+      id: '/_authenticated/masters/payment-methods'
+      path: '/masters/payment-methods'
+      fullPath: '/masters/payment-methods'
+      preLoaderRoute: typeof AuthenticatedMastersPaymentMethodsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/masters/message-templates': {
       id: '/_authenticated/masters/message-templates'
       path: '/masters/message-templates'
@@ -2090,6 +2110,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMastersHallsRoute: typeof AuthenticatedMastersHallsRoute
   AuthenticatedMastersMenuRoute: typeof AuthenticatedMastersMenuRoute
   AuthenticatedMastersMessageTemplatesRoute: typeof AuthenticatedMastersMessageTemplatesRoute
+  AuthenticatedMastersPaymentMethodsRoute: typeof AuthenticatedMastersPaymentMethodsRoute
   AuthenticatedMastersPosCategoriesRoute: typeof AuthenticatedMastersPosCategoriesRoute
   AuthenticatedMastersPrintersRoute: typeof AuthenticatedMastersPrintersRoute
   AuthenticatedMastersRateSeasonsRoute: typeof AuthenticatedMastersRateSeasonsRoute
@@ -2180,6 +2201,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMastersMenuRoute: AuthenticatedMastersMenuRoute,
   AuthenticatedMastersMessageTemplatesRoute:
     AuthenticatedMastersMessageTemplatesRoute,
+  AuthenticatedMastersPaymentMethodsRoute:
+    AuthenticatedMastersPaymentMethodsRoute,
   AuthenticatedMastersPosCategoriesRoute:
     AuthenticatedMastersPosCategoriesRoute,
   AuthenticatedMastersPrintersRoute: AuthenticatedMastersPrintersRoute,
