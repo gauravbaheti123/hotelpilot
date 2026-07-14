@@ -133,6 +133,7 @@ function FolioPage() {
   const isOwnerStrict = roles.includes("owner") && !roles.includes("superadmin");
   const [booking, setBooking] = useState<BookingCtx | null>(null);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
+  const [gstSlabs, setGstSlabs] = useState<GstSlab[]>([]);
   const [folio, setFolio] = useState<Folio | null>(null);
   const [charges, setCharges] = useState<Charge[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -213,10 +214,19 @@ function FolioPage() {
         invoice_prefix,invoice_footer,invoice_primary_color,invoice_template,
         invoice_show_hsn,invoice_show_gst_breakup,invoice_show_signature,invoice_show_powered_by,
         default_checkin_time,default_checkout_time,
-        food_gst_rate,sundry_gst_rate,
+        food_gst_rate,sundry_gst_rate,use_gst_slabs,
         address,pincode`)
       .eq("id", bk.property_id).single();
     setProperty((prop ?? null) as PropertyInfo | null);
+
+    // Load custom GST slabs for this property (used to resolve room-charge GST%).
+    const { data: sl } = await supabase
+      .from("gst_slabs" as any)
+      .select("from_amount,to_amount,gst_rate")
+      .eq("property_id", bk.property_id);
+    const slabRows = ((sl ?? []) as unknown as GstSlab[]);
+    setGstSlabs(slabRows);
+    const useSlabs = !!(prop as any)?.use_gst_slabs;
 
     // get or create folio
     const { data: folioId, error: fe } = await supabase
