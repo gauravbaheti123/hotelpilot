@@ -27,14 +27,7 @@ import { AlertTriangle, Plus, Trash2, Loader2, ArrowRightLeft, SplitSquareHorizo
 import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 import { SplitBillDialog } from "@/components/SplitBillDialog";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
-
-const PAY_MODES = [
-  { v: "cash", label: "Cash" },
-  { v: "card", label: "Card" },
-  { v: "upi", label: "UPI" },
-  { v: "bank_transfer", label: "Bank Transfer" },
-  { v: "complimentary", label: "Complimentary" },
-] as const;
+import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 
 interface Props {
   bookingId: string | null;
