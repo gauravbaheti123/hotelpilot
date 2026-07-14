@@ -80,6 +80,7 @@ interface BookingCtx {
   } | null;
   booking_rooms: {
     id: string; rate: number; check_in: string; check_out: string;
+    actual_check_in?: string | null; actual_check_out?: string | null;
     rooms: { room_number: string } | null;
     room_categories: { name: string; gst_rate: number | null } | null;
   }[];
@@ -120,6 +121,20 @@ interface PendingKot {
   id: string; kot_number: string; status: string;
   total_amount: number; sub_total: number;
   items: { id: string; item_name: string; qty: number; rate: number }[];
+}
+
+/** Format a date/timestamp as "14 Jul 2026, 12:00 PM".
+ *  If `value` is already an ISO timestamp, use it directly; if only a date is
+ *  available, combine it with the property's default check-in/out time. */
+function fmtDateTime(value: string | null | undefined, fallbackTime?: string | null): string {
+  if (!value) return "—";
+  const isTs = value.includes("T") || value.length > 10;
+  const t = (fallbackTime && fallbackTime.length >= 5) ? fallbackTime.slice(0, 5) : "12:00";
+  const d = isTs ? new Date(value) : new Date(`${value}T${t}:00`);
+  if (isNaN(d.getTime())) return String(value);
+  const date = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  const time = d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
+  return `${date}, ${time}`;
 }
 
 function FolioPage() {
@@ -202,7 +217,7 @@ function FolioPage() {
       .from("bookings")
       .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,
         guests(name,mobile,gst_number,company,id_proof_type,id_proof_number,nationality),
-        booking_rooms(id,rate,check_in,check_out,rooms!booking_rooms_room_id_fkey(room_number),room_categories(name,gst_rate))`)
+        booking_rooms(id,rate,check_in,check_out,actual_check_in,actual_check_out,rooms!booking_rooms_room_id_fkey(room_number),room_categories(name,gst_rate))`)
       .eq("id", bookingId).single();
     if (be) { toast.error(be.message); setLoading(false); return; }
     const bk = b as unknown as BookingCtx;
@@ -1397,8 +1412,9 @@ function FolioPage() {
                     <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: 0.3, color: "#ffffff", lineHeight: 1.1 }}>
                       {property?.name ?? "Hotel"}
                     </div>
-                    <div style={{ fontSize: 11, color: "#ffffff", opacity: 0.85, marginTop: 4 }}>
-                      Hospitality · Experience · Comfort
+                    <div style={{ fontSize: 11, color: "#ffffff", opacity: 0.9, marginTop: 4, lineHeight: 1.4 }}>
+                      {[propAddrLine, property?.phone ? `Ph: ${property.phone}` : null, property?.email ?? null, property?.gstin ? `GSTIN: ${property.gstin}` : null]
+                        .filter(Boolean).join("  |  ")}
                     </div>
                   </div>
                 </div>
@@ -1410,11 +1426,6 @@ function FolioPage() {
                   <div style={{ fontSize: 12 }}>Date: <b>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b></div>
                   <div style={{ fontSize: 12 }}>Booking: <b>{booking.booking_number}</b></div>
                 </div>
-              </div>
-              {/* Address bar */}
-              <div style={{ background: "#f1f3f5", color: "#495057", fontSize: 11, padding: "8px 40px", borderBottom: "1px solid #dee2e6" }}>
-                {[propAddrLine, property?.gstin ? `GSTIN: ${property.gstin}` : null, property?.phone ? `Ph: ${property.phone}` : null, property?.email ?? null]
-                  .filter(Boolean).join("  |  ")}
               </div>
             </>
           ) : (
@@ -1471,8 +1482,8 @@ function FolioPage() {
                   <div className="text-xs">Category: <span className="font-semibold">{booking.booking_rooms[0].room_categories?.name ?? "—"}</span></div>
                 </>
               )}
-              <div className="text-xs">Check-in: <span className="font-semibold">{new Date(booking.check_in).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
-              <div className="text-xs">Check-out: <span className="font-semibold">{new Date(booking.check_out).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
+              <div className="text-xs">Check-in: <span className="font-semibold">{fmtDateTime(booking.booking_rooms[0]?.actual_check_in ?? booking.check_in, property?.default_checkin_time)}</span></div>
+              <div className="text-xs">Check-out: <span className="font-semibold">{fmtDateTime(booking.booking_rooms[0]?.actual_check_out ?? booking.check_out, property?.default_checkout_time)}</span></div>
               <div className="text-xs">Duration: <span className="font-semibold">{nights} Night{nights > 1 ? "s" : ""}</span> · {booking.adults ?? 1} Adult{(booking.adults ?? 1) > 1 ? "s" : ""}{booking.children ? ` · ${booking.children} Child` : ""}</div>
             </div>
           </div>

@@ -13,6 +13,17 @@ import { Printer, Save, ArrowLeft } from "lucide-react";
 import { printDomViaQZ } from "@/lib/qzDomPrint";
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 
+function fmtDateTime(value: string | null | undefined, fallbackTime?: string | null): string {
+  if (!value) return "—";
+  const isTs = value.includes("T") || value.length > 10;
+  const t = (fallbackTime && fallbackTime.length >= 5) ? fallbackTime.slice(0, 5) : "12:00";
+  const d = isTs ? new Date(value) : new Date(`${value}T${t}:00`);
+  if (isNaN(d.getTime())) return String(value);
+  const date = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  const time = d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
+  return `${date}, ${time}`;
+}
+
 export const Route = createFileRoute("/_authenticated/bookings/$bookingId/grc")({
   head: () => ({ meta: [{ title: "Guest Registration Card — HotelPilot" }] }),
   component: () => (
@@ -70,7 +81,7 @@ function GrcPage() {
         .from("bookings")
         .select(`id, booking_number, property_id, check_in, check_out, adults, children, source, total_amount, advance_amount,
                  guests(name, mobile, email, address, city, state, country, pincode, company, id_proof_type, id_proof_number, gender, dob, nationality, gst_number),
-                 booking_rooms(rate, meal_plan, rooms!booking_rooms_room_id_fkey(room_number), room_categories(name))`)
+                 booking_rooms(rate, meal_plan, actual_check_in, actual_check_out, rooms!booking_rooms_room_id_fkey(room_number), room_categories(name))`)
         .eq("id", bookingId)
         .maybeSingle();
       if (error || !b) { toast.error(error?.message ?? "Booking not found"); setLoading(false); return; }
@@ -78,7 +89,7 @@ function GrcPage() {
 
       const { data: p } = await supabase
         .from("properties")
-        .select("id, name, legal_entity_name, address_line1, address_line2, city, state, pin_code, phone, email, gstin, short_code, logo_url, grc_terms")
+        .select("id, name, legal_entity_name, address_line1, address_line2, city, state, pin_code, phone, email, gstin, short_code, logo_url, grc_terms, default_checkin_time, default_checkout_time")
         .eq("id", b.property_id).maybeSingle();
       setProperty(p);
       if (p?.logo_url) {
@@ -250,8 +261,8 @@ function GrcPage() {
             <PrintRow k="Booking No." v={booking.booking_number} />
             <PrintRow k="Room No." v={room0.rooms?.room_number ?? "—"} />
             <PrintRow k="Room Type" v={room0.room_categories?.name ?? "—"} />
-            <PrintRow k="Check-in" v={booking.check_in} />
-            <PrintRow k="Check-out" v={booking.check_out} />
+            <PrintRow k="Check-in" v={fmtDateTime((booking.booking_rooms?.[0] as any)?.actual_check_in ?? booking.check_in, property?.default_checkin_time)} />
+            <PrintRow k="Check-out" v={fmtDateTime((booking.booking_rooms?.[0] as any)?.actual_check_out ?? booking.check_out, property?.default_checkout_time)} />
             <PrintRow k="Adults / Children" v={`${booking.adults} / ${booking.children ?? 0}`} />
             <PrintRow k="Meal Plan" v={room0.meal_plan ?? "—"} />
             <PrintRow k="Tariff/Night" v={`₹${Number(room0.rate ?? 0).toLocaleString("en-IN")}`} />
