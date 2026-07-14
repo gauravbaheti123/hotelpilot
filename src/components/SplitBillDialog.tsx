@@ -98,6 +98,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   const [discBillIdx, setDiscBillIdx] = useState<number>(0);
   // Parties list for percent/amount modes (min 2, no hard max).
   const [parties, setParties] = useState<ShareParty[]>([]);
+  const { methods: payMethods } = usePaymentMethods(booking?.property_id ?? null);
 
   // Resolve current user's max-discount % once dialog opens
   useEffect(() => {
