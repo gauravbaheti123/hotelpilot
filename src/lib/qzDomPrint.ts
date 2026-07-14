@@ -75,6 +75,50 @@ export function buildStandalonePrintHtml(
   ["[data-no-print]", ".no-print", "button", "input", "textarea", "select"].forEach((sel) => {
     clone.querySelectorAll(sel).forEach((n) => n.remove());
   });
+  // A4 invoice/bill safety: QZ Tray renders the serialized HTML without
+  // the app's print stylesheet, so pixel-width `<th>` values inlined from
+  // getComputedStyle can overflow the printable area. For tagged tables,
+  // strip per-column pixel widths and inject an explicit `<colgroup>` with
+  // percentage widths so all columns fit within A4 width.
+  const isA4 = String(paperSize).toUpperCase() === "A4";
+  if (isA4) {
+    clone.querySelectorAll<HTMLTableElement>("table[data-print-table]").forEach((tbl) => {
+      const kind = tbl.getAttribute("data-print-table");
+      let widths: number[] = [];
+      if (kind === "charges") {
+        const hasHsn = tbl.getAttribute("data-print-has-hsn") === "1";
+        widths = hasHsn ? [5, 40, 15, 10, 15, 15] : [5, 55, 10, 15, 15];
+      } else if (kind === "gst-breakup") {
+        widths = [30, 20, 15, 15, 20];
+      }
+      if (!widths.length) return;
+      // Force fixed layout + full width on the table
+      const existing = tbl.getAttribute("style") ?? "";
+      tbl.setAttribute(
+        "style",
+        existing + ";table-layout:fixed !important;width:100% !important;",
+      );
+      // Remove any width/min-width/max-width on th/td so the colgroup wins.
+      tbl.querySelectorAll<HTMLElement>("th,td").forEach((cell) => {
+        const s = cell.getAttribute("style") ?? "";
+        cell.setAttribute(
+          "style",
+          s.replace(/(^|;)\s*(min-|max-)?width\s*:[^;]*/gi, "") +
+            ";word-break:break-word;overflow-wrap:anywhere;",
+        );
+      });
+      // Inject / replace colgroup
+      const existingCg = tbl.querySelector(":scope > colgroup");
+      if (existingCg) existingCg.remove();
+      const cg = document.createElement("colgroup");
+      widths.forEach((w) => {
+        const col = document.createElement("col");
+        col.setAttribute("style", `width:${w}%`);
+        cg.appendChild(col);
+      });
+      tbl.insertBefore(cg, tbl.firstChild);
+    });
+  }
   const pageCss = getPrintStyles(paperSize);
   // Force the cloned print root into a print-safe container (190mm on A4,
   // 76mm on 80mm, 54mm on 58mm) centred within the physical page. The
@@ -90,10 +134,17 @@ export function buildStandalonePrintHtml(
     .join(";");
   clone.setAttribute("style", existing + ";" + forced + ";");
   const safetyCss = getPrintSafetyCss(`#${elementId}`);
+  const a4TableCss = isA4
+    ? `
+#${elementId} table[data-print-table]{table-layout:fixed !important;width:100% !important;border-collapse:collapse;}
+#${elementId} table[data-print-table] th,#${elementId} table[data-print-table] td{word-break:break-word;overflow-wrap:anywhere;box-sizing:border-box;}
+`
+    : "";
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
 <style>${pageCss}
 html,body{margin:0;padding:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;}
 ${safetyCss}
+${a4TableCss}
 </style></head><body>${clone.outerHTML}</body></html>`;
 }
 

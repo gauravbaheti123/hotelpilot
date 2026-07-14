@@ -1491,7 +1491,7 @@ function FolioPage() {
           {/* Charges */}
           <div className="px-8 py-5">
             <div className="mb-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Charges</div>
-            <table>
+            <table data-print-table="charges" data-print-has-hsn={isGst ? "1" : "0"}>
               <thead>
                 <tr style={{ background: TEAL, color: "#fff" }}>
                   <th style={{ textAlign: "left", width: 40 }}>#</th>
@@ -1562,7 +1562,7 @@ function FolioPage() {
             {isGst && Number(folio.gst_amount) > 0 && (
               <div className="mt-5">
                 <div className="mb-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>GST Breakup</div>
-                <table>
+                <table data-print-table="gst-breakup">
                   <thead>
                     <tr style={{ background: TEAL, color: "#fff" }}>
                       <th style={{ textAlign: "left" }}>Category</th>
