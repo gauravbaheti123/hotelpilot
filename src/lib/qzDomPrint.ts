@@ -6,20 +6,51 @@ import { toast } from "sonner";
 import { isQZConnected, connectQZ, printToPrinter } from "./qzPrint";
 import { getPrintStyles } from "./printStyles";
 
-function collectStyles(): string {
-  const parts: string[] = [];
-  for (const sheet of Array.from(document.styleSheets)) {
-    try {
-      const rules = (sheet as CSSStyleSheet).cssRules;
-      if (!rules) continue;
-      for (const r of Array.from(rules)) parts.push(r.cssText);
-    } catch {
-      // Cross-origin sheet — include as <link> ref instead.
-      const href = (sheet as CSSStyleSheet).href;
-      if (href) parts.push(`@import url("${href}");`);
+// Properties to copy from computedStyle onto each cloned node as inline styles.
+// This snapshots the app's Tailwind/theme resolution into self-contained HTML
+// that QZ Tray can render without access to the app's stylesheets.
+const STYLE_PROPS: string[] = [
+  "box-sizing",
+  "display", "position", "top", "left", "right", "bottom", "z-index",
+  "flex", "flex-direction", "flex-wrap", "flex-grow", "flex-shrink", "flex-basis",
+  "justify-content", "align-items", "align-self", "gap", "row-gap", "column-gap",
+  "grid-template-columns", "grid-template-rows", "grid-column", "grid-row",
+  "width", "height", "min-width", "min-height", "max-width", "max-height",
+  "margin", "margin-top", "margin-right", "margin-bottom", "margin-left",
+  "padding", "padding-top", "padding-right", "padding-bottom", "padding-left",
+  "border", "border-top", "border-right", "border-bottom", "border-left",
+  "border-width", "border-style", "border-color", "border-radius",
+  "border-top-width", "border-right-width", "border-bottom-width", "border-left-width",
+  "border-top-style", "border-right-style", "border-bottom-style", "border-left-style",
+  "border-top-color", "border-right-color", "border-bottom-color", "border-left-color",
+  "font-family", "font-size", "font-weight", "font-style", "line-height",
+  "letter-spacing", "text-align", "text-decoration", "text-transform",
+  "white-space", "vertical-align", "word-break", "overflow-wrap",
+  "color", "background", "background-color", "background-image",
+  "opacity", "visibility", "overflow", "object-fit",
+  "table-layout", "border-collapse", "border-spacing",
+  "list-style", "list-style-type",
+];
+
+function inlineComputedStyles(source: HTMLElement, target: HTMLElement) {
+  const srcNodes = [source, ...Array.from(source.querySelectorAll<HTMLElement>("*"))];
+  const tgtNodes = [target, ...Array.from(target.querySelectorAll<HTMLElement>("*"))];
+  const len = Math.min(srcNodes.length, tgtNodes.length);
+  for (let i = 0; i < len; i++) {
+    const s = srcNodes[i];
+    const t = tgtNodes[i];
+    if (!s || !t) continue;
+    const cs = window.getComputedStyle(s);
+    let style = "";
+    for (const prop of STYLE_PROPS) {
+      const val = cs.getPropertyValue(prop);
+      if (val && val !== "normal" && val !== "auto" && val !== "none") {
+        style += `${prop}:${val};`;
+      }
     }
+    if (style) t.setAttribute("style", (t.getAttribute("style") ?? "") + style);
+    t.removeAttribute("class");
   }
-  return parts.join("\n");
 }
 
 export function buildStandalonePrintHtml(
@@ -29,13 +60,14 @@ export function buildStandalonePrintHtml(
 ): string | null {
   const el = document.getElementById(elementId);
   if (!el) return null;
-  const inlineCss = collectStyles();
+  const clone = el.cloneNode(true) as HTMLElement;
+  inlineComputedStyles(el, clone);
   const pageCss = getPrintStyles(paperSize);
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
 <style>${pageCss}
-html,body{margin:0;padding:0;background:#fff;}
-${inlineCss}
-</style></head><body>${el.outerHTML}</body></html>`;
+html,body{margin:0;padding:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;}
+img{max-width:100%;}
+</style></head><body>${clone.outerHTML}</body></html>`;
 }
 
 /**
