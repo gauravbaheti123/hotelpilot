@@ -87,7 +87,35 @@ interface BookingCtx {
 type PropertyInfo = InvoiceProperty & {
   address?: string | null; // legacy
   pincode?: string | null; // legacy
+  use_gst_slabs?: boolean | null;
 };
+
+interface GstSlab {
+  from_amount: number;
+  to_amount: number;
+  gst_rate: number;
+}
+
+/** Resolve the GST% for a room whose nightly tariff is `nightlyRate`.
+ * When the property has "Custom GST Slabs" enabled, look up the matching
+ * slab row (from_amount ≤ nightlyRate ≤ to_amount). Otherwise fall back to
+ * the room category's configured gst_rate, then to 12%. */
+function resolveRoomGstRate(
+  nightlyRate: number,
+  useSlabs: boolean,
+  slabs: GstSlab[],
+  categoryGst: number | null | undefined,
+): number {
+  if (useSlabs && slabs.length > 0) {
+    const hit = slabs.find(
+      (s) => Number(nightlyRate) >= Number(s.from_amount)
+          && Number(nightlyRate) <= Number(s.to_amount),
+    );
+    if (hit) return Number(hit.gst_rate);
+  }
+  const cat = Number(categoryGst);
+  return Number.isFinite(cat) && cat > 0 ? cat : 12;
+}
 interface PendingKot {
   id: string; kot_number: string; status: string;
   total_amount: number; sub_total: number;
