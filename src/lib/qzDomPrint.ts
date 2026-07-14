@@ -76,10 +76,38 @@ export function buildStandalonePrintHtml(
     clone.querySelectorAll(sel).forEach((n) => n.remove());
   });
   const pageCss = getPrintStyles(paperSize);
+  // For A4 output, the on-screen container (max-w-5xl / max-w-4xl ~1024px)
+  // gets snapshotted as a pixel width that exceeds the printable A4 area
+  // once QZ Tray renders at print DPI, causing right-edge cutoff. Force the
+  // cloned root to a print-safe 190mm content box centred within the 210mm
+  // page, and neutralise any inherited pixel widths on descendants so they
+  // flow inside the safe area.
+  const isA4 = String(paperSize).toUpperCase() === "A4";
+  if (isA4) {
+    const existing = clone.getAttribute("style") ?? "";
+    clone.setAttribute(
+      "style",
+      existing +
+        ";width:190mm !important;max-width:190mm !important;min-width:0 !important;" +
+        "margin:0 auto !important;box-sizing:border-box !important;overflow:hidden !important;",
+    );
+  }
+  const a4SafetyCss = isA4
+    ? `
+      html,body{width:210mm;}
+      body{display:block;}
+      #${elementId}, #${elementId} *{box-sizing:border-box;}
+      #${elementId} table{table-layout:fixed !important;width:100% !important;word-wrap:break-word;}
+      #${elementId} img{max-width:100%;height:auto;}
+      /* Neutralise any 100vw / oversized banner backgrounds */
+      #${elementId} *{max-width:100% !important;}
+    `
+    : "";
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
 <style>${pageCss}
 html,body{margin:0;padding:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;}
 img{max-width:100%;}
+${a4SafetyCss}
 </style></head><body>${clone.outerHTML}</body></html>`;
 }
 
