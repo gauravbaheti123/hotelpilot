@@ -123,6 +123,20 @@ interface PendingKot {
   items: { id: string; item_name: string; qty: number; rate: number }[];
 }
 
+/** Format a date/timestamp as "14 Jul 2026, 12:00 PM".
+ *  If `value` is already an ISO timestamp, use it directly; if only a date is
+ *  available, combine it with the property's default check-in/out time. */
+function fmtDateTime(value: string | null | undefined, fallbackTime?: string | null): string {
+  if (!value) return "—";
+  const isTs = value.includes("T") || value.length > 10;
+  const t = (fallbackTime && fallbackTime.length >= 5) ? fallbackTime.slice(0, 5) : "12:00";
+  const d = isTs ? new Date(value) : new Date(`${value}T${t}:00`);
+  if (isNaN(d.getTime())) return String(value);
+  const date = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  const time = d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
+  return `${date}, ${time}`;
+}
+
 function FolioPage() {
   const { bookingId } = Route.useParams();
   const router = useRouter();
