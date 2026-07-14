@@ -21,16 +21,9 @@ import {
 import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { useAuth, hasRole } from "@/hooks/use-auth";
+import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { ArrowLeft, ArrowRight, Loader2, SplitSquareHorizontal, Plus, Trash2 } from "lucide-react";
 import { Percent } from "lucide-react";
-
-const PAY_MODES = [
-  { v: "cash", label: "Cash" },
-  { v: "card", label: "Card" },
-  { v: "upi", label: "UPI" },
-  { v: "bank_transfer", label: "Bank Transfer" },
-  { v: "credit", label: "Credit" },
-] as const;
 
 interface Charge {
   id: string; charge_type: string; description: string;
