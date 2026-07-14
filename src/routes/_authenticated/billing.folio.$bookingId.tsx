@@ -338,7 +338,12 @@ function FolioPage() {
           (new Date(br.check_out).getTime() - new Date(br.check_in).getTime()) / 86400000,
         ));
         const amt = nights * Number(br.rate);
-        const gstR = Number(br.room_categories?.gst_rate ?? 12);
+        const gstR = resolveRoomGstRate(
+          Number(br.rate),
+          !!property?.use_gst_slabs,
+          gstSlabs,
+          br.room_categories?.gst_rate ?? null,
+        );
         return {
           folio_id: folio.id,
           charge_type: "room",
