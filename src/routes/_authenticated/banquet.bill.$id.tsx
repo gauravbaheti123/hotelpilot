@@ -95,6 +95,7 @@ function BanquetBillPage() {
   const [misOpen, setMisOpen] = useState(false);
   const [misBusy, setMisBusy] = useState(false);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
+  const { methods: payMethods } = usePaymentMethods(b?.property_id ?? null);
   const [discOpen, setDiscOpen] = useState(false);
   const [discTarget, setDiscTarget] = useState<
     | { kind: "bill" }
