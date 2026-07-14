@@ -61,7 +61,20 @@ export function buildStandalonePrintHtml(
   const el = document.getElementById(elementId);
   if (!el) return null;
   const clone = el.cloneNode(true) as HTMLElement;
+  // Snapshot computed styles FIRST so source/clone trees still align.
   inlineComputedStyles(el, clone);
+  // Then structurally remove any node intended to be excluded from print
+  // (Tailwind `print:hidden`, legacy `no-print`, `data-no-print`, and any
+  // interactive form controls). Media-query utilities do not apply inside
+  // QZ's standalone print document, so these must be dropped from the DOM.
+  clone.querySelectorAll("*").forEach((n) => {
+    const cls = (n as HTMLElement).className;
+    const classStr = typeof cls === "string" ? cls : (cls as any)?.baseVal ?? "";
+    if (classStr.split(/\s+/).includes("print:hidden")) n.remove();
+  });
+  ["[data-no-print]", ".no-print", "button", "input", "textarea", "select"].forEach((sel) => {
+    clone.querySelectorAll(sel).forEach((n) => n.remove());
+  });
   const pageCss = getPrintStyles(paperSize);
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
 <style>${pageCss}

@@ -955,6 +955,34 @@ function FolioPage() {
 
   async function handleDownloadPDF() {
     if (!folio || !booking) return;
+    // Ensure totals reflect the current charges/discount BEFORE the print
+    // capture runs — the capture reads DOM text, so stale folio state
+    // would print as ₹0. Recompute in-memory, sync to DB in parallel,
+    // apply to state, and wait for React to flush before printing.
+    const mode = folio.gst_mode as "cash" | "gst";
+    const billDisc = folio.discount_type && Number(folio.discount_value) > 0
+      ? { type: folio.discount_type as "percent" | "amount", value: Number(folio.discount_value) }
+      : null;
+    const t = recomputeFolio(charges as any, mode, billDisc);
+    const paid = payments.reduce((s, p) => s + Number(p.amount), 0);
+    const refreshedFolio = {
+      ...folio,
+      ...t,
+      paid_amount: paid,
+      balance_amount: Math.max(0, t.total_amount - paid),
+    } as Folio;
+    setFolio(refreshedFolio);
+    void persistTotals(charges, payments);
+    // Wait two frames so React commits the new folio state into the DOM.
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    console.log("[bill-print] totals at capture time", {
+      sub_total: refreshedFolio.sub_total,
+      gst_amount: refreshedFolio.gst_amount,
+      discount_amount: refreshedFolio.discount_amount,
+      total_amount: refreshedFolio.total_amount,
+      chargeCount: charges.length,
+    });
     const prevTitle = document.title;
     const safeName = (booking.guests?.name ?? "guest").replace(/[^\w]+/g, "");
     document.title = `INV-${folio.invoice_number}-${safeName}`;
