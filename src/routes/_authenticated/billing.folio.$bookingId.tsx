@@ -1604,8 +1604,8 @@ function FolioPage() {
             )}
 
             {/* Totals box */}
-            <div className="mt-5 ml-auto" style={{ maxWidth: 360 }}>
-              <table>
+            <div className="mt-5 ml-auto totals-box" style={{ maxWidth: 360, width: "100%", boxSizing: "border-box" }}>
+              <table style={{ width: "100%", tableLayout: "fixed" }}>
                 <tbody>
                   <tr><td style={{ color: "#555" }}>Sub-total</td><td style={{ textAlign: "right" }}>{inr(folio.sub_total)}</td></tr>
                   {Number(folio.discount_amount) > 0 && (
@@ -1641,7 +1641,7 @@ function FolioPage() {
                   </Button>
                 </div>
               )}
-              <div style={{ background: TEAL, color: "#fff" }} className="mt-2 flex items-center justify-between rounded px-4 py-3">
+              <div style={{ background: TEAL, color: "#fff", boxSizing: "border-box", width: "100%" }} className="grand-total-row mt-2 flex items-center justify-between rounded px-4 py-3">
                 <span className="text-sm font-bold uppercase tracking-wider">Grand Total</span>
                 <span className="text-2xl font-extrabold tabular-nums">{inrRound(folio.total_amount)}</span>
               </div>
