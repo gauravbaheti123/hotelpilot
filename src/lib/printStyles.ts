@@ -20,6 +20,42 @@ export function getPrintStyles(paperSize: string | null | undefined): string {
 }
 
 /**
+ * Print-safe outer container dimensions for each paper size. Values are
+ * intentionally smaller than the physical page so nothing sits on the
+ * printable edge regardless of driver / QZ Tray scaling.
+ *
+ *   A4     210mm page → 190mm container (10mm margin each side)
+ *   80mm   thermal    → 76mm container (2mm margin each side)
+ *   58mm   thermal    → 54mm container (2mm margin each side)
+ */
+export function getPrintContainerWidth(paperSize: string | null | undefined): string {
+  const size = String(paperSize ?? "80mm").toUpperCase();
+  if (size === "A4") return "190mm";
+  if (size === "58MM") return "54mm";
+  return "76mm";
+}
+
+export function getPrintContainerStyle(paperSize: string | null | undefined): string {
+  const w = getPrintContainerWidth(paperSize);
+  return `width:${w};max-width:${w};min-width:0;margin:0 auto;box-sizing:border-box;`;
+}
+
+/**
+ * CSS rules that harden a print document against right-edge cutoff:
+ * scoped to a container class so it can't leak into the app UI.
+ */
+export function getPrintSafetyCss(containerSelector: string): string {
+  return `
+    html,body{margin:0;padding:0;background:#fff;color:#000;}
+    ${containerSelector},${containerSelector} *{box-sizing:border-box;}
+    ${containerSelector} *{max-width:100% !important;}
+    ${containerSelector} table{table-layout:fixed !important;width:100% !important;border-collapse:collapse;}
+    ${containerSelector} th,${containerSelector} td{word-break:break-word;overflow-wrap:anywhere;}
+    ${containerSelector} img{max-width:100%;height:auto;}
+  `;
+}
+
+/**
  * Fetch the paper size for the first active printer matching the given
  * usage at the current property. Falls back to '80mm'.
  * usage: 'kot' or 'bill' — matches printers.type in (usage, 'both').

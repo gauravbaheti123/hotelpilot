@@ -1,4 +1,4 @@
-import { getPrintStyles } from "./printStyles";
+import { getPrintStyles, getPrintContainerStyle, getPrintSafetyCss } from "./printStyles";
 import { isQZConnected, connectQZ, printToPrinter } from "./qzPrint";
 import { toast } from "sonner";
 
@@ -53,6 +53,8 @@ function renderKotHtml(
 ): string {
   const total = items.reduce((s, i) => s + i.qty * i.rate, 0);
   const pageCss = getPrintStyles(paperSize);
+  const containerCss = getPrintContainerStyle(paperSize);
+  const safetyCss = getPrintSafetyCss(".print-container");
   const isCounter = badge === "COUNTER COPY";
   const showPrice = isCounter;
   const stationName = (printerName || "").toUpperCase();
@@ -71,7 +73,9 @@ ${pageCss}
   html, body { width: ${paperSize}; min-height: 0 !important; height: auto !important; }
 }
 html,body{margin:0;padding:0;height:auto;min-height:0;width:${paperSize};color:#000}
-body{font-family: 'Arial Black', Arial, Helvetica, sans-serif; font-size:15px; font-weight:700; padding:3mm; box-sizing:border-box; line-height:1.35}
+body{font-family: 'Arial Black', Arial, Helvetica, sans-serif; font-size:15px; font-weight:700; padding:0; box-sizing:border-box; line-height:1.35}
+.print-container{${containerCss}padding:2mm 0;}
+${safetyCss}
 .badge{display:block;text-align:center;border:2px solid #000;padding:4px 6px;font-weight:800;font-size:15px;letter-spacing:1px;margin-bottom:6px}
 .station{text-align:center;font-size:20px;font-weight:800;letter-spacing:1px;margin:2px 0 4px}
 .divider{border:none;border-top:2px dashed #000;margin:6px 0}
@@ -84,6 +88,7 @@ body{font-family: 'Arial Black', Arial, Helvetica, sans-serif; font-size:15px; f
 .total{display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin-top:4px}
 .ordernote{font-size:12px;font-weight:600;margin-top:6px}
 </style></head><body>
+<div class="print-container">
 ${isCounter ? `<div class="badge">COUNTER COPY</div>` : ""}
 <div class="station">${esc(stationName)}</div>
 <hr class="divider"/>
@@ -102,6 +107,7 @@ ${items
   .join("")}
 ${showPrice ? `<hr class="divider"/><div class="total"><span>TOTAL</span><span>₹${total.toFixed(2)}</span></div>` : ""}
 ${header.notes ? `<div class="ordernote">Note: ${esc(header.notes)}</div>` : ""}
+</div>
 </body></html>`;
 }
 
