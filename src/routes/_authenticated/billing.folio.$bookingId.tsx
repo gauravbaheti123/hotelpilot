@@ -1148,9 +1148,18 @@ function FolioPage() {
           body * { visibility: hidden !important; }
           #invoice-print-area, #invoice-print-area * { visibility: visible !important; }
           #invoice-print-area {
-            position: fixed !important; top: 0; left: 0; width: 100%;
+            position: fixed !important; top: 0; left: 0;
+            width: 100% !important; max-width: 100% !important;
+            box-sizing: border-box !important;
+            padding: 0 !important;
             background: white; box-shadow: none !important; border: none !important;
           }
+          #invoice-print-area * { box-sizing: border-box !important; }
+          #invoice-print-area .totals-box { width: 55% !important; max-width: 55% !important; margin-left: auto !important; }
+          #invoice-print-area .totals-box table { width: 100% !important; table-layout: fixed !important; }
+          #invoice-print-area .totals-box table td:first-child { width: 55% !important; }
+          #invoice-print-area .totals-box table td:last-child { width: 45% !important; text-align: right !important; }
+          #invoice-print-area .grand-total-row { width: 100% !important; box-sizing: border-box !important; }
           .no-print, [data-no-print], .sidebar, nav, header {
             display: none !important; visibility: hidden !important;
           }
@@ -1159,7 +1168,7 @@ function FolioPage() {
             print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
-          @page { size: A4 portrait; margin: 0mm; }
+          @page { size: A4 portrait; margin: 10mm; }
         }
         /* Force hex colors inside the invoice — html2canvas (PDF export)
            cannot parse Tailwind v4 oklch() values. Keep this in sync. */
