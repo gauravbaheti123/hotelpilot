@@ -39,7 +39,6 @@ import {
   type InvoiceProperty,
 } from "@/lib/invoiceTemplates";
 import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
-import { printDomViaQZ } from "@/lib/qzDomPrint";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
@@ -1093,13 +1092,9 @@ function FolioPage() {
     const safeName = (booking.guests?.name ?? "guest").replace(/[^\w]+/g, "");
     document.title = `INV-${folio.invoice_number}-${safeName}`;
     const paperSize = await fetchPrinterPaperSize(booking.property_id, "bill");
-    await printDomViaQZ({
-      elementId: "invoice-print-area",
-      propertyId: booking.property_id,
-      paperSizeOverride: paperSize,
-      title: document.title,
-      fallback: () => withPrintStyles(paperSize, () => window.print()),
-    });
+    // Invoice/Bill uses the browser's native print dialog — QZ Tray's
+    // HTML-to-pixel pipeline caused persistent A4 table cutoff issues.
+    withPrintStyles(paperSize, () => window.print());
     setTimeout(() => { document.title = prevTitle; }, 500);
   }
 
