@@ -61,29 +61,20 @@ export function buildStandalonePrintHtml(
   const el = document.getElementById(elementId);
   if (!el) return null;
   const clone = el.cloneNode(true) as HTMLElement;
-  // Structurally remove any element intended to be excluded from print
-  // (Tailwind `print:hidden`, legacy `no-print`, or explicit `data-no-print`).
-  // Media-query utilities do not apply inside QZ's standalone print
-  // document, so hidden-in-print controls must be dropped from the DOM.
-  const excludeSelectors = [
-    "[data-no-print]",
-    ".no-print",
-    "button",
-    "input",
-    "textarea",
-    "select",
-  ];
-  // First, remove Tailwind's `print:hidden` (class name contains a colon,
-  // which CSS selectors need escaped). Match by class token instead.
+  // Snapshot computed styles FIRST so source/clone trees still align.
+  inlineComputedStyles(el, clone);
+  // Then structurally remove any node intended to be excluded from print
+  // (Tailwind `print:hidden`, legacy `no-print`, `data-no-print`, and any
+  // interactive form controls). Media-query utilities do not apply inside
+  // QZ's standalone print document, so these must be dropped from the DOM.
   clone.querySelectorAll("*").forEach((n) => {
     const cls = (n as HTMLElement).className;
     const classStr = typeof cls === "string" ? cls : (cls as any)?.baseVal ?? "";
     if (classStr.split(/\s+/).includes("print:hidden")) n.remove();
   });
-  for (const sel of excludeSelectors) {
+  ["[data-no-print]", ".no-print", "button", "input", "textarea", "select"].forEach((sel) => {
     clone.querySelectorAll(sel).forEach((n) => n.remove());
-  }
-  inlineComputedStyles(el, clone);
+  });
   const pageCss = getPrintStyles(paperSize);
   return `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
 <style>${pageCss}
