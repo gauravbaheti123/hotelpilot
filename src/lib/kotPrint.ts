@@ -52,43 +52,56 @@ function renderKotHtml(
   printerName: string,
 ): string {
   const total = items.reduce((s, i) => s + i.qty * i.rate, 0);
-  // NOTE: @page rule MUST be the very first rule in the stylesheet and
-  // scoped to this iframe's own document — the parent page's print CSS
-  // does not cascade into the iframe. Keep html/body height:auto so the
-  // thermal driver cuts right after content.
   const pageCss = getPrintStyles(paperSize);
+  const isCounter = badge === "COUNTER COPY";
+  const showPrice = isCounter;
+  const stationName = (printerName || "").toUpperCase();
+  const when = header.created_at ? new Date(header.created_at) : new Date();
+  const dateStr = when.toLocaleDateString();
+  const timeStr = when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const tableLabel =
+    header.kot_type === "room"
+      ? `Room ${esc(header.room_number ?? "—")}`
+      : esc(header.table_no ?? "—");
+
   return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(header.kot_number)}</title>
 <style>
 ${pageCss}
 @media print {
   html, body { width: ${paperSize}; min-height: 0 !important; height: auto !important; }
 }
-html,body{margin:0;padding:0;height:auto;min-height:0;width:${paperSize}}
-body{font:12px monospace;padding:4px;box-sizing:border-box}
-h2{margin:0 0 4px;font-size:14px}
-.badge{display:inline-block;padding:2px 6px;border:1px solid #000;font-weight:bold;margin-bottom:4px;font-size:11px;letter-spacing:0.5px}
-hr{border:none;border-top:1px dashed #999;margin:6px 0}
-.row{display:flex;justify-content:space-between}
-.dest{font-size:10px;color:#555;margin-bottom:2px}
+html,body{margin:0;padding:0;height:auto;min-height:0;width:${paperSize};color:#000}
+body{font-family: 'Arial Black', Arial, Helvetica, sans-serif; font-size:15px; font-weight:700; padding:3mm; box-sizing:border-box; line-height:1.35}
+.badge{display:block;text-align:center;border:2px solid #000;padding:4px 6px;font-weight:800;font-size:15px;letter-spacing:1px;margin-bottom:6px}
+.station{text-align:center;font-size:20px;font-weight:800;letter-spacing:1px;margin:2px 0 4px}
+.divider{border:none;border-top:2px dashed #000;margin:6px 0}
+.info{font-size:15px;font-weight:700;margin:2px 0;display:flex}
+.info .lbl{min-width:70px;font-weight:800}
+.item{display:flex;justify-content:space-between;align-items:flex-start;font-size:17px;font-weight:800;margin:5px 0;gap:8px}
+.item .n{flex:1;word-break:break-word}
+.item .p{white-space:nowrap}
+.itemnote{font-size:12px;font-weight:600;padding-left:10px;margin-top:-2px;margin-bottom:4px}
+.total{display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin-top:4px}
+.ordernote{font-size:12px;font-weight:600;margin-top:6px}
 </style></head><body>
-<div class="badge">${esc(badge)}</div>
-<h2>KOT ${esc(header.kot_number)}</h2>
-<div class="dest">→ ${esc(printerName)}</div>
-<div>${esc(header.created_at ? new Date(header.created_at).toLocaleString() : new Date().toLocaleString())}</div>
-<div>${header.kot_type === "room" ? `Room ${esc(header.room_number ?? "—")}` : `Table ${esc(header.table_no ?? "—")}`}</div>
-${header.guest_name ? `<div>Guest: ${esc(header.guest_name)}</div>` : ""}
-<hr/>
+${isCounter ? `<div class="badge">COUNTER COPY</div>` : ""}
+<div class="station">${esc(stationName)}</div>
+<hr class="divider"/>
+<div class="info"><span class="lbl">Table:</span><span>${tableLabel}</span></div>
+<div class="info"><span class="lbl">KOT No:</span><span>${esc(header.kot_number)}</span></div>
+<div class="info"><span class="lbl">Date/Time:</span><span>${esc(dateStr)} ${esc(timeStr)}</span></div>
+${header.guest_name ? `<div class="info"><span class="lbl">Guest:</span><span>${esc(header.guest_name)}</span></div>` : ""}
+<hr class="divider"/>
 ${items
   .map(
     (i) =>
-      `<div class="row"><span>${i.qty} × ${esc(i.item_name)}</span><span>₹${(i.qty * i.rate).toFixed(0)}</span></div>${
-        i.notes ? `<div style="padding-left:8px;color:#555">- ${esc(i.notes)}</div>` : ""
-      }`,
+      `<div class="item"><span class="n">${i.qty} x ${esc(i.item_name)}</span>${
+        showPrice ? `<span class="p">₹${(i.qty * i.rate).toFixed(0)}</span>` : ""
+      }</div>${i.notes ? `<div class="itemnote">- ${esc(i.notes)}</div>` : ""}`,
   )
   .join("")}
-<hr/>
-<div class="row"><span>Total</span><span>₹${total.toFixed(2)}</span></div>
-${header.notes ? `<div><em>${esc(header.notes)}</em></div>` : ""}
+${showPrice ? `<hr class="divider"/><div class="total"><span>TOTAL</span><span>₹${total.toFixed(2)}</span></div>` : ""}
+${header.notes ? `<div class="ordernote">Note: ${esc(header.notes)}</div>` : ""}
 </body></html>`;
 }
 
