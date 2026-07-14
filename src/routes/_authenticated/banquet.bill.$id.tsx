@@ -128,6 +128,11 @@ function BanquetBillPage() {
     ]);
     setBulk(((br ?? []) as unknown) as Bulk[]);
     setProperty((p ?? null) as PropertyInfo | null);
+    if ((p as any)?.logo_url) {
+      resolveLogoUrl((p as any).logo_url).then((url) => {
+        if (url) setProperty((cur) => cur ? { ...cur, logo_url: url } : cur);
+      });
+    }
     const { data: ex } = await supabase.from("banquet_extra_charges")
       .select("id,point_name,amount,discount_type,discount_value,discount_amount")
       .eq("banquet_booking_id", id)
