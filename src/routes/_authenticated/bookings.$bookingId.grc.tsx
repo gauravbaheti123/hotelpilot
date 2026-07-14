@@ -68,7 +68,7 @@ function GrcPage() {
       setLoading(true);
       const { data: b, error } = await supabase
         .from("bookings")
-        .select(`id, booking_number, property_id, check_in, check_out, adults, children, source, total_amount, advance_amount,
+        .select(`id, booking_number, property_id, check_in, check_out, actual_check_in, actual_check_out, adults, children, source, total_amount, advance_amount,
                  guests(name, mobile, email, address, city, state, country, pincode, company, id_proof_type, id_proof_number, gender, dob, nationality, gst_number),
                  booking_rooms(rate, meal_plan, rooms!booking_rooms_room_id_fkey(room_number), room_categories(name))`)
         .eq("id", bookingId)
@@ -78,7 +78,7 @@ function GrcPage() {
 
       const { data: p } = await supabase
         .from("properties")
-        .select("id, name, legal_entity_name, address_line1, address_line2, city, state, pin_code, phone, email, gstin, short_code, logo_url, grc_terms")
+        .select("id, name, legal_entity_name, address_line1, address_line2, city, state, pin_code, phone, email, gstin, short_code, logo_url, grc_terms, default_checkin_time, default_checkout_time")
         .eq("id", b.property_id).maybeSingle();
       setProperty(p);
       if (p?.logo_url) {
