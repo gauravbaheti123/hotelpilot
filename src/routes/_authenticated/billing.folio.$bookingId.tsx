@@ -1399,8 +1399,9 @@ function FolioPage() {
                     <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: 0.3, color: "#ffffff", lineHeight: 1.1 }}>
                       {property?.name ?? "Hotel"}
                     </div>
-                    <div style={{ fontSize: 11, color: "#ffffff", opacity: 0.85, marginTop: 4 }}>
-                      Hospitality · Experience · Comfort
+                    <div style={{ fontSize: 11, color: "#ffffff", opacity: 0.9, marginTop: 4, lineHeight: 1.4 }}>
+                      {[propAddrLine, property?.phone ? `Ph: ${property.phone}` : null, property?.email ?? null, property?.gstin ? `GSTIN: ${property.gstin}` : null]
+                        .filter(Boolean).join("  |  ")}
                     </div>
                   </div>
                 </div>
@@ -1412,11 +1413,6 @@ function FolioPage() {
                   <div style={{ fontSize: 12 }}>Date: <b>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b></div>
                   <div style={{ fontSize: 12 }}>Booking: <b>{booking.booking_number}</b></div>
                 </div>
-              </div>
-              {/* Address bar */}
-              <div style={{ background: "#f1f3f5", color: "#495057", fontSize: 11, padding: "8px 40px", borderBottom: "1px solid #dee2e6" }}>
-                {[propAddrLine, property?.gstin ? `GSTIN: ${property.gstin}` : null, property?.phone ? `Ph: ${property.phone}` : null, property?.email ?? null]
-                  .filter(Boolean).join("  |  ")}
               </div>
             </>
           ) : (
