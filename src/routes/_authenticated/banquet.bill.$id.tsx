@@ -63,7 +63,6 @@ interface PropertyInfo {
 }
 
 const TEAL = "#1D9E75";
-const PAY_MODES = ["cash","card","upi","bank_transfer","cheque","complimentary"];
 
 interface EventPayment {
   id: string; amount: number; payment_mode: string; reference: string | null;
