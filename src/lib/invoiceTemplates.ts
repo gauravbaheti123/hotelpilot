@@ -175,28 +175,24 @@ function headerBlock(ctx: InvoiceContext): string {
   const { property, logoDataUrl } = ctx;
   const logo = logoDataUrl ? `<img class="logo" src="${esc(logoDataUrl)}" alt="logo"/>` : "";
   const color = property.invoice_primary_color || "#1D9E75";
-  const tagline = (property.tagline ?? "").trim();
   const addressBits = [
     esc(fullAddress(property)),
     property.phone ? `Ph: ${esc(property.phone)}` : "",
     property.email ? `Email: ${esc(property.email)}` : "",
     property.gstin ? `GSTIN: ${esc(property.gstin)}` : "",
   ].filter(Boolean).join("  |  ");
-  // Premium header — full-width colored band + address bar
+  // Premium header — full-width colored band, name + address inside the band.
   return `
     <div style="background:${color};color:#fff;padding:20px 24px;display:flex;align-items:center;gap:18px">
       ${logoDataUrl ? `<div style="background:#fff;padding:6px;">${logo}</div>` : ""}
       <div style="flex:1;min-width:0">
-        <h1 style="color:#fff;font-size:22px;letter-spacing:0.5px">${esc(property.name)}</h1>
-        ${tagline ? `<div style="font-size:10px;opacity:.9">${esc(tagline)}</div>` : ""}
+        <h1 style="color:#fff;font-size:20px;letter-spacing:0.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0">${esc(property.name)}</h1>
+        <div style="font-size:10px;opacity:.9;margin-top:4px;line-height:1.4">${addressBits}</div>
       </div>
       <div style="text-align:right">
         <div style="font-size:22px;font-weight:800;letter-spacing:3px">INVOICE</div>
         ${property.gstin ? `<div style="font-size:10px;opacity:.9">GSTIN: ${esc(property.gstin)}</div>` : ""}
       </div>
-    </div>
-    <div style="background:#f1f3f5;color:#495057;font-size:10px;padding:6px 24px;border-bottom:1px solid #dee2e6">
-      ${addressBits}
     </div>
   `;
 }
