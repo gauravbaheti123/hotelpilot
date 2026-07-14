@@ -365,12 +365,27 @@ function HotelSettingsForm({
         </CardHeader>
         <CardContent className="grid md:grid-cols-2 gap-4">
           <Field label="GSTIN (15 char)">
-            <Input disabled={dis} maxLength={15} value={form.gstin ?? ""} onChange={(e) => set("gstin", e.target.value.toUpperCase())} placeholder="22AAAAA0000A1Z5" />
+            <Input
+              disabled={dis}
+              maxLength={15}
+              value={form.gstin ?? ""}
+              onChange={(e) => {
+                const v = e.target.value.toUpperCase();
+                set("gstin", v);
+                // Auto-fill state_code from first 2 chars of GSTIN (user can still override)
+                if (v.length >= 2 && /^\d{2}/.test(v)) {
+                  set("state_code", v.substring(0, 2));
+                }
+              }}
+              placeholder="22AAAAA0000A1Z5"
+            />
           </Field>
           <Field label="PAN Number">
             <Input disabled={dis} maxLength={10} value={form.pan_number ?? ""} onChange={(e) => set("pan_number", e.target.value.toUpperCase())} placeholder="AAAAA9999A" />
           </Field>
-          <Field label="State Code (auto-filled)"><Input disabled={dis} maxLength={2} value={form.state_code ?? ""} onChange={(e) => set("state_code", e.target.value.replace(/\D/g, ""))} /></Field>
+          <Field label="State Code" hint="Auto-derived from GSTIN; editable for corrections or unregistered dealers.">
+            <Input disabled={dis} maxLength={2} value={form.state_code ?? ""} onChange={(e) => set("state_code", e.target.value.replace(/\D/g, ""))} placeholder="27" />
+          </Field>
           <Field label="Legal Entity Name"><Input disabled={dis} value={form.legal_entity_name ?? ""} onChange={(e) => set("legal_entity_name", e.target.value)} /></Field>
         </CardContent>
       </Card>
