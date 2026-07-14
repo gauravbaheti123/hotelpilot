@@ -1706,7 +1706,7 @@ function FolioPage() {
                 <Select value={payMode} onValueChange={setPayMode}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {PAYMENT_MODES.map((m) => <SelectItem key={m} value={m}>{m.toUpperCase()}</SelectItem>)}
+                    {payMethods.map((m) => <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -1893,7 +1893,7 @@ function FolioPage() {
                 <Select value={payMode} onValueChange={setPayMode}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {PAYMENT_MODES.map((m) => <SelectItem key={m} value={m}>{m.toUpperCase()}</SelectItem>)}
+                    {payMethods.map((m) => <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
