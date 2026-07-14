@@ -946,7 +946,11 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
                     <Select value={payRows[i].mode} onValueChange={(v) => setPayRows((rs) => rs.map((r, idx) => idx === i ? { ...r, mode: v } : r))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {PAY_MODES.map((m) => <SelectItem key={m.v} value={m.v}>{m.label}</SelectItem>)}
+                        {payMethods.map((m) => (
+                          <SelectItem key={m.id} value={m.name}>
+                            {formatPaymentMethodLabel(m.name)}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
