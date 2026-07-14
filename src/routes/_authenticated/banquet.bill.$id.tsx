@@ -822,7 +822,7 @@ function BanquetBillPage() {
                     <Select value={payMode} onValueChange={setPayMode}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {PAY_MODES.map((m) => <SelectItem key={m} value={m}>{m.toUpperCase().replace(/_/g, " ")}</SelectItem>)}
+                        {payMethods.map((m) => <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -844,7 +844,7 @@ function BanquetBillPage() {
                         setSplitRows((arr) => arr.map((x, idx) => idx === i ? { ...x, mode: v } : x))}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {PAY_MODES.map((m) => <SelectItem key={m} value={m}>{m.toUpperCase().replace(/_/g, " ")}</SelectItem>)}
+                          {payMethods.map((m) => <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>)}
                         </SelectContent>
                       </Select>
                       <Input type="number" placeholder="Amount" value={r.amount}
