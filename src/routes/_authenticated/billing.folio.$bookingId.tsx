@@ -218,6 +218,12 @@ function FolioPage() {
         address,pincode`)
       .eq("id", bk.property_id).single();
     setProperty((prop ?? null) as PropertyInfo | null);
+    // Resolve logo storage path -> signed URL for on-screen + print capture.
+    if ((prop as any)?.logo_url) {
+      resolveLogoUrl((prop as any).logo_url).then((url) => {
+        if (url) setProperty((cur) => cur ? { ...cur, logo_url: url } : cur);
+      });
+    }
 
     // Load custom GST slabs for this property (used to resolve room-charge GST%).
     const { data: sl } = await supabase

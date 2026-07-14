@@ -20,6 +20,7 @@ import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
 import { fmtDate } from "@/lib/reportExports";
 import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
 import { printDomViaQZ } from "@/lib/qzDomPrint";
+import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/banquet/bill/$id")({
@@ -128,6 +129,11 @@ function BanquetBillPage() {
     ]);
     setBulk(((br ?? []) as unknown) as Bulk[]);
     setProperty((p ?? null) as PropertyInfo | null);
+    if ((p as any)?.logo_url) {
+      resolveLogoUrl((p as any).logo_url).then((url) => {
+        if (url) setProperty((cur) => cur ? { ...cur, logo_url: url } : cur);
+      });
+    }
     const { data: ex } = await supabase.from("banquet_extra_charges")
       .select("id,point_name,amount,discount_type,discount_value,discount_amount")
       .eq("banquet_booking_id", id)
