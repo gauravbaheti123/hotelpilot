@@ -1483,8 +1483,8 @@ function FolioPage() {
                   <div className="text-xs">Category: <span className="font-semibold">{booking.booking_rooms[0].room_categories?.name ?? "—"}</span></div>
                 </>
               )}
-              <div className="text-xs">Check-in: <span className="font-semibold">{new Date(booking.check_in).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
-              <div className="text-xs">Check-out: <span className="font-semibold">{new Date(booking.check_out).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
+              <div className="text-xs">Check-in: <span className="font-semibold">{fmtDateTime(booking.actual_check_in ?? booking.check_in, property?.default_checkin_time)}</span></div>
+              <div className="text-xs">Check-out: <span className="font-semibold">{fmtDateTime(booking.actual_check_out ?? booking.check_out, property?.default_checkout_time)}</span></div>
               <div className="text-xs">Duration: <span className="font-semibold">{nights} Night{nights > 1 ? "s" : ""}</span> · {booking.adults ?? 1} Adult{(booking.adults ?? 1) > 1 ? "s" : ""}{booking.children ? ` · ${booking.children} Child` : ""}</div>
             </div>
           </div>
