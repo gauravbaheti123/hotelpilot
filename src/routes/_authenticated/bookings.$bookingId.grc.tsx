@@ -13,6 +13,17 @@ import { Printer, Save, ArrowLeft } from "lucide-react";
 import { printDomViaQZ } from "@/lib/qzDomPrint";
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 
+function fmtDateTime(value: string | null | undefined, fallbackTime?: string | null): string {
+  if (!value) return "—";
+  const isTs = value.includes("T") || value.length > 10;
+  const t = (fallbackTime && fallbackTime.length >= 5) ? fallbackTime.slice(0, 5) : "12:00";
+  const d = isTs ? new Date(value) : new Date(`${value}T${t}:00`);
+  if (isNaN(d.getTime())) return String(value);
+  const date = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  const time = d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
+  return `${date}, ${time}`;
+}
+
 export const Route = createFileRoute("/_authenticated/bookings/$bookingId/grc")({
   head: () => ({ meta: [{ title: "Guest Registration Card — HotelPilot" }] }),
   component: () => (
