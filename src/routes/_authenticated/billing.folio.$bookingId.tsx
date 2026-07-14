@@ -1408,8 +1408,8 @@ function FolioPage() {
                       {(property?.name ?? "HP").split(/\s+/).slice(0, 2).map(s => s[0]).join("").toUpperCase()}
                     </div>
                   )}
-                  <div className="min-w-0">
-                    <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: 0.3, color: "#ffffff", lineHeight: 1.1 }}>
+                  <div className="min-w-0 flex-1">
+                    <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: 0.3, color: "#ffffff", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {property?.name ?? "Hotel"}
                     </div>
                     <div style={{ fontSize: 11, color: "#ffffff", opacity: 0.9, marginTop: 4, lineHeight: 1.4 }}>
