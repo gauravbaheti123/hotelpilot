@@ -264,6 +264,23 @@ function FolioPage() {
           .update({ gst_rate: fx.gst_rate, gst_amount: fx.gst_amount })
           .eq("id", fx.id),
       ));
+      // Re-persist folio totals so the stored sub_total / gst_amount /
+      // total_amount reflect the corrected slab-based GST rows.
+      const fRow = f as any;
+      if (fRow) {
+        const mode = (fRow.gst_mode as "cash" | "gst");
+        const billDisc = fRow.discount_type && Number(fRow.discount_value) > 0
+          ? { type: fRow.discount_type as "percent" | "amount", value: Number(fRow.discount_value) }
+          : null;
+        const t = recomputeFolio(correctedCharges as any, mode, billDisc);
+        const paid = (p ?? []).reduce((s: number, pp: any) => s + Number(pp.amount), 0);
+        await supabase.from("folios").update({
+          ...t,
+          paid_amount: paid,
+          balance_amount: Math.max(0, t.total_amount - paid),
+        }).eq("id", fRow.id);
+        setFolio({ ...fRow, ...t, paid_amount: paid, balance_amount: Math.max(0, t.total_amount - paid) } as any);
+      }
     }
     setCharges(correctedCharges);
     setPayments(((p ?? []) as unknown as Payment[]));
