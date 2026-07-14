@@ -20,6 +20,7 @@ import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
 import { fmtDate } from "@/lib/reportExports";
 import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
 import { printDomViaQZ } from "@/lib/qzDomPrint";
+import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/banquet/bill/$id")({
