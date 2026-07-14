@@ -87,7 +87,35 @@ interface BookingCtx {
 type PropertyInfo = InvoiceProperty & {
   address?: string | null; // legacy
   pincode?: string | null; // legacy
+  use_gst_slabs?: boolean | null;
 };
+
+interface GstSlab {
+  from_amount: number;
+  to_amount: number;
+  gst_rate: number;
+}
+
+/** Resolve the GST% for a room whose nightly tariff is `nightlyRate`.
+ * When the property has "Custom GST Slabs" enabled, look up the matching
+ * slab row (from_amount ≤ nightlyRate ≤ to_amount). Otherwise fall back to
+ * the room category's configured gst_rate, then to 12%. */
+function resolveRoomGstRate(
+  nightlyRate: number,
+  useSlabs: boolean,
+  slabs: GstSlab[],
+  categoryGst: number | null | undefined,
+): number {
+  if (useSlabs && slabs.length > 0) {
+    const hit = slabs.find(
+      (s) => Number(nightlyRate) >= Number(s.from_amount)
+          && Number(nightlyRate) <= Number(s.to_amount),
+    );
+    if (hit) return Number(hit.gst_rate);
+  }
+  const cat = Number(categoryGst);
+  return Number.isFinite(cat) && cat > 0 ? cat : 12;
+}
 interface PendingKot {
   id: string; kot_number: string; status: string;
   total_amount: number; sub_total: number;
@@ -105,6 +133,7 @@ function FolioPage() {
   const isOwnerStrict = roles.includes("owner") && !roles.includes("superadmin");
   const [booking, setBooking] = useState<BookingCtx | null>(null);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
+  const [gstSlabs, setGstSlabs] = useState<GstSlab[]>([]);
   const [folio, setFolio] = useState<Folio | null>(null);
   const [charges, setCharges] = useState<Charge[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -185,10 +214,19 @@ function FolioPage() {
         invoice_prefix,invoice_footer,invoice_primary_color,invoice_template,
         invoice_show_hsn,invoice_show_gst_breakup,invoice_show_signature,invoice_show_powered_by,
         default_checkin_time,default_checkout_time,
-        food_gst_rate,sundry_gst_rate,
+        food_gst_rate,sundry_gst_rate,use_gst_slabs,
         address,pincode`)
       .eq("id", bk.property_id).single();
     setProperty((prop ?? null) as PropertyInfo | null);
+
+    // Load custom GST slabs for this property (used to resolve room-charge GST%).
+    const { data: sl } = await supabase
+      .from("gst_slabs" as any)
+      .select("from_amount,to_amount,gst_rate")
+      .eq("property_id", bk.property_id);
+    const slabRows = ((sl ?? []) as unknown as GstSlab[]);
+    setGstSlabs(slabRows);
+    const useSlabs = !!(prop as any)?.use_gst_slabs;
 
     // get or create folio
     const { data: folioId, error: fe } = await supabase
@@ -202,7 +240,49 @@ function FolioPage() {
       supabase.from("payments").select("*").eq("folio_id", fId).order("paid_at", { ascending: false }),
     ]);
     setFolio((f ?? null) as unknown as Folio);
-    setCharges(((c ?? []) as unknown as Charge[]));
+    // Auto-correct any room charge whose stored gst_rate doesn't match the
+    // property's current slab configuration. This repairs folios seeded
+    // before Custom GST Slabs were enabled (or when a hardcoded fallback
+    // of 12% was applied).
+    const rawCharges = ((c ?? []) as unknown as Charge[]);
+    const fixes: Array<{ id: string; gst_rate: number; gst_amount: number }> = [];
+    const correctedCharges = rawCharges.map((ch) => {
+      if (ch.charge_type !== "room") return ch;
+      const catGst = bk.booking_rooms.find((br) => br.id === ch.source_id)
+        ?.room_categories?.gst_rate ?? null;
+      const nightly = Number(ch.rate);
+      const want = resolveRoomGstRate(nightly, useSlabs, slabRows, catGst);
+      if (Math.abs(Number(ch.gst_rate) - want) < 0.01) return ch;
+      const amt = Number(ch.amount);
+      const nextGstAmt = Math.round(amt * want) / 100;
+      fixes.push({ id: ch.id, gst_rate: want, gst_amount: nextGstAmt });
+      return { ...ch, gst_rate: want, gst_amount: nextGstAmt };
+    });
+    if (fixes.length > 0) {
+      await Promise.all(fixes.map((fx) =>
+        supabase.from("folio_charges")
+          .update({ gst_rate: fx.gst_rate, gst_amount: fx.gst_amount })
+          .eq("id", fx.id),
+      ));
+      // Re-persist folio totals so the stored sub_total / gst_amount /
+      // total_amount reflect the corrected slab-based GST rows.
+      const fRow = f as any;
+      if (fRow) {
+        const mode = (fRow.gst_mode as "cash" | "gst");
+        const billDisc = fRow.discount_type && Number(fRow.discount_value) > 0
+          ? { type: fRow.discount_type as "percent" | "amount", value: Number(fRow.discount_value) }
+          : null;
+        const t = recomputeFolio(correctedCharges as any, mode, billDisc);
+        const paid = (p ?? []).reduce((s: number, pp: any) => s + Number(pp.amount), 0);
+        await supabase.from("folios").update({
+          ...t,
+          paid_amount: paid,
+          balance_amount: Math.max(0, t.total_amount - paid),
+        }).eq("id", fRow.id);
+        setFolio({ ...fRow, ...t, paid_amount: paid, balance_amount: Math.max(0, t.total_amount - paid) } as any);
+      }
+    }
+    setCharges(correctedCharges);
     setPayments(((p ?? []) as unknown as Payment[]));
 
     // Resolve current user's max-discount % for this property.
@@ -258,7 +338,12 @@ function FolioPage() {
           (new Date(br.check_out).getTime() - new Date(br.check_in).getTime()) / 86400000,
         ));
         const amt = nights * Number(br.rate);
-        const gstR = Number(br.room_categories?.gst_rate ?? 12);
+        const gstR = resolveRoomGstRate(
+          Number(br.rate),
+          !!property?.use_gst_slabs,
+          gstSlabs,
+          br.room_categories?.gst_rate ?? null,
+        );
         return {
           folio_id: folio.id,
           charge_type: "room",
