@@ -11,6 +11,7 @@ import { RequirePermission } from "@/components/RequirePermission";
 import { toast } from "sonner";
 import { Printer, Save, ArrowLeft } from "lucide-react";
 import { printDomViaQZ } from "@/lib/qzDomPrint";
+import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 
 export const Route = createFileRoute("/_authenticated/bookings/$bookingId/grc")({
   head: () => ({ meta: [{ title: "Guest Registration Card — HotelPilot" }] }),
@@ -80,6 +81,10 @@ function GrcPage() {
         .select("id, name, legal_entity_name, address_line1, address_line2, city, state, pin_code, phone, email, gstin, short_code, logo_url, grc_terms")
         .eq("id", b.property_id).maybeSingle();
       setProperty(p);
+      if (p?.logo_url) {
+        const resolved = await resolveLogoUrl(p.logo_url);
+        if (resolved) setProperty((cur: any) => cur ? { ...cur, logo_url: resolved } : cur);
+      }
 
       const { data: g } = await supabase
         .from("grc_records")
