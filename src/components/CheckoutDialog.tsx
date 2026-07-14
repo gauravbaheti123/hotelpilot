@@ -27,14 +27,7 @@ import { AlertTriangle, Plus, Trash2, Loader2, ArrowRightLeft, SplitSquareHorizo
 import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 import { SplitBillDialog } from "@/components/SplitBillDialog";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
-
-const PAY_MODES = [
-  { v: "cash", label: "Cash" },
-  { v: "card", label: "Card" },
-  { v: "upi", label: "UPI" },
-  { v: "bank_transfer", label: "Bank Transfer" },
-  { v: "complimentary", label: "Complimentary" },
-] as const;
+import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 
 interface Props {
   bookingId: string | null;
@@ -89,6 +82,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
   const [payments, setPayments] = useState<any[]>([]);
   const [pendingKots, setPendingKots] = useState<PendingKot[]>([]);
   const [pendingPos, setPendingPos] = useState<PendingPosCharge[]>([]);
+  const { methods: payMethods } = usePaymentMethods(booking?.property_id ?? null);
 
   // Payment form
   const [splitMode, setSplitMode] = useState(false);
@@ -664,8 +658,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
                       <Select value={singleMode} onValueChange={setSingleMode}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {PAY_MODES.map((m) => (
-                            <SelectItem key={m.v} value={m.v}>{m.label}</SelectItem>
+                          {payMethods.map((m) => (
+                            <SelectItem key={m.id} value={m.name}>
+                              {formatPaymentMethodLabel(m.name)}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -684,8 +680,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
                           <Select value={s.mode} onValueChange={(v) => setSplit(i, { mode: v })}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              {PAY_MODES.map((m) => (
-                                <SelectItem key={m.v} value={m.v}>{m.label}</SelectItem>
+                              {payMethods.map((m) => (
+                                <SelectItem key={m.id} value={m.name}>
+                                  {formatPaymentMethodLabel(m.name)}
+                                </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>

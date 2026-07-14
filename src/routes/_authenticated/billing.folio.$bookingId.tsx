@@ -16,10 +16,10 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
+import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { toast } from "sonner";
 import {
   FOLIO_STATUS_TONE,
-  PAYMENT_MODES,
   inr,
   recomputeFolio,
   computeBillDiscountAmount,
@@ -153,6 +153,7 @@ function FolioPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
+  const { methods: payMethods } = usePaymentMethods(folio?.property_id ?? booking?.property_id ?? null);
 
   // Guards so auto-seed effects run at most once per folio load.
   // Without these, a silent unique-constraint (409) failure on insert
@@ -1705,7 +1706,7 @@ function FolioPage() {
                 <Select value={payMode} onValueChange={setPayMode}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {PAYMENT_MODES.map((m) => <SelectItem key={m} value={m}>{m.toUpperCase()}</SelectItem>)}
+                    {payMethods.map((m) => <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -1892,7 +1893,7 @@ function FolioPage() {
                 <Select value={payMode} onValueChange={setPayMode}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {PAYMENT_MODES.map((m) => <SelectItem key={m} value={m}>{m.toUpperCase()}</SelectItem>)}
+                    {payMethods.map((m) => <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

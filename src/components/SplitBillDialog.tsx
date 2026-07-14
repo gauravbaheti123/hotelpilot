@@ -21,16 +21,9 @@ import {
 import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { useAuth, hasRole } from "@/hooks/use-auth";
+import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { ArrowLeft, ArrowRight, Loader2, SplitSquareHorizontal, Plus, Trash2 } from "lucide-react";
 import { Percent } from "lucide-react";
-
-const PAY_MODES = [
-  { v: "cash", label: "Cash" },
-  { v: "card", label: "Card" },
-  { v: "upi", label: "UPI" },
-  { v: "bank_transfer", label: "Bank Transfer" },
-  { v: "credit", label: "Credit" },
-] as const;
 
 interface Charge {
   id: string; charge_type: string; description: string;
@@ -105,6 +98,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   const [discBillIdx, setDiscBillIdx] = useState<number>(0);
   // Parties list for percent/amount modes (min 2, no hard max).
   const [parties, setParties] = useState<ShareParty[]>([]);
+  const { methods: payMethods } = usePaymentMethods(booking?.property_id ?? null);
 
   // Resolve current user's max-discount % once dialog opens
   useEffect(() => {
@@ -952,7 +946,11 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
                     <Select value={payRows[i].mode} onValueChange={(v) => setPayRows((rs) => rs.map((r, idx) => idx === i ? { ...r, mode: v } : r))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {PAY_MODES.map((m) => <SelectItem key={m.v} value={m.v}>{m.label}</SelectItem>)}
+                        {payMethods.map((m) => (
+                          <SelectItem key={m.id} value={m.name}>
+                            {formatPaymentMethodLabel(m.name)}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

@@ -20,6 +20,7 @@ import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
 import { fmtDate } from "@/lib/reportExports";
 import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
+import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/banquet/bill/$id")({
@@ -63,7 +64,6 @@ interface PropertyInfo {
 }
 
 const TEAL = "#1D9E75";
-const PAY_MODES = ["cash","card","upi","bank_transfer","cheque","complimentary"];
 
 interface EventPayment {
   id: string; amount: number; payment_mode: string; reference: string | null;
@@ -96,6 +96,7 @@ function BanquetBillPage() {
   const [misOpen, setMisOpen] = useState(false);
   const [misBusy, setMisBusy] = useState(false);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
+  const { methods: payMethods } = usePaymentMethods(b?.property_id ?? null);
   const [discOpen, setDiscOpen] = useState(false);
   const [discTarget, setDiscTarget] = useState<
     | { kind: "bill" }
@@ -821,7 +822,7 @@ function BanquetBillPage() {
                     <Select value={payMode} onValueChange={setPayMode}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {PAY_MODES.map((m) => <SelectItem key={m} value={m}>{m.toUpperCase().replace(/_/g, " ")}</SelectItem>)}
+                        {payMethods.map((m) => <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -843,7 +844,7 @@ function BanquetBillPage() {
                         setSplitRows((arr) => arr.map((x, idx) => idx === i ? { ...x, mode: v } : x))}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {PAY_MODES.map((m) => <SelectItem key={m} value={m}>{m.toUpperCase().replace(/_/g, " ")}</SelectItem>)}
+                          {payMethods.map((m) => <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>)}
                         </SelectContent>
                       </Select>
                       <Input type="number" placeholder="Amount" value={r.amount}
