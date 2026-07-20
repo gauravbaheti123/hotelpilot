@@ -30,7 +30,7 @@ const fields: FieldDef[] = [
     defaultValue: "mini_bar",
   },
   { name: "rate", label: "Rate (₹)", type: "number", required: true, defaultValue: 0 },
-  { name: "gst_rate", label: "GST %", type: "number", defaultValue: 18 },
+  { name: "gst_rate", label: "GST %", type: "number", defaultValue: 5 },
   {
     name: "unit",
     label: "Unit",
