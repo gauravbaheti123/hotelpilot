@@ -75,6 +75,7 @@ interface BookingCtx {
   id: string; booking_number: string; status: string;
   check_in: string; check_out: string; total_amount: number;
   property_id: string; adults: number | null; children: number | null;
+  checked_out_at?: string | null;
   guests: {
     name: string; mobile: string | null; gst_number: string | null; company: string | null; address: string | null;
     id_proof_type: string | null; id_proof_number: string | null; nationality: string | null;
@@ -207,6 +208,13 @@ function FolioPage() {
   const [overrideApproved, setOverrideApproved] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [draftMode, setDraftMode] = useState(false);
+  const [undoOpen, setUndoOpen] = useState(false);
+  const [undoBusy, setUndoBusy] = useState(false);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
   const [misOpen, setMisOpen] = useState(false);
   const [misFoodOnly, setMisFoodOnly] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
@@ -219,7 +227,7 @@ function FolioPage() {
     setLoading(true);
     const { data: b, error: be } = await supabase
       .from("bookings")
-      .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,
+      .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,checked_out_at,
         guests(name,mobile,gst_number,company,address,id_proof_type,id_proof_number,nationality),
         booking_rooms(id,rate,check_in,check_out,actual_check_in,actual_check_out,rooms!booking_rooms_room_id_fkey(room_number),room_categories(name,gst_rate))`)
       .eq("id", bookingId).single();
@@ -1046,6 +1054,33 @@ function FolioPage() {
     setCheckoutOpen(true);
   }
 
+  async function performUndoCheckout() {
+    if (!booking) return;
+    setUndoBusy(true);
+    const { error } = await supabase.rpc("undo_checkout" as any, { _booking_id: booking.id });
+    setUndoBusy(false);
+    if (error) {
+      toast.error(error.message || "Unable to undo checkout");
+      return;
+    }
+    setUndoOpen(false);
+    toast.success("Checkout reversed — guest is checked in again");
+    if (booking) {
+      logActivity({
+        property_id: booking.property_id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "CHECKOUT_UNDONE",
+        module: "Billing",
+        reference_id: booking.id,
+        reference_label: `${booking.booking_number} — ${booking.guests?.name ?? ""}`,
+        details: { folio_id: folio?.id ?? null },
+      });
+    }
+    // Navigate back to the booking's live view so staff can edit charges / re-checkout.
+    router.navigate({ to: "/front-desk/booking/$id", params: { id: booking.id } });
+  }
+
   async function addPendingPosToBill(ids?: string[]) {
     if (!folio || !booking) return;
     const targets = ids && ids.length > 0
@@ -1162,6 +1197,15 @@ function FolioPage() {
   const isPremium = true;
   const isSettled = folio.status === "settled";
   const isVoid = folio.status === "void";
+  const canUndoCheckout = (() => {
+    if (!booking?.checked_out_at) return false;
+    if (booking.status !== "checked_out") return false;
+    const elapsed = nowTick - new Date(booking.checked_out_at).getTime();
+    return elapsed >= 0 && elapsed <= 60 * 60 * 1000;
+  })();
+  const undoMinutesLeft = booking?.checked_out_at
+    ? Math.max(0, Math.ceil((60 * 60 * 1000 - (nowTick - new Date(booking.checked_out_at).getTime())) / 60000))
+    : 0;
 
   return (
     <AppShell title={`Folio ${folio.invoice_number}`}>
@@ -1238,6 +1282,17 @@ function FolioPage() {
             <Button variant="outline" size="sm" onClick={shareOnWhatsApp}>
               <MessageCircle className="h-4 w-4 mr-1" /> WhatsApp
             </Button>
+            {canUndoCheckout && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setUndoOpen(true)}
+                className="border-amber-500 text-amber-700 hover:bg-amber-50"
+                title={`Available for ${undoMinutesLeft} more minute(s)`}
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" /> Undo Checkout ({undoMinutesLeft}m)
+              </Button>
+            )}
           </div>
         </div>
 
@@ -2061,6 +2116,29 @@ function FolioPage() {
         preselectFoodOnly={misFoodOnly}
         onShifted={() => load()}
       />
+      <Dialog open={undoOpen} onOpenChange={setUndoOpen}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Undo Checkout?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p>
+              This will reopen the bill and mark the guest as <b>checked-in</b> again.
+              Any payment already collected will remain on file.
+            </p>
+            <p className="text-muted-foreground">
+              Available for <b>{undoMinutesLeft}</b> more minute(s). After 1 hour of checkout this option is not available.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUndoOpen(false)} disabled={undoBusy}>Cancel</Button>
+            <Button onClick={performUndoCheckout} disabled={undoBusy || !canUndoCheckout}
+              style={{ background: TEAL, color: "#fff" }}>
+              {undoBusy ? "Reversing…" : "Yes, Undo Checkout"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

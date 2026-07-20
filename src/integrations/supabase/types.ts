@@ -971,6 +971,58 @@ export type Database = {
           },
         ]
       }
+      checkout_undo_log: {
+        Row: {
+          booking_id: string
+          folio_id: string | null
+          id: string
+          original_checkout_at: string
+          property_id: string
+          undone_at: string
+          undone_by: string
+        }
+        Insert: {
+          booking_id: string
+          folio_id?: string | null
+          id?: string
+          original_checkout_at: string
+          property_id: string
+          undone_at?: string
+          undone_by: string
+        }
+        Update: {
+          booking_id?: string
+          folio_id?: string | null
+          id?: string
+          original_checkout_at?: string
+          property_id?: string
+          undone_at?: string
+          undone_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checkout_undo_log_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkout_undo_log_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkout_undo_log_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       communications: {
         Row: {
           body: string
@@ -1549,6 +1601,7 @@ export type Database = {
           id: string
           invoice_number: string
           is_deleted: boolean
+          is_reopened: boolean
           notes: string | null
           paid_amount: number
           property_id: string
@@ -1580,6 +1633,7 @@ export type Database = {
           id?: string
           invoice_number?: string
           is_deleted?: boolean
+          is_reopened?: boolean
           notes?: string | null
           paid_amount?: number
           property_id: string
@@ -1611,6 +1665,7 @@ export type Database = {
           id?: string
           invoice_number?: string
           is_deleted?: boolean
+          is_reopened?: boolean
           notes?: string | null
           paid_amount?: number
           property_id?: string
@@ -5394,6 +5449,7 @@ export type Database = {
         Args: { _booking_id: string }
         Returns: undefined
       }
+      undo_checkout: { Args: { _booking_id: string }; Returns: Json }
       user_has_permission: {
         Args: {
           _action: string
