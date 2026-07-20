@@ -198,6 +198,7 @@ function OwnerDashboard({
   const [staff, setStaff] = useState<StaffOpt[]>([]);
   const [modalRoom, setModalRoom] = useState<Room | null>(null);
   const [checkoutBookingId, setCheckoutBookingId] = useState<string | null>(null);
+  const [extraBedBookingId, setExtraBedBookingId] = useState<string | null>(null);
   const [pendingFoodByRoom, setPendingFoodByRoom] = useState<Map<string, PendingFood>>(new Map());
   const [pendingFoodRows, setPendingFoodRows] = useState<PendingFoodRow[]>([]);
   const [showPendingFood, setShowPendingFood] = useState(false);
