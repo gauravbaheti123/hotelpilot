@@ -871,12 +871,19 @@ function OwnerDashboard({
           navigate({ to: "/pos", search: { booking_id: bid } } as any);
           if (roomNo) toast.success(`Opening Other Charges for Room ${roomNo}`);
         }}
+        onAddExtraBed={(bid: string) => { setModalRoom(null); setExtraBedBookingId(bid); }}
       />
       <CheckoutDialog
         bookingId={checkoutBookingId}
         open={!!checkoutBookingId}
         onOpenChange={(o: boolean) => { if (!o) setCheckoutBookingId(null); }}
         onDone={() => { setCheckoutBookingId(null); reload(); }}
+      />
+      <AddExtraBedDialog
+        bookingId={extraBedBookingId}
+        open={!!extraBedBookingId}
+        onOpenChange={(o: boolean) => { if (!o) setExtraBedBookingId(null); }}
+        onDone={() => { setExtraBedBookingId(null); reload(); }}
       />
       <BulkCheckinDialog
         event={bulkCheckinEvent}
