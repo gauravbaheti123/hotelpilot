@@ -18,7 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { BANQUET_STATUS_TONE, computeBanquetTotal, FUNCTION_TYPES } from "@/lib/banquet";
 import { ArrowLeft, BedDouble, Trash2, CheckCircle2, Ban, Plus, FileText, Pencil, Save, LogIn, LogOut, UserPlus, Eye } from "lucide-react";
-import { checkOutBlock, type EventBlockRecord } from "@/lib/eventRoomBlocks";
+import { checkInBlock, checkOutBlock, type EventBlockRecord } from "@/lib/eventRoomBlocks";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/banquet/event/$id")({
@@ -209,12 +209,18 @@ function BanquetEventPage() {
 
   async function doCheckIn(block: EventBlockRecord) {
     if (!b) return;
-    // Open the full New Booking form pre-wired to this event + block,
-    // so the receptionist completes guest, ID, advance, tariff.
-    router.navigate({
-      to: "/front-desk/new",
-      search: { eventId: b.id, blockId: block.id } as any,
-    });
+    if (!user) return;
+    if (!block.guest_name || !block.guest_mobile) {
+      return toast.error("Assign guest name and mobile first");
+    }
+    if (!confirm(`Check in ${block.guest_name} to Room ${block.room_number}?`)) return;
+    try {
+      await checkInBlock({ propertyId: b.property_id, block, userId: user.id });
+      toast.success(`Room ${block.room_number} checked in`);
+      load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Check-in failed");
+    }
   }
 
   async function doCheckOut(block: EventBlockRecord) {
@@ -433,7 +439,14 @@ function BanquetEventPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2"><BedDouble className="h-4 w-4" /> Rooms · Assign Guest</CardTitle>
-            {editable && <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-1" /> Assign Guest / Block Room</Button>}
+            <div className="flex gap-2">
+              {blocks.some((bk) => bk.status === "checked_out") && (
+                <Button size="sm" variant="outline" onClick={() => router.navigate({ to: "/banquet/master-bill/$id", params: { id: b.id } })}>
+                  <FileText className="h-4 w-4 mr-1" /> Master Bill
+                </Button>
+              )}
+              {editable && <Button size="sm" onClick={() => setAddOpen(true)}><Plus className="h-4 w-4 mr-1" /> Assign Guest / Block Room</Button>}
+            </div>
           </CardHeader>
           <CardContent>
             {blocks.length === 0 ? (
