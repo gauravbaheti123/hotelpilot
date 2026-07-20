@@ -180,7 +180,6 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       didSeedRoomCharges.current = true;
       return;
     }
-    didSeedRoomCharges.current = true;
     (async () => {
       const rows = booking.booking_rooms.map((br: any) => {
         const nights = Math.max(
@@ -208,12 +207,13 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
         .from("folio_charges")
         .insert(rows as any);
       if (seedErr) {
-        // Surface the failure once — do NOT call load() again, which would
-        // toggle `loading` and re-arm this effect. The ref guard also
-        // protects against a stale re-render.
         console.error("[CheckoutDialog] auto-seed room charges failed", seedErr);
         return;
       }
+      // Only mark seeded after a successful insert so transient failures
+      // don't leave the dialog stuck showing ₹0. The DB trigger on
+      // folio_charges now recomputes folio totals automatically.
+      didSeedRoomCharges.current = true;
       load();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
