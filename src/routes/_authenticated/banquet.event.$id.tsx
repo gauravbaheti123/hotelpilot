@@ -21,6 +21,8 @@ import { ArrowLeft, BedDouble, Trash2, CheckCircle2, Ban, Plus, FileText, Pencil
 import { checkInBlock, checkOutBlock, type EventBlockRecord } from "@/lib/eventRoomBlocks";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { useDiscountLimit } from "@/hooks/use-discount-limit";
+import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 export const Route = createFileRoute("/_authenticated/banquet/event/$id")({
   head: () => ({ meta: [{ title: "Banquet Event — HotelPilot" }] }),
   component: () => (<RequirePermission module="banquet"><BanquetEventPage /></RequirePermission>),
