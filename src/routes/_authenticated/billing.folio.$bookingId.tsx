@@ -26,7 +26,7 @@ import {
   type BillDiscount,
  inrRound,
 } from "@/lib/billing";
-import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent } from "lucide-react";
+import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil } from "lucide-react";
 import { AlertTriangle, ShieldAlert, ArrowRightLeft } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
@@ -163,6 +163,14 @@ function FolioPage() {
   const [addRate, setAddRate] = useState("0");
   const [addType, setAddType] = useState<"extra" | "discount">("extra");
   const [addGst, setAddGst] = useState("0");
+
+  // Edit line-item dialog (for sundry/extra "Other Charges")
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editDesc, setEditDesc] = useState("");
+  const [editQty, setEditQty] = useState("1");
+  const [editRate, setEditRate] = useState("0");
+  const [editGst, setEditGst] = useState("0");
 
   const [payOpen, setPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState("");
