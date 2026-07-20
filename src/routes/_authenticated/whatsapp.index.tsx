@@ -250,7 +250,7 @@ function WhatsAppInboxPage() {
                     }`}>
                       <div className="whitespace-pre-wrap break-words">{m.content ?? "—"}</div>
                       <div className={`text-[10px] mt-1 flex items-center gap-1 ${m.direction === "outbound" ? "text-emerald-50/80 justify-end" : "text-muted-foreground"}`}>
-                        {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
                         {m.direction === "outbound" && (
                           <span className="ml-1">
                             {m.status === "read" ? "✓✓" : m.status === "delivered" ? "✓✓" : m.status === "sent" ? "✓" : m.status === "failed" ? "!" : "…"}
