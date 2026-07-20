@@ -203,6 +203,7 @@ function FolioPage() {
   const [mgrBusy, setMgrBusy] = useState(false);
   const [overrideApproved, setOverrideApproved] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [draftMode, setDraftMode] = useState(false);
   const [misOpen, setMisOpen] = useState(false);
   const [misFoodOnly, setMisFoodOnly] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
@@ -878,12 +879,17 @@ function FolioPage() {
 
   async function printDraft() {
     if (!folio || !booking || !property) return;
-    const logoDataUrl = await resolveLogoUrl(property.logo_url);
-    const html = renderInvoiceHtml({
-      property: { ...property, logo_url: logoDataUrl },
-      folio, booking, charges, payments, draft: true, logoDataUrl,
-    });
-    openInvoiceWindow(html);
+    // Reuse the same on-screen Tax Invoice layout so Draft Bill stays
+    // pixel-identical to the final invoice. Only the title and bill
+    // number swap while draftMode is on.
+    setDraftMode(true);
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    try {
+      await handleDownloadPDF();
+    } finally {
+      setTimeout(() => setDraftMode(false), 800);
+    }
   }
 
   if (loading) return <AppShell title="Folio"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
@@ -1432,9 +1438,9 @@ function FolioPage() {
                 </div>
                 <div style={{ textAlign: "right", color: "#ffffff" }}>
                   <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 2, lineHeight: 1 }}>
-                    {isGst ? "TAX INVOICE" : "CASH BILL"}
+                    {draftMode ? "DRAFT BILL" : (isGst ? "TAX INVOICE" : "CASH BILL")}
                   </div>
-                  <div style={{ fontSize: 13, marginTop: 8, fontWeight: 700 }}>Bill No: <span style={{ fontWeight: 700 }}>{folio.invoice_number}</span></div>
+                  <div style={{ fontSize: 13, marginTop: 8, fontWeight: 700 }}>Bill No: <span style={{ fontWeight: 700 }}>{draftMode ? "—" : folio.invoice_number}</span></div>
                   <div style={{ fontSize: 12 }}>Date: <b>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b></div>
                   <div style={{ fontSize: 12 }}>Booking: <b>{booking.booking_number}</b></div>
                 </div>
@@ -1467,10 +1473,10 @@ function FolioPage() {
           {!isPremium && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-y px-8 py-3" style={{ background: "#F0FAF6" }}>
             <div className="text-lg font-bold tracking-wide" style={{ color: TEAL_DARK }}>
-              {isGst ? "TAX INVOICE" : "CASH BILL / RECEIPT"}
+              {draftMode ? "DRAFT BILL" : (isGst ? "TAX INVOICE" : "CASH BILL / RECEIPT")}
             </div>
             <div className="text-xs text-right">
-              <div><span className="text-muted-foreground">Invoice No:</span> <span className="font-semibold">{folio.invoice_number}</span>{isSettled && <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: TEAL }}>PAID</span>}</div>
+              <div><span className="text-muted-foreground">Invoice No:</span> <span className="font-semibold">{draftMode ? "—" : folio.invoice_number}</span>{!draftMode && isSettled && <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: TEAL }}>PAID</span>}</div>
               <div><span className="text-muted-foreground">Date:</span> <span className="font-semibold">{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
               <div><span className="text-muted-foreground">Booking:</span> <span className="font-semibold">{booking.booking_number}</span></div>
             </div>
