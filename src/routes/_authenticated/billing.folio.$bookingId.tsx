@@ -26,7 +26,7 @@ import {
   type BillDiscount,
  inrRound,
 } from "@/lib/billing";
-import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent } from "lucide-react";
+import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil } from "lucide-react";
 import { AlertTriangle, ShieldAlert, ArrowRightLeft } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
@@ -164,6 +164,14 @@ function FolioPage() {
   const [addType, setAddType] = useState<"extra" | "discount">("extra");
   const [addGst, setAddGst] = useState("0");
 
+  // Edit line-item dialog (for sundry/extra "Other Charges")
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editDesc, setEditDesc] = useState("");
+  const [editQty, setEditQty] = useState("1");
+  const [editRate, setEditRate] = useState("0");
+  const [editGst, setEditGst] = useState("0");
+
   const [payOpen, setPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payMode, setPayMode] = useState<string>("cash");
@@ -259,7 +267,7 @@ function FolioPage() {
 
     const [{ data: f }, { data: c }, { data: p }] = await Promise.all([
       supabase.from("folios").select("*").eq("id", fId).single(),
-      supabase.from("folio_charges").select("*").eq("folio_id", fId).order("charged_on").order("created_at"),
+      supabase.from("folio_charges").select("*").eq("folio_id", fId).eq("is_wiped", false).order("charged_on").order("created_at"),
       supabase.from("payments").select("*").eq("folio_id", fId).order("paid_at", { ascending: false }),
     ]);
     setFolio((f ?? null) as unknown as Folio);
@@ -598,15 +606,20 @@ function FolioPage() {
 
   async function refetchCharges() {
     if (!folio) return charges;
-    const { data } = await supabase.from("folio_charges").select("*").eq("folio_id", folio.id);
+    const { data } = await supabase.from("folio_charges").select("*").eq("folio_id", folio.id).eq("is_wiped", false);
     return ((data ?? []) as unknown as Charge[]);
   }
 
   async function removeCharge(id: string) {
     if (!folio) return;
     if (!isOpen && !canEditAnyStatus) return toast.error("Only manager/owner can edit a settled bill");
-    if (!confirm("Remove this charge?")) return;
-    await supabase.from("folio_charges").delete().eq("id", id);
+    if (!canVoid) return toast.error("Only manager or owner can delete charges");
+    if (!confirm("Remove this charge? This cannot be undone.")) return;
+    const { error } = await supabase
+      .from("folio_charges")
+      .update({ is_wiped: true, wiped_at: new Date().toISOString() } as any)
+      .eq("id", id);
+    if (error) return toast.error(error.message);
     const next = await refetchCharges();
     const prevTotal = Number(folio.total_amount);
     await persistTotals(next, payments);
@@ -628,6 +641,60 @@ function FolioPage() {
           previous_status: folio.status,
         },
       });
+    }
+    load();
+  }
+
+  function openEditCharge(c: Charge) {
+    if (!isOpen && !canEditAnyStatus) { toast.error("Only manager/owner can edit a settled bill"); return; }
+    setEditId(c.id);
+    setEditDesc(c.description ?? "");
+    setEditQty(String(c.qty ?? 1));
+    setEditRate(String(c.rate ?? 0));
+    setEditGst(String(c.gst_rate ?? 0));
+    setEditOpen(true);
+  }
+
+  async function saveEditCharge() {
+    if (!folio || !editId) return;
+    if (!isOpen && !canEditAnyStatus) return toast.error("Only manager/owner can edit a settled bill");
+    const desc = editDesc.trim();
+    if (!desc) return toast.error("Description required");
+    const qty = Number(editQty) || 1;
+    const rate = Number(editRate) || 0;
+    const gstR = Number(editGst) || 0;
+    const amt = Math.round(qty * rate * 100) / 100;
+    const gstAmt = Math.round(amt * gstR) / 100;
+    const { error } = await supabase
+      .from("folio_charges")
+      .update({ description: desc, qty, rate, amount: amt, gst_rate: gstR, gst_amount: gstAmt } as any)
+      .eq("id", editId);
+    if (error) return toast.error(error.message);
+    setEditOpen(false); setEditId(null);
+    const next = await refetchCharges();
+    const prevTotal = Number(folio.total_amount);
+    await persistTotals(next, payments);
+    if (!isOpen) {
+      toast.warning("Bill amount changed — payment records may need adjustment");
+      logActivity({
+        property_id: booking?.property_id ?? "",
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "BILL_EDITED",
+        module: "Billing",
+        reference_id: folio.id,
+        reference_label: folio.invoice_number,
+        details: {
+          bill_number: folio.invoice_number,
+          previous_amount: prevTotal,
+          new_amount: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst")).total_amount,
+          edited_by: userDisplayName(user as any),
+          previous_status: folio.status,
+          charge_id: editId,
+        },
+      });
+    } else {
+      toast.success("Charge updated");
     }
     load();
   }
@@ -1649,9 +1716,26 @@ function FolioPage() {
                               <Percent className="h-3.5 w-3.5" />
                             </button>
                           )}
-                          <button onClick={() => removeCharge(c.id)} className="text-destructive">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                          {c.charge_type !== "room" && c.charge_type !== "tax" && c.charge_type !== "discount" && (
+                            <button
+                              type="button"
+                              onClick={() => openEditCharge(c)}
+                              className="text-sky-700"
+                              title="Edit charge"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {canVoid && (
+                            <button
+                              type="button"
+                              onClick={() => removeCharge(c.id)}
+                              className="text-destructive"
+                              title="Delete charge (manager/owner)"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     )}
@@ -1986,6 +2070,37 @@ function FolioPage() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
               <Button onClick={addCharge}>Add</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* EDIT CHARGE */}
+        <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (!o) setEditId(null); }}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Edit charge</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Description *</Label>
+                <Input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Qty</Label>
+                  <Input type="number" value={editQty} onChange={(e) => setEditQty(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Rate</Label>
+                  <Input type="number" value={editRate} onChange={(e) => setEditRate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">GST %</Label>
+                  <Input type="number" value={editGst} onChange={(e) => setEditGst(e.target.value)} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setEditOpen(false); setEditId(null); }}>Cancel</Button>
+              <Button onClick={saveEditCharge}>Save</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
