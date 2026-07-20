@@ -302,7 +302,15 @@ function NewBookingPage() {
     if (assignLater && checkInNow)
       return toast.error("Assign a room before checking in — a room is required to check in a guest");
     if (nightsBetween(checkIn, checkOut) < 1) return toast.error("Check-out must be after check-in");
-    if (!isValidOrEmptyGSTIN(gstNumber)) return toast.error(GSTIN_ERROR);
+    if (!isValidOrEmptyGSTIN(gstNumber)) {
+      toast.error(GSTIN_ERROR);
+      if (typeof document !== "undefined") {
+        const el = document.getElementById("gstin-input") as HTMLInputElement | null;
+        el?.focus();
+        el?.select?.();
+      }
+      return;
+    }
 
     setSaving(true);
     try {
