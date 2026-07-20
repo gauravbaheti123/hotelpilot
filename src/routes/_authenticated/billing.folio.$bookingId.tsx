@@ -1476,8 +1476,15 @@ function FolioPage() {
               <div className="mb-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Bill To</div>
               <div className="text-base font-semibold">{booking.guests?.name ?? "—"}</div>
               {booking.guests?.mobile && <div className="text-xs text-gray-700">Mobile: {booking.guests.mobile}</div>}
-              {isGst && folio.guest_gstin && <div className="text-xs text-gray-700">GSTIN: {folio.guest_gstin}</div>}
-              {isGst && folio.guest_company && <div className="text-xs text-gray-700">{folio.guest_company}</div>}
+              {(folio.guest_company || booking.guests?.company) && (
+                <div className="text-xs text-gray-700">{folio.guest_company || booking.guests?.company}</div>
+              )}
+              {(folio.guest_gstin || booking.guests?.gst_number) && (
+                <div className="text-xs text-gray-700">GSTIN: {folio.guest_gstin || booking.guests?.gst_number}</div>
+              )}
+              {booking.guests?.address && (
+                <div className="text-xs text-gray-700">{booking.guests.address}</div>
+              )}
             </div>
             <div className="px-8 py-4">
               <div className="mb-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Stay Details</div>
