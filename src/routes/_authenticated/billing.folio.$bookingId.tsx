@@ -267,7 +267,7 @@ function FolioPage() {
 
     const [{ data: f }, { data: c }, { data: p }] = await Promise.all([
       supabase.from("folios").select("*").eq("id", fId).single(),
-      supabase.from("folio_charges").select("*").eq("folio_id", fId).order("charged_on").order("created_at"),
+      supabase.from("folio_charges").select("*").eq("folio_id", fId).eq("is_wiped", false).order("charged_on").order("created_at"),
       supabase.from("payments").select("*").eq("folio_id", fId).order("paid_at", { ascending: false }),
     ]);
     setFolio((f ?? null) as unknown as Folio);
@@ -606,7 +606,7 @@ function FolioPage() {
 
   async function refetchCharges() {
     if (!folio) return charges;
-    const { data } = await supabase.from("folio_charges").select("*").eq("folio_id", folio.id);
+    const { data } = await supabase.from("folio_charges").select("*").eq("folio_id", folio.id).eq("is_wiped", false);
     return ((data ?? []) as unknown as Charge[]);
   }
 
