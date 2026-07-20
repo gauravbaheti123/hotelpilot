@@ -1438,9 +1438,9 @@ function FolioPage() {
                 </div>
                 <div style={{ textAlign: "right", color: "#ffffff" }}>
                   <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 2, lineHeight: 1 }}>
-                    {isGst ? "TAX INVOICE" : "CASH BILL"}
+                    {draftMode ? "DRAFT BILL" : (isGst ? "TAX INVOICE" : "CASH BILL")}
                   </div>
-                  <div style={{ fontSize: 13, marginTop: 8, fontWeight: 700 }}>Bill No: <span style={{ fontWeight: 700 }}>{folio.invoice_number}</span></div>
+                  <div style={{ fontSize: 13, marginTop: 8, fontWeight: 700 }}>Bill No: <span style={{ fontWeight: 700 }}>{draftMode ? "—" : folio.invoice_number}</span></div>
                   <div style={{ fontSize: 12 }}>Date: <b>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b></div>
                   <div style={{ fontSize: 12 }}>Booking: <b>{booking.booking_number}</b></div>
                 </div>
