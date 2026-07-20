@@ -208,6 +208,13 @@ function FolioPage() {
   const [overrideApproved, setOverrideApproved] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [draftMode, setDraftMode] = useState(false);
+  const [undoOpen, setUndoOpen] = useState(false);
+  const [undoBusy, setUndoBusy] = useState(false);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
   const [misOpen, setMisOpen] = useState(false);
   const [misFoodOnly, setMisFoodOnly] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
