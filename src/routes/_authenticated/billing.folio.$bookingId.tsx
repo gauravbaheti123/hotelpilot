@@ -1054,6 +1054,33 @@ function FolioPage() {
     setCheckoutOpen(true);
   }
 
+  async function performUndoCheckout() {
+    if (!booking) return;
+    setUndoBusy(true);
+    const { error } = await supabase.rpc("undo_checkout" as any, { _booking_id: booking.id });
+    setUndoBusy(false);
+    if (error) {
+      toast.error(error.message || "Unable to undo checkout");
+      return;
+    }
+    setUndoOpen(false);
+    toast.success("Checkout reversed — guest is checked in again");
+    if (booking) {
+      logActivity({
+        property_id: booking.property_id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "CHECKOUT_UNDONE",
+        module: "Billing",
+        reference_id: booking.id,
+        reference_label: `${booking.booking_number} — ${booking.guests?.name ?? ""}`,
+        details: { folio_id: folio?.id ?? null },
+      });
+    }
+    // Navigate back to the booking's live view so staff can edit charges / re-checkout.
+    router.navigate({ to: "/front-desk/booking/$id", params: { id: booking.id } });
+  }
+
   async function addPendingPosToBill(ids?: string[]) {
     if (!folio || !booking) return;
     const targets = ids && ids.length > 0
