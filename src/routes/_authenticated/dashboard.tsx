@@ -870,6 +870,8 @@ function OwnerDashboard({
       />
       <AssignGuestDialog
         block={singleAssignBlock}
+        propertyId={propertyId}
+        userId={userId}
         onClose={() => setSingleAssignBlock(null)}
         onDone={() => { setSingleAssignBlock(null); reload(); }}
       />
