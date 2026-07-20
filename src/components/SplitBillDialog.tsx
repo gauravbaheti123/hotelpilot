@@ -19,6 +19,7 @@ import {
   type BillDiscount,
 } from "@/lib/billing";
 import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
+import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 import { useAuth, hasRole } from "@/hooks/use-auth";
@@ -100,6 +101,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   // Parties list for percent/amount modes (min 2, no hard max).
   const [parties, setParties] = useState<ShareParty[]>([]);
   const { methods: payMethods } = usePaymentMethods(booking?.property_id ?? null);
+  const { limit: discountLimit } = useDiscountLimit();
 
   // Resolve current user's max-discount % once dialog opens
   useEffect(() => {
@@ -992,6 +994,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       initialValue={0}
       unlimited={unlimitedDisc()}
       maxPct={maxDiscPct}
+      limit={discountLimit}
       onSave={saveSplitBillDiscount}
       title={`Apply discount on Bill ${discBillIdx + 1}`}
     />
