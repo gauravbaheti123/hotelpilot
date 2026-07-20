@@ -25,6 +25,7 @@ import { addDaysIso, nightsBetween, SOURCES, todayIso } from "@/lib/front-desk";
 import { GuestIdUploadField, type SelectedIdFile } from "@/components/GuestIdUploadField";
 import { uploadFileToDrive, safeName } from "@/lib/driveUpload";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
+import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/front-desk/new")({
@@ -301,6 +302,7 @@ function NewBookingPage() {
     if (assignLater && checkInNow)
       return toast.error("Assign a room before checking in — a room is required to check in a guest");
     if (nightsBetween(checkIn, checkOut) < 1) return toast.error("Check-out must be after check-in");
+    if (!isValidOrEmptyGSTIN(gstNumber)) return toast.error(GSTIN_ERROR);
 
     setSaving(true);
     try {
@@ -674,7 +676,18 @@ function NewBookingPage() {
             </F>
             <F label="ID number"><Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} /></F>
             <F label="Company (optional)"><Input value={company} onChange={(e) => setCompany(e.target.value)} /></F>
-            <F label="GSTIN (optional)"><Input value={gstNumber} onChange={(e) => setGstNumber(e.target.value.toUpperCase())} placeholder="29ABCDE1234F1Z5" /></F>
+            <F label="GSTIN (optional)">
+              <Input
+                value={gstNumber}
+                onChange={(e) => setGstNumber(e.target.value.toUpperCase())}
+                maxLength={15}
+                placeholder="e.g. 27AASFB5351R1ZM"
+                className={gstNumber && !isValidOrEmptyGSTIN(gstNumber) ? "border-red-500 focus-visible:ring-red-500" : ""}
+              />
+              {gstNumber && !isValidOrEmptyGSTIN(gstNumber) && (
+                <p className="mt-1 text-[11px] text-red-600">{GSTIN_ERROR}</p>
+              )}
+            </F>
             <F label="Guest type">
               <Select value={guestType} onValueChange={(v) => setGuestType(v as typeof guestType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

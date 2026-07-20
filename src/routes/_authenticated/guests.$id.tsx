@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Ban, ShieldCheck } from "lucide-react";
 import { ID_PROOF_TYPES, guestSchema, emptyToNull } from "@/lib/guests";
+import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 import { inr } from "@/lib/billing";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 
@@ -88,6 +89,7 @@ function GuestDetail() {
       notes: g.notes ?? "",
     });
     if (!parsed.success) { toast.error(parsed.error.issues[0]?.message ?? "Invalid"); return; }
+    if (g.gst_number && !isValidOrEmptyGSTIN(g.gst_number)) { toast.error(GSTIN_ERROR); return; }
     setBusy(true);
     try {
       const { name, ...rest } = parsed.data;
@@ -200,7 +202,18 @@ function GuestDetail() {
                 <Input value={g.company ?? ""} onChange={(e) => patch("company", e.target.value)} maxLength={200} placeholder="e.g. Growth Story Pvt Ltd" />
                 <p className="mt-1 text-[11px] text-muted-foreground">Optional — useful for corporate / business travelers</p>
               </Field>
-              <Field label="GSTIN"><Input value={g.gst_number ?? ""} onChange={(e) => patch("gst_number", e.target.value.toUpperCase())} maxLength={15} /></Field>
+              <Field label="GSTIN">
+                <Input
+                  value={g.gst_number ?? ""}
+                  onChange={(e) => patch("gst_number", e.target.value.toUpperCase())}
+                  maxLength={15}
+                  placeholder="e.g. 27AASFB5351R1ZM"
+                  className={g.gst_number && !isValidOrEmptyGSTIN(g.gst_number) ? "border-red-500 focus-visible:ring-red-500" : ""}
+                />
+                {g.gst_number && !isValidOrEmptyGSTIN(g.gst_number) && (
+                  <p className="mt-1 text-[11px] text-red-600">{GSTIN_ERROR}</p>
+                )}
+              </Field>
               <Field label="City"><Input value={g.city ?? ""} onChange={(e) => patch("city", e.target.value)} /></Field>
               <Field label="State"><Input value={g.state ?? ""} onChange={(e) => patch("state", e.target.value)} /></Field>
               <Field label="Country"><Input value={g.country ?? ""} onChange={(e) => patch("country", e.target.value)} /></Field>
