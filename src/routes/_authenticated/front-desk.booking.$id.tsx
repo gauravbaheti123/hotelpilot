@@ -48,6 +48,7 @@ import {
   Check,
   BedDouble,
   FileText,
+  AlertTriangle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/front-desk/booking/$id")({
