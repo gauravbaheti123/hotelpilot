@@ -18,6 +18,8 @@ import { computeBanquetTotal, FUNCTION_TYPES } from "@/lib/banquet";
 import { Plus, Trash2 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RequirePermission } from "@/components/RequirePermission";
+import { useDiscountLimit } from "@/hooks/use-discount-limit";
+import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import {
   pickAvailableRooms, commitRoomBlocks, nightsBetween,
   type AssignedBlock,
