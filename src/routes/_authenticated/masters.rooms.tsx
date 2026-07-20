@@ -52,6 +52,7 @@ interface Category {
   max_occupancy: number;
   extra_bed_rate: number;
   is_active: boolean;
+  complimentary_food_limit_per_person?: number;
 }
 interface Room {
   id: string;
