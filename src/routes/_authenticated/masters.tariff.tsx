@@ -64,6 +64,12 @@ function TariffPage() {
     { name: "rate", label: "Rate (₹)", type: "number", required: true, defaultValue: 0 },
     { name: "extra_adult_rate", label: "Extra adult (₹)", type: "number", defaultValue: 0 },
     { name: "extra_child_rate", label: "Extra child (₹)", type: "number", defaultValue: 0 },
+    {
+      name: "complimentary_food_limit_per_person",
+      label: "Complimentary food (₹ / person / night)",
+      type: "number",
+      defaultValue: 0,
+    },
     { name: "valid_from", label: "Valid from", type: "date" },
     { name: "valid_to", label: "Valid to", type: "date" },
     { name: "is_default", label: "Default plan", type: "switch", defaultValue: false },
