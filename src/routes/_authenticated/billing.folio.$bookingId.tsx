@@ -656,6 +656,7 @@ function FolioPage() {
     setEditQty(String(c.qty ?? 1));
     setEditRate(String(c.rate ?? 0));
     setEditGst(String(c.gst_rate ?? 0));
+    setEditBaseAmount(Number(c.amount ?? (Number(c.qty ?? 1) * Number(c.rate ?? 0))) || 0);
     setEditOpen(true);
   }
 
@@ -669,6 +670,14 @@ function FolioPage() {
     const gstR = Number(editGst) || 0;
     const amt = Math.round(qty * rate * 100) / 100;
     const gstAmt = Math.round(amt * gstR) / 100;
+    // Per-role discount limit: any reduction from the original charge amount counts as a discount.
+    if (amt < editBaseAmount - 0.01) {
+      const chk = canApplyDiscount(discountLimit, {
+        discountRupees: editBaseAmount - amt,
+        base: editBaseAmount,
+      });
+      if (!chk.allowed) return toast.error(chk.reason ?? describeLimit(discountLimit));
+    }
     const { error } = await supabase
       .from("folio_charges")
       .update({ description: desc, qty, rate, amount: amt, gst_rate: gstR, gst_amount: gstAmt } as any)
