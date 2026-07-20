@@ -93,12 +93,16 @@ function EditRolePage() {
   const navigate = useNavigate();
   const upsertPermsFn = useServerFn(upsertRolePermissions);
 
-  const [role, setRole] = useState<{ id: string; name: string; description: string | null; is_system?: boolean; max_discount_pct?: number | null } | null>(null);
+  const [role, setRole] = useState<{ id: string; name: string; description: string | null; is_system?: boolean; max_discount_pct?: number | null; max_discount_type?: string | null; max_discount_amount?: number | null } | null>(null);
   const [perms, setPerms] = useState<Perm[]>([]);
   const [savedAllowed, setSavedAllowed] = useState<Record<string, boolean>>({});
   const [allowed, setAllowed] = useState<Record<string, boolean>>({});
   const [maxDiscount, setMaxDiscount] = useState<string>("0");
   const [savedMaxDiscount, setSavedMaxDiscount] = useState<string>("0");
+  const [maxDiscountType, setMaxDiscountType] = useState<"percentage" | "fixed_amount" | "none">("percentage");
+  const [savedMaxDiscountType, setSavedMaxDiscountType] = useState<"percentage" | "fixed_amount" | "none">("percentage");
+  const [maxDiscountAmount, setMaxDiscountAmount] = useState<string>("0");
+  const [savedMaxDiscountAmount, setSavedMaxDiscountAmount] = useState<string>("0");
   const [saving, setSaving] = useState(false);
 
   // Owner's own effective permissions — used to gate what they can grant.
@@ -113,7 +117,7 @@ function EditRolePage() {
 
   async function loadAll() {
     const [{ data: r }, { data: ps }, { data: rps }] = await Promise.all([
-      supabase.from("roles").select("id,name,description,is_system,max_discount_pct").eq("id", id).maybeSingle(),
+      supabase.from("roles").select("id,name,description,is_system,max_discount_pct,max_discount_type,max_discount_amount").eq("id", id).maybeSingle(),
       supabase.from("permissions").select("id,module,action"),
       supabase.from("role_permissions").select("permission_id,allowed").eq("role_id", id),
     ]);
@@ -126,6 +130,10 @@ function EditRolePage() {
     setRole(roleRow);
     const md = String((r as any)?.max_discount_pct ?? 0);
     setMaxDiscount(md); setSavedMaxDiscount(md);
+    const mdt = ((r as any)?.max_discount_type ?? "percentage") as "percentage" | "fixed_amount" | "none";
+    setMaxDiscountType(mdt); setSavedMaxDiscountType(mdt);
+    const mda = String((r as any)?.max_discount_amount ?? 0);
+    setMaxDiscountAmount(mda); setSavedMaxDiscountAmount(mda);
     setPerms((ps ?? []) as Perm[]);
     const next: Record<string, boolean> = {};
     for (const rp of rps ?? []) next[rp.permission_id as string] = !!rp.allowed;
@@ -222,8 +230,11 @@ function EditRolePage() {
 
   const isDirty = (permId: string) => !!allowed[permId] !== !!savedAllowed[permId];
   const hasUnsaved = useMemo(
-    () => perms.some((p) => isDirty(p.id)) || maxDiscount !== savedMaxDiscount,
-    [perms, allowed, savedAllowed, maxDiscount, savedMaxDiscount],
+    () => perms.some((p) => isDirty(p.id))
+      || maxDiscount !== savedMaxDiscount
+      || maxDiscountType !== savedMaxDiscountType
+      || maxDiscountAmount !== savedMaxDiscountAmount,
+    [perms, allowed, savedAllowed, maxDiscount, savedMaxDiscount, maxDiscountType, savedMaxDiscountType, maxDiscountAmount, savedMaxDiscountAmount],
   );
 
   function resetToDefaults() {
@@ -253,10 +264,19 @@ function EditRolePage() {
       const pct = /owner/i.test(role?.name ?? "")
         ? undefined
         : Math.max(0, Math.min(100, Number(maxDiscount) || 0));
-      await upsertPermsFn({ data: { role_id: id, rows, max_discount_pct: pct } });
+      const isOwnerRole = /owner/i.test(role?.name ?? "");
+      await upsertPermsFn({ data: {
+        role_id: id,
+        rows,
+        max_discount_pct: pct,
+        max_discount_type: isOwnerRole ? undefined : maxDiscountType,
+        max_discount_amount: isOwnerRole ? undefined : Math.max(0, Number(maxDiscountAmount) || 0),
+      } });
       invalidatePermissions();
       setSavedAllowed({ ...allowed });
       setSavedMaxDiscount(maxDiscount);
+      setSavedMaxDiscountType(maxDiscountType);
+      setSavedMaxDiscountAmount(maxDiscountAmount);
       toast.success("Permissions saved");
     } catch (e: any) { toast.error(e?.message ?? "Failed"); }
     finally { setSaving(false); }
