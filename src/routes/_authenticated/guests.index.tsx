@@ -101,7 +101,7 @@ function GuestsListPage() {
       .select("id,name,mobile,email,city,tags,is_blacklisted,gst_number,company")
       .eq("property_id", propertyId)
       .order("created_at", { ascending: false })
-      .limit(10000);
+      .limit(15500);
     setRows((data ?? []) as Row[]);
     setSelected(new Set());
   }
