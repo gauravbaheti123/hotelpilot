@@ -19,6 +19,8 @@ import { Trash2, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
+import { useGstSlabs } from "@/hooks/use-gst-slabs";
+import { resolveGstRate, resolveGstRateInclusive } from "@/lib/gst";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { addDaysIso, nightsBetween, SOURCES, todayIso } from "@/lib/front-desk";
