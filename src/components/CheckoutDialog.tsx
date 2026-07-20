@@ -82,6 +82,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
   const [payments, setPayments] = useState<any[]>([]);
   const [pendingKots, setPendingKots] = useState<PendingKot[]>([]);
   const [pendingPos, setPendingPos] = useState<PendingPosCharge[]>([]);
+  const [property, setProperty] = useState<{ checkout_grace_time: string | null } | null>(null);
   const { methods: payMethods } = usePaymentMethods(booking?.property_id ?? null);
 
   // Payment form
@@ -98,6 +99,8 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
   // effect keeps re-firing every time `loading` toggles, producing the
   // Checkout Summary "loading/loaded" flicker reported for all checkouts.
   const didSeedRoomCharges = useRef(false);
+  // Guard so the late-checkout auto-charge only runs once per open.
+  const didLateChargeCheck = useRef(false);
 
   const load = useCallback(async () => {
     if (!bookingId) return;
@@ -117,6 +120,15 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       return;
     }
     setBooking(b);
+
+    if ((b as any)?.property_id) {
+      const { data: prop } = await supabase
+        .from("properties")
+        .select("checkout_grace_time")
+        .eq("id", (b as any).property_id)
+        .maybeSingle();
+      setProperty(prop as any);
+    }
 
     const { data: folioId, error: fErr } = await supabase.rpc("get_or_create_folio", {
       _booking_id: bookingId,
@@ -159,6 +171,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       setSingleRef("");
       setSingleMode("cash");
       didSeedRoomCharges.current = false;
+      didLateChargeCheck.current = false;
       load();
     }
   }, [open, bookingId, load]);
