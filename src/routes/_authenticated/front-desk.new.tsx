@@ -962,6 +962,38 @@ function NewBookingPage() {
                 </SelectContent>
               </Select>
             </F>
+            <F label="Extra bed">
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={extraBed}
+                    onChange={(e) => setExtraBed(e.target.checked)}
+                    disabled={!categoryId || extraBedRate <= 0}
+                  />
+                  <span>Add extra bed</span>
+                </label>
+                {extraBed && (
+                  <>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={4}
+                      value={extraBedQty}
+                      onChange={(e) => setExtraBedQty(Math.max(1, Number(e.target.value) || 1))}
+                    />
+                    <div className="text-[11px] text-muted-foreground">
+                      ₹{extraBedRate.toLocaleString("en-IN")}/night × {extraBedQty} bed{extraBedQty > 1 ? "s" : ""} × {nights} night{nights > 1 ? "s" : ""} = ₹{extraBedTotal.toLocaleString("en-IN")}
+                    </div>
+                  </>
+                )}
+                {categoryId && extraBedRate <= 0 && (
+                  <div className="text-[11px] text-muted-foreground">
+                    No extra bed rate configured for this category.
+                  </div>
+                )}
+              </div>
+            </F>
           </CardContent>
         </Card>
 
