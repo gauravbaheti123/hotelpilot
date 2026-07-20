@@ -302,7 +302,15 @@ function NewBookingPage() {
     if (assignLater && checkInNow)
       return toast.error("Assign a room before checking in — a room is required to check in a guest");
     if (nightsBetween(checkIn, checkOut) < 1) return toast.error("Check-out must be after check-in");
-    if (!isValidOrEmptyGSTIN(gstNumber)) return toast.error(GSTIN_ERROR);
+    if (!isValidOrEmptyGSTIN(gstNumber)) {
+      toast.error(GSTIN_ERROR);
+      if (typeof document !== "undefined") {
+        const el = document.getElementById("gstin-input") as HTMLInputElement | null;
+        el?.focus();
+        el?.select?.();
+      }
+      return;
+    }
 
     setSaving(true);
     try {
@@ -678,6 +686,7 @@ function NewBookingPage() {
             <F label="Company (optional)"><Input value={company} onChange={(e) => setCompany(e.target.value)} /></F>
             <F label="GSTIN (optional)">
               <Input
+                id="gstin-input"
                 value={gstNumber}
                 onChange={(e) => setGstNumber(e.target.value.toUpperCase())}
                 maxLength={15}
@@ -912,11 +921,24 @@ function NewBookingPage() {
         </Card>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" disabled={saving} onClick={() => save(false)}>Save as reservation</Button>
           <Button
-            disabled={saving || assignLater}
+            variant="outline"
+            disabled={saving || (gstNumber ? !isValidOrEmptyGSTIN(gstNumber) : false)}
+            onClick={() => save(false)}
+            title={gstNumber && !isValidOrEmptyGSTIN(gstNumber) ? GSTIN_ERROR : undefined}
+          >
+            Save as reservation
+          </Button>
+          <Button
+            disabled={saving || assignLater || (gstNumber ? !isValidOrEmptyGSTIN(gstNumber) : false)}
             onClick={() => save(true)}
-            title={assignLater ? "Assign a room to enable check-in" : undefined}
+            title={
+              gstNumber && !isValidOrEmptyGSTIN(gstNumber)
+                ? GSTIN_ERROR
+                : assignLater
+                  ? "Assign a room to enable check-in"
+                  : undefined
+            }
           >
             Save &amp; check-in now
           </Button>
