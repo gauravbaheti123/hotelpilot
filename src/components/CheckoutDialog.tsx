@@ -22,6 +22,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
 import { inr, inrRound, recomputeFolio } from "@/lib/billing";
+import { resolveGstRate } from "@/lib/gst";
 import { fireTrigger } from "@/lib/whatsapp";
 import { AlertTriangle, Plus, Trash2, Loader2, ArrowRightLeft, SplitSquareHorizontal } from "lucide-react";
 import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
@@ -256,6 +257,15 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     didLateChargeCheck.current = true;
     (async () => {
       const roomNo = primaryRoom?.rooms?.room_number ? ` — Rm ${primaryRoom.rooms.room_number}` : "";
+      const { data: slabRows } = await supabase
+        .from("gst_slabs" as any)
+        .select("from_amount,to_amount,gst_rate,charge_category,is_active,effective_from")
+        .eq("property_id", booking.property_id);
+      const gstR = resolveGstRate((slabRows ?? []) as any, "room", rate);
+      if (gstR == null) {
+        toast.error("GST slab missing for late-checkout rate. Configure it in Master Data → GST Slabs.");
+        return;
+      }
       const { error } = await supabase.from("folio_charges").insert({
         folio_id: folio.id,
         charge_type: "room",
@@ -263,8 +273,8 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
         qty: 1,
         rate,
         amount: rate,
-        gst_rate: rate <= 1000 ? 0 : rate <= 7500 ? 5 : 18,
-        gst_amount: Math.round(rate * (rate <= 1000 ? 0 : rate <= 7500 ? 5 : 18)) / 100,
+        gst_rate: gstR,
+        gst_amount: Math.round(rate * gstR) / 100,
         charged_on: new Date().toISOString().slice(0, 10),
         source_table: "late_checkout",
         source_id: primaryRoom?.id ?? null,

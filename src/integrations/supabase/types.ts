@@ -1828,30 +1828,39 @@ export type Database = {
       gst_slabs: {
         Row: {
           active: boolean
+          charge_category: string
           created_at: string
+          effective_from: string
           from_amount: number
           gst_rate: number
           id: string
+          is_active: boolean
           property_id: string
           to_amount: number
           updated_at: string
         }
         Insert: {
           active?: boolean
+          charge_category?: string
           created_at?: string
+          effective_from?: string
           from_amount?: number
           gst_rate?: number
           id?: string
+          is_active?: boolean
           property_id: string
           to_amount?: number
           updated_at?: string
         }
         Update: {
           active?: boolean
+          charge_category?: string
           created_at?: string
+          effective_from?: string
           from_amount?: number
           gst_rate?: number
           id?: string
+          is_active?: boolean
           property_id?: string
           to_amount?: number
           updated_at?: string
@@ -5361,6 +5370,10 @@ export type Database = {
       }
       current_user_totp_required: { Args: never; Returns: boolean }
       delete_night_audit: { Args: { _id: string }; Returns: undefined }
+      get_gst_rate: {
+        Args: { p_amount: number; p_category: string; p_property_id: string }
+        Returns: number
+      }
       get_next_bill_number: {
         Args: { p_property_id: string; p_type: string }
         Returns: string

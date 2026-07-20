@@ -19,6 +19,8 @@ import { Trash2, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
+import { useGstSlabs } from "@/hooks/use-gst-slabs";
+import { resolveGstRate, resolveGstRateInclusive } from "@/lib/gst";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { addDaysIso, nightsBetween, SOURCES, todayIso } from "@/lib/front-desk";
@@ -78,6 +80,7 @@ function NewBookingPage() {
     ["superadmin", "owner", "manager", "receptionist"].includes(r),
   );
   const { current, loading: propLoading } = useCurrentProperty();
+  const { slabs: gstSlabs } = useGstSlabs(current?.id ?? null);
 
   const [cats, setCats] = useState<Category[]>([]);
   const [rooms, setRooms] = useState<RoomRow[]>([]);
@@ -883,12 +886,17 @@ function NewBookingPage() {
                   </label>
                 </div>
                 {rate > 0 && (() => {
-                  // Tiered slabs (Sept 2025): 0% ≤ ₹1000, 5% ≤ ₹7500, 18% > ₹7500.
-                  let g: number;
+                  const g = rateType === "inclusive"
+                    ? resolveGstRateInclusive(gstSlabs, "room", rate)
+                    : resolveGstRate(gstSlabs, "room", rate);
+                  if (g == null) {
+                    return (
+                      <div className="text-[11px] text-destructive">
+                        No GST slab configured for this room tariff. Configure it in Master Data → GST Slabs.
+                      </div>
+                    );
+                  }
                   if (rateType === "inclusive") {
-                    if (rate <= 1000) g = 0;
-                    else if (rate / 1.05 <= 7500) g = 5;
-                    else g = 18;
                     const taxable = rate / (1 + g / 100);
                     const gst = rate - taxable;
                     return (
@@ -897,9 +905,6 @@ function NewBookingPage() {
                       </div>
                     );
                   }
-                  if (rate <= 1000) g = 0;
-                  else if (rate <= 7500) g = 5;
-                  else g = 18;
                   const gst = rate * g / 100;
                   return (
                     <div className="text-[11px] text-muted-foreground">
