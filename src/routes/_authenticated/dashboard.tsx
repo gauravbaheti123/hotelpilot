@@ -103,6 +103,7 @@ type RoomEventInfo = {
   banquetBookingId: string;
   eventName: string;
   guestName: string | null;
+  guestMobile: string | null;
   checkin: string;
   checkout: string;
   status: EventBlockRecord["status"];
@@ -397,6 +398,7 @@ function OwnerDashboard({
             banquetBookingId: ev.banquet_booking_id,
             eventName: ev.event_name,
             guestName: b.guest_name,
+            guestMobile: b.guest_mobile,
             checkin: b.checkin_date,
             checkout: b.checkout_date,
             status: b.status,
@@ -568,31 +570,24 @@ function OwnerDashboard({
                 }}
                 onCheckout={(bid) => setCheckoutBookingId(bid)}
                 onAssignEvent={(blk) => {
-                  // Route the event-block assign through the regular New Booking form
-                  navigate({
-                    to: "/front-desk/new",
-                    search: {
-                      roomId: blk.room_id ?? undefined,
-                      eventId: blk.banquet_booking_id,
-                      blockId: blk.id,
-                      eventName: blk.event_name,
-                      checkIn: blk.checkin_date,
-                      checkOut: blk.checkout_date,
-                    } as any,
-                  });
+                  // Inline Name + Mobile capture — no full booking form
+                  setSingleAssignBlock(blk);
                 }}
-                onEventCheckIn={(blk) => {
-                  navigate({
-                    to: "/front-desk/new",
-                    search: {
-                      roomId: blk.room_id ?? undefined,
-                      eventId: blk.banquet_booking_id,
-                      blockId: blk.id,
-                      eventName: blk.event_name,
-                      checkIn: blk.checkin_date,
-                      checkOut: blk.checkout_date,
-                    } as any,
-                  });
+                onEventCheckIn={async (blk) => {
+                  if (!propertyId || !userId) return;
+                  if (!blk.guest_name || !blk.guest_mobile) {
+                    // Guest missing name/mobile — open inline capture dialog
+                    setSingleAssignBlock(blk);
+                    return;
+                  }
+                  if (!confirm(`Check in ${blk.guest_name} to Room ${blk.room_number}?`)) return;
+                  try {
+                    await checkInBlock({ propertyId, block: blk, userId });
+                    toast.success(`Room ${blk.room_number} checked in`);
+                    reload();
+                  } catch (e: any) {
+                    toast.error(e?.message ?? "Check-in failed");
+                  }
                 }}
               />
             )}
@@ -875,6 +870,8 @@ function OwnerDashboard({
       />
       <AssignGuestDialog
         block={singleAssignBlock}
+        propertyId={propertyId}
+        userId={userId}
         onClose={() => setSingleAssignBlock(null)}
         onDone={() => { setSingleAssignBlock(null); reload(); }}
       />
@@ -1083,19 +1080,18 @@ function RoomCard({
             )}
             {isEventBlock && (
               <button type="button"
-                disabled={!eventInfo!.guestName}
-                title={eventInfo!.guestName ? "Check in this guest" : "Assign guest first"}
+                title={eventInfo!.guestName && eventInfo!.guestMobile ? "Check in this guest" : "Assign guest name & mobile"}
                 style={{
-                  backgroundColor: eventInfo!.guestName ? "#ffffff" : "rgba(255,255,255,0.4)",
+                  backgroundColor: "#ffffff",
                   color: evBg,
-                  cursor: eventInfo!.guestName ? "pointer" : "not-allowed",
+                  cursor: "pointer",
                   borderRadius: 4, padding: "3px 8px", fontSize: 11, fontWeight: 600, border: "none",
                 }}
-                onClick={(e) => { e.stopPropagation(); if (!eventInfo!.guestName) return; onEventCheckIn({
+                onClick={(e) => { e.stopPropagation(); onEventCheckIn({
                   id: eventInfo!.blockId, banquet_booking_id: eventInfo!.banquetBookingId,
                   event_name: eventInfo!.eventName, room_id: room.id,
                   room_number: room.room_number, room_category: category,
-                  guest_name: eventInfo!.guestName, guest_mobile: null,
+                  guest_name: eventInfo!.guestName, guest_mobile: eventInfo!.guestMobile,
                   checkin_date: eventInfo!.checkin, checkout_date: eventInfo!.checkout,
                   special_rate: null, status: "blocked", booking_id: null,
                 } as EventBlockRecord); }}>Check In</button>
@@ -1596,9 +1592,11 @@ function BulkCheckoutDialog({
 }
 
 function AssignGuestDialog({
-  block, onClose, onDone,
+  block, propertyId, userId, onClose, onDone,
 }: {
   block: EventBlockRecord | null;
+  propertyId: string | null;
+  userId: string;
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -1607,7 +1605,7 @@ function AssignGuestDialog({
   const [busy, setBusy] = useState(false);
   useEffect(() => { setName(block?.guest_name ?? ""); setMobile(block?.guest_mobile ?? ""); }, [block?.id]);
   if (!block) return null;
-  const save = async () => {
+  const saveOnly = async () => {
     setBusy(true);
     const { error } = await supabase.from("event_room_blocks").update({
       guest_name: name.trim() || null, guest_mobile: mobile.trim() || null,
@@ -1616,6 +1614,28 @@ function AssignGuestDialog({
     if (error) return toast.error(error.message);
     toast.success("Guest assigned");
     onDone();
+  };
+  const saveAndCheckIn = async () => {
+    if (!propertyId || !userId) return toast.error("Missing property or user");
+    if (!name.trim() || !mobile.trim()) return toast.error("Name and mobile required");
+    setBusy(true);
+    const { error: upErr } = await supabase.from("event_room_blocks").update({
+      guest_name: name.trim(), guest_mobile: mobile.trim(),
+    } as any).eq("id", block.id);
+    if (upErr) { setBusy(false); return toast.error(upErr.message); }
+    try {
+      await checkInBlock({
+        propertyId,
+        block: { ...block, guest_name: name.trim(), guest_mobile: mobile.trim() },
+        userId,
+      });
+      toast.success(`Room ${block.room_number} checked in`);
+      onDone();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Check-in failed");
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <Dialog open={!!block} onOpenChange={(o) => !o && onClose()}>
@@ -1627,7 +1647,8 @@ function AssignGuestDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button disabled={busy} onClick={save}>{busy ? "Saving…" : "Save"}</Button>
+          <Button variant="secondary" disabled={busy} onClick={saveOnly}>{busy ? "Saving…" : "Save"}</Button>
+          <Button disabled={busy} onClick={saveAndCheckIn}>{busy ? "Working…" : "Save & Check In"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
