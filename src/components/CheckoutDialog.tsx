@@ -108,7 +108,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     const { data: b, error } = await supabase
       .from("bookings")
       .select(
-        `id,booking_number,status,check_in,check_out,property_id,advance_amount,
+        `id,booking_number,status,check_in,check_out,property_id,advance_amount,custom_remark,
          guests(name,mobile),
          booking_rooms(id,room_id,rate,check_in,check_out,rooms!booking_rooms_room_id_fkey(id,room_number),room_categories(name))`,
       )
@@ -645,6 +645,20 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
                 Check-in: {booking.check_in} · Check-out: {booking.check_out} · {nights} Night{nights > 1 ? "s" : ""}
               </div>
             </div>
+
+            {booking.custom_remark && booking.custom_remark.trim() && (
+              <div className="rounded-md border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/40 p-3 flex gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                    Custom Remark
+                  </div>
+                  <div className="text-sm font-medium text-amber-900 dark:text-amber-100 whitespace-pre-wrap break-words">
+                    {booking.custom_remark}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <Section title="Room Charges" rows={totals.rooms} total={totals.roomTotal} />
             <div>
