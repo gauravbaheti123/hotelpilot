@@ -827,8 +827,23 @@ function OwnerDashboard({
       </div>
       <RoomStatusModal
         room={modalRoom}
-        kind={modalRoom ? tileKind(modalRoom, occupiedRoomIds.has(modalRoom.id)) : null}
-        bookingId={modalRoom ? bookingByRoom.get(modalRoom.id) ?? null : null}
+        kind={
+          modalRoom
+            ? tileKind(
+                modalRoom,
+                occupiedRoomIds.has(modalRoom.id) ||
+                  eventBlockByRoom.get(modalRoom.id)?.status === "checked_in",
+              )
+            : null
+        }
+        bookingId={
+          modalRoom
+            ? bookingByRoom.get(modalRoom.id) ??
+              (eventBlockByRoom.get(modalRoom.id)?.status === "checked_in"
+                ? eventBlockByRoom.get(modalRoom.id)?.bookingId || null
+                : null)
+            : null
+        }
         staff={staff}
         onClose={() => setModalRoom(null)}
         onChanged={async () => { await reload(); }}
