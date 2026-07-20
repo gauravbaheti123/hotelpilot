@@ -921,11 +921,24 @@ function NewBookingPage() {
         </Card>
 
         <div className="flex justify-end gap-2">
-          <Button variant="outline" disabled={saving} onClick={() => save(false)}>Save as reservation</Button>
           <Button
-            disabled={saving || assignLater}
+            variant="outline"
+            disabled={saving || (gstNumber ? !isValidOrEmptyGSTIN(gstNumber) : false)}
+            onClick={() => save(false)}
+            title={gstNumber && !isValidOrEmptyGSTIN(gstNumber) ? GSTIN_ERROR : undefined}
+          >
+            Save as reservation
+          </Button>
+          <Button
+            disabled={saving || assignLater || (gstNumber ? !isValidOrEmptyGSTIN(gstNumber) : false)}
             onClick={() => save(true)}
-            title={assignLater ? "Assign a room to enable check-in" : undefined}
+            title={
+              gstNumber && !isValidOrEmptyGSTIN(gstNumber)
+                ? GSTIN_ERROR
+                : assignLater
+                  ? "Assign a room to enable check-in"
+                  : undefined
+            }
           >
             Save &amp; check-in now
           </Button>
