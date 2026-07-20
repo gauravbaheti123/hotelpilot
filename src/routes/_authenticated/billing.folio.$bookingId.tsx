@@ -2116,6 +2116,29 @@ function FolioPage() {
         preselectFoodOnly={misFoodOnly}
         onShifted={() => load()}
       />
+      <Dialog open={undoOpen} onOpenChange={setUndoOpen}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Undo Checkout?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <p>
+              This will reopen the bill and mark the guest as <b>checked-in</b> again.
+              Any payment already collected will remain on file.
+            </p>
+            <p className="text-muted-foreground">
+              Available for <b>{undoMinutesLeft}</b> more minute(s). After 1 hour of checkout this option is not available.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUndoOpen(false)} disabled={undoBusy}>Cancel</Button>
+            <Button onClick={performUndoCheckout} disabled={undoBusy || !canUndoCheckout}
+              style={{ background: TEAL, color: "#fff" }}>
+              {undoBusy ? "Reversing…" : "Yes, Undo Checkout"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
