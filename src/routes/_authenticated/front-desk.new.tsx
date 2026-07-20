@@ -28,6 +28,8 @@ import { GuestIdUploadField, type SelectedIdFile } from "@/components/GuestIdUpl
 import { uploadFileToDrive, safeName } from "@/lib/driveUpload";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
+import { useDiscountLimit } from "@/hooks/use-discount-limit";
+import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/front-desk/new")({
@@ -119,6 +121,25 @@ function NewBookingPage() {
   const [rate, setRate] = useState(0);
   const [rateManuallySet, setRateManuallySet] = useState(false);
   const [rateType, setRateType] = useState<"exclusive" | "inclusive">("exclusive");
+  const { limit: discountLimit } = useDiscountLimit();
+
+  // Standard rate = the picked tariff's rate, or the category base rate as fallback.
+  const standardRate = useMemo(() => {
+    const t = tariffs.find((x) => x.id === tariffId);
+    if (t?.rate) return Number(t.rate) || 0;
+    const cat = cats.find((c) => c.id === categoryId);
+    return Number(cat?.base_rate) || 0;
+  }, [tariffs, tariffId, cats, categoryId]);
+
+  const rateOverrideCheck = useMemo(() => {
+    if (!standardRate || rate <= 0 || rate >= standardRate) {
+      return { allowed: true, maxRupees: 0 } as { allowed: boolean; reason?: string; maxRupees: number };
+    }
+    return canApplyDiscount(discountLimit, {
+      discountRupees: standardRate - rate,
+      base: standardRate,
+    });
+  }, [standardRate, rate, discountLimit]);
   const [mealPlan, setMealPlan] = useState("EP");
   // Future reservations often don't have a specific room picked yet — only the
   // category. When true, room selection is bypassed and booking_rooms.room_id
