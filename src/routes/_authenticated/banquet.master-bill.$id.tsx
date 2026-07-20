@@ -75,11 +75,11 @@ function MasterBillPage() {
   }
 
   if (loading) {
-    return <AppShell><div className="p-6">Loading…</div></AppShell>;
+    return <AppShell title="Banquet Master Bill"><div className="p-6">Loading…</div></AppShell>;
   }
   if (!mb) {
     return (
-      <AppShell>
+      <AppShell title="Banquet Master Bill">
         <div className="p-6 space-y-3">
           <Button variant="ghost" size="sm" onClick={() => router.navigate({ to: "/banquet/event/$id", params: { id } })}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
@@ -94,7 +94,7 @@ function MasterBillPage() {
 
   const ev = mb.banquet_bookings!;
   return (
-    <AppShell>
+    <AppShell title="Banquet Master Bill">
       <style>{`@media print {
         @page { size: A4; margin: 12mm; }
         body * { visibility: hidden; }
