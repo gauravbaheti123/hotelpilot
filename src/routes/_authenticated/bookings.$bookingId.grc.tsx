@@ -251,7 +251,7 @@ function GrcPage() {
               <img src={property.logo_url} alt="" className="h-24 w-24 object-contain" />
             )}
             <div className="flex-1 text-center">
-              <div className="text-xl font-bold uppercase">{property?.legal_entity_name || property?.name || "—"}</div>
+              <div className="text-xl font-bold uppercase">{property?.name || property?.legal_entity_name || "—"}</div>
               {propAddress && <div className="text-[12px] mt-1">{propAddress}</div>}
               {(property?.phone || property?.email) && (
                 <div className="text-[12px] mt-1">
