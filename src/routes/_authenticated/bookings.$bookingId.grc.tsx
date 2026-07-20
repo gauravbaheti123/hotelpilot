@@ -10,7 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { RequirePermission } from "@/components/RequirePermission";
 import { toast } from "sonner";
 import { Printer, Save, ArrowLeft } from "lucide-react";
-import { printDomViaQZ } from "@/lib/qzDomPrint";
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 
 function fmtDateTime(value: string | null | undefined, fallbackTime?: string | null): string {
