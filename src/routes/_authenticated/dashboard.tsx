@@ -1078,19 +1078,18 @@ function RoomCard({
             )}
             {isEventBlock && (
               <button type="button"
-                disabled={!eventInfo!.guestName}
-                title={eventInfo!.guestName ? "Check in this guest" : "Assign guest first"}
+                title={eventInfo!.guestName && eventInfo!.guestMobile ? "Check in this guest" : "Assign guest name & mobile"}
                 style={{
-                  backgroundColor: eventInfo!.guestName ? "#ffffff" : "rgba(255,255,255,0.4)",
+                  backgroundColor: "#ffffff",
                   color: evBg,
-                  cursor: eventInfo!.guestName ? "pointer" : "not-allowed",
+                  cursor: "pointer",
                   borderRadius: 4, padding: "3px 8px", fontSize: 11, fontWeight: 600, border: "none",
                 }}
-                onClick={(e) => { e.stopPropagation(); if (!eventInfo!.guestName) return; onEventCheckIn({
+                onClick={(e) => { e.stopPropagation(); onEventCheckIn({
                   id: eventInfo!.blockId, banquet_booking_id: eventInfo!.banquetBookingId,
                   event_name: eventInfo!.eventName, room_id: room.id,
                   room_number: room.room_number, room_category: category,
-                  guest_name: eventInfo!.guestName, guest_mobile: null,
+                  guest_name: eventInfo!.guestName, guest_mobile: eventInfo!.guestMobile,
                   checkin_date: eventInfo!.checkin, checkout_date: eventInfo!.checkout,
                   special_rate: null, status: "blocked", booking_id: null,
                 } as EventBlockRecord); }}>Check In</button>
