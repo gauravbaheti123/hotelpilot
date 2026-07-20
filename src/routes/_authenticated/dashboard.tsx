@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrossed, ChevronDown, ChevronRight, DoorOpen, Sparkles, Wrench, PartyPopper, CheckCircle2, Receipt } from "lucide-react";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
+import { AddExtraBedDialog } from "@/components/AddExtraBedDialog";
 // Bell moved to global header (AppShell). Reminders section removed here.
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { Input } from "@/components/ui/input";
