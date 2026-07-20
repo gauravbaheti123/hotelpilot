@@ -48,6 +48,7 @@ function BanquetEventPage() {
   const { id } = Route.useParams();
   const router = useRouter();
   const { user } = useAuth();
+  const { limit: discountLimit } = useDiscountLimit();
   const [b, setB] = useState<Bq | null>(null);
   const [blocks, setBlocks] = useState<EventBlockRecord[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -320,6 +321,21 @@ function BanquetEventPage() {
   async function patchCharges(patch: Partial<Bq>) {
     if (!b) return;
     const merged = { ...b, ...patch } as Bq;
+    // Enforce per-role discount limit on the discount field.
+    if (Object.prototype.hasOwnProperty.call(patch, "discount_amount")) {
+      const sub =
+        Number(merged.package_rate) * Number(merged.pax) +
+        Number(merged.hall_charge) + Number(merged.fb_charge) + Number(merged.extra_charge);
+      const disc = Number(merged.discount_amount) || 0;
+      if (disc > 0 && sub > 0) {
+        const chk = canApplyDiscount(discountLimit, { discountRupees: disc, base: sub });
+        if (!chk.allowed) {
+          toast.error(chk.reason ?? describeLimit(discountLimit));
+          setB({ ...b });
+          return;
+        }
+      }
+    }
     const total = computeBanquetTotal({
       package_rate: merged.package_rate, pax: merged.pax,
       hall_charge: merged.hall_charge, fb_charge: merged.fb_charge,
