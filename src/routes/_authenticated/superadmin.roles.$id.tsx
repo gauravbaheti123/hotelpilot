@@ -327,15 +327,40 @@ function EditRolePage() {
 
           {!readOnly && !/owner/i.test(role?.name ?? "") && (
             <Card>
-              <CardContent className="py-3 flex items-center gap-3">
-                <span className="text-sm">Max discount %</span>
-                <Input
-                  type="number" min={0} max={100}
-                  value={maxDiscount}
-                  onChange={(e) => setMaxDiscount(e.target.value)}
-                  className={`w-24 ${maxDiscount !== savedMaxDiscount ? "bg-amber-100 dark:bg-amber-950/40" : ""}`}
-                />
-                <span className="text-xs text-muted-foreground">Cap applied when users with this role apply discounts.</span>
+              <CardContent className="py-3 flex items-center flex-wrap gap-3">
+                <span className="text-sm font-medium">Discount limit</span>
+                <select
+                  className={`h-9 rounded-md border bg-background px-2 text-sm ${maxDiscountType !== savedMaxDiscountType ? "bg-amber-100 dark:bg-amber-950/40" : ""}`}
+                  value={maxDiscountType}
+                  onChange={(e) => setMaxDiscountType(e.target.value as any)}
+                >
+                  <option value="percentage">Percentage (%)</option>
+                  <option value="fixed_amount">Fixed amount (₹)</option>
+                  <option value="none">None — no discount allowed</option>
+                </select>
+                {maxDiscountType === "percentage" && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">Max %</span>
+                    <Input
+                      type="number" min={0} max={100}
+                      value={maxDiscount}
+                      onChange={(e) => setMaxDiscount(e.target.value)}
+                      className={`w-24 ${maxDiscount !== savedMaxDiscount ? "bg-amber-100 dark:bg-amber-950/40" : ""}`}
+                    />
+                  </div>
+                )}
+                {maxDiscountType === "fixed_amount" && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">Max ₹</span>
+                    <Input
+                      type="number" min={0}
+                      value={maxDiscountAmount}
+                      onChange={(e) => setMaxDiscountAmount(e.target.value)}
+                      className={`w-32 ${maxDiscountAmount !== savedMaxDiscountAmount ? "bg-amber-100 dark:bg-amber-950/40" : ""}`}
+                    />
+                  </div>
+                )}
+                <span className="text-xs text-muted-foreground">Applies to bill discounts, line discounts, split bills, and rate overrides below category base.</span>
               </CardContent>
             </Card>
           )}
