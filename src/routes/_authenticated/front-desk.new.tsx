@@ -471,6 +471,19 @@ function NewBookingPage() {
       } as any);
       if (brErr) throw brErr;
 
+      // 3b) Extra bed — seeds one folio charge automatically via trigger.
+      if (extraBed && extraBedRate > 0 && extraBedQty > 0) {
+        const { error: ebErr } = await supabase.from("booking_extra_beds" as any).insert({
+          property_id: current.id,
+          booking_id: booking!.id,
+          quantity: extraBedQty,
+          rate_per_night: extraBedRate,
+          added_from_date: checkIn,
+          added_by: user?.id ?? null,
+        } as any);
+        if (ebErr) console.warn("extra bed insert failed", ebErr);
+      }
+
       // 4) If checked in with an actual room, mark room occupied.
       if (checkInNow && effectiveRoomId) {
         await supabase.from("rooms").update({ status: "occupied" }).eq("id", effectiveRoomId);
