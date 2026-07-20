@@ -29,6 +29,7 @@ import {
 import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent } from "lucide-react";
 import { AlertTriangle, ShieldAlert, ArrowRightLeft } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
+import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
@@ -1345,11 +1346,21 @@ function FolioPage() {
               <>
                 <div className="space-y-1">
                   <Label className="text-xs">Guest GSTIN</Label>
-                  <Input className="h-9 w-56" value={folio.guest_gstin ?? ""} disabled={!isOpen}
+                  <Input
+                    className={`h-9 w-56 ${folio.guest_gstin && !isValidOrEmptyGSTIN(folio.guest_gstin) ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                    value={folio.guest_gstin ?? ""}
+                    disabled={!isOpen}
+                    maxLength={15}
+                    placeholder="e.g. 27AASFB5351R1ZM"
                     onChange={async (e) => {
-                      setFolio({ ...folio, guest_gstin: e.target.value });
-                      await supabase.from("folios").update({ guest_gstin: e.target.value }).eq("id", folio.id);
-                    }} />
+                      const v = e.target.value.toUpperCase();
+                      setFolio({ ...folio, guest_gstin: v });
+                      await supabase.from("folios").update({ guest_gstin: v }).eq("id", folio.id);
+                    }}
+                  />
+                  {folio.guest_gstin && !isValidOrEmptyGSTIN(folio.guest_gstin) && (
+                    <p className="text-[11px] text-red-600">{GSTIN_ERROR}</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Company Name</Label>
