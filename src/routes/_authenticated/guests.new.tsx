@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { ID_PROOF_TYPES } from "@/lib/guests";
+import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 import { toast } from "sonner";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 
@@ -41,6 +42,7 @@ function NewGuestPage() {
   async function save() {
     if (!name.trim()) { toast.error("Name is required"); return; }
     if (!mobile.trim()) { toast.error("Mobile is required"); return; }
+    if (!isValidOrEmptyGSTIN(gstNumber)) { toast.error(GSTIN_ERROR); return; }
     setBusy(true);
     const tags = guestType === "regular" ? [] : [guestType];
     const { data, error } = await supabase.from("guests").insert({
@@ -111,7 +113,16 @@ function NewGuestPage() {
             </div>
             <div className="md:col-span-2">
               <Field label="GST Number">
-                <Input value={gstNumber} onChange={(e) => setGstNumber(e.target.value.toUpperCase())} maxLength={15} placeholder="e.g. 29ABCDE1234F1Z5" />
+                <Input
+                  value={gstNumber}
+                  onChange={(e) => setGstNumber(e.target.value.toUpperCase())}
+                  maxLength={15}
+                  placeholder="e.g. 27AASFB5351R1ZM"
+                  className={gstNumber && !isValidOrEmptyGSTIN(gstNumber) ? "border-red-500 focus-visible:ring-red-500" : ""}
+                />
+                {gstNumber && !isValidOrEmptyGSTIN(gstNumber) && (
+                  <p className="mt-1 text-[11px] text-red-600">{GSTIN_ERROR}</p>
+                )}
               </Field>
             </div>
             <div className="md:col-span-2"><Field label="Address"><Textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} /></Field></div>
