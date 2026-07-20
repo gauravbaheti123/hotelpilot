@@ -241,6 +241,7 @@ function HotelSettingsForm({
         default_checkout_time: form.default_checkout_time || "11:00",
         early_checkin_charge_per_hour: Number(form.early_checkin_charge_per_hour ?? 0),
         late_checkout_charge_per_hour: Number(form.late_checkout_charge_per_hour ?? 0),
+        checkout_grace_time: form.checkout_grace_time || "14:30",
         food_gst_rate: Number(form.food_gst_rate ?? 5),
         sundry_gst_rate: Number(form.sundry_gst_rate ?? 18),
       };
@@ -643,6 +644,10 @@ function HotelSettingsForm({
           </Field>
           <Field label="Late Check-out Charge (₹ / hour)">
             <Input type="number" min={0} step={0.01} disabled={dis} value={form.late_checkout_charge_per_hour ?? 0} onChange={(e) => set("late_checkout_charge_per_hour", e.target.value)} />
+          </Field>
+          <Field label="Checkout Grace Time">
+            <Input type="time" disabled={dis} value={(form.checkout_grace_time ?? "14:30").slice(0,5)} onChange={(e) => set("checkout_grace_time", e.target.value)} />
+            <p className="text-[11px] text-muted-foreground mt-1">Checkouts after this time on the scheduled date auto-add one extra night's room charge.</p>
           </Field>
           <p className="md:col-span-2 text-xs text-muted-foreground">
             These timings show on booking confirmations and invoices.
