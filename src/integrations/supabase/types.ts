@@ -603,6 +603,60 @@ export type Database = {
           },
         ]
       }
+      booking_extra_beds: {
+        Row: {
+          added_by: string | null
+          added_from_date: string
+          booking_id: string
+          created_at: string
+          id: string
+          is_wiped: boolean
+          property_id: string
+          quantity: number
+          rate_per_night: number
+          updated_at: string
+        }
+        Insert: {
+          added_by?: string | null
+          added_from_date: string
+          booking_id: string
+          created_at?: string
+          id?: string
+          is_wiped?: boolean
+          property_id: string
+          quantity?: number
+          rate_per_night: number
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string | null
+          added_from_date?: string
+          booking_id?: string
+          created_at?: string
+          id?: string
+          is_wiped?: boolean
+          property_id?: string
+          quantity?: number
+          rate_per_night?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_extra_beds_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_extra_beds_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_guests: {
         Row: {
           age: number | null
@@ -5453,6 +5507,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      seed_extra_bed_charge: { Args: { _beb_id: string }; Returns: string }
       seed_room_charge_for_booking_room: {
         Args: { _booking_room_id: string }
         Returns: string

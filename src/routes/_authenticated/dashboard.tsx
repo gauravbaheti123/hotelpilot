@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrossed, ChevronDown, ChevronRight, DoorOpen, Sparkles, Wrench, PartyPopper, CheckCircle2, Receipt } from "lucide-react";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
+import { AddExtraBedDialog } from "@/components/AddExtraBedDialog";
 // Bell moved to global header (AppShell). Reminders section removed here.
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { Input } from "@/components/ui/input";
@@ -197,6 +198,7 @@ function OwnerDashboard({
   const [staff, setStaff] = useState<StaffOpt[]>([]);
   const [modalRoom, setModalRoom] = useState<Room | null>(null);
   const [checkoutBookingId, setCheckoutBookingId] = useState<string | null>(null);
+  const [extraBedBookingId, setExtraBedBookingId] = useState<string | null>(null);
   const [pendingFoodByRoom, setPendingFoodByRoom] = useState<Map<string, PendingFood>>(new Map());
   const [pendingFoodRows, setPendingFoodRows] = useState<PendingFoodRow[]>([]);
   const [showPendingFood, setShowPendingFood] = useState(false);
@@ -869,12 +871,19 @@ function OwnerDashboard({
           navigate({ to: "/pos", search: { booking_id: bid } } as any);
           if (roomNo) toast.success(`Opening Other Charges for Room ${roomNo}`);
         }}
+        onAddExtraBed={(bid: string) => { setModalRoom(null); setExtraBedBookingId(bid); }}
       />
       <CheckoutDialog
         bookingId={checkoutBookingId}
         open={!!checkoutBookingId}
         onOpenChange={(o: boolean) => { if (!o) setCheckoutBookingId(null); }}
         onDone={() => { setCheckoutBookingId(null); reload(); }}
+      />
+      <AddExtraBedDialog
+        bookingId={extraBedBookingId}
+        open={!!extraBedBookingId}
+        onOpenChange={(o: boolean) => { if (!o) setExtraBedBookingId(null); }}
+        onDone={() => { setExtraBedBookingId(null); reload(); }}
       />
       <BulkCheckinDialog
         event={bulkCheckinEvent}
@@ -1258,7 +1267,7 @@ function roomTileStyle(r: Room, isOccupied: boolean): { bg: string; label: strin
 }
 
 function RoomStatusModal({
-  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onNewKot, onOtherCharges,
+  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onNewKot, onOtherCharges, onAddExtraBed,
 }: {
   room: Room | null;
   kind: TileKind | null;
@@ -1271,6 +1280,7 @@ function RoomStatusModal({
   onCheckout: (bookingId: string) => void;
   onNewKot: (bookingId: string) => void;
   onOtherCharges: (bookingId: string) => void;
+  onAddExtraBed: (bookingId: string) => void;
 }) {
   const [staffId, setStaffId] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
@@ -1280,6 +1290,8 @@ function RoomStatusModal({
   const showNewKot = !!bookingId && canCreateKot;
   const canCreatePos = can("pos", "create");
   const showOtherCharges = !!bookingId && canCreatePos;
+  const canEditBooking = can("bookings", "edit") || can("bookings", "create");
+  const showExtraBed = !!bookingId && canEditBooking;
 
   useEffect(() => { setStaffId(""); setNotes(""); }, [room?.id]);
 
@@ -1374,6 +1386,11 @@ function RoomStatusModal({
             {showOtherCharges && (
               <Button variant="outline" onClick={() => bookingId && onOtherCharges(bookingId)}>
                 <Receipt className="h-4 w-4 mr-2" /> Add Other Charges
+              </Button>
+            )}
+            {showExtraBed && (
+              <Button variant="outline" onClick={() => bookingId && onAddExtraBed(bookingId)}>
+                <BedDouble className="h-4 w-4 mr-2" /> Add Extra Bed
               </Button>
             )}
           </div>

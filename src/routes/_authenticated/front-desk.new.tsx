@@ -46,7 +46,7 @@ export const Route = createFileRoute("/_authenticated/front-desk/new")({
   component: () => (<RequirePermission module="bookings"><NewBookingPage /></RequirePermission>),
 });
 
-interface Category { id: string; name: string; base_rate: number; max_occupancy: number; }
+interface Category { id: string; name: string; base_rate: number; max_occupancy: number; extra_bed_rate: number; }
 interface RoomRow { id: string; room_number: string; category_id: string | null; status: string; }
 interface Tariff { id: string; name: string; category_id: string | null; rate: number; meal_plan: string; }
 interface AdditionalGuest {
@@ -111,6 +111,10 @@ function NewBookingPage() {
   const [idFile, setIdFile] = useState<SelectedIdFile | null>(null);
   const [customRemark, setCustomRemark] = useState("");
 
+  // Extra bed
+  const [extraBed, setExtraBed] = useState(false);
+  const [extraBedQty, setExtraBedQty] = useState(1);
+
   const [checkIn, setCheckIn] = useState(todayIso());
   const [checkOut, setCheckOut] = useState(addDaysIso(todayIso(), 1));
   const [adults, setAdults] = useState(1);
@@ -160,7 +164,7 @@ function NewBookingPage() {
     if (!current) return;
     (async () => {
       const [c, r, t] = await Promise.all([
-        supabase.from("room_categories").select("id,name,base_rate,max_occupancy").eq("property_id", current.id).order("name"),
+        supabase.from("room_categories").select("id,name,base_rate,max_occupancy,extra_bed_rate").eq("property_id", current.id).order("name"),
         supabase.from("rooms").select("id,room_number,category_id,status").eq("property_id", current.id).order("room_number"),
         supabase.from("tariff_plans").select("id,name,category_id,rate,meal_plan").eq("property_id", current.id).eq("is_active", true).order("name"),
       ]);
@@ -252,7 +256,12 @@ function NewBookingPage() {
   }
 
   const nights = nightsBetween(checkIn, checkOut);
-  const total = nights * rate;
+  const extraBedRate = useMemo(() => {
+    const cat = cats.find((c) => c.id === categoryId);
+    return Number(cat?.extra_bed_rate) || 0;
+  }, [cats, categoryId]);
+  const extraBedTotal = extraBed ? nights * extraBedRate * extraBedQty : 0;
+  const total = nights * rate + extraBedTotal;
   const balance = Math.max(0, total - advance);
   const availableRooms = rooms.filter(
     (r) => (!categoryId || r.category_id === categoryId) && r.status === "vacant",
@@ -461,6 +470,19 @@ function NewBookingPage() {
         actual_check_in: checkInNow && effectiveRoomId ? new Date().toISOString() : null,
       } as any);
       if (brErr) throw brErr;
+
+      // 3b) Extra bed — seeds one folio charge automatically via trigger.
+      if (extraBed && extraBedRate > 0 && extraBedQty > 0) {
+        const { error: ebErr } = await supabase.from("booking_extra_beds" as any).insert({
+          property_id: current.id,
+          booking_id: booking!.id,
+          quantity: extraBedQty,
+          rate_per_night: extraBedRate,
+          added_from_date: checkIn,
+          added_by: user?.id ?? null,
+        } as any);
+        if (ebErr) console.warn("extra bed insert failed", ebErr);
+      }
 
       // 4) If checked in with an actual room, mark room occupied.
       if (checkInNow && effectiveRoomId) {
@@ -952,6 +974,38 @@ function NewBookingPage() {
                   {SOURCES.map((s) => (<SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>))}
                 </SelectContent>
               </Select>
+            </F>
+            <F label="Extra bed">
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={extraBed}
+                    onChange={(e) => setExtraBed(e.target.checked)}
+                    disabled={!categoryId || extraBedRate <= 0}
+                  />
+                  <span>Add extra bed</span>
+                </label>
+                {extraBed && (
+                  <>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={4}
+                      value={extraBedQty}
+                      onChange={(e) => setExtraBedQty(Math.max(1, Number(e.target.value) || 1))}
+                    />
+                    <div className="text-[11px] text-muted-foreground">
+                      ₹{extraBedRate.toLocaleString("en-IN")}/night × {extraBedQty} bed{extraBedQty > 1 ? "s" : ""} × {nights} night{nights > 1 ? "s" : ""} = ₹{extraBedTotal.toLocaleString("en-IN")}
+                    </div>
+                  </>
+                )}
+                {categoryId && extraBedRate <= 0 && (
+                  <div className="text-[11px] text-muted-foreground">
+                    No extra bed rate configured for this category.
+                  </div>
+                )}
+              </div>
             </F>
           </CardContent>
         </Card>
