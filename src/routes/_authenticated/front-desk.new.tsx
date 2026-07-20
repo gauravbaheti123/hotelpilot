@@ -336,6 +336,10 @@ function NewBookingPage() {
       }
       return;
     }
+    if (!rateOverrideCheck.allowed) {
+      toast.error(rateOverrideCheck.reason ?? "Rate below allowed limit for your role");
+      return;
+    }
 
     setSaving(true);
     try {
