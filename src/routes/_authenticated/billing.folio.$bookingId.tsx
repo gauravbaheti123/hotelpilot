@@ -1473,10 +1473,10 @@ function FolioPage() {
           {!isPremium && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-y px-8 py-3" style={{ background: "#F0FAF6" }}>
             <div className="text-lg font-bold tracking-wide" style={{ color: TEAL_DARK }}>
-              {isGst ? "TAX INVOICE" : "CASH BILL / RECEIPT"}
+              {draftMode ? "DRAFT BILL" : (isGst ? "TAX INVOICE" : "CASH BILL / RECEIPT")}
             </div>
             <div className="text-xs text-right">
-              <div><span className="text-muted-foreground">Invoice No:</span> <span className="font-semibold">{folio.invoice_number}</span>{isSettled && <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: TEAL }}>PAID</span>}</div>
+              <div><span className="text-muted-foreground">Invoice No:</span> <span className="font-semibold">{draftMode ? "—" : folio.invoice_number}</span>{!draftMode && isSettled && <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: TEAL }}>PAID</span>}</div>
               <div><span className="text-muted-foreground">Date:</span> <span className="font-semibold">{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
               <div><span className="text-muted-foreground">Booking:</span> <span className="font-semibold">{booking.booking_number}</span></div>
             </div>
