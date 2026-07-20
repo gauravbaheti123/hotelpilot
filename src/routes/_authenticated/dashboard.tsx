@@ -574,7 +574,7 @@ function OwnerDashboard({
                   setSingleAssignBlock(blk);
                 }}
                 onEventCheckIn={async (blk) => {
-                  if (!propertyId || !user) return;
+                  if (!propertyId || !userId) return;
                   if (!blk.guest_name || !blk.guest_mobile) {
                     // Guest missing name/mobile — open inline capture dialog
                     setSingleAssignBlock(blk);
@@ -582,7 +582,7 @@ function OwnerDashboard({
                   }
                   if (!confirm(`Check in ${blk.guest_name} to Room ${blk.room_number}?`)) return;
                   try {
-                    await checkInBlock({ propertyId, block: blk, userId: user.id });
+                    await checkInBlock({ propertyId, block: blk, userId });
                     toast.success(`Room ${blk.room_number} checked in`);
                     reload();
                   } catch (e: any) {
