@@ -103,6 +103,7 @@ type RoomEventInfo = {
   banquetBookingId: string;
   eventName: string;
   guestName: string | null;
+  guestMobile: string | null;
   checkin: string;
   checkout: string;
   status: EventBlockRecord["status"];
@@ -397,6 +398,7 @@ function OwnerDashboard({
             banquetBookingId: ev.banquet_booking_id,
             eventName: ev.event_name,
             guestName: b.guest_name,
+            guestMobile: b.guest_mobile,
             checkin: b.checkin_date,
             checkout: b.checkout_date,
             status: b.status,
