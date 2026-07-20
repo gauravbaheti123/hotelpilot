@@ -75,6 +75,7 @@ interface BookingCtx {
   id: string; booking_number: string; status: string;
   check_in: string; check_out: string; total_amount: number;
   property_id: string; adults: number | null; children: number | null;
+  checked_out_at?: string | null;
   guests: {
     name: string; mobile: string | null; gst_number: string | null; company: string | null; address: string | null;
     id_proof_type: string | null; id_proof_number: string | null; nationality: string | null;
