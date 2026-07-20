@@ -1493,6 +1493,9 @@ function FolioPage() {
               <div><span className="text-muted-foreground">Invoice No:</span> <span className="font-semibold">{draftMode ? "—" : folio.invoice_number}</span>{!draftMode && isSettled && <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: TEAL }}>PAID</span>}</div>
               <div><span className="text-muted-foreground">Date:</span> <span className="font-semibold">{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
               <div><span className="text-muted-foreground">Booking:</span> <span className="font-semibold">{booking.booking_number}</span></div>
+              {foodBillNumber && (
+                <div><span className="text-muted-foreground">Food Bill Ref:</span> <span className="font-semibold">{foodBillNumber}</span></div>
+              )}
             </div>
           </div>
           )}
