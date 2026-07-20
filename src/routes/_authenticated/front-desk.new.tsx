@@ -103,6 +103,7 @@ function NewBookingPage() {
   const [guestType, setGuestType] = useState<"regular" | "corporate" | "vip">("regular");
   const [guestNotes, setGuestNotes] = useState("");
   const [idFile, setIdFile] = useState<SelectedIdFile | null>(null);
+  const [customRemark, setCustomRemark] = useState("");
 
   const [checkIn, setCheckIn] = useState(todayIso());
   const [checkOut, setCheckOut] = useState(addDaysIso(todayIso(), 1));
@@ -392,6 +393,7 @@ function NewBookingPage() {
           notes: search?.eventName
             ? `Event: ${search.eventName}${notes ? "\n" + notes : ""}`
             : (notes || null),
+          custom_remark: customRemark.trim() || null,
           event_id: search?.eventId ?? null,
           created_by: user?.id ?? null,
           checked_in_at: checkInNow ? new Date().toISOString() : null,
@@ -885,6 +887,14 @@ function NewBookingPage() {
               </div>
             )}
             <F label="Notes"><Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} /></F>
+            <F label="Custom remark (highlighted at checkout)">
+              <Textarea
+                rows={2}
+                value={customRemark}
+                onChange={(e) => setCustomRemark(e.target.value)}
+                placeholder="e.g. ID proof pending, payment confirmation awaited, VIP — apply special rate"
+              />
+            </F>
           </CardContent>
         </Card>
 

@@ -705,6 +705,7 @@ export type Database = {
           children: number
           created_at: string
           created_by: string | null
+          custom_remark: string | null
           event_id: string | null
           guest_id: string | null
           id: string
@@ -735,6 +736,7 @@ export type Database = {
           children?: number
           created_at?: string
           created_by?: string | null
+          custom_remark?: string | null
           event_id?: string | null
           guest_id?: string | null
           id?: string
@@ -765,6 +767,7 @@ export type Database = {
           children?: number
           created_at?: string
           created_by?: string | null
+          custom_remark?: string | null
           event_id?: string | null
           guest_id?: string | null
           id?: string

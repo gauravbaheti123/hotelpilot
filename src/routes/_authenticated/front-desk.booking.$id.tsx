@@ -48,6 +48,7 @@ import {
   Check,
   BedDouble,
   FileText,
+  AlertTriangle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/front-desk/booking/$id")({
@@ -91,6 +92,7 @@ interface BookingDetail {
   advance_amount: number;
   balance_amount: number;
   notes: string | null;
+  custom_remark: string | null;
   checked_in_at: string | null;
   checked_out_at: string | null;
   property_id: string;
@@ -170,7 +172,7 @@ function BookingDetailPage() {
       .from("bookings")
       .select(`
         id,booking_number,status,source,check_in,check_out,adults,children,
-        total_amount,advance_amount,balance_amount,notes,checked_in_at,checked_out_at,property_id,
+        total_amount,advance_amount,balance_amount,notes,custom_remark,checked_in_at,checked_out_at,property_id,
         guests(id,name,mobile,email,address,id_proof_type,id_proof_number),
         booking_rooms(id,room_id,category_id,rate,meal_plan,adults,children,check_in,check_out,actual_check_in,actual_check_out,
           rooms!booking_rooms_room_id_fkey(room_number),
@@ -583,6 +585,12 @@ function BookingDetailPage() {
             </CardContent>
           </Card>
         </div>
+
+        <CustomRemarkCard
+          bookingId={b.id}
+          initial={b.custom_remark ?? ""}
+          onSaved={(v: string) => { b.custom_remark = v || null; }}
+        />
 
         <Card>
           <CardHeader><CardTitle className="text-base">Room(s)</CardTitle></CardHeader>
@@ -1005,5 +1013,59 @@ function TariffOption({
       <div className="text-sm mt-1">{line1}</div>
       <div className="text-xs text-muted-foreground">{line2}</div>
     </div>
+  );
+}
+
+function CustomRemarkCard({
+  bookingId,
+  initial,
+  onSaved,
+}: {
+  bookingId: string;
+  initial: string;
+  onSaved: (v: string) => void;
+}) {
+  const [value, setValue] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const dirty = value !== initial;
+
+  async function save() {
+    setSaving(true);
+    const trimmed = value.trim();
+    const { error } = await supabase
+      .from("bookings")
+      .update({ custom_remark: trimmed || null } as any)
+      .eq("id", bookingId);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    onSaved(trimmed);
+    toast.success("Custom remark saved");
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          Custom Remark
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <p className="text-xs text-muted-foreground">
+          Highlighted as a warning banner when Checkout is opened for this booking. Applies to this booking only.
+        </p>
+        <Textarea
+          rows={2}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="e.g. ID proof pending, payment confirmation awaited, VIP — apply special rate"
+        />
+        <div className="flex justify-end">
+          <Button size="sm" disabled={!dirty || saving} onClick={save}>
+            {saving ? "Saving…" : "Save remark"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
