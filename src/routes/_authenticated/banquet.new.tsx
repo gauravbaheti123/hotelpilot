@@ -204,6 +204,29 @@ function NewBanquetPage() {
     }
     if (roomMode === "single" && !singleRoomId) return toast.error("Pick a room to assign");
     if (roomMode === "bulk" && blockRows.length === 0) return toast.error("Add at least one bulk block row");
+    // Enforce per-role discount limits on any overridden room rate (single + bulk).
+    if (roomMode === "single" && singleRoomId) {
+      const r = allRooms.find((x) => x.id === singleRoomId);
+      const cat = cats.find((c) => c.id === r?.category_id);
+      const base = Number(cat?.base_rate ?? 0);
+      const proposed = Number(singleRate) || 0;
+      if (base > 0 && proposed > 0 && proposed < base) {
+        const chk = canApplyDiscount(discountLimit, { discountRupees: base - proposed, base });
+        if (!chk.allowed) return toast.error(chk.reason ?? describeLimit(discountLimit));
+      }
+    }
+    if (roomMode === "bulk") {
+      for (const row of blockRows) {
+        if (!row.category_id || !row.special_rate) continue;
+        const cat = cats.find((c) => c.id === row.category_id);
+        const base = Number(cat?.base_rate ?? 0);
+        const proposed = Number(row.special_rate) || 0;
+        if (base > 0 && proposed > 0 && proposed < base) {
+          const chk = canApplyDiscount(discountLimit, { discountRupees: base - proposed, base });
+          if (!chk.allowed) return toast.error(`${cat?.name ?? "Category"}: ${chk.reason ?? describeLimit(discountLimit)}`);
+        }
+      }
+    }
     setSaving(true);
     try {
       const { data: g, error: ge } = await supabase.from("guests").insert({
