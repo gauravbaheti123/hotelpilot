@@ -50,6 +50,7 @@ function NewBanquetPage() {
   const [cats, setCats] = useState<Cat[]>([]);
   const [allRooms, setAllRooms] = useState<RoomOpt[]>([]);
   const [saving, setSaving] = useState(false);
+  const { limit: discountLimit } = useDiscountLimit();
 
   const today = new Date().toISOString().slice(0, 10);
 
