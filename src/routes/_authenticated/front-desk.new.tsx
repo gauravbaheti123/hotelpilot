@@ -61,6 +61,8 @@ interface GuestMatch {
   id_proof_type: string | null;
   id_proof_number: string | null;
   address: string | null;
+  gst_number: string | null;
+  company: string | null;
   tags: string[] | null;
   notes: string | null;
   visit_count: number;
@@ -96,6 +98,8 @@ function NewBookingPage() {
   const [idType, setIdType] = useState("aadhaar");
   const [idNumber, setIdNumber] = useState("");
   const [address, setAddress] = useState("");
+  const [gstNumber, setGstNumber] = useState("");
+  const [company, setCompany] = useState("");
   const [guestType, setGuestType] = useState<"regular" | "corporate" | "vip">("regular");
   const [guestNotes, setGuestNotes] = useState("");
   const [idFile, setIdFile] = useState<SelectedIdFile | null>(null);
@@ -169,7 +173,7 @@ function NewBookingPage() {
       const like = `%${term}%`;
       const { data } = await supabase
         .from("guests")
-        .select("id,name,mobile,email,dob,id_proof_type,id_proof_number,address,tags,notes")
+        .select("id,name,mobile,email,dob,id_proof_type,id_proof_number,address,gst_number,company,tags,notes")
         .eq("property_id", current.id)
         .or(`name.ilike.${like},mobile.ilike.${like},email.ilike.${like}`)
         .limit(8);
@@ -200,6 +204,8 @@ function NewBookingPage() {
     setIdType(g.id_proof_type ?? "aadhaar");
     setIdNumber(g.id_proof_number ?? "");
     setAddress(g.address ?? "");
+    setGstNumber(g.gst_number ?? "");
+    setCompany((g as any).company ?? "");
     setGuestNotes(g.notes ?? "");
     const tag = (g.tags ?? []).find((t) => ["corporate", "vip"].includes(t));
     setGuestType((tag as any) ?? "regular");
@@ -212,6 +218,7 @@ function NewBookingPage() {
     setSelectedGuestId(null);
     setReturningInfo(null);
     setName(""); setMobile(""); setEmail(""); setDob(""); setIdNumber(""); setAddress("");
+    setGstNumber(""); setCompany("");
     setGuestType("regular"); setGuestNotes(""); setIdType("aadhaar");
     setDropdownOpen(false);
     setSearchOpen(false);
@@ -333,6 +340,8 @@ function NewBookingPage() {
             id_proof_type: idType || null,
             id_proof_number: idNumber || null,
             address: address || null,
+            gst_number: gstNumber.trim() || null,
+            company: company.trim() || null,
             nationality: nationality || null,
             notes: guestNotes || null,
             tags,
@@ -352,6 +361,8 @@ function NewBookingPage() {
             id_proof_type: idType || null,
             id_proof_number: idNumber || null,
             address: address || null,
+            gst_number: gstNumber.trim() || null,
+            company: company.trim() || null,
             nationality: nationality || null,
             notes: guestNotes || null,
             tags,
@@ -660,6 +671,8 @@ function NewBookingPage() {
               </Select>
             </F>
             <F label="ID number"><Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} /></F>
+            <F label="Company (optional)"><Input value={company} onChange={(e) => setCompany(e.target.value)} /></F>
+            <F label="GSTIN (optional)"><Input value={gstNumber} onChange={(e) => setGstNumber(e.target.value.toUpperCase())} placeholder="29ABCDE1234F1Z5" /></F>
             <F label="Guest type">
               <Select value={guestType} onValueChange={(v) => setGuestType(v as typeof guestType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

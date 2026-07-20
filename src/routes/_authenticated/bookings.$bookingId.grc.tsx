@@ -183,7 +183,7 @@ function GrcPage() {
     <AppShell title="Guest Registration Card">
       <style>{`
         @media print {
-          @page { size: A4 portrait; margin: 10mm; }
+          @page { size: A4 portrait; margin: 15mm; }
           html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; height: auto !important; overflow: visible !important; }
           body * { visibility: hidden !important; }
           .grc-print, .grc-print * { visibility: visible !important; }
@@ -192,13 +192,21 @@ function GrcPage() {
             left: 0; top: 0;
             width: 100% !important;
             max-width: none !important;
+            min-height: 267mm !important;
             margin: 0 !important;
-            padding: 8mm !important;
+            padding: 6mm !important;
             border: 2px solid #000 !important;
             box-shadow: none !important;
             overflow: visible !important;
             page-break-inside: avoid;
+            display: flex !important;
+            flex-direction: column !important;
+            font-size: 12.5pt !important;
+            line-height: 1.55 !important;
           }
+          .grc-print .grc-signatures { margin-top: auto !important; padding-top: 18mm !important; }
+          .grc-print h1, .grc-print h2, .grc-print .grc-title { font-size: 16pt !important; }
+          .grc-print .grc-section-label { font-size: 11pt !important; }
           .no-print { display: none !important; }
         }
       `}</style>
@@ -237,29 +245,29 @@ function GrcPage() {
         </Card>
 
         {/* Print layout */}
-        <div id="grc-print-area" className="grc-print bg-white text-black border-2 border-black p-4 text-[12px] leading-tight">
-          <div className="flex items-start gap-3 border-b-2 border-black pb-2 mb-2">
+        <div id="grc-print-area" className="grc-print bg-white text-black border-2 border-black p-6 text-[13px] leading-relaxed">
+          <div className="flex items-start gap-4 border-b-2 border-black pb-3 mb-4">
             {property?.logo_url && (
-              <img src={property.logo_url} alt="" className="h-20 w-20 object-contain" />
+              <img src={property.logo_url} alt="" className="h-24 w-24 object-contain" />
             )}
             <div className="flex-1 text-center">
-              <div className="text-lg font-bold uppercase">{property?.legal_entity_name || property?.name || "—"}</div>
-              {propAddress && <div className="text-[11px] mt-0.5">{propAddress}</div>}
+              <div className="text-xl font-bold uppercase">{property?.legal_entity_name || property?.name || "—"}</div>
+              {propAddress && <div className="text-[12px] mt-1">{propAddress}</div>}
               {(property?.phone || property?.email) && (
-                <div className="text-[11px] mt-0.5">
+                <div className="text-[12px] mt-1">
                   {property?.phone && <>Ph: {property.phone}</>}
                   {property?.phone && property?.email && <> · </>}
                   {property?.email && <>Email: {property.email}</>}
                 </div>
               )}
-              {property?.gstin && <div className="text-[11px] mt-0.5">GSTIN: {property.gstin}</div>}
-              <div className="mt-1 font-bold uppercase text-sm border-y border-black py-0.5">
+              {property?.gstin && <div className="text-[12px] mt-1">GSTIN: {property.gstin}</div>}
+              <div className="grc-title mt-2 font-bold uppercase text-base border-y-2 border-black py-1">
                 Guest Registration Card
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-2">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4">
             <PrintRow k="GRC No." v={grc.grc_number ?? "— (save to generate)"} />
             <PrintRow k="Booking No." v={booking.booking_number} />
             <PrintRow k="Room No." v={room0.rooms?.room_number ?? "—"} />
@@ -272,8 +280,8 @@ function GrcPage() {
             <PrintRow k="Advance" v={`₹${Number(booking.advance_amount ?? 0).toLocaleString("en-IN")}`} />
           </div>
 
-          <div className="border-t border-black pt-1 mt-1 mb-2 font-semibold text-[11px] uppercase">Guest Details</div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-2">
+          <div className="grc-section-label border-t border-black pt-2 mt-2 mb-3 font-semibold text-[12px] uppercase tracking-wide">Guest Details</div>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4">
             <PrintRow k="Name" v={guest.name ?? "—"} />
             <PrintRow k="Designation" v={grc.designation || "—"} />
             <PrintRow k="Mobile" v={guest.mobile ?? "—"} />
@@ -290,19 +298,19 @@ function GrcPage() {
             <PrintRow k="Billing Instruction" v={grc.billing_instruction || "—"} />
             <PrintRow k="Discount / Concession" v={grc.discount_note || "—"} />
           </div>
-          <div className="mb-2">
-            <div className="text-[11px]"><span className="font-semibold">Address:</span> {grc.address || "—"}</div>
+          <div className="mb-4">
+            <div className="text-[12px]"><span className="font-semibold">Address:</span> {grc.address || "—"}</div>
           </div>
 
-          <div className="border-t border-black pt-1 mt-1 mb-1 font-semibold text-[11px] uppercase">Terms &amp; Conditions</div>
-          <pre className="whitespace-pre-wrap font-sans text-[10px] leading-snug mb-3">{terms}</pre>
+          <div className="grc-section-label border-t border-black pt-2 mt-2 mb-2 font-semibold text-[12px] uppercase tracking-wide">Terms &amp; Conditions</div>
+          <pre className="whitespace-pre-wrap font-sans text-[11px] leading-relaxed mb-6">{terms}</pre>
 
-          <div className="grid grid-cols-3 gap-4 pt-6 text-[11px]">
-            <div className="border-t border-black pt-1 text-center">Guest Signature</div>
-            <div className="border-t border-black pt-1 text-center">
+          <div className="grc-signatures grid grid-cols-3 gap-6 pt-10 text-[12px]">
+            <div className="border-t border-black pt-2 text-center">Guest Signature</div>
+            <div className="border-t border-black pt-2 text-center">
               Duty Manager{grc.duty_manager_name ? ` — ${grc.duty_manager_name}` : ""}
             </div>
-            <div className="border-t border-black pt-1 text-center">Date &amp; Time</div>
+            <div className="border-t border-black pt-2 text-center">Date &amp; Time</div>
           </div>
         </div>
       </div>
