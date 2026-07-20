@@ -12,7 +12,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrossed, ChevronDown, ChevronRight, DoorOpen, Sparkles, Wrench, PartyPopper, CheckCircle2 } from "lucide-react";
+import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrossed, ChevronDown, ChevronRight, DoorOpen, Sparkles, Wrench, PartyPopper, CheckCircle2, Receipt } from "lucide-react";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 // Bell moved to global header (AppShell). Reminders section removed here.
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
@@ -863,6 +863,12 @@ function OwnerDashboard({
           navigate({ to: "/food/new", search: { bookingId: bid } } as any);
           if (roomNo) toast.success(`Opening New KOT for Room ${roomNo}`);
         }}
+        onOtherCharges={(bid: string) => {
+          const roomNo = modalRoom?.room_number;
+          setModalRoom(null);
+          navigate({ to: "/pos", search: { booking_id: bid } } as any);
+          if (roomNo) toast.success(`Opening Other Charges for Room ${roomNo}`);
+        }}
       />
       <CheckoutDialog
         bookingId={checkoutBookingId}
@@ -1252,7 +1258,7 @@ function roomTileStyle(r: Room, isOccupied: boolean): { bg: string; label: strin
 }
 
 function RoomStatusModal({
-  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onNewKot,
+  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onNewKot, onOtherCharges,
 }: {
   room: Room | null;
   kind: TileKind | null;
@@ -1264,6 +1270,7 @@ function RoomStatusModal({
   onNewBooking: () => void;
   onCheckout: (bookingId: string) => void;
   onNewKot: (bookingId: string) => void;
+  onOtherCharges: (bookingId: string) => void;
 }) {
   const [staffId, setStaffId] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
@@ -1271,6 +1278,8 @@ function RoomStatusModal({
   const { can } = usePermissions();
   const canCreateKot = can("new_kot", "create");
   const showNewKot = !!bookingId && canCreateKot;
+  const canCreatePos = can("pos", "create");
+  const showOtherCharges = !!bookingId && canCreatePos;
 
   useEffect(() => { setStaffId(""); setNotes(""); }, [room?.id]);
 
@@ -1362,6 +1371,11 @@ function RoomStatusModal({
                 <UtensilsCrossed className="h-4 w-4 mr-2" /> New KOT
               </Button>
             )}
+            {showOtherCharges && (
+              <Button variant="outline" onClick={() => bookingId && onOtherCharges(bookingId)}>
+                <Receipt className="h-4 w-4 mr-2" /> Add Other Charges
+              </Button>
+            )}
           </div>
         )}
 
@@ -1370,6 +1384,11 @@ function RoomStatusModal({
             {showNewKot && (
               <Button variant="outline" onClick={() => bookingId && onNewKot(bookingId)}>
                 <UtensilsCrossed className="h-4 w-4 mr-2" /> New KOT
+              </Button>
+            )}
+            {showOtherCharges && (
+              <Button variant="outline" onClick={() => bookingId && onOtherCharges(bookingId)}>
+                <Receipt className="h-4 w-4 mr-2" /> Add Other Charges
               </Button>
             )}
             <div className="grid gap-1.5">
