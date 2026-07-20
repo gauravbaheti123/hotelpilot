@@ -678,6 +678,7 @@ function NewBookingPage() {
             <F label="Company (optional)"><Input value={company} onChange={(e) => setCompany(e.target.value)} /></F>
             <F label="GSTIN (optional)">
               <Input
+                id="gstin-input"
                 value={gstNumber}
                 onChange={(e) => setGstNumber(e.target.value.toUpperCase())}
                 maxLength={15}
