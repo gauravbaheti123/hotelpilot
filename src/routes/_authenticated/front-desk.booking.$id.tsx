@@ -34,6 +34,7 @@ import {
 import { fireTrigger } from "@/lib/whatsapp";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { recomputeFolio } from "@/lib/billing";
+import { resolveGstRate } from "@/lib/gst";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { RequirePermission } from "@/components/RequirePermission";
 import { AssignRoomDialog } from "@/components/AssignRoomDialog";
@@ -440,6 +441,10 @@ function BookingDetailPage() {
     try {
       const { data: folioId } = await supabase.rpc("get_or_create_folio", { _booking_id: b.id });
       const fId = folioId as unknown as string;
+      const { data: slabRows } = await supabase
+        .from("gst_slabs" as any)
+        .select("from_amount,to_amount,gst_rate,charge_category,is_active,effective_from")
+        .eq("property_id", b.property_id);
       // Delete existing auto-seeded room charge rows
       await supabase
         .from("folio_charges")
@@ -448,6 +453,7 @@ function BookingDetailPage() {
         .eq("charge_type", "room")
         .eq("source_table", "booking_rooms");
       // Reinsert room charges for new night count
+      let missingSlab = false;
       const rows = b.booking_rooms.map((br) => {
         const n = Math.max(
           1,
@@ -456,7 +462,8 @@ function BookingDetailPage() {
           ),
         );
         const amt = n * Number(br.rate);
-        const gstR = Number((br as any).room_categories?.gst_rate ?? 5);
+        const gstR = resolveGstRate((slabRows ?? []) as any, "room", Number(br.rate));
+        if (gstR == null) { missingSlab = true; return null; }
         return {
           folio_id: fId,
           charge_type: "room",
@@ -470,7 +477,11 @@ function BookingDetailPage() {
           source_id: br.id,
           created_by: user?.id ?? null,
         };
-      });
+      }).filter((r): r is NonNullable<typeof r> => r != null);
+      if (missingSlab) {
+        toast.error("GST slab missing for the room tariff. Configure it in Master Data → GST Slabs.");
+        return;
+      }
       if (rows.length > 0) {
         await supabase.from("folio_charges").insert(rows as any);
       }

@@ -30,6 +30,7 @@ import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, M
 import { AlertTriangle, ShieldAlert, ArrowRightLeft } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
+import { resolveGstRate } from "@/lib/gst";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
@@ -97,30 +98,17 @@ interface GstSlab {
   from_amount: number;
   to_amount: number;
   gst_rate: number;
+  charge_category?: string;
+  is_active?: boolean | null;
+  effective_from?: string | null;
 }
 
-/** Resolve the GST% for a room whose nightly tariff is `nightlyRate`.
- * When the property has "Custom GST Slabs" enabled, look up the matching
- * slab row (from_amount ≤ nightlyRate ≤ to_amount). Otherwise fall back to
- * the room category's configured gst_rate, then to a flat 5%. */
-function resolveRoomGstRate(
-  nightlyRate: number,
-  useSlabs: boolean,
-  slabs: GstSlab[],
-  categoryGst: number | null | undefined,
-): number {
-  if (useSlabs && slabs.length > 0) {
-    const hit = slabs.find(
-      (s) => Number(nightlyRate) >= Number(s.from_amount)
-          && Number(nightlyRate) <= Number(s.to_amount),
-    );
-    if (hit) return Number(hit.gst_rate);
-  }
-  // Statutory tiered slabs (Sept 2025 rule): 0% ≤ ₹1000, 5% ≤ ₹7500, 18% > ₹7500.
-  const r = Number(nightlyRate) || 0;
-  if (r <= 1000) return 0;
-  if (r <= 7500) return 5;
-  return 18;
+/** Resolve GST% for a room-charge amount by consulting the master
+ *  `gst_slabs` rows for the current property (charge_category = 'room').
+ *  Returns `null` when no slab matches — the caller must surface that as
+ *  a configuration error rather than silently guessing a rate. */
+function resolveRoomGstRate(nightlyRate: number, slabs: GstSlab[]): number | null {
+  return resolveGstRate(slabs as any, "room", Number(nightlyRate) || 0);
 }
 interface PendingKot {
   id: string; kot_number: string; status: string;
@@ -258,11 +246,10 @@ function FolioPage() {
     // Load custom GST slabs for this property (used to resolve room-charge GST%).
     const { data: sl } = await supabase
       .from("gst_slabs" as any)
-      .select("from_amount,to_amount,gst_rate")
+      .select("from_amount,to_amount,gst_rate,charge_category,is_active,effective_from")
       .eq("property_id", bk.property_id);
     const slabRows = ((sl ?? []) as unknown as GstSlab[]);
     setGstSlabs(slabRows);
-    const useSlabs = !!(prop as any)?.use_gst_slabs;
 
     // get or create folio
     const { data: folioId, error: fe } = await supabase
@@ -282,12 +269,11 @@ function FolioPage() {
     // of 12% was applied).
     const rawCharges = ((c ?? []) as unknown as Charge[]);
     const fixes: Array<{ id: string; gst_rate: number; gst_amount: number }> = [];
-    const correctedCharges = rawCharges.map((ch) => {
+    const correctedCharges: Charge[] = rawCharges.map((ch) => {
       if (ch.charge_type !== "room") return ch;
-      const catGst = bk.booking_rooms.find((br) => br.id === ch.source_id)
-        ?.room_categories?.gst_rate ?? null;
       const nightly = Number(ch.rate);
-      const want = resolveRoomGstRate(nightly, useSlabs, slabRows, catGst);
+      const want = resolveRoomGstRate(nightly, slabRows);
+      if (want == null) return ch;                                    // no matching slab → leave stored value untouched
       if (Math.abs(Number(ch.gst_rate) - want) < 0.01) return ch;
       const amt = Number(ch.amount);
       const nextGstAmt = Math.round(amt * want) / 100;
@@ -387,12 +373,8 @@ function FolioPage() {
           (new Date(br.check_out).getTime() - new Date(br.check_in).getTime()) / 86400000,
         ));
         const amt = nights * Number(br.rate);
-        const gstR = resolveRoomGstRate(
-          Number(br.rate),
-          !!property?.use_gst_slabs,
-          gstSlabs,
-          br.room_categories?.gst_rate ?? null,
-        );
+        const gstR = resolveRoomGstRate(Number(br.rate), gstSlabs);
+        if (gstR == null) return null;
         return {
           folio_id: folio.id,
           charge_type: "room",
@@ -406,8 +388,13 @@ function FolioPage() {
           source_id: br.id,
           created_by: user?.id ?? null,
         };
-      }).filter((r) => Number(r.rate) > 0);
-      if (rows.length === 0) return;
+      }).filter((r): r is NonNullable<typeof r> => r != null && Number(r.rate) > 0);
+      if (rows.length === 0) {
+        if (booking.booking_rooms.some((br) => Number(br.rate) > 0)) {
+          toast.error("GST slab missing for the room tariff. Configure it in Master Data → GST Slabs.");
+        }
+        return;
+      }
       const { error } = await supabase.from("folio_charges").insert(rows as any);
       if (error) {
         // 23505 = unique_violation → charge already exists, no-op.
