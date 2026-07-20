@@ -203,6 +203,7 @@ function FolioPage() {
   const [mgrBusy, setMgrBusy] = useState(false);
   const [overrideApproved, setOverrideApproved] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [draftMode, setDraftMode] = useState(false);
   const [misOpen, setMisOpen] = useState(false);
   const [misFoodOnly, setMisFoodOnly] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
