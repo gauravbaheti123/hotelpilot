@@ -2074,6 +2074,37 @@ function FolioPage() {
           </DialogContent>
         </Dialog>
 
+        {/* EDIT CHARGE */}
+        <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (!o) setEditId(null); }}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Edit charge</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Description *</Label>
+                <Input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Qty</Label>
+                  <Input type="number" value={editQty} onChange={(e) => setEditQty(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Rate</Label>
+                  <Input type="number" value={editRate} onChange={(e) => setEditRate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">GST %</Label>
+                  <Input type="number" value={editGst} onChange={(e) => setEditGst(e.target.value)} />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setEditOpen(false); setEditId(null); }}>Cancel</Button>
+              <Button onClick={saveEditCharge}>Save</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* ADD PAYMENT */}
         <Dialog open={payOpen} onOpenChange={setPayOpen}>
           <DialogContent>
