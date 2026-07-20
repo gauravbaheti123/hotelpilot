@@ -613,8 +613,13 @@ function FolioPage() {
   async function removeCharge(id: string) {
     if (!folio) return;
     if (!isOpen && !canEditAnyStatus) return toast.error("Only manager/owner can edit a settled bill");
-    if (!confirm("Remove this charge?")) return;
-    await supabase.from("folio_charges").delete().eq("id", id);
+    if (!canVoid) return toast.error("Only manager or owner can delete charges");
+    if (!confirm("Remove this charge? This cannot be undone.")) return;
+    const { error } = await supabase
+      .from("folio_charges")
+      .update({ is_wiped: true, wiped_at: new Date().toISOString() } as any)
+      .eq("id", id);
+    if (error) return toast.error(error.message);
     const next = await refetchCharges();
     const prevTotal = Number(folio.total_amount);
     await persistTotals(next, payments);
@@ -636,6 +641,60 @@ function FolioPage() {
           previous_status: folio.status,
         },
       });
+    }
+    load();
+  }
+
+  function openEditCharge(c: Charge) {
+    if (!isOpen && !canEditAnyStatus) { toast.error("Only manager/owner can edit a settled bill"); return; }
+    setEditId(c.id);
+    setEditDesc(c.description ?? "");
+    setEditQty(String(c.qty ?? 1));
+    setEditRate(String(c.rate ?? 0));
+    setEditGst(String(c.gst_rate ?? 0));
+    setEditOpen(true);
+  }
+
+  async function saveEditCharge() {
+    if (!folio || !editId) return;
+    if (!isOpen && !canEditAnyStatus) return toast.error("Only manager/owner can edit a settled bill");
+    const desc = editDesc.trim();
+    if (!desc) return toast.error("Description required");
+    const qty = Number(editQty) || 1;
+    const rate = Number(editRate) || 0;
+    const gstR = Number(editGst) || 0;
+    const amt = Math.round(qty * rate * 100) / 100;
+    const gstAmt = Math.round(amt * gstR) / 100;
+    const { error } = await supabase
+      .from("folio_charges")
+      .update({ description: desc, qty, rate, amount: amt, gst_rate: gstR, gst_amount: gstAmt } as any)
+      .eq("id", editId);
+    if (error) return toast.error(error.message);
+    setEditOpen(false); setEditId(null);
+    const next = await refetchCharges();
+    const prevTotal = Number(folio.total_amount);
+    await persistTotals(next, payments);
+    if (!isOpen) {
+      toast.warning("Bill amount changed — payment records may need adjustment");
+      logActivity({
+        property_id: booking?.property_id ?? "",
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "BILL_EDITED",
+        module: "Billing",
+        reference_id: folio.id,
+        reference_label: folio.invoice_number,
+        details: {
+          bill_number: folio.invoice_number,
+          previous_amount: prevTotal,
+          new_amount: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst")).total_amount,
+          edited_by: userDisplayName(user as any),
+          previous_status: folio.status,
+          charge_id: editId,
+        },
+      });
+    } else {
+      toast.success("Charge updated");
     }
     load();
   }
