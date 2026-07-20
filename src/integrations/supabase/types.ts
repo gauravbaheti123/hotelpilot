@@ -1437,6 +1437,7 @@ export type Database = {
           balance_amount: number
           bill_type: string | null
           booking_id: string
+          complimentary_food_used: number
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -1467,6 +1468,7 @@ export type Database = {
           balance_amount?: number
           bill_type?: string | null
           booking_id: string
+          complimentary_food_used?: number
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -1497,6 +1499,7 @@ export type Database = {
           balance_amount?: number
           bill_type?: string | null
           booking_id?: string
+          complimentary_food_used?: number
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -4354,6 +4357,7 @@ export type Database = {
         Row: {
           base_rate: number
           code: string | null
+          complimentary_food_limit_per_person: number
           created_at: string
           description: string | null
           extra_bed_rate: number
@@ -4369,6 +4373,7 @@ export type Database = {
         Insert: {
           base_rate?: number
           code?: string | null
+          complimentary_food_limit_per_person?: number
           created_at?: string
           description?: string | null
           extra_bed_rate?: number
@@ -4384,6 +4389,7 @@ export type Database = {
         Update: {
           base_rate?: number
           code?: string | null
+          complimentary_food_limit_per_person?: number
           created_at?: string
           description?: string | null
           extra_bed_rate?: number
@@ -4758,6 +4764,7 @@ export type Database = {
       tariff_plans: {
         Row: {
           category_id: string | null
+          complimentary_food_limit_per_person: number
           created_at: string
           extra_adult_rate: number
           extra_child_rate: number
@@ -4774,6 +4781,7 @@ export type Database = {
         }
         Insert: {
           category_id?: string | null
+          complimentary_food_limit_per_person?: number
           created_at?: string
           extra_adult_rate?: number
           extra_child_rate?: number
@@ -4790,6 +4798,7 @@ export type Database = {
         }
         Update: {
           category_id?: string | null
+          complimentary_food_limit_per_person?: number
           created_at?: string
           extra_adult_rate?: number
           extra_child_rate?: number
