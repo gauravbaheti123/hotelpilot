@@ -1371,6 +1371,11 @@ function RoomStatusModal({
                 <UtensilsCrossed className="h-4 w-4 mr-2" /> New KOT
               </Button>
             )}
+            {showOtherCharges && (
+              <Button variant="outline" onClick={() => bookingId && onOtherCharges(bookingId)}>
+                <Receipt className="h-4 w-4 mr-2" /> Add Other Charges
+              </Button>
+            )}
           </div>
         )}
 
@@ -1379,6 +1384,11 @@ function RoomStatusModal({
             {showNewKot && (
               <Button variant="outline" onClick={() => bookingId && onNewKot(bookingId)}>
                 <UtensilsCrossed className="h-4 w-4 mr-2" /> New KOT
+              </Button>
+            )}
+            {showOtherCharges && (
+              <Button variant="outline" onClick={() => bookingId && onOtherCharges(bookingId)}>
+                <Receipt className="h-4 w-4 mr-2" /> Add Other Charges
               </Button>
             )}
             <div className="grid gap-1.5">
