@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useProperty } from "@/hooks/use-property";
+import { usePropertyId } from "@/hooks/use-property";
 import { useAuth } from "@/hooks/use-auth";
 import {
   NO_DISCOUNT,
@@ -15,7 +15,7 @@ import {
  * Falls back to NO_DISCOUNT when the RPC fails or returns nothing.
  */
 export function useDiscountLimit(): { limit: DiscountLimit; loading: boolean } {
-  const { current } = useProperty();
+  const propertyId = usePropertyId();
   const { roles } = useAuth();
   const isPrivileged = roles.includes("owner") || roles.includes("superadmin");
   const [limit, setLimit] = useState<DiscountLimit>(isPrivileged ? UNLIMITED_DISCOUNT : NO_DISCOUNT);
@@ -27,13 +27,15 @@ export function useDiscountLimit(): { limit: DiscountLimit; loading: boolean } {
       setLoading(false);
       return;
     }
-    if (!current?.id) return;
+    if (!propertyId) return;
     let cancelled = false;
     setLoading(true);
     (async () => {
+      const { data: userRes } = await supabase.auth.getUser();
+      const uid = userRes.user?.id ?? "";
       const { data, error } = await supabase.rpc("user_discount_limit", {
-        _user_id: (await supabase.auth.getUser()).data.user?.id ?? "",
-        _property_id: current.id,
+        _user_id: uid,
+        _property_id: propertyId,
       });
       if (cancelled) return;
       const row = Array.isArray(data) ? data[0] : (data as any);
@@ -51,7 +53,7 @@ export function useDiscountLimit(): { limit: DiscountLimit; loading: boolean } {
     return () => {
       cancelled = true;
     };
-  }, [current?.id, isPrivileged]);
+  }, [propertyId, isPrivileged]);
 
   return { limit, loading };
 }
