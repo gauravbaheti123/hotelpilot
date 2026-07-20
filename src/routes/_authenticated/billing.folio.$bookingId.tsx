@@ -879,12 +879,17 @@ function FolioPage() {
 
   async function printDraft() {
     if (!folio || !booking || !property) return;
-    const logoDataUrl = await resolveLogoUrl(property.logo_url);
-    const html = renderInvoiceHtml({
-      property: { ...property, logo_url: logoDataUrl },
-      folio, booking, charges, payments, draft: true, logoDataUrl,
-    });
-    openInvoiceWindow(html);
+    // Reuse the same on-screen Tax Invoice layout so Draft Bill stays
+    // pixel-identical to the final invoice. Only the title and bill
+    // number swap while draftMode is on.
+    setDraftMode(true);
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    try {
+      await handleDownloadPDF();
+    } finally {
+      setTimeout(() => setDraftMode(false), 800);
+    }
   }
 
   if (loading) return <AppShell title="Folio"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
