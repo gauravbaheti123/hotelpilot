@@ -340,6 +340,8 @@ function NewBookingPage() {
             id_proof_type: idType || null,
             id_proof_number: idNumber || null,
             address: address || null,
+            gst_number: gstNumber.trim() || null,
+            company: company.trim() || null,
             nationality: nationality || null,
             notes: guestNotes || null,
             tags,
@@ -359,6 +361,8 @@ function NewBookingPage() {
             id_proof_type: idType || null,
             id_proof_number: idNumber || null,
             address: address || null,
+            gst_number: gstNumber.trim() || null,
+            company: company.trim() || null,
             nationality: nationality || null,
             notes: guestNotes || null,
             tags,
@@ -667,6 +671,8 @@ function NewBookingPage() {
               </Select>
             </F>
             <F label="ID number"><Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} /></F>
+            <F label="Company (optional)"><Input value={company} onChange={(e) => setCompany(e.target.value)} /></F>
+            <F label="GSTIN (optional)"><Input value={gstNumber} onChange={(e) => setGstNumber(e.target.value.toUpperCase())} placeholder="29ABCDE1234F1Z5" /></F>
             <F label="Guest type">
               <Select value={guestType} onValueChange={(v) => setGuestType(v as typeof guestType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
