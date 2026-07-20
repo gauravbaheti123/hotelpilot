@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Ban, ShieldCheck } from "lucide-react";
 import { ID_PROOF_TYPES, guestSchema, emptyToNull } from "@/lib/guests";
+import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 import { inr } from "@/lib/billing";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 
