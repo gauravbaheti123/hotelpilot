@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { RequirePermission } from "@/components/RequirePermission";
+import { ReportDataTable } from "@/components/ReportDataTable";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
   buildTallySalesXml, downloadXml, buildFileName,
@@ -38,6 +39,7 @@ function Page() {
   const [payMode, setPayMode] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
   const [rows, setRows] = useState<Row[]>([]);
+  const [derived, setDerived] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
@@ -96,29 +98,28 @@ function Page() {
 
   useEffect(() => { load(); }, [load]);
 
-  const grand = useMemo(() => rows.reduce((s, r) => s + r.net_amount, 0), [rows]);
-
   const columns: ReportColumn<Row>[] = useMemo(() => [
-    { key: "bill_no", header: "Bill No", get: (r) => r.bill_no },
-    { key: "date", header: "Date", get: (r) => fmtDate(r.date) },
-    { key: "guest_name", header: "Guest Name", get: (r) => r.guest_name },
-    { key: "room_no", header: "Room", get: (r) => r.room_no },
-    { key: "room_charges", header: "Room Charges", get: (r) => r.room_charges, currency: true },
-    { key: "food_charges", header: "Food Charges", get: (r) => r.food_charges, currency: true },
-    { key: "other_charges", header: "Other Charges", get: (r) => r.other_charges, currency: true },
-    { key: "total_amount", header: "Total Amount", get: (r) => r.total_amount, currency: true },
-    { key: "discount", header: "Discount", get: (r) => r.discount, currency: true },
-    { key: "net_amount", header: "Net Amount", get: (r) => r.net_amount, currency: true },
-    { key: "payment_mode", header: "Payment Mode", get: (r) => r.payment_mode },
-    { key: "bill_type", header: "Bill Type", get: (r) => r.bill_type === "gst_invoice" ? "GST Invoice" : "Cash Bill" },
-    { key: "status", header: "Status", get: (r) => r.status },
+    { key: "bill_no", header: "Bill No", get: (r) => r.bill_no, type: "text" },
+    { key: "date", header: "Date", get: (r) => fmtDate(r.date), type: "date", sortValue: (r) => r.date, dateValue: (r) => r.date },
+    { key: "guest_name", header: "Guest Name", get: (r) => r.guest_name, type: "text" },
+    { key: "room_no", header: "Room", get: (r) => r.room_no, type: "text" },
+    { key: "room_charges", header: "Room Charges", get: (r) => r.room_charges, currency: true, sortValue: (r) => r.room_charges },
+    { key: "food_charges", header: "Food Charges", get: (r) => r.food_charges, currency: true, sortValue: (r) => r.food_charges },
+    { key: "other_charges", header: "Other Charges", get: (r) => r.other_charges, currency: true, sortValue: (r) => r.other_charges },
+    { key: "total_amount", header: "Total Amount", get: (r) => r.total_amount, currency: true, sortValue: (r) => r.total_amount },
+    { key: "discount", header: "Discount", get: (r) => r.discount, currency: true, sortValue: (r) => r.discount },
+    { key: "net_amount", header: "Net Amount", get: (r) => r.net_amount, currency: true, sortValue: (r) => r.net_amount },
+    { key: "payment_mode", header: "Payment Mode", get: (r) => r.payment_mode, type: "enum" },
+    { key: "bill_type", header: "Bill Type", get: (r) => r.bill_type === "gst_invoice" ? "GST Invoice" : "Cash Bill", type: "enum" },
+    { key: "status", header: "Status", get: (r) => r.status, type: "enum" },
   ], []);
 
+  const grandDerived = useMemo(() => derived.reduce((s, r) => s + r.net_amount, 0), [derived]);
   const meta = { reportName: "Bill-Wise Report", propertyName: current?.name ?? "Property", from, to,
-    totals: [["Total bills", rows.length], ["Grand total", fmtINR(grand)]] as [string, string|number][] };
+    totals: [["Total bills", derived.length], ["Grand total", fmtINR(grandDerived)]] as [string, string|number][] };
 
   function tallyXml() {
-    const gstOnly = rows.filter((r) => r.bill_type === "gst_invoice");
+    const gstOnly = derived.filter((r) => r.bill_type === "gst_invoice");
     const xml = buildTallySalesXml(gstOnly.map((r) => ({
       date: r.date, voucher_number: r.bill_no, guest_name: r.guest_name,
       taxable_amount: r.sub_total - r.discount,
@@ -131,38 +132,37 @@ function Page() {
     <ReportShell
       title="Bill-Wise Report"
       filters={<Filters {...{ from, to, setFrom, setTo, billType, setBillType, payMode, setPayMode, status, setStatus }} />}
-      onExcel={() => exportExcel(rows, columns, meta)}
-      onPdf={() => exportPdf(rows, columns, meta)}
+      onExcel={() => exportExcel(derived, columns, meta)}
+      onPdf={() => exportPdf(derived, columns, meta)}
       onTally={tallyXml}
       tallyLabel="Export for Tally"
       disabled={loading || rows.length === 0}
     >
       <Card>
-        <CardContent className="pt-4 overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead className="bg-muted/40">
-              <tr>{columns.map((c) => <th key={c.key} className={`px-2 py-2 text-left whitespace-nowrap ${c.currency ? "text-right" : ""}`}>{c.header}</th>)}</tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r._id} className="border-t hover:bg-muted/30">
-                  {columns.map((c) => (
-                    <td key={c.key} className={`px-2 py-1.5 ${c.currency ? "text-right tabular-nums" : ""}`}>
-                      {c.currency ? fmtINR(c.get(r) as number) : c.key === "status" ? <Badge variant="outline">{r.status}</Badge> : c.get(r)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-              {rows.length === 0 && <tr><td colSpan={columns.length} className="text-center py-6 text-muted-foreground">{loading ? "Loading…" : "No bills found"}</td></tr>}
-            </tbody>
-            <tfoot className="bg-emerald-50 font-semibold">
+        <CardContent className="pt-4">
+          <ReportDataTable
+            rows={rows}
+            columns={columns}
+            onDerivedRowsChange={setDerived}
+            rowKey={(r) => r._id}
+            emptyText={loading ? "Loading…" : "No bills found"}
+            renderRow={(r) => (
+              <tr key={r._id} className="border-t hover:bg-muted/30">
+                {columns.map((c) => (
+                  <td key={c.key} className={`px-2 py-1.5 ${c.currency ? "text-right tabular-nums" : ""}`}>
+                    {c.currency ? fmtINR(c.get(r) as number) : c.key === "status" ? <Badge variant="outline">{r.status}</Badge> : c.get(r)}
+                  </td>
+                ))}
+              </tr>
+            )}
+            totalsRow={(d) => (
               <tr>
-                <td colSpan={9} className="px-2 py-2 text-right">Grand Total ({rows.length} bills)</td>
-                <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand)}</td>
+                <td colSpan={9} className="px-2 py-2 text-right">Grand Total ({d.length} bills)</td>
+                <td className="px-2 py-2 text-right tabular-nums">{fmtINR(d.reduce((s, r) => s + r.net_amount, 0))}</td>
                 <td colSpan={3} />
               </tr>
-            </tfoot>
-          </table>
+            )}
+          />
         </CardContent>
       </Card>
     </ReportShell>

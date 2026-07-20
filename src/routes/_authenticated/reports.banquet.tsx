@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso } from "@/lib/reportExports";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { ReportDataTable } from "@/components/ReportDataTable";
 export const Route = createFileRoute("/_authenticated/reports/banquet")({
   head: () => ({ meta: [{ title: "Banquet Report — HotelPilot" }] }),
   component: () => (<RequirePermission module="reports"><Page /></RequirePermission>),
@@ -31,6 +32,7 @@ function Page() {
   const [func, setFunc] = useState("all");
   const [status, setStatus] = useState("all");
   const [rows, setRows] = useState<Row[]>([]);
+  const [derived, setDerived] = useState<Row[]>([]);
 
   const load = useCallback(async () => {
     if (!propertyId) return;
@@ -59,32 +61,32 @@ function Page() {
 
   useEffect(() => { load(); }, [load]);
 
-  const grand = useMemo(() => rows.reduce((s, r) => ({
+  const grand = useMemo(() => derived.reduce((s, r) => ({
     total: s.total + r.total, adv: s.adv + r.advance, bal: s.bal + r.balance,
-  }), { total: 0, adv: 0, bal: 0 }), [rows]);
+  }), { total: 0, adv: 0, bal: 0 }), [derived]);
 
   const funcs = useMemo(() => Array.from(new Set(rows.map((r) => r.function_type))).filter(Boolean), [rows]);
 
   const columns: ReportColumn<Row>[] = [
-    { key: "bill_no", header: "Event Bill No", get: (r) => r.bill_no },
-    { key: "event", header: "Event Name", get: (r) => r.event_name },
-    { key: "fn", header: "Function Type", get: (r) => r.function_type },
-    { key: "hall", header: "Hall", get: (r) => r.hall },
-    { key: "date", header: "Date", get: (r) => fmtDate(r.date) },
-    { key: "host", header: "Host Name", get: (r) => r.host },
-    { key: "pax", header: "Pax", get: (r) => r.pax, numeric: true },
-    { key: "h", header: "Hall Charges", get: (r) => r.hall_charge, currency: true },
-    { key: "fb", header: "F&B Charges", get: (r) => r.fb_charge, currency: true },
-    { key: "rc", header: "Room Charges", get: (r) => r.room_charge, currency: true },
-    { key: "total", header: "Total", get: (r) => r.total, currency: true },
-    { key: "adv", header: "Advance", get: (r) => r.advance, currency: true },
-    { key: "bal", header: "Balance Due", get: (r) => r.balance, currency: true },
-    { key: "status", header: "Status", get: (r) => r.status },
+    { key: "bill_no", header: "Event Bill No", get: (r) => r.bill_no, type: "text" },
+    { key: "event", header: "Event Name", get: (r) => r.event_name, type: "text" },
+    { key: "fn", header: "Function Type", get: (r) => r.function_type, type: "enum" },
+    { key: "hall", header: "Hall", get: (r) => r.hall, type: "enum" },
+    { key: "date", header: "Date", get: (r) => fmtDate(r.date), type: "date", sortValue: (r) => r.date, dateValue: (r) => r.date },
+    { key: "host", header: "Host Name", get: (r) => r.host, type: "text" },
+    { key: "pax", header: "Pax", get: (r) => r.pax, numeric: true, sortValue: (r) => r.pax },
+    { key: "h", header: "Hall Charges", get: (r) => r.hall_charge, currency: true, sortValue: (r) => r.hall_charge },
+    { key: "fb", header: "F&B Charges", get: (r) => r.fb_charge, currency: true, sortValue: (r) => r.fb_charge },
+    { key: "rc", header: "Room Charges", get: (r) => r.room_charge, currency: true, sortValue: (r) => r.room_charge },
+    { key: "total", header: "Total", get: (r) => r.total, currency: true, sortValue: (r) => r.total },
+    { key: "adv", header: "Advance", get: (r) => r.advance, currency: true, sortValue: (r) => r.advance },
+    { key: "bal", header: "Balance Due", get: (r) => r.balance, currency: true, sortValue: (r) => r.balance },
+    { key: "status", header: "Status", get: (r) => r.status, type: "enum" },
   ];
 
   const meta = { reportName: "Banquet Report", propertyName: current?.name ?? "Property", from, to,
     totals: [
-      ["Total events", rows.length],
+      ["Total events", derived.length],
       ["Total revenue", fmtINR(grand.total)],
       ["Total advance", fmtINR(grand.adv)],
       ["Total balance", fmtINR(grand.bal)],
@@ -117,37 +119,27 @@ function Page() {
           </Select>
         </div>
       </>}
-      onExcel={() => exportExcel(rows, columns, meta)}
-      onPdf={() => exportPdf(rows, columns, meta)}
+      onExcel={() => exportExcel(derived, columns, meta)}
+      onPdf={() => exportPdf(derived, columns, meta)}
       disabled={rows.length === 0}
     >
-      <Card><CardContent className="pt-4 overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/40"><tr>
-            {columns.map((c) => <th key={c.key} className={`px-2 py-2 text-left ${c.currency || c.numeric ? "text-right" : ""}`}>{c.header}</th>)}
-          </tr></thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r._id} className="border-t">
-                {columns.map((c) => (
-                  <td key={c.key} className={`px-2 py-1.5 ${c.currency || c.numeric ? "text-right tabular-nums" : ""}`}>
-                    {c.currency ? fmtINR(c.get(r) as number) : c.get(r)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-            {rows.length === 0 && <tr><td colSpan={columns.length} className="text-center py-6 text-muted-foreground">No events in range.</td></tr>}
-          </tbody>
-          <tfoot className="bg-emerald-50 font-semibold">
+      <Card><CardContent className="pt-4">
+        <ReportDataTable
+          rows={rows}
+          columns={columns}
+          onDerivedRowsChange={setDerived}
+          rowKey={(r) => r._id}
+          emptyText="No events in range."
+          totalsRow={(d) => (
             <tr>
-              <td colSpan={10} className="px-2 py-2 text-right">{rows.length} events · Totals</td>
-              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.total)}</td>
-              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.adv)}</td>
-              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.bal)}</td>
+              <td colSpan={10} className="px-2 py-2 text-right">{d.length} events · Totals</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(d.reduce((s, r) => s + r.total, 0))}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(d.reduce((s, r) => s + r.advance, 0))}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(d.reduce((s, r) => s + r.balance, 0))}</td>
               <td />
             </tr>
-          </tfoot>
-        </table>
+          )}
+        />
       </CardContent></Card>
     </ReportShell>
   );
