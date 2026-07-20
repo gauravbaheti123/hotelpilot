@@ -869,7 +869,39 @@ function NewBookingPage() {
                 </SelectContent>
               </Select>
             </F>
-            <F label="Rate / night (₹)"><Input type="number" value={rate} onChange={(e) => { setRate(Number(e.target.value)); setRateManuallySet(true); }} /></F>
+            <F label="Rate / night (₹)">
+              <div className="space-y-1.5">
+                <Input type="number" value={rate} onChange={(e) => { setRate(Number(e.target.value)); setRateManuallySet(true); }} />
+                <div className="flex items-center gap-3 text-xs">
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="rateType" checked={rateType === "exclusive"} onChange={() => setRateType("exclusive")} />
+                    <span>Exclusive of GST</span>
+                  </label>
+                  <label className="flex items-center gap-1 cursor-pointer">
+                    <input type="radio" name="rateType" checked={rateType === "inclusive"} onChange={() => setRateType("inclusive")} />
+                    <span>Inclusive of GST</span>
+                  </label>
+                </div>
+                {rate > 0 && (() => {
+                  const g = 12;
+                  if (rateType === "inclusive") {
+                    const taxable = rate / (1 + g / 100);
+                    const gst = rate - taxable;
+                    return (
+                      <div className="text-[11px] text-muted-foreground">
+                        Incl. GST {g}% → Taxable ₹{taxable.toFixed(2)} + GST ₹{gst.toFixed(2)} = ₹{rate.toFixed(2)}
+                      </div>
+                    );
+                  }
+                  const gst = rate * g / 100;
+                  return (
+                    <div className="text-[11px] text-muted-foreground">
+                      Excl. GST {g}% → Taxable ₹{rate.toFixed(2)} + GST ₹{gst.toFixed(2)} = ₹{(rate + gst).toFixed(2)}
+                    </div>
+                  );
+                })()}
+              </div>
+            </F>
             <F label="Source">
               <Select value={source} onValueChange={setSource}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
