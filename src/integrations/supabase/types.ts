@@ -4482,7 +4482,9 @@ export type Database = {
           description: string | null
           id: string
           is_system: boolean
+          max_discount_amount: number
           max_discount_pct: number
+          max_discount_type: string
           name: string
           property_id: string | null
           updated_at: string
@@ -4492,7 +4494,9 @@ export type Database = {
           description?: string | null
           id?: string
           is_system?: boolean
+          max_discount_amount?: number
           max_discount_pct?: number
+          max_discount_type?: string
           name: string
           property_id?: string | null
           updated_at?: string
@@ -4502,7 +4506,9 @@ export type Database = {
           description?: string | null
           id?: string
           is_system?: boolean
+          max_discount_amount?: number
           max_discount_pct?: number
+          max_discount_type?: string
           name?: string
           property_id?: string | null
           updated_at?: string
@@ -5467,6 +5473,14 @@ export type Database = {
         Returns: undefined
       }
       undo_checkout: { Args: { _booking_id: string }; Returns: Json }
+      user_discount_limit: {
+        Args: { _property_id: string; _user_id: string }
+        Returns: {
+          limit_type: string
+          limit_value: number
+          unlimited: boolean
+        }[]
+      }
       user_has_permission: {
         Args: {
           _action: string
