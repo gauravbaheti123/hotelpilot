@@ -33,13 +33,13 @@ interface Row {
 }
 
 const EXPORT_COLUMNS = [
-  "Name","Mobile","Email","Company Name","ID Proof Type","ID Proof Number",
+  "Name","Mobile","Email","Company Name","GST Number","ID Proof Type","ID Proof Number",
   "Address","Guest Type","Visit Count","Last Stay","Notes",
 ] as const;
 
 const SAMPLE_CSV = [
   EXPORT_COLUMNS.join(","),
-  ["John Doe","9876543210","john@example.com","Growth Story Pvt Ltd","aadhaar","1234-5678-9012",
+  ["John Doe","9876543210","john@example.com","Growth Story Pvt Ltd","29ABCDE1234F1Z5","aadhaar","1234-5678-9012",
    "Mumbai","regular","","",""].join(","),
 ].join("\n");
 
