@@ -7,6 +7,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { fetchGstInvoiceSlabs, type GstInvoiceSlabRow } from "@/lib/reports";
 import { ReportShell } from "@/components/ReportShell";
 import { RequirePermission } from "@/components/RequirePermission";
+import { ReportDataTable } from "@/components/ReportDataTable";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR,
   buildTallySalesXml, downloadXml, buildFileName,
@@ -51,30 +52,35 @@ function GstReportPage() {
     cgstPct: r.gst_rate / 2,
     sgstPct: r.gst_rate / 2,
   })), [rows]);
+  type Display = GstInvoiceSlabRow & { cgstPct: number; sgstPct: number };
+  const [derived, setDerived] = useState<Display[]>([]);
 
   const totals = useMemo(() => {
     let taxable = 0, gst = 0, invoice = 0;
-    for (const r of rows) {
+    const seen = new Set<string>();
+    for (const r of derived) {
       taxable += Number(r.taxable ?? 0);
       gst += Number(r.gst_total ?? 0);
-      invoice += Number(r.invoice_total ?? 0); // only counted on first slab row
+      if (!seen.has(r.invoice_number)) {
+        invoice += Number(r.invoice_total ?? 0);
+        seen.add(r.invoice_number);
+      }
     }
     return { taxable, gst, invoice, cgst: gst / 2, sgst: gst / 2 };
-  }, [rows]);
+  }, [derived]);
 
-  type Display = GstInvoiceSlabRow & { cgstPct: number; sgstPct: number };
   const columns: ReportColumn<Display>[] = [
-    { key: "bill_no", header: "Bill No", get: (r) => r.is_first_of_invoice ? r.invoice_number : "" },
-    { key: "date", header: "Date", get: (r) => r.is_first_of_invoice ? fmtDate(r.created_at) : "" },
-    { key: "guest", header: "Guest Name", get: (r) => r.is_first_of_invoice ? (r.guest_name ?? "") : "" },
-    { key: "gstin", header: "GSTIN", get: (r) => r.is_first_of_invoice ? (r.guest_gstin ?? "") : "" },
-    { key: "tax", header: "Taxable", get: (r) => r.taxable, currency: true },
-    { key: "cgstpct", header: "CGST %", get: (r) => r.cgstPct },
-    { key: "cgst", header: "CGST Amt", get: (r) => r.cgst, currency: true },
-    { key: "sgstpct", header: "SGST %", get: (r) => r.sgstPct },
-    { key: "sgst", header: "SGST Amt", get: (r) => r.sgst, currency: true },
-    { key: "totalgst", header: "Total GST", get: (r) => r.gst_total, currency: true },
-    { key: "invtotal", header: "Invoice Total", get: (r) => r.is_first_of_invoice ? r.invoice_total : "", currency: true },
+    { key: "bill_no", header: "Bill No", get: (r) => r.invoice_number, type: "text" },
+    { key: "date", header: "Date", get: (r) => fmtDate(r.created_at), type: "date", sortValue: (r) => r.created_at, dateValue: (r) => r.created_at },
+    { key: "guest", header: "Guest Name", get: (r) => r.guest_name ?? "", type: "text" },
+    { key: "gstin", header: "GSTIN", get: (r) => r.guest_gstin ?? "", type: "text" },
+    { key: "tax", header: "Taxable", get: (r) => r.taxable, currency: true, sortValue: (r) => Number(r.taxable) },
+    { key: "cgstpct", header: "CGST %", get: (r) => r.cgstPct, numeric: true, sortValue: (r) => r.cgstPct },
+    { key: "cgst", header: "CGST Amt", get: (r) => r.cgst, currency: true, sortValue: (r) => r.cgst },
+    { key: "sgstpct", header: "SGST %", get: (r) => r.sgstPct, numeric: true, sortValue: (r) => r.sgstPct },
+    { key: "sgst", header: "SGST Amt", get: (r) => r.sgst, currency: true, sortValue: (r) => r.sgst },
+    { key: "totalgst", header: "Total GST", get: (r) => r.gst_total, currency: true, sortValue: (r) => Number(r.gst_total) },
+    { key: "invtotal", header: "Invoice Total", get: (r) => r.invoice_total, currency: true, sortValue: (r) => Number(r.invoice_total) },
   ];
 
   const meta = { reportName: "GST Report", propertyName: current?.name ?? "Property", from, to,
@@ -116,35 +122,20 @@ function GstReportPage() {
         <div><Label>Month</Label><Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-40" /></div>
         <div><Label>Bill Type</Label><Input value="GST Invoice only" disabled className="w-40" /></div>
       </>}
-      onExcel={() => exportExcel(display, columns, meta)}
-      onPdf={() => exportPdf(display, columns, meta)}
+      onExcel={() => exportExcel(derived, columns, meta)}
+      onPdf={() => exportPdf(derived, columns, meta)}
       onTally={tallyXml}
       tallyLabel="Export for Tally"
       disabled={rows.length === 0}
     >
-      <Card><CardContent className="pt-4 overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/40"><tr>
-            {columns.map((c) => <th key={c.key} className={`px-2 py-2 text-left whitespace-nowrap ${c.currency ? "text-right" : ""}`}>{c.header}</th>)}
-          </tr></thead>
-          <tbody>
-            {display.map((r, idx) => (
-              <tr
-                key={`${r.invoice_number}-${r.gst_rate}-${idx}`}
-                className={r.is_first_of_invoice ? "border-t" : ""}
-              >
-                {columns.map((c) => (
-                  <td key={c.key} className={`px-2 py-1.5 ${c.currency ? "text-right tabular-nums" : ""}`}>
-                    {c.currency
-                      ? (c.get(r) === "" ? "" : fmtINR(c.get(r) as number))
-                      : c.get(r)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-            {display.length === 0 && <tr><td colSpan={columns.length} className="text-center py-6 text-muted-foreground">No GST invoices in this month.</td></tr>}
-          </tbody>
-          <tfoot className="bg-emerald-50 font-semibold">
+      <Card><CardContent className="pt-4">
+        <ReportDataTable
+          rows={display}
+          columns={columns}
+          onDerivedRowsChange={setDerived}
+          rowKey={(r, i) => `${r.invoice_number}-${r.gst_rate}-${i}`}
+          emptyText="No GST invoices in this month."
+          totalsRow={() => (
             <tr>
               <td colSpan={4} className="text-right px-2 py-2">Totals</td>
               <td className="text-right px-2 py-2 tabular-nums">{fmtINR(totals.taxable)}</td>
@@ -155,8 +146,8 @@ function GstReportPage() {
               <td className="text-right px-2 py-2 tabular-nums">{fmtINR(totals.gst)}</td>
               <td className="text-right px-2 py-2 tabular-nums">{fmtINR(totals.invoice)}</td>
             </tr>
-          </tfoot>
-        </table>
+          )}
+        />
         <p className="text-xs text-muted-foreground mt-3 italic">
           This report is for GST filing reference only. Verify with your CA before filing.
         </p>
