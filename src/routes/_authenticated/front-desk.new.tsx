@@ -115,6 +115,7 @@ function NewBookingPage() {
   const [tariffId, setTariffId] = useState<string>("");
   const [rate, setRate] = useState(0);
   const [rateManuallySet, setRateManuallySet] = useState(false);
+  const [rateType, setRateType] = useState<"exclusive" | "inclusive">("exclusive");
   const [mealPlan, setMealPlan] = useState("EP");
   // Future reservations often don't have a specific room picked yet — only the
   // category. When true, room selection is bypassed and booking_rooms.room_id
