@@ -883,8 +883,12 @@ function NewBookingPage() {
                   </label>
                 </div>
                 {rate > 0 && (() => {
-                  const g = 12;
+                  // Tiered slabs (Sept 2025): 0% ≤ ₹1000, 5% ≤ ₹7500, 18% > ₹7500.
+                  let g: number;
                   if (rateType === "inclusive") {
+                    if (rate <= 1000) g = 0;
+                    else if (rate / 1.05 <= 7500) g = 5;
+                    else g = 18;
                     const taxable = rate / (1 + g / 100);
                     const gst = rate - taxable;
                     return (
@@ -893,6 +897,9 @@ function NewBookingPage() {
                       </div>
                     );
                   }
+                  if (rate <= 1000) g = 0;
+                  else if (rate <= 7500) g = 5;
+                  else g = 18;
                   const gst = rate * g / 100;
                   return (
                     <div className="text-[11px] text-muted-foreground">

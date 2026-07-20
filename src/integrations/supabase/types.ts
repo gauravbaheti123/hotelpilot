@@ -5424,6 +5424,7 @@ export type Database = {
         }
         Returns: Json
       }
+      room_gst_rate_for_tariff: { Args: { _rate: number }; Returns: number }
       save_property_secrets: {
         Args: {
           _aisensy_api_key: string

@@ -493,7 +493,7 @@ function HotelSettingsForm({
                   if (v && slabs.length === 0) {
                     setSlabs([
                       { from_amount: 0, to_amount: 1000, gst_rate: 0 },
-                      { from_amount: 1001, to_amount: 7500, gst_rate: 12 },
+                      { from_amount: 1001, to_amount: 7500, gst_rate: 5 },
                       { from_amount: 7501, to_amount: 99999, gst_rate: 18 },
                     ]);
                   }
