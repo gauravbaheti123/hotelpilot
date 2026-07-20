@@ -68,7 +68,7 @@ const INDIAN_STATES: Array<{ name: string; code: string }> = [
   { name: "West Bengal", code: "19" },
 ];
 
-const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[0-9A-Z]{1}Z[0-9A-Z]{1}$/;
+import { GSTIN_REGEX as GSTIN_RE, GSTIN_ERROR, isValidOrEmptyGSTIN } from "@/lib/gstin";
 const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
 const PIN_RE = /^[0-9]{6}$/;
 const PHONE_RE = /^[0-9]{10}$/;
@@ -164,7 +164,7 @@ function HotelSettingsForm({
     if (form.pin_code && !PIN_RE.test(form.pin_code)) return "PIN Code must be 6 digits";
     if (form.phone && !PHONE_RE.test(String(form.phone).replace(/\D/g, "").slice(-10))) return "Phone must be 10 digits";
     if (form.email && !/^\S+@\S+\.\S+$/.test(form.email)) return "Invalid email";
-    if (form.gstin && !GSTIN_RE.test(form.gstin.toUpperCase())) return "Invalid GSTIN format";
+    if (form.gstin && !GSTIN_RE.test(form.gstin.toUpperCase())) return GSTIN_ERROR;
     if (form.pan_number && !PAN_RE.test(form.pan_number.toUpperCase())) return "Invalid PAN format (AAAAA9999A)";
     if (form.website && !/^https?:\/\//i.test(form.website)) return "Website must start with http:// or https://";
     return null;
@@ -378,8 +378,12 @@ function HotelSettingsForm({
                   set("state_code", v.substring(0, 2));
                 }
               }}
-              placeholder="22AAAAA0000A1Z5"
+              placeholder="e.g. 27AASFB5351R1ZM"
+              className={form.gstin && !isValidOrEmptyGSTIN(form.gstin) ? "border-red-500 focus-visible:ring-red-500" : ""}
             />
+            {form.gstin && !isValidOrEmptyGSTIN(form.gstin) && (
+              <p className="mt-1 text-[11px] text-red-600">{GSTIN_ERROR}</p>
+            )}
           </Field>
           <Field label="PAN Number">
             <Input disabled={dis} maxLength={10} value={form.pan_number ?? ""} onChange={(e) => set("pan_number", e.target.value.toUpperCase())} placeholder="AAAAA9999A" />
