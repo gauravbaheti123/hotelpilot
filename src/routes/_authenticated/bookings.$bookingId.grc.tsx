@@ -19,7 +19,7 @@ function fmtDateTime(value: string | null | undefined, fallbackTime?: string | n
   const d = isTs ? new Date(value) : new Date(`${value}T${t}:00`);
   if (isNaN(d.getTime())) return String(value);
   const date = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-  const time = d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
+  const time = d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
   return `${date}, ${time}`;
 }
 
