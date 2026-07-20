@@ -910,6 +910,12 @@ function NewBookingPage() {
                     <span>Inclusive of GST</span>
                   </label>
                 </div>
+                {!discountLimit.unlimited && standardRate > 0 && rate > 0 && rate < standardRate && (
+                  <div className={`text-[11px] ${rateOverrideCheck.allowed ? "text-muted-foreground" : "text-destructive"}`}>
+                    Standard rate ₹{standardRate.toLocaleString("en-IN")} — you are reducing by ₹{(standardRate - rate).toLocaleString("en-IN")}.
+                    {" "}{rateOverrideCheck.allowed ? describeLimit(discountLimit) : (rateOverrideCheck.reason ?? "Not allowed.")}
+                  </div>
+                )}
                 {rate > 0 && (() => {
                   const g = rateType === "inclusive"
                     ? resolveGstRateInclusive(gstSlabs, "room", rate)
