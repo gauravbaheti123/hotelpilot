@@ -1197,6 +1197,15 @@ function FolioPage() {
   const isPremium = true;
   const isSettled = folio.status === "settled";
   const isVoid = folio.status === "void";
+  const canUndoCheckout = (() => {
+    if (!booking?.checked_out_at) return false;
+    if (booking.status !== "checked_out") return false;
+    const elapsed = nowTick - new Date(booking.checked_out_at).getTime();
+    return elapsed >= 0 && elapsed <= 60 * 60 * 1000;
+  })();
+  const undoMinutesLeft = booking?.checked_out_at
+    ? Math.max(0, Math.ceil((60 * 60 * 1000 - (nowTick - new Date(booking.checked_out_at).getTime())) / 60000))
+    : 0;
 
   return (
     <AppShell title={`Folio ${folio.invoice_number}`}>
