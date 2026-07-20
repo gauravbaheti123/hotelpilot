@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { inr, inrRound, roundHalfUp, computeBillDiscountAmount, type BillDiscount } from "@/lib/billing";
 import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
+import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { fmtDate } from "@/lib/reportExports";
 import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
@@ -96,6 +97,7 @@ function BanquetBillPage() {
   const [misOpen, setMisOpen] = useState(false);
   const [misBusy, setMisBusy] = useState(false);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
+  const { limit: discountLimit } = useDiscountLimit();
   const { methods: payMethods } = usePaymentMethods(b?.property_id ?? null);
   const [discOpen, setDiscOpen] = useState(false);
   const [discTarget, setDiscTarget] = useState<
@@ -939,6 +941,7 @@ function BanquetBillPage() {
           initialValue={discInitial.value}
           unlimited={unlimitedDisc()}
           maxPct={maxDiscPct}
+          limit={discountLimit}
           hasExisting={discHasExisting}
           onSave={saveDiscount}
         />

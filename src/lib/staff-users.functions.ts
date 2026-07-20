@@ -351,6 +351,8 @@ export const updateRoleMeta = createServerFn({ method: "POST" })
     name?: string;
     description?: string | null;
     max_discount_pct?: number;
+    max_discount_type?: "percentage" | "fixed_amount" | "none";
+    max_discount_amount?: number;
   }) => {
     if (!i?.role_id) throw new Error("role_id required");
     return i;
@@ -382,6 +384,12 @@ export const updateRoleMeta = createServerFn({ method: "POST" })
     }
     if (typeof data.max_discount_pct === "number") {
       patch.max_discount_pct = Math.max(0, Math.min(100, data.max_discount_pct));
+    }
+    if (data.max_discount_type && ["percentage","fixed_amount","none"].includes(data.max_discount_type)) {
+      patch.max_discount_type = data.max_discount_type;
+    }
+    if (typeof data.max_discount_amount === "number") {
+      patch.max_discount_amount = Math.max(0, data.max_discount_amount);
     }
     if (Object.keys(patch).length === 0) return { ok: true };
     const { error } = await supabaseAdmin.from("roles").update(patch as any).eq("id", data.role_id);
@@ -421,6 +429,8 @@ export const upsertRolePermissions = createServerFn({ method: "POST" })
     role_id: string;
     rows: { permission_id: string; allowed: boolean }[];
     max_discount_pct?: number;
+    max_discount_type?: "percentage" | "fixed_amount" | "none";
+    max_discount_amount?: number;
   }) => {
     if (!i?.role_id) throw new Error("role_id required");
     if (!Array.isArray(i.rows)) throw new Error("rows required");
@@ -492,11 +502,22 @@ export const upsertRolePermissions = createServerFn({ method: "POST" })
         },
       });
     }
-    if (typeof data.max_discount_pct === "number" && !/owner/i.test(role.name)) {
-      const pct = Math.max(0, Math.min(100, data.max_discount_pct));
-      const { error } = await supabaseAdmin
-        .from("roles").update({ max_discount_pct: pct } as any).eq("id", data.role_id);
-      if (error) throw error;
+    if (!/owner/i.test(role.name)) {
+      const patch: Record<string, unknown> = {};
+      if (typeof data.max_discount_pct === "number") {
+        patch.max_discount_pct = Math.max(0, Math.min(100, data.max_discount_pct));
+      }
+      if (data.max_discount_type && ["percentage","fixed_amount","none"].includes(data.max_discount_type)) {
+        patch.max_discount_type = data.max_discount_type;
+      }
+      if (typeof data.max_discount_amount === "number") {
+        patch.max_discount_amount = Math.max(0, data.max_discount_amount);
+      }
+      if (Object.keys(patch).length > 0) {
+        const { error } = await supabaseAdmin
+          .from("roles").update(patch as any).eq("id", data.role_id);
+        if (error) throw error;
+      }
     }
     return { ok: true };
   });
