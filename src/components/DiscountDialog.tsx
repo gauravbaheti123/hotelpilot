@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { inr } from "@/lib/billing";
+import type { DiscountLimit } from "@/lib/discountLimit";
+import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 
 export type DiscType = "percent" | "amount";
 
@@ -27,6 +29,12 @@ export interface DiscountDialogProps {
   unlimited: boolean;
   /** Max percentage allowed for this user's role (0-100). Ignored when unlimited. */
   maxPct: number;
+  /**
+   * Optional richer per-user limit. When provided it takes precedence over
+   * (unlimited, maxPct) and supports 'fixed_amount' and 'none' limit types.
+   * (unlimited, maxPct) are still accepted so existing call sites keep working.
+   */
+  limit?: DiscountLimit;
   /** Called when the user Applies. Return a promise; dialog closes on success. */
   onSave: (v: { type: DiscType; value: number; rupees: number }) => Promise<void> | void;
   /** Show Remove button (when there is already an existing discount to remove). */
@@ -57,8 +65,14 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 export function DiscountDialog({
   open, onOpenChange, kind, lineDescription, base,
   initialType = "percent", initialValue = 0, unlimited, maxPct,
-  onSave, hasExisting, title,
+  limit, onSave, hasExisting, title,
 }: DiscountDialogProps) {
+  const effectiveLimit: DiscountLimit = limit ?? {
+    limitType: "percentage",
+    limitValue: Math.max(0, Math.min(100, Number(maxPct) || 0)),
+    unlimited: !!unlimited,
+  };
+  const blocked = !effectiveLimit.unlimited && effectiveLimit.limitType === "none";
   const [type, setType] = useState<DiscType>(initialType);
   const [value, setValue] = useState<string>(initialValue ? String(initialValue) : "");
   const [busy, setBusy] = useState(false);
@@ -72,19 +86,18 @@ export function DiscountDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const cap = unlimited ? 100 : Math.max(0, Math.min(100, Number(maxPct) || 0));
-
   async function submit(overrideValue?: string) {
     const raw = overrideValue ?? value;
     const v = Number(raw);
     if (!Number.isFinite(v) || v < 0) return;
-    const pct = effectivePct(type, v, base);
-    if (v > 0 && pct > cap + 0.01 && !unlimited) {
-      // Toast handled by caller if they want; we still block here.
-      alert(`Max discount allowed for your role is ${cap}%`);
-      return;
-    }
     const rupees = round2(discountToRupees(type, v, base));
+    if (v > 0) {
+      const check = canApplyDiscount(effectiveLimit, { discountRupees: rupees, base });
+      if (!check.allowed) {
+        alert(check.reason ?? "Discount exceeds your allowed limit.");
+        return;
+      }
+    }
     setBusy(true);
     try {
       await onSave({ type, value: v, rupees });
@@ -114,7 +127,7 @@ export function DiscountDialog({
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label className="text-xs">Discount type</Label>
-              <Select value={type} onValueChange={(v) => setType(v as DiscType)}>
+              <Select value={type} onValueChange={(v) => setType(v as DiscType)} disabled={blocked}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="percent">Percent (%)</SelectItem>
@@ -130,12 +143,13 @@ export function DiscountDialog({
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 placeholder="0"
+                disabled={blocked}
               />
             </div>
           </div>
-          {!unlimited && (
-            <div className="text-xs text-muted-foreground">
-              Max discount allowed for your role: {cap}%
+          {!effectiveLimit.unlimited && (
+            <div className={`text-xs ${blocked ? "text-destructive" : "text-muted-foreground"}`}>
+              {describeLimit(effectiveLimit)}
             </div>
           )}
           {previewRupees > 0 && (
@@ -151,7 +165,7 @@ export function DiscountDialog({
               Remove
             </Button>
           )}
-          <Button onClick={() => submit()} disabled={busy}>Apply</Button>
+          <Button onClick={() => submit()} disabled={busy || blocked}>Apply</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
