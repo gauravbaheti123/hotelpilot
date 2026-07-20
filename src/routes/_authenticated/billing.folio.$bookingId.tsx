@@ -173,6 +173,8 @@ function FolioPage() {
   const [editQty, setEditQty] = useState("1");
   const [editRate, setEditRate] = useState("0");
   const [editGst, setEditGst] = useState("0");
+  const [editBaseAmount, setEditBaseAmount] = useState(0);
+  const { limit: discountLimit } = useDiscountLimit();
 
   const [payOpen, setPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState("");
