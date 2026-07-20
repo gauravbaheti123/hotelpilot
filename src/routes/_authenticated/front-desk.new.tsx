@@ -80,6 +80,7 @@ function NewBookingPage() {
     ["superadmin", "owner", "manager", "receptionist"].includes(r),
   );
   const { current, loading: propLoading } = useCurrentProperty();
+  const { slabs: gstSlabs } = useGstSlabs(current?.id ?? null);
 
   const [cats, setCats] = useState<Category[]>([]);
   const [rooms, setRooms] = useState<RoomRow[]>([]);
