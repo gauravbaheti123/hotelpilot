@@ -161,7 +161,7 @@ function GuestsListPage() {
   async function exportCsv() {
     if (!propertyId) return;
     const { data } = await supabase.from("guests")
-      .select("name,mobile,email,company,id_proof_type,id_proof_number,address,tags,visit_count,notes,created_at")
+      .select("name,mobile,email,company,gst_number,id_proof_type,id_proof_number,address,tags,visit_count,notes,created_at")
       .eq("property_id", propertyId).order("name");
     const ids = (data ?? []).map((g: any) => g.id).filter(Boolean);
     void ids;
@@ -170,7 +170,7 @@ function GuestsListPage() {
       const guestType = Array.isArray(g.tags) && g.tags.length ? String(g.tags[0]) : "regular";
       lines.push([
         csvEscape(g.name), csvEscape(g.mobile), csvEscape(g.email),
-        csvEscape(g.company),
+        csvEscape(g.company), csvEscape(g.gst_number),
         csvEscape(g.id_proof_type), csvEscape(g.id_proof_number),
         csvEscape(g.address), csvEscape(guestType),
         csvEscape(g.visit_count ?? 0), csvEscape(""), csvEscape(g.notes),
@@ -232,6 +232,7 @@ function GuestsListPage() {
         mobile,
         email: r["Email"]?.trim() || null,
         company: r["Company Name"]?.trim() || r["Company"]?.trim() || null,
+        gst_number: r["GST Number"]?.trim() || r["GSTIN"]?.trim() || null,
         id_proof_type: r["ID Proof Type"]?.trim() || null,
         id_proof_number: r["ID Proof Number"]?.trim() || null,
         address: r["Address"]?.trim() || null,
