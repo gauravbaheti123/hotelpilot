@@ -132,7 +132,7 @@ function fmtDateTime(value: string | null | undefined, fallbackTime?: string | n
   const d = isTs ? new Date(value) : new Date(`${value}T${t}:00`);
   if (isNaN(d.getTime())) return String(value);
   const date = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-  const time = d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
+  const time = d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
   return `${date}, ${time}`;
 }
 
@@ -1507,13 +1507,16 @@ function FolioPage() {
               <div className="text-base font-semibold">{booking.guests?.name ?? "—"}</div>
               {booking.guests?.mobile && <div className="text-xs text-gray-700">Mobile: {booking.guests.mobile}</div>}
               {(folio.guest_company || booking.guests?.company) && (
-                <div className="text-xs text-gray-700">{folio.guest_company || booking.guests?.company}</div>
-              )}
-              {(folio.guest_gstin || booking.guests?.gst_number) && (
-                <div className="text-xs text-gray-700">GSTIN: {folio.guest_gstin || booking.guests?.gst_number}</div>
-              )}
-              {booking.guests?.address && (
-                <div className="text-xs text-gray-700">{booking.guests.address}</div>
+                <>
+                  <div className="mt-3 mb-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Company To</div>
+                  <div className="text-sm font-semibold">{folio.guest_company || booking.guests?.company}</div>
+                  {(folio.guest_gstin || booking.guests?.gst_number) && (
+                    <div className="text-xs text-gray-700">GSTIN: {folio.guest_gstin || booking.guests?.gst_number}</div>
+                  )}
+                  {booking.guests?.address && (
+                    <div className="text-xs text-gray-700">{booking.guests.address}</div>
+                  )}
+                </>
               )}
             </div>
             <div className="px-8 py-4">

@@ -213,11 +213,14 @@ function metaBlock(ctx: InvoiceContext): string {
         <div class="small" style="text-transform:uppercase;letter-spacing:1px">Bill To</div>
         <div style="font-weight:600;font-size:13px;margin-top:2px">${esc(booking.guests?.name ?? "")}</div>
         ${booking.guests?.mobile ? `<div class="small">${esc(booking.guests.mobile)}</div>` : ""}
-        ${folio.guest_company ? `<div class="small">${esc(folio.guest_company)}</div>` : ""}
-        ${folio.guest_gstin ? `<div class="small">GSTIN: ${esc(folio.guest_gstin)}</div>` : ""}
         ${booking.guests?.nationality ? `<div class="small">Nationality: ${esc(booking.guests.nationality)}</div>` : ""}
         ${booking.guests?.id_proof_type && booking.guests?.id_proof_number
           ? `<div class="small">${esc(booking.guests.id_proof_type)}: ${esc(booking.guests.id_proof_number)}</div>` : ""}
+        ${folio.guest_company ? `
+          <div class="small" style="text-transform:uppercase;letter-spacing:1px;margin-top:8px">Company To</div>
+          <div style="font-weight:600;font-size:12px;margin-top:2px">${esc(folio.guest_company)}</div>
+          ${folio.guest_gstin ? `<div class="small">GSTIN: ${esc(folio.guest_gstin)}</div>` : ""}
+        ` : ""}
       </div>
       <div style="text-align:right">
         <div class="stamp bg-accent">${docTitle}</div>

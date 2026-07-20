@@ -60,7 +60,7 @@ function renderKotHtml(
   const stationName = (printerName || "").toUpperCase();
   const when = header.created_at ? new Date(header.created_at) : new Date();
   const dateStr = when.toLocaleDateString();
-  const timeStr = when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const timeStr = when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
   const tableLabel =
     header.kot_type === "room"
       ? `Room ${esc(header.room_number ?? "—")}`

@@ -46,7 +46,7 @@ function playBeep() {
 
 function fmtWhen(iso: string) {
   const d = new Date(iso);
-  return d.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+  return d.toLocaleString("en-IN", { dateStyle: "medium", hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 export function RemindersBell({ propertyId, userId }: { propertyId: string | null; userId: string }) {

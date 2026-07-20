@@ -88,7 +88,7 @@ function Page() {
 
   const columns: ReportColumn<Row>[] = [
     { key: "date", header: "Date", get: (r) => fmtDate(r.date) },
-    { key: "time", header: "Time", get: (r) => new Date(r.time).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) },
+    { key: "time", header: "Time", get: (r) => new Date(r.time).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false }) },
     { key: "bill_no", header: "Bill No", get: (r) => r.bill_no },
     { key: "guest_name", header: "Guest Name", get: (r) => r.guest_name },
     { key: "amount", header: "Amount", get: (r) => r.amount, currency: true },

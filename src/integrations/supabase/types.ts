@@ -3689,6 +3689,7 @@ export type Database = {
           address_line2: string | null
           aisensy_api_key: string | null
           checkin_time: string | null
+          checkout_grace_time: string
           checkout_time: string | null
           city: string | null
           created_at: string
@@ -3747,6 +3748,7 @@ export type Database = {
           address_line2?: string | null
           aisensy_api_key?: string | null
           checkin_time?: string | null
+          checkout_grace_time?: string
           checkout_time?: string | null
           city?: string | null
           created_at?: string
@@ -3805,6 +3807,7 @@ export type Database = {
           address_line2?: string | null
           aisensy_api_key?: string | null
           checkin_time?: string | null
+          checkout_grace_time?: string
           checkout_time?: string | null
           city?: string | null
           created_at?: string
