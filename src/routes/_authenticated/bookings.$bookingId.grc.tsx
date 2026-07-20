@@ -217,9 +217,6 @@ function GrcPage() {
           <Button variant="outline" onClick={save} disabled={saving}>
             <Save className="h-4 w-4 mr-1" /> {saving ? "Saving…" : "Save"}
           </Button>
-          <Button variant="outline" onClick={saveAndPrint} disabled={saving}>
-            <Save className="h-4 w-4 mr-1" /> Save
-          </Button>
           <Button onClick={printGrc} disabled={saving || !grc.id}>
             <Printer className="h-4 w-4 mr-1" /> Print GRC
           </Button>
