@@ -157,11 +157,6 @@ function GrcPage() {
     return number ?? null;
   }
 
-  async function saveAndPrint() {
-    const num = await save();
-    if (!num) return;
-  }
-
   function printGrc() {
     // Manual, user-gesture triggered print. Uses browser's native print
     // dialog so staff can confirm A4 paper size before printing.
