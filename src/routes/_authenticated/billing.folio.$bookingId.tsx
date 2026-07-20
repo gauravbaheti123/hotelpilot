@@ -31,6 +31,8 @@ import { AlertTriangle, ShieldAlert, ArrowRightLeft } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 import { resolveGstRate } from "@/lib/gst";
+import { useDiscountLimit } from "@/hooks/use-discount-limit";
+import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
