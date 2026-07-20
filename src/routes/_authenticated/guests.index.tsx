@@ -43,6 +43,31 @@ const SAMPLE_CSV = [
    "Mumbai","regular","","",""].join(","),
 ].join("\n");
 
+const GUEST_FETCH_LIMIT = 15500;
+const GUEST_PAGE_SIZE = 1000;
+
+async function fetchGuestsPaginated<T>(
+  propertyId: string,
+  select: string,
+  orderColumn: string,
+  ascending: boolean,
+): Promise<T[]> {
+  const all: T[] = [];
+  for (let from = 0; from < GUEST_FETCH_LIMIT; from += GUEST_PAGE_SIZE) {
+    const to = Math.min(from + GUEST_PAGE_SIZE, GUEST_FETCH_LIMIT) - 1;
+    const { data, error } = await supabase.from("guests")
+      .select(select)
+      .eq("property_id", propertyId)
+      .order(orderColumn, { ascending })
+      .range(from, to);
+    if (error) throw error;
+    const batch = (data ?? []) as T[];
+    all.push(...batch);
+    if (batch.length < to - from + 1) break;
+  }
+  return all;
+}
+
 function csvEscape(v: unknown): string {
   const s = v == null ? "" : String(v);
   if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
@@ -97,13 +122,18 @@ function GuestsListPage() {
 
   async function load() {
     if (!propertyId) return;
-    const { data } = await supabase.from("guests")
-      .select("id,name,mobile,email,city,tags,is_blacklisted,gst_number,company")
-      .eq("property_id", propertyId)
-      .order("created_at", { ascending: false })
-      .limit(15500);
-    setRows((data ?? []) as Row[]);
-    setSelected(new Set());
+    try {
+      const data = await fetchGuestsPaginated<Row>(
+        propertyId,
+        "id,name,mobile,email,city,tags,is_blacklisted,gst_number,company",
+        "created_at",
+        false,
+      );
+      setRows(data);
+      setSelected(new Set());
+    } catch (error: any) {
+      toast.error(error?.message ?? "Could not load guests");
+    }
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [propertyId]);
 
@@ -161,9 +191,18 @@ function GuestsListPage() {
 
   async function exportCsv() {
     if (!propertyId) return;
-    const { data } = await supabase.from("guests")
-      .select("name,mobile,email,company,gst_number,id_proof_type,id_proof_number,address,tags,visit_count,notes,created_at")
-      .eq("property_id", propertyId).order("name");
+    let data: any[] = [];
+    try {
+      data = await fetchGuestsPaginated<any>(
+        propertyId,
+        "name,mobile,email,company,gst_number,id_proof_type,id_proof_number,address,tags,visit_count,notes,created_at",
+        "name",
+        true,
+      );
+    } catch (error: any) {
+      toast.error(error?.message ?? "Could not export guests");
+      return;
+    }
     const ids = (data ?? []).map((g: any) => g.id).filter(Boolean);
     void ids;
     const lines = [EXPORT_COLUMNS.join(",")];
