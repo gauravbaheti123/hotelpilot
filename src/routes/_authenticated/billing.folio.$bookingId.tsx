@@ -1716,9 +1716,26 @@ function FolioPage() {
                               <Percent className="h-3.5 w-3.5" />
                             </button>
                           )}
-                          <button onClick={() => removeCharge(c.id)} className="text-destructive">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                          {c.charge_type !== "room" && c.charge_type !== "tax" && c.charge_type !== "discount" && (
+                            <button
+                              type="button"
+                              onClick={() => openEditCharge(c)}
+                              className="text-sky-700"
+                              title="Edit charge"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {canVoid && (
+                            <button
+                              type="button"
+                              onClick={() => removeCharge(c.id)}
+                              className="text-destructive"
+                              title="Delete charge (manager/owner)"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     )}
