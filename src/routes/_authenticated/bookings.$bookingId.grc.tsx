@@ -157,9 +157,63 @@ function GrcPage() {
   }
 
   function printGrc() {
-    // Manual, user-gesture triggered print. Uses browser's native print
-    // dialog so staff can confirm A4 paper size before printing.
-    window.print();
+    // Hidden-iframe print pattern (same approach used by Invoice/KOT flows).
+    // Called synchronously from the button click so the browser keeps the
+    // user-gesture context and never silently blocks the print dialog.
+    const source = document.getElementById("grc-print-area");
+    if (!source) { window.print(); return; }
+    const html = source.outerHTML;
+    const printCss = `
+      @page { size: A4 portrait; margin: 15mm; }
+      html, body { background: #fff; margin: 0; padding: 0; color: #000; font-family: Arial, sans-serif; }
+      .grc-print {
+        width: 100%; max-width: none;
+        min-height: 267mm;
+        margin: 0; padding: 6mm;
+        border: 2px solid #000;
+        box-sizing: border-box;
+        display: flex; flex-direction: column;
+        font-size: 12.5pt; line-height: 1.55;
+      }
+      .grc-print .grc-signatures { margin-top: auto; padding-top: 18mm; }
+      .grc-print h1, .grc-print h2, .grc-print .grc-title { font-size: 16pt; }
+      .grc-print .grc-section-label { font-size: 11pt; }
+      table { border-collapse: collapse; width: 100%; }
+      td, th { vertical-align: top; }
+      img { max-width: 100%; }
+    `;
+    const doc = `<!doctype html><html><head><meta charset="utf-8"><title>GRC ${grc.grc_number ?? ""}</title><style>${printCss}</style></head><body>${html}</body></html>`;
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute("aria-hidden", "true");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.style.opacity = "0";
+    document.body.appendChild(iframe);
+    let cleaned = false;
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      try { iframe.parentNode?.removeChild(iframe); } catch {}
+    };
+    iframe.onload = () => {
+      const win = iframe.contentWindow;
+      if (!win) { cleanup(); return; }
+      try { win.focus(); } catch {}
+      try {
+        win.addEventListener("afterprint", () => setTimeout(cleanup, 200));
+      } catch {}
+      // Give the browser a tick to lay out before invoking print.
+      setTimeout(() => {
+        try { win.print(); } catch { cleanup(); }
+        // Fallback cleanup in case afterprint never fires.
+        setTimeout(cleanup, 60_000);
+      }, 50);
+    };
+    iframe.srcdoc = doc;
   }
 
   if (loading) return <AppShell title="Guest Registration Card"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
