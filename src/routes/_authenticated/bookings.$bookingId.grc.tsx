@@ -156,7 +156,13 @@ function GrcPage() {
     return number ?? null;
   }
 
-  function printGrc() {
+  async function printGrc() {
+    // Auto-save first if the GRC hasn't been persisted yet — Print should
+    // never depend on external printer/QZ status, only on having data ready.
+    if (!grc.id) {
+      const num = await save();
+      if (!num) return;
+    }
     // Hidden-iframe print pattern (same approach used by Invoice/KOT flows).
     // Called synchronously from the button click so the browser keeps the
     // user-gesture context and never silently blocks the print dialog.
@@ -265,7 +271,7 @@ function GrcPage() {
           <Button variant="outline" onClick={save} disabled={saving}>
             <Save className="h-4 w-4 mr-1" /> {saving ? "Saving…" : "Save"}
           </Button>
-          <Button onClick={printGrc} disabled={saving || !grc.id}>
+          <Button onClick={printGrc} disabled={saving}>
             <Printer className="h-4 w-4 mr-1" /> Print GRC
           </Button>
         </div>
