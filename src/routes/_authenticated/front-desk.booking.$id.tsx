@@ -91,6 +91,7 @@ interface BookingDetail {
   advance_amount: number;
   balance_amount: number;
   notes: string | null;
+  custom_remark: string | null;
   checked_in_at: string | null;
   checked_out_at: string | null;
   property_id: string;
@@ -170,7 +171,7 @@ function BookingDetailPage() {
       .from("bookings")
       .select(`
         id,booking_number,status,source,check_in,check_out,adults,children,
-        total_amount,advance_amount,balance_amount,notes,checked_in_at,checked_out_at,property_id,
+        total_amount,advance_amount,balance_amount,notes,custom_remark,checked_in_at,checked_out_at,property_id,
         guests(id,name,mobile,email,address,id_proof_type,id_proof_number),
         booking_rooms(id,room_id,category_id,rate,meal_plan,adults,children,check_in,check_out,actual_check_in,actual_check_out,
           rooms!booking_rooms_room_id_fkey(room_number),
@@ -583,6 +584,12 @@ function BookingDetailPage() {
             </CardContent>
           </Card>
         </div>
+
+        <CustomRemarkCard
+          bookingId={b.id}
+          initial={b.custom_remark ?? ""}
+          onSaved={(v) => { b.custom_remark = v || null; }}
+        />
 
         <Card>
           <CardHeader><CardTitle className="text-base">Room(s)</CardTitle></CardHeader>
