@@ -231,7 +231,7 @@ function BanquetBillPage() {
   const billDiscAmt = computeBillDiscountAmount(netSubtotal, billDisc);
   const discount = Math.round((totalLineDisc + billDiscAmt) * 100) / 100;
   const taxable = Math.max(0, netSubtotal - billDiscAmt);
-  const gstRate = 0.12;
+  const gstRate = 0.05;
   const cgst = isGst ? Math.round((taxable * gstRate / 2) * 100) / 100 : 0;
   const sgst = cgst;
   const totalRaw = Math.round((taxable + (isGst ? cgst + sgst : 0)) * 100) / 100;
@@ -478,8 +478,8 @@ function BanquetBillPage() {
       <table class="totals">
         <tr><td>Subtotal</td><td class="right">${inr(subtotal)}</td></tr>
         ${discount > 0 ? `<tr><td>Discount</td><td class="right">- ${inr(discount)}</td></tr>` : ""}
-        ${isGst ? `<tr><td>CGST 6%</td><td class="right">${inr(cgst)}</td></tr>
-                   <tr><td>SGST 6%</td><td class="right">${inr(sgst)}</td></tr>` : ""}
+        ${isGst ? `<tr><td>CGST 2.5%</td><td class="right">${inr(cgst)}</td></tr>
+                   <tr><td>SGST 2.5%</td><td class="right">${inr(sgst)}</td></tr>` : ""}
         ${Math.abs(roundOff) >= 0.01 ? `<tr><td>Round Off</td><td class="right">${roundOff >= 0 ? "+ " : "- "}${inr(Math.abs(roundOff))}</td></tr>` : ""}
         <tr class="grand"><td>Total</td><td class="right">${inrRound(total)}</td></tr>
         <tr><td>Advance</td><td class="right">- ${inr(advance)}</td></tr>
@@ -761,8 +761,8 @@ function BanquetBillPage() {
                   </Button>
                 </div>
                 {isGst && (<>
-                  <SummaryRow label="CGST 6%" value={inr(cgst)} />
-                  <SummaryRow label="SGST 6%" value={inr(sgst)} />
+                  <SummaryRow label="CGST 2.5%" value={inr(cgst)} />
+                  <SummaryRow label="SGST 2.5%" value={inr(sgst)} />
                 </>)}
                 {Math.abs(roundOff) >= 0.01 && (
                   <SummaryRow

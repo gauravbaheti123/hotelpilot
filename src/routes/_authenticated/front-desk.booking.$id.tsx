@@ -456,7 +456,7 @@ function BookingDetailPage() {
           ),
         );
         const amt = n * Number(br.rate);
-        const gstR = Number((br as any).room_categories?.gst_rate ?? 12);
+        const gstR = Number((br as any).room_categories?.gst_rate ?? 5);
         return {
           folio_id: fId,
           charge_type: "room",

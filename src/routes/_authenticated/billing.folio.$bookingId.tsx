@@ -102,7 +102,7 @@ interface GstSlab {
 /** Resolve the GST% for a room whose nightly tariff is `nightlyRate`.
  * When the property has "Custom GST Slabs" enabled, look up the matching
  * slab row (from_amount ≤ nightlyRate ≤ to_amount). Otherwise fall back to
- * the room category's configured gst_rate, then to 12%. */
+ * the room category's configured gst_rate, then to a flat 5%. */
 function resolveRoomGstRate(
   nightlyRate: number,
   useSlabs: boolean,
@@ -117,7 +117,7 @@ function resolveRoomGstRate(
     if (hit) return Number(hit.gst_rate);
   }
   const cat = Number(categoryGst);
-  return Number.isFinite(cat) && cat > 0 ? cat : 12;
+  return Number.isFinite(cat) && cat > 0 ? cat : 5;
 }
 interface PendingKot {
   id: string; kot_number: string; status: string;
