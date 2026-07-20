@@ -116,8 +116,11 @@ function resolveRoomGstRate(
     );
     if (hit) return Number(hit.gst_rate);
   }
-  const cat = Number(categoryGst);
-  return Number.isFinite(cat) && cat > 0 ? cat : 5;
+  // Statutory tiered slabs (Sept 2025 rule): 0% ≤ ₹1000, 5% ≤ ₹7500, 18% > ₹7500.
+  const r = Number(nightlyRate) || 0;
+  if (r <= 1000) return 0;
+  if (r <= 7500) return 5;
+  return 18;
 }
 interface PendingKot {
   id: string; kot_number: string; status: string;
