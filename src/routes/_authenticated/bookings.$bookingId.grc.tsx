@@ -160,15 +160,12 @@ function GrcPage() {
   async function saveAndPrint() {
     const num = await save();
     if (!num) return;
-    setTimeout(() => {
-      void printDomViaQZ({
-        elementId: "grc-print-area",
-        propertyId: booking?.property_id,
-        paperSizeOverride: "A4",
-        title: `GRC-${num}`,
-        fallback: () => window.print(),
-      });
-    }, 100);
+  }
+
+  function printGrc() {
+    // Manual, user-gesture triggered print. Uses browser's native print
+    // dialog so staff can confirm A4 paper size before printing.
+    window.print();
   }
 
   if (loading) return <AppShell title="Guest Registration Card"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
@@ -220,8 +217,11 @@ function GrcPage() {
           <Button variant="outline" onClick={save} disabled={saving}>
             <Save className="h-4 w-4 mr-1" /> {saving ? "Saving…" : "Save"}
           </Button>
-          <Button onClick={saveAndPrint} disabled={saving}>
-            <Printer className="h-4 w-4 mr-1" /> Save & Print
+          <Button variant="outline" onClick={saveAndPrint} disabled={saving}>
+            <Save className="h-4 w-4 mr-1" /> Save
+          </Button>
+          <Button onClick={printGrc} disabled={saving || !grc.id}>
+            <Printer className="h-4 w-4 mr-1" /> Print GRC
           </Button>
         </div>
 
