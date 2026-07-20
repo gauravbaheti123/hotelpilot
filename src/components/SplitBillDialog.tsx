@@ -20,6 +20,7 @@ import {
 } from "@/lib/billing";
 import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
+import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { ArrowLeft, ArrowRight, Loader2, SplitSquareHorizontal, Plus, Trash2 } from "lucide-react";
@@ -253,6 +254,8 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     if (splitType === "different" && !party2.name.trim()) {
       return toast.error("Party 2 name required");
     }
+    if (!isValidOrEmptyGSTIN(party1.gstin ?? "")) return toast.error(`Party 1: ${GSTIN_ERROR}`);
+    if (splitType === "different" && !isValidOrEmptyGSTIN(party2.gstin ?? "")) return toast.error(`Party 2: ${GSTIN_ERROR}`);
     setBusy(true);
     try {
       // 1) Create Invoice A + Invoice B FIRST. Only void the original after both succeed.
@@ -417,6 +420,8 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     if (!folio || !booking) return;
     if (parties.length < 2) return toast.error("Add at least two parties");
     if (parties.some((p) => !p.name.trim())) return toast.error("Every party needs a name");
+    const badIdx = parties.findIndex((p) => !isValidOrEmptyGSTIN(p.gstin ?? ""));
+    if (badIdx >= 0) return toast.error(`Party ${badIdx + 1}: ${GSTIN_ERROR}`);
     if (baseCharges.length === 0) return toast.error("Nothing to split — pick a charge line or use the whole bill");
     if (!shareDistribution.valid) {
       return toast.error(
@@ -1037,8 +1042,16 @@ function PartyEditor({
         )}
         <div>
           <Label className="text-xs">GSTIN (optional)</Label>
-          <Input value={party.gstin ?? ""}
-            onChange={(e) => setParty({ ...party, gstin: e.target.value })} />
+          <Input
+            value={party.gstin ?? ""}
+            maxLength={15}
+            placeholder="e.g. 27AASFB5351R1ZM"
+            onChange={(e) => setParty({ ...party, gstin: e.target.value.toUpperCase() })}
+            className={party.gstin && !isValidOrEmptyGSTIN(party.gstin) ? "border-red-500 focus-visible:ring-red-500" : ""}
+          />
+          {party.gstin && !isValidOrEmptyGSTIN(party.gstin) && (
+            <p className="mt-1 text-[11px] text-red-600">{GSTIN_ERROR}</p>
+          )}
         </div>
         {showBillType && (
           <div>
