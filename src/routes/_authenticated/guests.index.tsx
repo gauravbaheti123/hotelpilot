@@ -100,7 +100,8 @@ function GuestsListPage() {
     const { data } = await supabase.from("guests")
       .select("id,name,mobile,email,city,tags,is_blacklisted,gst_number,company")
       .eq("property_id", propertyId)
-      .order("created_at", { ascending: false }).limit(500);
+      .order("created_at", { ascending: false })
+      .limit(10000);
     setRows((data ?? []) as Row[]);
     setSelected(new Set());
   }
