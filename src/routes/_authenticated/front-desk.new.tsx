@@ -256,7 +256,12 @@ function NewBookingPage() {
   }
 
   const nights = nightsBetween(checkIn, checkOut);
-  const total = nights * rate;
+  const extraBedRate = useMemo(() => {
+    const cat = cats.find((c) => c.id === categoryId);
+    return Number(cat?.extra_bed_rate) || 0;
+  }, [cats, categoryId]);
+  const extraBedTotal = extraBed ? nights * extraBedRate * extraBedQty : 0;
+  const total = nights * rate + extraBedTotal;
   const balance = Math.max(0, total - advance);
   const availableRooms = rooms.filter(
     (r) => (!categoryId || r.category_id === categoryId) && r.status === "vacant",
