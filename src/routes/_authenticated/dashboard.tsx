@@ -863,6 +863,12 @@ function OwnerDashboard({
           navigate({ to: "/food/new", search: { bookingId: bid } } as any);
           if (roomNo) toast.success(`Opening New KOT for Room ${roomNo}`);
         }}
+        onOtherCharges={(bid: string) => {
+          const roomNo = modalRoom?.room_number;
+          setModalRoom(null);
+          navigate({ to: "/pos", search: { booking_id: bid } } as any);
+          if (roomNo) toast.success(`Opening Other Charges for Room ${roomNo}`);
+        }}
       />
       <CheckoutDialog
         bookingId={checkoutBookingId}
