@@ -1405,11 +1405,11 @@ function FolioPage() {
                    style={{ background: TEAL, color: "#ffffff", borderRadius: 0 }}>
                 <div className="flex items-center gap-4 min-w-0">
                   {property?.logo_url ? (
-                    <div style={{ background: "#ffffff", padding: 6, borderRadius: 0 }}>
-                      <img src={property.logo_url} alt="" style={{ height: 64, width: 64, objectFit: "contain", display: "block" }} />
+                    <div style={{ background: "#ffffff", padding: 8, borderRadius: 0 }}>
+                      <img src={property.logo_url} alt="" style={{ height: 96, width: 96, objectFit: "contain", display: "block" }} />
                     </div>
                   ) : (
-                    <div style={{ background: "#ffffff", color: TEAL_DARK, height: 76, width: 76, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 26, letterSpacing: 2 }}>
+                    <div style={{ background: "#ffffff", color: TEAL_DARK, height: 112, width: 112, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 34, letterSpacing: 2 }}>
                       {(property?.name ?? "HP").split(/\s+/).slice(0, 2).map(s => s[0]).join("").toUpperCase()}
                     </div>
                   )}
@@ -1424,10 +1424,10 @@ function FolioPage() {
                   </div>
                 </div>
                 <div style={{ textAlign: "right", color: "#ffffff" }}>
-                  <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: 3, lineHeight: 1 }}>
+                  <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 2, lineHeight: 1 }}>
                     {isGst ? "TAX INVOICE" : "CASH BILL"}
                   </div>
-                  <div style={{ fontSize: 12, marginTop: 8 }}>No: <b>{folio.invoice_number}</b></div>
+                  <div style={{ fontSize: 13, marginTop: 8, fontWeight: 700 }}>Bill No: <span style={{ fontWeight: 700 }}>{folio.invoice_number}</span></div>
                   <div style={{ fontSize: 12 }}>Date: <b>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b></div>
                   <div style={{ fontSize: 12 }}>Booking: <b>{booking.booking_number}</b></div>
                 </div>
