@@ -1417,9 +1417,16 @@ function FolioPage() {
                     <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: 0.3, color: "#ffffff", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {property?.name ?? "Hotel"}
                     </div>
-                    <div style={{ fontSize: 11, color: "#ffffff", opacity: 0.9, marginTop: 4, lineHeight: 1.4 }}>
-                      {[propAddrLine, property?.phone ? `Ph: ${property.phone}` : null, property?.email ?? null, property?.gstin ? `GSTIN: ${property.gstin}` : null]
-                        .filter(Boolean).join("  |  ")}
+                    <div style={{ fontSize: 11, color: "#ffffff", opacity: 0.95, marginTop: 6, lineHeight: 1.6 }}>
+                      {propAddrLine && <div>{propAddrLine}</div>}
+                      {(property?.phone || property?.email) && (
+                        <div style={{ marginTop: 2 }}>
+                          {property?.phone ? `Ph: ${property.phone}` : ""}
+                          {property?.phone && property?.email ? "  |  " : ""}
+                          {property?.email ?? ""}
+                        </div>
+                      )}
+                      {property?.gstin && <div style={{ marginTop: 2 }}>GSTIN: {property.gstin}</div>}
                     </div>
                   </div>
                 </div>
