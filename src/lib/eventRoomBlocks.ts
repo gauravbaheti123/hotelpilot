@@ -194,12 +194,16 @@ export async function checkInBlock(args: {
   const bookingId = (bk as any).id as string;
 
   // 3. booking_rooms
-  await supabase.from("booking_rooms").insert({
+  const { error: brErr } = await supabase.from("booking_rooms").insert({
     booking_id: bookingId,
+    property_id: propertyId,
     room_id: block.room_id,
     rate: block.special_rate ?? 0,
+    check_in: block.checkin_date,
+    check_out: block.checkout_date,
     actual_check_in: new Date().toISOString(),
   } as any);
+  if (brErr) throw brErr;
 
   // 4. update room and block
   await supabase.from("rooms").update({ status: "occupied" } as any).eq("id", block.room_id!);
