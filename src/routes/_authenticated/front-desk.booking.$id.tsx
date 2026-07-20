@@ -588,7 +588,7 @@ function BookingDetailPage() {
         <CustomRemarkCard
           bookingId={b.id}
           initial={b.custom_remark ?? ""}
-          onSaved={(v) => { b.custom_remark = v || null; }}
+          onSaved={(v: string) => { b.custom_remark = v || null; }}
         />
 
         <Card>
