@@ -123,6 +123,7 @@ function RoomsMasterPage() {
       base_rate: Number(editingCat.base_rate ?? 0),
       max_occupancy: Number(editingCat.max_occupancy ?? 2),
       extra_bed_rate: Number(editingCat.extra_bed_rate ?? 0),
+      complimentary_food_limit_per_person: Number(editingCat.complimentary_food_limit_per_person ?? 0),
       is_active: editingCat.is_active ?? true,
     };
     const res = editingCat.id
@@ -325,6 +326,18 @@ function RoomsMasterPage() {
                             setEditingCat({
                               ...editingCat,
                               extra_bed_rate: Number(e.target.value),
+                            })
+                          }
+                        />
+                      </Box>
+                      <Box label="Complimentary food (₹ / person / night)">
+                        <Input
+                          type="number"
+                          value={editingCat.complimentary_food_limit_per_person ?? 0}
+                          onChange={(e) =>
+                            setEditingCat({
+                              ...editingCat,
+                              complimentary_food_limit_per_person: Number(e.target.value),
                             })
                           }
                         />
