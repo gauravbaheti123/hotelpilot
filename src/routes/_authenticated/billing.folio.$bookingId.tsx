@@ -68,7 +68,7 @@ interface Folio {
   discount_type?: "percent" | "amount";
   discount_value?: number;
   round_off_amount?: number;
-  complimentary_food_used?: number | null;
+  complimentary_food_used?: number;
 }
 interface BookingCtx {
   id: string; booking_number: string; status: string;
