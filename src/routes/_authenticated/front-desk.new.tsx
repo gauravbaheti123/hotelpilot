@@ -407,6 +407,7 @@ function NewBookingPage() {
           custom_remark: customRemark.trim() || null,
           event_id: search?.eventId ?? null,
           created_by: user?.id ?? null,
+          rate_type: rateType,
           checked_in_at: checkInNow ? new Date().toISOString() : null,
           checked_in_by: checkInNow ? (user?.id ?? null) : null,
         } as any)
