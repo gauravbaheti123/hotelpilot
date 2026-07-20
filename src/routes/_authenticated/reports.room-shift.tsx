@@ -8,14 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { RequirePermission } from "@/components/RequirePermission";
+import { ReportDataTable } from "@/components/ReportDataTable";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  ReportColumn, exportExcel, exportPdf, fmtDate, fmtDateTime, fmtINR, firstOfMonthIso,
+  ReportColumn, exportExcel, exportPdf, fmtDateTime, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
 
 export const Route = createFileRoute("/_authenticated/reports/room-shift")({
@@ -49,6 +47,7 @@ function Page() {
   const [catFilter, setCatFilter] = useState("all");
   const [cats, setCats] = useState<Array<{ id: string; name: string }>>([]);
   const [rows, setRows] = useState<Row[]>([]);
+  const [derived, setDerived] = useState<Row[]>([]);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -111,28 +110,28 @@ function Page() {
   }), [rows, typeFilter, catFilter, cats]);
 
   const totals = useMemo(() => {
-    const kept = filtered.filter((r) => r.rate_type === "original_rate").length;
-    const newApp = filtered.filter((r) => r.rate_type === "new_rate").length;
-    const diff = filtered.reduce((s, r) => s + r.difference, 0);
-    return { total: filtered.length, kept, newApp, diff };
-  }, [filtered]);
+    const kept = derived.filter((r) => r.rate_type === "original_rate").length;
+    const newApp = derived.filter((r) => r.rate_type === "new_rate").length;
+    const diff = derived.reduce((s, r) => s + r.difference, 0);
+    return { total: derived.length, kept, newApp, diff };
+  }, [derived]);
 
   const columns: ReportColumn<Row>[] = [
-    { key: "booking_number", header: "Booking #", get: (r) => r.booking_number },
-    { key: "guest_name", header: "Guest", get: (r) => r.guest_name },
-    { key: "from_room", header: "Original Room", get: (r) => r.from_room },
-    { key: "to_room", header: "New Room", get: (r) => r.to_room },
-    { key: "shifted_at", header: "Shift Date", get: (r) => fmtDateTime(r.shifted_at) },
-    { key: "old_rate", header: "Original Rate", get: (r) => r.old_rate, currency: true },
-    { key: "new_rate", header: "New Room Rate", get: (r) => r.new_rate, currency: true },
-    { key: "rate_applied", header: "Rate Applied", get: (r) => r.rate_applied, currency: true },
-    { key: "rate_type", header: "Rate Type", get: (r) => r.rate_type === "original_rate" ? "Original Rate Kept" : "New Room Rate Applied" },
-    { key: "difference", header: "Difference", get: (r) => r.difference, currency: true },
-    { key: "total_room_bill", header: "Total Room Bill", get: (r) => r.total_room_bill, currency: true },
+    { key: "booking_number", header: "Booking #", get: (r) => r.booking_number, type: "text" },
+    { key: "guest_name", header: "Guest", get: (r) => r.guest_name, type: "text" },
+    { key: "from_room", header: "Original Room", get: (r) => r.from_room, type: "enum" },
+    { key: "to_room", header: "New Room", get: (r) => r.to_room, type: "enum" },
+    { key: "shifted_at", header: "Shift Date", get: (r) => fmtDateTime(r.shifted_at), type: "date", sortValue: (r) => r.shifted_at, dateValue: (r) => r.shifted_at },
+    { key: "old_rate", header: "Original Rate", get: (r) => r.old_rate, currency: true, sortValue: (r) => r.old_rate },
+    { key: "new_rate", header: "New Room Rate", get: (r) => r.new_rate, currency: true, sortValue: (r) => r.new_rate },
+    { key: "rate_applied", header: "Rate Applied", get: (r) => r.rate_applied, currency: true, sortValue: (r) => r.rate_applied },
+    { key: "rate_type", header: "Rate Type", get: (r) => r.rate_type === "original_rate" ? "Original Rate Kept" : "New Room Rate Applied", type: "enum" },
+    { key: "difference", header: "Difference", get: (r) => r.difference, currency: true, sortValue: (r) => r.difference },
+    { key: "total_room_bill", header: "Total Room Bill", get: (r) => r.total_room_bill, currency: true, sortValue: (r) => r.total_room_bill },
   ];
 
   function doExcel() {
-    exportExcel(filtered, columns, {
+    exportExcel(derived, columns, {
       reportName: "Room Shift Billing Report",
       propertyName: current?.name ?? "",
       from, to,
@@ -145,7 +144,7 @@ function Page() {
     });
   }
   function doPdf() {
-    exportPdf(filtered, columns, {
+    exportPdf(derived, columns, {
       reportName: "Room Shift Billing Report",
       propertyName: current?.name ?? "",
       from, to,
@@ -199,48 +198,14 @@ function Page() {
       </div>
 
       <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Booking #</TableHead>
-                <TableHead>Guest</TableHead>
-                <TableHead>From → To</TableHead>
-                <TableHead>Shift Date</TableHead>
-                <TableHead className="text-right">Original Rate</TableHead>
-                <TableHead className="text-right">New Room Rate</TableHead>
-                <TableHead className="text-right">Applied</TableHead>
-                <TableHead>Rate Type</TableHead>
-                <TableHead className="text-right">Diff</TableHead>
-                <TableHead className="text-right">Total Bill</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 && (
-                <TableRow><TableCell colSpan={10} className="text-center text-sm text-muted-foreground py-6">No shifts in range.</TableCell></TableRow>
-              )}
-              {filtered.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="font-mono text-xs">{r.booking_number}</TableCell>
-                  <TableCell>{r.guest_name}</TableCell>
-                  <TableCell>{r.from_room} → {r.to_room}</TableCell>
-                  <TableCell className="text-xs">{fmtDate(r.shifted_at)}</TableCell>
-                  <TableCell className="text-right">{fmtINR(r.old_rate)}</TableCell>
-                  <TableCell className="text-right">{fmtINR(r.new_rate)}</TableCell>
-                  <TableCell className="text-right font-medium">{fmtINR(r.rate_applied)}</TableCell>
-                  <TableCell>
-                    {r.rate_type === "original_rate"
-                      ? <Badge className="bg-amber-100 text-amber-800 border-amber-300" variant="outline">Original Rate Kept</Badge>
-                      : <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300" variant="outline">New Room Rate Applied</Badge>}
-                  </TableCell>
-                  <TableCell className={`text-right ${r.difference > 0 ? "text-emerald-700" : r.difference < 0 ? "text-rose-700" : ""}`}>
-                    {r.difference > 0 ? "+" : ""}{fmtINR(r.difference)}
-                  </TableCell>
-                  <TableCell className="text-right">{fmtINR(r.total_room_bill)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <CardContent className="pt-4">
+          <ReportDataTable
+            rows={filtered}
+            columns={columns}
+            onDerivedRowsChange={setDerived}
+            rowKey={(r) => r.id}
+            emptyText="No shifts in range."
+          />
         </CardContent>
       </Card>
     </ReportShell>
