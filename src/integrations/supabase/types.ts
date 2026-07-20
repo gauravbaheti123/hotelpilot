@@ -806,6 +806,7 @@ export type Database = {
           is_wiped: boolean
           notes: string | null
           property_id: string
+          rate_type: string
           restaurant_ledger_balance: number
           source: string | null
           status: Database["public"]["Enums"]["booking_status"]
@@ -837,6 +838,7 @@ export type Database = {
           is_wiped?: boolean
           notes?: string | null
           property_id: string
+          rate_type?: string
           restaurant_ledger_balance?: number
           source?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
@@ -868,6 +870,7 @@ export type Database = {
           is_wiped?: boolean
           notes?: string | null
           property_id?: string
+          rate_type?: string
           restaurant_ledger_balance?: number
           source?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
