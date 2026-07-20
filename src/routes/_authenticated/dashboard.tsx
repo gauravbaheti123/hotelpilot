@@ -1380,6 +1380,11 @@ function RoomStatusModal({
                 <Receipt className="h-4 w-4 mr-2" /> Add Other Charges
               </Button>
             )}
+            {showExtraBed && (
+              <Button variant="outline" onClick={() => bookingId && onAddExtraBed(bookingId)}>
+                <BedDouble className="h-4 w-4 mr-2" /> Add Extra Bed
+              </Button>
+            )}
           </div>
         )}
 
