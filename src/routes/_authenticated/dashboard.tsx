@@ -1592,9 +1592,11 @@ function BulkCheckoutDialog({
 }
 
 function AssignGuestDialog({
-  block, onClose, onDone,
+  block, propertyId, userId, onClose, onDone,
 }: {
   block: EventBlockRecord | null;
+  propertyId: string | null;
+  userId: string;
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -1603,7 +1605,7 @@ function AssignGuestDialog({
   const [busy, setBusy] = useState(false);
   useEffect(() => { setName(block?.guest_name ?? ""); setMobile(block?.guest_mobile ?? ""); }, [block?.id]);
   if (!block) return null;
-  const save = async () => {
+  const saveOnly = async () => {
     setBusy(true);
     const { error } = await supabase.from("event_room_blocks").update({
       guest_name: name.trim() || null, guest_mobile: mobile.trim() || null,
@@ -1612,6 +1614,28 @@ function AssignGuestDialog({
     if (error) return toast.error(error.message);
     toast.success("Guest assigned");
     onDone();
+  };
+  const saveAndCheckIn = async () => {
+    if (!propertyId || !userId) return toast.error("Missing property or user");
+    if (!name.trim() || !mobile.trim()) return toast.error("Name and mobile required");
+    setBusy(true);
+    const { error: upErr } = await supabase.from("event_room_blocks").update({
+      guest_name: name.trim(), guest_mobile: mobile.trim(),
+    } as any).eq("id", block.id);
+    if (upErr) { setBusy(false); return toast.error(upErr.message); }
+    try {
+      await checkInBlock({
+        propertyId,
+        block: { ...block, guest_name: name.trim(), guest_mobile: mobile.trim() },
+        userId,
+      });
+      toast.success(`Room ${block.room_number} checked in`);
+      onDone();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Check-in failed");
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <Dialog open={!!block} onOpenChange={(o) => !o && onClose()}>
@@ -1623,7 +1647,8 @@ function AssignGuestDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button disabled={busy} onClick={save}>{busy ? "Saving…" : "Save"}</Button>
+          <Button variant="secondary" disabled={busy} onClick={saveOnly}>{busy ? "Saving…" : "Save"}</Button>
+          <Button disabled={busy} onClick={saveAndCheckIn}>{busy ? "Working…" : "Save & Check In"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
