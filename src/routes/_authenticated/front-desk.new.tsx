@@ -46,7 +46,7 @@ export const Route = createFileRoute("/_authenticated/front-desk/new")({
   component: () => (<RequirePermission module="bookings"><NewBookingPage /></RequirePermission>),
 });
 
-interface Category { id: string; name: string; base_rate: number; max_occupancy: number; }
+interface Category { id: string; name: string; base_rate: number; max_occupancy: number; extra_bed_rate: number; }
 interface RoomRow { id: string; room_number: string; category_id: string | null; status: string; }
 interface Tariff { id: string; name: string; category_id: string | null; rate: number; meal_plan: string; }
 interface AdditionalGuest {
@@ -111,6 +111,10 @@ function NewBookingPage() {
   const [idFile, setIdFile] = useState<SelectedIdFile | null>(null);
   const [customRemark, setCustomRemark] = useState("");
 
+  // Extra bed
+  const [extraBed, setExtraBed] = useState(false);
+  const [extraBedQty, setExtraBedQty] = useState(1);
+
   const [checkIn, setCheckIn] = useState(todayIso());
   const [checkOut, setCheckOut] = useState(addDaysIso(todayIso(), 1));
   const [adults, setAdults] = useState(1);
@@ -160,7 +164,7 @@ function NewBookingPage() {
     if (!current) return;
     (async () => {
       const [c, r, t] = await Promise.all([
-        supabase.from("room_categories").select("id,name,base_rate,max_occupancy").eq("property_id", current.id).order("name"),
+        supabase.from("room_categories").select("id,name,base_rate,max_occupancy,extra_bed_rate").eq("property_id", current.id).order("name"),
         supabase.from("rooms").select("id,room_number,category_id,status").eq("property_id", current.id).order("room_number"),
         supabase.from("tariff_plans").select("id,name,category_id,rate,meal_plan").eq("property_id", current.id).eq("is_active", true).order("name"),
       ]);
