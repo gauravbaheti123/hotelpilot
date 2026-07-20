@@ -31,6 +31,7 @@ function NewGuestPage() {
   const [idNumber, setIdNumber] = useState("");
   const [address, setAddress] = useState("");
   const [company, setCompany] = useState("");
+  const [gstNumber, setGstNumber] = useState("");
   const [guestType, setGuestType] = useState<"regular" | "corporate" | "vip">("regular");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -52,6 +53,7 @@ function NewGuestPage() {
       id_proof_number: idNumber.trim() || null,
       address: address.trim() || null,
       company: company.trim() || null,
+      gst_number: gstNumber.trim().toUpperCase() || null,
       notes: notes.trim() || null,
       tags,
     }).select("id").single();
@@ -105,6 +107,11 @@ function NewGuestPage() {
               <Field label="Company Name">
                 <Input value={company} onChange={(e) => setCompany(e.target.value)} maxLength={200} placeholder="e.g. Growth Story Pvt Ltd" />
                 <p className="mt-1 text-[11px] text-muted-foreground">Optional — useful for corporate / business travelers</p>
+              </Field>
+            </div>
+            <div className="md:col-span-2">
+              <Field label="GST Number">
+                <Input value={gstNumber} onChange={(e) => setGstNumber(e.target.value.toUpperCase())} maxLength={15} placeholder="e.g. 29ABCDE1234F1Z5" />
               </Field>
             </div>
             <div className="md:col-span-2"><Field label="Address"><Textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} /></Field></div>

@@ -74,7 +74,7 @@ interface BookingCtx {
   check_in: string; check_out: string; total_amount: number;
   property_id: string; adults: number | null; children: number | null;
   guests: {
-    name: string; mobile: string | null; gst_number: string | null; company: string | null;
+    name: string; mobile: string | null; gst_number: string | null; company: string | null; address: string | null;
     id_proof_type: string | null; id_proof_number: string | null; nationality: string | null;
   } | null;
   booking_rooms: {
@@ -216,7 +216,7 @@ function FolioPage() {
     const { data: b, error: be } = await supabase
       .from("bookings")
       .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,
-        guests(name,mobile,gst_number,company,id_proof_type,id_proof_number,nationality),
+        guests(name,mobile,gst_number,company,address,id_proof_type,id_proof_number,nationality),
         booking_rooms(id,rate,check_in,check_out,actual_check_in,actual_check_out,rooms!booking_rooms_room_id_fkey(room_number),room_categories(name,gst_rate))`)
       .eq("id", bookingId).single();
     if (be) { toast.error(be.message); setLoading(false); return; }
@@ -1405,11 +1405,11 @@ function FolioPage() {
                    style={{ background: TEAL, color: "#ffffff", borderRadius: 0 }}>
                 <div className="flex items-center gap-4 min-w-0">
                   {property?.logo_url ? (
-                    <div style={{ background: "#ffffff", padding: 6, borderRadius: 0 }}>
-                      <img src={property.logo_url} alt="" style={{ height: 64, width: 64, objectFit: "contain", display: "block" }} />
+                    <div style={{ background: "#ffffff", padding: 8, borderRadius: 0 }}>
+                      <img src={property.logo_url} alt="" style={{ height: 96, width: 96, objectFit: "contain", display: "block" }} />
                     </div>
                   ) : (
-                    <div style={{ background: "#ffffff", color: TEAL_DARK, height: 76, width: 76, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 26, letterSpacing: 2 }}>
+                    <div style={{ background: "#ffffff", color: TEAL_DARK, height: 112, width: 112, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 34, letterSpacing: 2 }}>
                       {(property?.name ?? "HP").split(/\s+/).slice(0, 2).map(s => s[0]).join("").toUpperCase()}
                     </div>
                   )}
@@ -1424,10 +1424,10 @@ function FolioPage() {
                   </div>
                 </div>
                 <div style={{ textAlign: "right", color: "#ffffff" }}>
-                  <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: 3, lineHeight: 1 }}>
+                  <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 2, lineHeight: 1 }}>
                     {isGst ? "TAX INVOICE" : "CASH BILL"}
                   </div>
-                  <div style={{ fontSize: 12, marginTop: 8 }}>No: <b>{folio.invoice_number}</b></div>
+                  <div style={{ fontSize: 13, marginTop: 8, fontWeight: 700 }}>Bill No: <span style={{ fontWeight: 700 }}>{folio.invoice_number}</span></div>
                   <div style={{ fontSize: 12 }}>Date: <b>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b></div>
                   <div style={{ fontSize: 12 }}>Booking: <b>{booking.booking_number}</b></div>
                 </div>
@@ -1476,8 +1476,15 @@ function FolioPage() {
               <div className="mb-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Bill To</div>
               <div className="text-base font-semibold">{booking.guests?.name ?? "—"}</div>
               {booking.guests?.mobile && <div className="text-xs text-gray-700">Mobile: {booking.guests.mobile}</div>}
-              {isGst && folio.guest_gstin && <div className="text-xs text-gray-700">GSTIN: {folio.guest_gstin}</div>}
-              {isGst && folio.guest_company && <div className="text-xs text-gray-700">{folio.guest_company}</div>}
+              {(folio.guest_company || booking.guests?.company) && (
+                <div className="text-xs text-gray-700">{folio.guest_company || booking.guests?.company}</div>
+              )}
+              {(folio.guest_gstin || booking.guests?.gst_number) && (
+                <div className="text-xs text-gray-700">GSTIN: {folio.guest_gstin || booking.guests?.gst_number}</div>
+              )}
+              {booking.guests?.address && (
+                <div className="text-xs text-gray-700">{booking.guests.address}</div>
+              )}
             </div>
             <div className="px-8 py-4">
               <div className="mb-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Stay Details</div>
