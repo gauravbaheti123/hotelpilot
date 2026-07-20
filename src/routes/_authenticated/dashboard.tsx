@@ -1259,7 +1259,7 @@ function roomTileStyle(r: Room, isOccupied: boolean): { bg: string; label: strin
 }
 
 function RoomStatusModal({
-  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onNewKot, onOtherCharges,
+  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onNewKot, onOtherCharges, onAddExtraBed,
 }: {
   room: Room | null;
   kind: TileKind | null;
@@ -1272,6 +1272,7 @@ function RoomStatusModal({
   onCheckout: (bookingId: string) => void;
   onNewKot: (bookingId: string) => void;
   onOtherCharges: (bookingId: string) => void;
+  onAddExtraBed: (bookingId: string) => void;
 }) {
   const [staffId, setStaffId] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
@@ -1281,6 +1282,8 @@ function RoomStatusModal({
   const showNewKot = !!bookingId && canCreateKot;
   const canCreatePos = can("pos", "create");
   const showOtherCharges = !!bookingId && canCreatePos;
+  const canEditBooking = can("bookings", "edit") || can("bookings", "create");
+  const showExtraBed = !!bookingId && canEditBooking;
 
   useEffect(() => { setStaffId(""); setNotes(""); }, [room?.id]);
 
