@@ -570,31 +570,24 @@ function OwnerDashboard({
                 }}
                 onCheckout={(bid) => setCheckoutBookingId(bid)}
                 onAssignEvent={(blk) => {
-                  // Route the event-block assign through the regular New Booking form
-                  navigate({
-                    to: "/front-desk/new",
-                    search: {
-                      roomId: blk.room_id ?? undefined,
-                      eventId: blk.banquet_booking_id,
-                      blockId: blk.id,
-                      eventName: blk.event_name,
-                      checkIn: blk.checkin_date,
-                      checkOut: blk.checkout_date,
-                    } as any,
-                  });
+                  // Inline Name + Mobile capture — no full booking form
+                  setSingleAssignBlock(blk);
                 }}
-                onEventCheckIn={(blk) => {
-                  navigate({
-                    to: "/front-desk/new",
-                    search: {
-                      roomId: blk.room_id ?? undefined,
-                      eventId: blk.banquet_booking_id,
-                      blockId: blk.id,
-                      eventName: blk.event_name,
-                      checkIn: blk.checkin_date,
-                      checkOut: blk.checkout_date,
-                    } as any,
-                  });
+                onEventCheckIn={async (blk) => {
+                  if (!propertyId || !user) return;
+                  if (!blk.guest_name || !blk.guest_mobile) {
+                    // Guest missing name/mobile — open inline capture dialog
+                    setSingleAssignBlock(blk);
+                    return;
+                  }
+                  if (!confirm(`Check in ${blk.guest_name} to Room ${blk.room_number}?`)) return;
+                  try {
+                    await checkInBlock({ propertyId, block: blk, userId: user.id });
+                    toast.success(`Room ${blk.room_number} checked in`);
+                    reload();
+                  } catch (e: any) {
+                    toast.error(e?.message ?? "Check-in failed");
+                  }
                 }}
               />
             )}
