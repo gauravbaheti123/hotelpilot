@@ -1540,6 +1540,58 @@ export type Database = {
           },
         ]
       }
+      food_bills: {
+        Row: {
+          booking_id: string
+          created_at: string
+          folio_id: string | null
+          food_bill_number: string
+          id: string
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          folio_id?: string | null
+          food_bill_number: string
+          id?: string
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          folio_id?: string | null
+          food_bill_number?: string
+          id?: string
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "food_bills_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "food_bills_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "food_bills_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grc_records: {
         Row: {
           address: string | null

@@ -152,6 +152,7 @@ function FolioPage() {
   const [charges, setCharges] = useState<Charge[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [foodBillNumber, setFoodBillNumber] = useState<string | null>(null);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
   const { methods: payMethods } = usePaymentMethods(folio?.property_id ?? booking?.property_id ?? null);
 
@@ -306,6 +307,19 @@ function FolioPage() {
     }
     setCharges(correctedCharges);
     setPayments(((p ?? []) as unknown as Payment[]));
+
+    // Load the linked Food Bill number (FB-XXXX) if any food charge exists.
+    const hasFood = correctedCharges.some((c) => c.charge_type === "food");
+    if (hasFood && bk?.id) {
+      const { data: fb } = await supabase
+        .from("food_bills" as any)
+        .select("food_bill_number")
+        .eq("booking_id", bk.id)
+        .maybeSingle();
+      setFoodBillNumber((fb as any)?.food_bill_number ?? null);
+    } else {
+      setFoodBillNumber(null);
+    }
 
     // Resolve current user's max-discount % for this property.
     try {
@@ -1479,6 +1493,9 @@ function FolioPage() {
               <div><span className="text-muted-foreground">Invoice No:</span> <span className="font-semibold">{draftMode ? "—" : folio.invoice_number}</span>{!draftMode && isSettled && <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: TEAL }}>PAID</span>}</div>
               <div><span className="text-muted-foreground">Date:</span> <span className="font-semibold">{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
               <div><span className="text-muted-foreground">Booking:</span> <span className="font-semibold">{booking.booking_number}</span></div>
+              {foodBillNumber && (
+                <div><span className="text-muted-foreground">Food Bill Ref:</span> <span className="font-semibold">{foodBillNumber}</span></div>
+              )}
             </div>
           </div>
           )}

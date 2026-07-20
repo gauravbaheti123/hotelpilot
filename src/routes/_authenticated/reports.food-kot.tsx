@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated/reports/food-kot")({
 
 interface KotRow {
   _id: string; kot_no: string; date: string; room_no: string; guest: string;
-  items_count: number; total: number; kitchen: string; status: string;
+  items_count: number; total: number; kitchen: string; status: string; food_bill: string;
 }
 interface ItemRow {
   _id: string; item: string; category: string; kitchen: string;
@@ -50,11 +50,21 @@ function Page() {
     const fromIso = `${from}T00:00:00`;
     const toIso = `${to}T23:59:59`;
     const { data: kotData } = await supabase.from("kot_orders").select(`
-      id,kot_number,created_at,total_amount,status,
+      id,kot_number,created_at,total_amount,status,booking_id,
       rooms(room_number),bookings(guests(name)),
       kot_items(id,item_name,qty,rate,amount,menu_items(category_id,kitchen_type,menu_categories(name)))
     `).eq("property_id", propertyId).gte("created_at", fromIso).lte("created_at", toIso)
       .order("created_at", { ascending: false });
+    // Fetch food bill numbers for the bookings involved in this window.
+    const bookingIds = Array.from(new Set(((kotData ?? []) as any[]).map((k) => k.booking_id).filter(Boolean)));
+    const fbMap = new Map<string, string>();
+    if (bookingIds.length > 0) {
+      const { data: fbs } = await supabase
+        .from("food_bills" as any)
+        .select("booking_id,food_bill_number")
+        .in("booking_id", bookingIds);
+      for (const row of (fbs ?? []) as any[]) fbMap.set(row.booking_id, row.food_bill_number);
+    }
     const kr: KotRow[] = []; const ir: ItemRow[] = [];
     const itemAgg = new Map<string, ItemRow>();
     for (const k of (kotData ?? []) as any[]) {
@@ -80,6 +90,7 @@ function Page() {
         guest: k.bookings?.guests?.name ?? k.guest_name ?? "",
         items_count: (k.kot_items ?? []).length,
         total: Number(k.total_amount || 0), kitchen: kk, status: k.status,
+        food_bill: k.booking_id ? (fbMap.get(k.booking_id) ?? "") : "",
       });
     }
     for (const v of itemAgg.values()) ir.push(v);
@@ -93,6 +104,7 @@ function Page() {
 
   const kotCols: ReportColumn<KotRow>[] = [
     { key: "kot_no", header: "KOT No", get: (r) => r.kot_no },
+    { key: "food_bill", header: "Food Bill", get: (r) => r.food_bill },
     { key: "date", header: "Date", get: (r) => fmtDate(r.date) },
     { key: "room", header: "Room", get: (r) => r.room_no },
     { key: "guest", header: "Guest", get: (r) => r.guest },
@@ -149,7 +161,7 @@ function Page() {
         <TabsList><TabsTrigger value="summary">KOT Summary</TabsTrigger><TabsTrigger value="items">Item-wise Sales</TabsTrigger></TabsList>
         <TabsContent value="summary">
           <Card><CardContent className="pt-4 overflow-x-auto">
-            <SimpleTable rows={kots} columns={kotCols} totalsRow={["Totals", "", "", "", kots.length, fmtINR(grandRev), "", ""]} />
+          <SimpleTable rows={kots} columns={kotCols} totalsRow={["Totals", "", "", "", "", kots.length, fmtINR(grandRev), "", ""]} />
           </CardContent></Card>
         </TabsContent>
         <TabsContent value="items">
