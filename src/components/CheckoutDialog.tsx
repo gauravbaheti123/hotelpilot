@@ -107,7 +107,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       .select(
         `id,booking_number,status,check_in,check_out,property_id,advance_amount,
          guests(name,mobile),
-         booking_rooms(id,rate,check_in,check_out,rooms!booking_rooms_room_id_fkey(id,room_number),room_categories(name))`,
+         booking_rooms(id,room_id,rate,check_in,check_out,rooms!booking_rooms_room_id_fkey(id,room_number),room_categories(name))`,
       )
       .eq("id", bookingId)
       .single();
@@ -167,47 +167,29 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
   useEffect(() => {
     if (!open || loading || !folio || !booking) return;
     if (didSeedRoomCharges.current) return;
-    if (charges.some((c: any) => c.charge_type === "room")) return;
     if (!booking.booking_rooms?.length) return;
-    // Skip bookings that still have any unassigned room (Feature: room-less
-    // future reservations). Nightly audit will post the room charge once a
-    // real room is assigned; auto-seeding a NaN/₹0 charge here would trip
-    // the unique-per-day index and loop forever.
-    const hasUnassigned = booking.booking_rooms.some(
-      (br: any) => !br.room_id || !br.rate,
+    const existingRoomSourceIds = new Set(
+      charges
+        .filter((c: any) => c.charge_type === "room" && c.source_table === "booking_rooms" && c.source_id)
+        .map((c: any) => c.source_id),
     );
-    if (hasUnassigned) {
+    const missingAssignedRooms = booking.booking_rooms.filter(
+      (br: any) => br.room_id && Number(br.rate) > 0 && !existingRoomSourceIds.has(br.id),
+    );
+    if (missingAssignedRooms.length === 0) {
       didSeedRoomCharges.current = true;
       return;
     }
     (async () => {
-      const rows = booking.booking_rooms.map((br: any) => {
-        const nights = Math.max(
-          1,
-          Math.round(
-            (new Date(br.check_out).getTime() - new Date(br.check_in).getTime()) / 86400000,
-          ),
-        );
-        const amt = nights * Number(br.rate);
-        return {
-          folio_id: folio.id,
-          charge_type: "room",
-          description: `Room ${br.rooms?.room_number ?? ""} · ${br.room_categories?.name ?? ""} · ${nights} night(s)`,
-          qty: nights,
-          rate: Number(br.rate),
-          amount: amt,
-          gst_rate: 12,
-          gst_amount: Math.round(amt * 12) / 100,
-          source_table: "booking_rooms",
-          source_id: br.id,
-          created_by: user?.id ?? null,
-        };
-      });
-      const { error: seedErr } = await supabase
-        .from("folio_charges")
-        .insert(rows as any);
+      const results = await Promise.all(
+        missingAssignedRooms.map((br: any) =>
+          (supabase as any).rpc("seed_room_charge_for_booking_room", { _booking_room_id: br.id }),
+        ),
+      );
+      const seedErr = results.find((result: any) => result.error)?.error;
       if (seedErr) {
-        console.error("[CheckoutDialog] auto-seed room charges failed", seedErr);
+        console.error("[CheckoutDialog] room charge seed failed", seedErr);
+        toast.error(`Room charge could not be added: ${seedErr.message}`);
         return;
       }
       // Only mark seeded after a successful insert so transient failures

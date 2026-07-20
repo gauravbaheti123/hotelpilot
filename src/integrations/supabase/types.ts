@@ -5214,6 +5214,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      seed_room_charge_for_booking_room: {
+        Args: { _booking_room_id: string }
+        Returns: string
+      }
       shift_room: {
         Args: {
           _booking_room_id: string
