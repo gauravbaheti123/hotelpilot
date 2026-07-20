@@ -471,6 +471,100 @@ export type Database = {
           },
         ]
       }
+      banquet_master_bill_items: {
+        Row: {
+          booking_id: string
+          created_at: string
+          food_amount: number
+          food_bill_number: string | null
+          gst_amount: number
+          id: string
+          master_bill_id: string
+          room_category: string | null
+          room_number: string
+          updated_at: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          food_amount?: number
+          food_bill_number?: string | null
+          gst_amount?: number
+          id?: string
+          master_bill_id: string
+          room_category?: string | null
+          room_number: string
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          food_amount?: number
+          food_bill_number?: string | null
+          gst_amount?: number
+          id?: string
+          master_bill_id?: string
+          room_category?: string | null
+          room_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banquet_master_bill_items_master_bill_id_fkey"
+            columns: ["master_bill_id"]
+            isOneToOne: false
+            referencedRelation: "banquet_master_bills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      banquet_master_bills: {
+        Row: {
+          banquet_booking_id: string
+          bill_number: string
+          created_at: string
+          food_subtotal: number
+          gst_amount: number
+          id: string
+          property_id: string
+          status: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          banquet_booking_id: string
+          bill_number: string
+          created_at?: string
+          food_subtotal?: number
+          gst_amount?: number
+          id?: string
+          property_id: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          banquet_booking_id?: string
+          bill_number?: string
+          created_at?: string
+          food_subtotal?: number
+          gst_amount?: number
+          id?: string
+          property_id?: string
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banquet_master_bills_banquet_booking_id_fkey"
+            columns: ["banquet_booking_id"]
+            isOneToOne: true
+            referencedRelation: "banquet_bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bill_sequences: {
         Row: {
           created_at: string
