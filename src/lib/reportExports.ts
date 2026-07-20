@@ -8,6 +8,18 @@ export interface ReportColumn<T> {
   /** Numeric (right-aligned) / currency flag for Excel formatting */
   numeric?: boolean;
   currency?: boolean;
+  /** Column data type for filter UI. Defaults: 'number' if currency/numeric, else 'text'. */
+  type?: "text" | "number" | "date" | "enum";
+  /** Enable per-column filter (default true if filterable UI wanted). */
+  filterable?: boolean;
+  /** Enable per-column sort (default true). */
+  sortable?: boolean;
+  /** Fixed enum options; if omitted with type='enum', options are derived from rows. */
+  enumOptions?: string[];
+  /** Value used for sort/filter comparisons; falls back to get(). */
+  sortValue?: (row: T) => number | string | Date | null | undefined;
+  /** Value used for date filters (ISO string / Date); falls back to sortValue/get. */
+  dateValue?: (row: T) => string | Date | null | undefined;
 }
 
 export interface ReportExportMeta {

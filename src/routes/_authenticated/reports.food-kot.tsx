@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RequirePermission } from "@/components/RequirePermission";
+import { ReportDataTable } from "@/components/ReportDataTable";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
@@ -38,6 +39,8 @@ function Page() {
   const [cats, setCats] = useState<Array<{ id: string; name: string }>>([]);
   const [kots, setKots] = useState<KotRow[]>([]);
   const [items, setItems] = useState<ItemRow[]>([]);
+  const [derivedKots, setDerivedKots] = useState<KotRow[]>([]);
+  const [derivedItems, setDerivedItems] = useState<ItemRow[]>([]);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -100,32 +103,33 @@ function Page() {
 
   useEffect(() => { load(); }, [load]);
 
-  const grandRev = useMemo(() => kots.reduce((s, r) => s + r.total, 0), [kots]);
-
   const kotCols: ReportColumn<KotRow>[] = [
-    { key: "kot_no", header: "KOT No", get: (r) => r.kot_no },
-    { key: "food_bill", header: "Food Bill", get: (r) => r.food_bill },
-    { key: "date", header: "Date", get: (r) => fmtDate(r.date) },
-    { key: "room", header: "Room", get: (r) => r.room_no },
-    { key: "guest", header: "Guest", get: (r) => r.guest },
-    { key: "items", header: "Items", get: (r) => r.items_count },
-    { key: "total", header: "Total Amount", get: (r) => r.total, currency: true },
-    { key: "kitchen", header: "Kitchen", get: (r) => r.kitchen },
-    { key: "status", header: "Status", get: (r) => r.status },
+    { key: "kot_no", header: "KOT No", get: (r) => r.kot_no, type: "text" },
+    { key: "food_bill", header: "Food Bill", get: (r) => r.food_bill, type: "text" },
+    { key: "date", header: "Date", get: (r) => fmtDate(r.date), type: "date", sortValue: (r) => r.date, dateValue: (r) => r.date },
+    { key: "room", header: "Room", get: (r) => r.room_no, type: "text" },
+    { key: "guest", header: "Guest", get: (r) => r.guest, type: "text" },
+    { key: "items", header: "Items", get: (r) => r.items_count, numeric: true, sortValue: (r) => r.items_count },
+    { key: "total", header: "Total Amount", get: (r) => r.total, currency: true, sortValue: (r) => r.total },
+    { key: "kitchen", header: "Kitchen", get: (r) => r.kitchen, type: "enum" },
+    { key: "status", header: "Status", get: (r) => r.status, type: "enum" },
   ];
   const itemCols: ReportColumn<ItemRow>[] = [
-    { key: "item", header: "Item Name", get: (r) => r.item },
-    { key: "cat", header: "Category", get: (r) => r.category },
-    { key: "kit", header: "Kitchen", get: (r) => r.kitchen },
-    { key: "qty", header: "Qty Sold", get: (r) => r.qty, numeric: true },
-    { key: "rate", header: "Rate", get: (r) => r.rate, currency: true },
-    { key: "total", header: "Total Amount", get: (r) => r.total, currency: true },
+    { key: "item", header: "Item Name", get: (r) => r.item, type: "text" },
+    { key: "cat", header: "Category", get: (r) => r.category, type: "enum" },
+    { key: "kit", header: "Kitchen", get: (r) => r.kitchen, type: "enum" },
+    { key: "qty", header: "Qty Sold", get: (r) => r.qty, numeric: true, sortValue: (r) => r.qty },
+    { key: "rate", header: "Rate", get: (r) => r.rate, currency: true, sortValue: (r) => r.rate },
+    { key: "total", header: "Total Amount", get: (r) => r.total, currency: true, sortValue: (r) => r.total },
   ];
 
   const [tab, setTab] = useState("summary");
   const meta = (name: string) => ({
     reportName: name, propertyName: current?.name ?? "Property", from, to,
-    totals: [["Total KOTs", kots.length], ["Total Food Revenue", fmtINR(grandRev)]] as [string, string|number][],
+    totals: [
+      ["Total KOTs", derivedKots.length],
+      ["Total Food Revenue", fmtINR(derivedKots.reduce((s, r) => s + r.total, 0))],
+    ] as [string, string|number][],
   });
 
   return (
@@ -153,20 +157,48 @@ function Page() {
           </Select>
         </div>
       </>}
-      onExcel={() => tab === "summary" ? exportExcel(kots, kotCols, meta("KOT Summary")) : exportExcel(items, itemCols, meta("Item-wise Sales"))}
-      onPdf={() => tab === "summary" ? exportPdf(kots, kotCols, meta("KOT Summary")) : exportPdf(items, itemCols, meta("Item-wise Sales"))}
+      onExcel={() => tab === "summary" ? exportExcel(derivedKots, kotCols, meta("KOT Summary")) : exportExcel(derivedItems, itemCols, meta("Item-wise Sales"))}
+      onPdf={() => tab === "summary" ? exportPdf(derivedKots, kotCols, meta("KOT Summary")) : exportPdf(derivedItems, itemCols, meta("Item-wise Sales"))}
       disabled={(tab === "summary" ? kots : items).length === 0}
     >
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList><TabsTrigger value="summary">KOT Summary</TabsTrigger><TabsTrigger value="items">Item-wise Sales</TabsTrigger></TabsList>
         <TabsContent value="summary">
-          <Card><CardContent className="pt-4 overflow-x-auto">
-          <SimpleTable rows={kots} columns={kotCols} totalsRow={["Totals", "", "", "", "", kots.length, fmtINR(grandRev), "", ""]} />
+          <Card><CardContent className="pt-4">
+            <ReportDataTable
+              rows={kots}
+              columns={kotCols}
+              onDerivedRowsChange={setDerivedKots}
+              rowKey={(r) => r._id}
+              emptyText="No KOTs in range."
+              totalsRow={(d) => (
+                <tr>
+                  <td colSpan={5} className="px-2 py-2 text-right">Totals</td>
+                  <td className="px-2 py-2 text-right tabular-nums">{d.length}</td>
+                  <td className="px-2 py-2 text-right tabular-nums">{fmtINR(d.reduce((s, r) => s + r.total, 0))}</td>
+                  <td colSpan={2} />
+                </tr>
+              )}
+            />
           </CardContent></Card>
         </TabsContent>
         <TabsContent value="items">
-          <Card><CardContent className="pt-4 overflow-x-auto">
-            <SimpleTable rows={items} columns={itemCols} totalsRow={["Totals","","", items.reduce((s,r)=>s+r.qty,0), "", fmtINR(items.reduce((s,r)=>s+r.total,0))]} />
+          <Card><CardContent className="pt-4">
+            <ReportDataTable
+              rows={items}
+              columns={itemCols}
+              onDerivedRowsChange={setDerivedItems}
+              rowKey={(r) => r._id}
+              emptyText="No items in range."
+              totalsRow={(d) => (
+                <tr>
+                  <td colSpan={3} className="px-2 py-2 text-right">Totals</td>
+                  <td className="px-2 py-2 text-right tabular-nums">{d.reduce((s, r) => s + r.qty, 0)}</td>
+                  <td />
+                  <td className="px-2 py-2 text-right tabular-nums">{fmtINR(d.reduce((s, r) => s + r.total, 0))}</td>
+                </tr>
+              )}
+            />
           </CardContent></Card>
         </TabsContent>
       </Tabs>
@@ -174,27 +206,3 @@ function Page() {
   );
 }
 
-function SimpleTable<T>({ rows, columns, totalsRow }: { rows: T[]; columns: ReportColumn<T>[]; totalsRow: (string | number)[] }) {
-  return (
-    <table className="w-full text-xs">
-      <thead className="bg-muted/40"><tr>
-        {columns.map((c) => <th key={c.key} className={`px-2 py-2 text-left ${c.currency || c.numeric ? "text-right" : ""}`}>{c.header}</th>)}
-      </tr></thead>
-      <tbody>
-        {rows.map((r, i) => (
-          <tr key={i} className="border-t">
-            {columns.map((c) => (
-              <td key={c.key} className={`px-2 py-1.5 ${c.currency || c.numeric ? "text-right tabular-nums" : ""}`}>
-                {c.currency ? fmtINR(c.get(r) as number) : c.get(r)}
-              </td>
-            ))}
-          </tr>
-        ))}
-        {rows.length === 0 && <tr><td colSpan={columns.length} className="text-center py-6 text-muted-foreground">No data.</td></tr>}
-      </tbody>
-      <tfoot className="bg-emerald-50 font-semibold">
-        <tr>{totalsRow.map((v, i) => <td key={i} className={`px-2 py-2 ${columns[i]?.currency || columns[i]?.numeric ? "text-right tabular-nums" : ""}`}>{v}</td>)}</tr>
-      </tfoot>
-    </table>
-  );
-}

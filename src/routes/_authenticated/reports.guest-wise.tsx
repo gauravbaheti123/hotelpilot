@@ -10,6 +10,8 @@ import { ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso 
 import { ChevronRight, ChevronDown } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { ReportDataTable } from "@/components/ReportDataTable";
+import { Fragment } from "react";
 export const Route = createFileRoute("/_authenticated/reports/guest-wise")({
   head: () => ({ meta: [{ title: "Guest-Wise Report — HotelPilot" }] }),
   component: () => (<RequirePermission module="reports"><Page /></RequirePermission>),
@@ -34,6 +36,7 @@ function Page() {
   const [to, setTo] = useState(today);
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<GuestRow[]>([]);
+  const [derived, setDerived] = useState<GuestRow[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
@@ -74,25 +77,25 @@ function Page() {
 
   useEffect(() => { load(); }, [load]);
 
-  const grand = useMemo(() => rows.reduce((s, r) => ({
+  const grandDerived = useMemo(() => derived.reduce((s, r) => ({
     spending: s.spending + r.spending, outstanding: s.outstanding + r.outstanding,
-  }), { spending: 0, outstanding: 0 }), [rows]);
+  }), { spending: 0, outstanding: 0 }), [derived]);
 
   const columns: ReportColumn<GuestRow>[] = [
-    { key: "name", header: "Guest Name", get: (r) => r.name },
-    { key: "mobile", header: "Mobile", get: (r) => r.mobile },
-    { key: "visits", header: "Total Visits", get: (r) => r.visits, numeric: true },
-    { key: "nights", header: "Total Nights", get: (r) => r.nights, numeric: true },
-    { key: "spending", header: "Total Spending", get: (r) => r.spending, currency: true },
-    { key: "last", header: "Last Visit", get: (r) => fmtDate(r.last_visit) },
-    { key: "out", header: "Outstanding", get: (r) => r.outstanding, currency: true },
+    { key: "name", header: "Guest Name", get: (r) => r.name, type: "text" },
+    { key: "mobile", header: "Mobile", get: (r) => r.mobile, type: "text" },
+    { key: "visits", header: "Total Visits", get: (r) => r.visits, numeric: true, sortValue: (r) => r.visits },
+    { key: "nights", header: "Total Nights", get: (r) => r.nights, numeric: true, sortValue: (r) => r.nights },
+    { key: "spending", header: "Total Spending", get: (r) => r.spending, currency: true, sortValue: (r) => r.spending },
+    { key: "last", header: "Last Visit", get: (r) => fmtDate(r.last_visit), type: "date", sortValue: (r) => r.last_visit, dateValue: (r) => r.last_visit },
+    { key: "out", header: "Outstanding", get: (r) => r.outstanding, currency: true, sortValue: (r) => r.outstanding },
   ];
 
   const meta = { reportName: "Guest-Wise Report", propertyName: current?.name ?? "Property", from, to,
     totals: [
-      ["Total guests", rows.length],
-      ["Total spending", fmtINR(grand.spending)],
-      ["Total outstanding", fmtINR(grand.outstanding)],
+      ["Total guests", derived.length],
+      ["Total spending", fmtINR(grandDerived.spending)],
+      ["Total outstanding", fmtINR(grandDerived.outstanding)],
     ] as [string, string|number][] };
 
   return (
@@ -102,72 +105,71 @@ function Page() {
         <div><Label>To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" /></div>
         <div><Label>Search</Label><Input placeholder="Name or mobile" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" /></div>
       </>}
-      onExcel={() => exportExcel(rows, columns, meta)}
-      onPdf={() => exportPdf(rows, columns, meta)}
+      onExcel={() => exportExcel(derived, columns, meta)}
+      onPdf={() => exportPdf(derived, columns, meta)}
       disabled={rows.length === 0}
     >
-      <Card><CardContent className="pt-4 overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/40"><tr>
-            <th className="w-8" />
-            {columns.map((c) => <th key={c.key} className={`px-2 py-2 text-left ${c.currency || c.numeric ? "text-right" : ""}`}>{c.header}</th>)}
-          </tr></thead>
-          {rows.map((r) => {
+      <Card><CardContent className="pt-4">
+        <ReportDataTable
+          rows={rows}
+          columns={columns}
+          onDerivedRowsChange={setDerived}
+          rowKey={(r) => r._id}
+          emptyText="No guests in range."
+          renderRow={(r) => {
             const open = !!expanded[r._id];
             return (
-              <tbody key={r._id}>
+              <Fragment key={r._id}>
                 <tr className="border-t cursor-pointer hover:bg-muted/30"
                   onClick={() => setExpanded((s) => ({ ...s, [r._id]: !open }))}>
-                  <td className="px-2 py-1.5">{open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}</td>
-                  {columns.map((c) => (
+                  {columns.map((c, ci) => (
                     <td key={c.key} className={`px-2 py-1.5 ${c.currency || c.numeric ? "text-right tabular-nums" : ""}`}>
+                      {ci === 0 && (open ? <ChevronDown className="h-3 w-3 inline mr-1" /> : <ChevronRight className="h-3 w-3 inline mr-1" />)}
                       {c.currency ? fmtINR(c.get(r) as number) : c.get(r)}
                     </td>
                   ))}
                 </tr>
                 {open && (
                   <tr className="bg-muted/10">
-                      <td />
-                      <td colSpan={columns.length} className="px-3 py-2">
-                        <div className="text-xs font-semibold mb-1">All bookings ({r.bookings.length})</div>
-                        <table className="w-full text-xs">
-                          <thead className="text-muted-foreground"><tr>
-                            <th className="text-left py-1">Booking #</th>
-                            <th className="text-left py-1">Check-in</th>
-                            <th className="text-left py-1">Checkout</th>
-                            <th className="text-right py-1">Total</th>
-                            <th className="text-right py-1">Balance</th>
-                            <th className="text-left py-1">Status</th>
-                          </tr></thead>
-                          <tbody>
-                            {r.bookings.map((b) => (
-                              <tr key={b.id}>
-                                <td>{b.booking_number}</td>
-                                <td>{fmtDate(b.check_in)}</td>
-                                <td>{fmtDate(b.check_out)}</td>
-                                <td className="text-right tabular-nums">{fmtINR(b.total)}</td>
-                                <td className="text-right tabular-nums">{fmtINR(b.balance)}</td>
-                                <td>{b.status}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </td>
-                    </tr>
+                    <td colSpan={columns.length} className="px-3 py-2">
+                      <div className="text-xs font-semibold mb-1">All bookings ({r.bookings.length})</div>
+                      <table className="w-full text-xs">
+                        <thead className="text-muted-foreground"><tr>
+                          <th className="text-left py-1">Booking #</th>
+                          <th className="text-left py-1">Check-in</th>
+                          <th className="text-left py-1">Checkout</th>
+                          <th className="text-right py-1">Total</th>
+                          <th className="text-right py-1">Balance</th>
+                          <th className="text-left py-1">Status</th>
+                        </tr></thead>
+                        <tbody>
+                          {r.bookings.map((b) => (
+                            <tr key={b.id}>
+                              <td>{b.booking_number}</td>
+                              <td>{fmtDate(b.check_in)}</td>
+                              <td>{fmtDate(b.check_out)}</td>
+                              <td className="text-right tabular-nums">{fmtINR(b.total)}</td>
+                              <td className="text-right tabular-nums">{fmtINR(b.balance)}</td>
+                              <td>{b.status}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
                 )}
-              </tbody>
+              </Fragment>
             );
-          })}
-          {rows.length === 0 && <tbody><tr><td colSpan={columns.length + 1} className="text-center py-6 text-muted-foreground">No guests in range.</td></tr></tbody>}
-          <tfoot className="bg-emerald-50 font-semibold">
+          }}
+          totalsRow={(d) => (
             <tr>
-              <td colSpan={5} className="px-2 py-2 text-right">{rows.length} guests</td>
-              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.spending)}</td>
+              <td colSpan={4} className="px-2 py-2 text-right">{d.length} guests</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(d.reduce((s, r) => s + r.spending, 0))}</td>
               <td />
-              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.outstanding)}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(d.reduce((s, r) => s + r.outstanding, 0))}</td>
             </tr>
-          </tfoot>
-        </table>
+          )}
+        />
       </CardContent></Card>
     </ReportShell>
   );

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RequirePermission } from "@/components/RequirePermission";
+import { ReportDataTable } from "@/components/ReportDataTable";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
@@ -33,6 +34,7 @@ function Page() {
   const [to, setTo] = useState(today);
   const [staffFilter, setStaffFilter] = useState("all");
   const [rows, setRows] = useState<Row[]>([]);
+  const [derived, setDerived] = useState<Row[]>([]);
   const [staffList, setStaffList] = useState<Array<{ id: string; name: string }>>([]);
 
   const load = useCallback(async () => {
@@ -62,19 +64,18 @@ function Page() {
 
   useEffect(() => { load(); }, [load]);
 
-  const grand = useMemo(() => rows.reduce((s, r) => s + r.amount, 0), [rows]);
-
   const columns: ReportColumn<Row>[] = [
-    { key: "date", header: "Date", get: (r) => fmtDate(r.date) },
-    { key: "bill", header: "Original Bill No", get: (r) => r.orig_bill },
-    { key: "room", header: "Room No", get: (r) => r.room_no },
-    { key: "guest", header: "Guest Name", get: (r) => r.guest },
-    { key: "amount", header: "Amount Shifted", get: (r) => r.amount, currency: true },
-    { key: "by", header: "Shifted By", get: (r) => r.shifted_by },
+    { key: "date", header: "Date", get: (r) => fmtDate(r.date), type: "date", sortValue: (r) => r.date, dateValue: (r) => r.date },
+    { key: "bill", header: "Original Bill No", get: (r) => r.orig_bill, type: "text" },
+    { key: "room", header: "Room No", get: (r) => r.room_no, type: "text" },
+    { key: "guest", header: "Guest Name", get: (r) => r.guest, type: "text" },
+    { key: "amount", header: "Amount Shifted", get: (r) => r.amount, currency: true, sortValue: (r) => r.amount },
+    { key: "by", header: "Shifted By", get: (r) => r.shifted_by, type: "enum" },
   ];
 
+  const grandDerived = useMemo(() => derived.reduce((s, r) => s + r.amount, 0), [derived]);
   const meta = { reportName: "MIS Report", propertyName: current?.name ?? "Property", from, to,
-    totals: [["Total currently in MIS", fmtINR(grand)]] as [string, string|number][] };
+    totals: [["Total currently in MIS", fmtINR(grandDerived)]] as [string, string|number][] };
 
   if (!isOwner) return <Navigate to="/dashboard" />;
 
@@ -94,35 +95,25 @@ function Page() {
           </Select>
         </div>
       </>}
-      onExcel={() => exportExcel(rows, columns, meta)}
-      onPdf={() => exportPdf(rows, columns, meta)}
+      onExcel={() => exportExcel(derived, columns, meta)}
+      onPdf={() => exportPdf(derived, columns, meta)}
       disabled={rows.length === 0}
     >
-      <Card><CardContent className="pt-4 overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/40"><tr>
-            {columns.map((c) => <th key={c.key} className={`px-2 py-2 text-left ${c.currency ? "text-right" : ""}`}>{c.header}</th>)}
-          </tr></thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r._id} className="border-t">
-                {columns.map((c) => (
-                  <td key={c.key} className={`px-2 py-1.5 ${c.currency ? "text-right tabular-nums" : ""}`}>
-                    {c.currency ? fmtINR(c.get(r) as number) : c.get(r)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-            {rows.length === 0 && <tr><td colSpan={columns.length} className="text-center py-6 text-muted-foreground">No MIS entries in range.</td></tr>}
-          </tbody>
-          <tfoot className="bg-emerald-50 font-semibold">
+      <Card><CardContent className="pt-4">
+        <ReportDataTable
+          rows={rows}
+          columns={columns}
+          onDerivedRowsChange={setDerived}
+          rowKey={(r) => r._id}
+          emptyText="No MIS entries in range."
+          totalsRow={(d) => (
             <tr>
               <td colSpan={4} className="px-2 py-2 text-right">Total currently in MIS</td>
-              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand)}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(d.reduce((s, r) => s + r.amount, 0))}</td>
               <td />
             </tr>
-          </tfoot>
-        </table>
+          )}
+        />
       </CardContent></Card>
     </ReportShell>
   );

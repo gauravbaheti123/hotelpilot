@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RequirePermission } from "@/components/RequirePermission";
+import { ReportDataTable } from "@/components/ReportDataTable";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtDateTime, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
@@ -31,6 +32,7 @@ function Page() {
   const [mode, setMode] = useState("all");
   const [staff, setStaff] = useState("all");
   const [rows, setRows] = useState<Row[]>([]);
+  const [derived, setDerived] = useState<Row[]>([]);
   const [staffList, setStaffList] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
@@ -67,7 +69,7 @@ function Page() {
 
   const totals = useMemo(() => {
     const t = { cash: 0, card: 0, upi: 0, other: 0, grand: 0 };
-    for (const r of rows) {
+    for (const r of derived) {
       t.grand += r.amount;
       if (r.mode === "cash") t.cash += r.amount;
       else if (r.mode === "card") t.card += r.amount;
@@ -75,25 +77,16 @@ function Page() {
       else t.other += r.amount;
     }
     return t;
-  }, [rows]);
-
-  const grouped = useMemo(() => {
-    const m = new Map<string, Row[]>();
-    for (const r of rows) {
-      const k = (r.date ?? "").slice(0, 10);
-      const arr = m.get(k) ?? []; arr.push(r); m.set(k, arr);
-    }
-    return Array.from(m.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [rows]);
+  }, [derived]);
 
   const columns: ReportColumn<Row>[] = [
-    { key: "date", header: "Date", get: (r) => fmtDate(r.date) },
-    { key: "time", header: "Time", get: (r) => new Date(r.time).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false }) },
-    { key: "bill_no", header: "Bill No", get: (r) => r.bill_no },
-    { key: "guest_name", header: "Guest Name", get: (r) => r.guest_name },
-    { key: "amount", header: "Amount", get: (r) => r.amount, currency: true },
-    { key: "mode", header: "Payment Mode", get: (r) => r.mode },
-    { key: "received_by", header: "Received By", get: (r) => r.received_by },
+    { key: "date", header: "Date", get: (r) => fmtDate(r.date), type: "date", sortValue: (r) => r.date, dateValue: (r) => r.date },
+    { key: "time", header: "Time", get: (r) => new Date(r.time).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false }), sortValue: (r) => r.time },
+    { key: "bill_no", header: "Bill No", get: (r) => r.bill_no, type: "text" },
+    { key: "guest_name", header: "Guest Name", get: (r) => r.guest_name, type: "text" },
+    { key: "amount", header: "Amount", get: (r) => r.amount, currency: true, sortValue: (r) => r.amount },
+    { key: "mode", header: "Payment Mode", get: (r) => r.mode, type: "enum" },
+    { key: "received_by", header: "Received By", get: (r) => r.received_by, type: "enum" },
   ];
 
   const meta = { reportName: "Cash Collection Report", propertyName: current?.name ?? "Property", from, to,
@@ -130,8 +123,8 @@ function Page() {
           </Select>
         </div>
       </>}
-      onExcel={() => exportExcel(rows, columns, meta)}
-      onPdf={() => exportPdf(rows, columns, meta)}
+      onExcel={() => exportExcel(derived, columns, meta)}
+      onPdf={() => exportPdf(derived, columns, meta)}
       disabled={rows.length === 0}
     >
       <Card><CardContent className="pt-4">
@@ -147,38 +140,20 @@ function Page() {
             <div className="text-lg font-bold">{fmtINR(totals.grand)}</div>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead className="bg-muted/40"><tr>
-              {columns.map((c) => <th key={c.key} className={`px-2 py-2 text-left ${c.currency ? "text-right" : ""}`}>{c.header}</th>)}
-            </tr></thead>
-            {grouped.map(([date, items]) => {
-              const sub = items.reduce((s, r) => s + r.amount, 0);
-              return (
-                <tbody key={date}>
-                  <tr className="bg-muted/20 font-semibold">
-                    <td colSpan={columns.length} className="px-2 py-1.5">{fmtDate(date)}</td>
-                  </tr>
-                  {items.map((r) => (
-                    <tr key={r._id} className="border-t">
-                      {columns.map((c) => (
-                        <td key={c.key} className={`px-2 py-1.5 ${c.currency ? "text-right tabular-nums" : ""}`}>
-                          {c.currency ? fmtINR(c.get(r) as number) : c.get(r)}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                  <tr className="bg-emerald-50 font-semibold">
-                    <td colSpan={4} className="px-2 py-1.5 text-right">{fmtDate(date)} — Subtotal</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums">{fmtINR(sub)}</td>
-                    <td colSpan={2} />
-                  </tr>
-                </tbody>
-              );
-            })}
-            {rows.length === 0 && <tbody><tr><td colSpan={columns.length} className="text-center py-6 text-muted-foreground">No collections in range</td></tr></tbody>}
-          </table>
-        </div>
+        <ReportDataTable
+          rows={rows}
+          columns={columns}
+          onDerivedRowsChange={setDerived}
+          rowKey={(r) => r._id}
+          emptyText="No collections in range"
+          totalsRow={(d) => (
+            <tr>
+              <td colSpan={4} className="px-2 py-2 text-right">Totals</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(d.reduce((s, r) => s + r.amount, 0))}</td>
+              <td colSpan={2} />
+            </tr>
+          )}
+        />
       </CardContent></Card>
     </ReportShell>
   );

@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { RequirePermission } from "@/components/RequirePermission";
+import { ReportDataTable } from "@/components/ReportDataTable";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
@@ -38,6 +39,7 @@ function Page() {
   const [from, setFrom] = useState(firstOfMonthIso());
   const [to, setTo] = useState(today);
   const [rows, setRows] = useState<DayRow[]>([]);
+  const [derived, setDerived] = useState<DayRow[]>([]);
 
   const load = useCallback(async () => {
     if (!propertyId) return;
@@ -86,20 +88,20 @@ function Page() {
 
   useEffect(() => { load(); }, [load]);
 
-  const grand = useMemo(() => rows.reduce((g, r) => ({
+  const grand = useMemo(() => derived.reduce((g, r) => ({
     rooms: g.rooms + r.rooms, food: g.food + r.food, banquet: g.banquet + r.banquet, other: g.other + r.other,
     total: g.total + r.total, collections: g.collections + r.collections, outstanding: g.outstanding + r.outstanding,
-  }), { rooms: 0, food: 0, banquet: 0, other: 0, total: 0, collections: 0, outstanding: 0 }), [rows]);
+  }), { rooms: 0, food: 0, banquet: 0, other: 0, total: 0, collections: 0, outstanding: 0 }), [derived]);
 
   const columns: ReportColumn<DayRow>[] = [
-    { key: "date", header: "Date", get: (r) => fmtDate(r.date) },
-    { key: "rooms", header: "Rooms Revenue", get: (r) => r.rooms, currency: true },
-    { key: "food", header: "Food Revenue", get: (r) => r.food, currency: true },
-    { key: "banquet", header: "Banquet Revenue", get: (r) => r.banquet, currency: true },
-    { key: "other", header: "Other Revenue", get: (r) => r.other, currency: true },
-    { key: "total", header: "Total Revenue", get: (r) => r.total, currency: true },
-    { key: "collections", header: "Collections", get: (r) => r.collections, currency: true },
-    { key: "outstanding", header: "Outstanding", get: (r) => r.outstanding, currency: true },
+    { key: "date", header: "Date", get: (r) => fmtDate(r.date), type: "date", sortValue: (r) => r.date, dateValue: (r) => r.date },
+    { key: "rooms", header: "Rooms Revenue", get: (r) => r.rooms, currency: true, sortValue: (r) => r.rooms },
+    { key: "food", header: "Food Revenue", get: (r) => r.food, currency: true, sortValue: (r) => r.food },
+    { key: "banquet", header: "Banquet Revenue", get: (r) => r.banquet, currency: true, sortValue: (r) => r.banquet },
+    { key: "other", header: "Other Revenue", get: (r) => r.other, currency: true, sortValue: (r) => r.other },
+    { key: "total", header: "Total Revenue", get: (r) => r.total, currency: true, sortValue: (r) => r.total },
+    { key: "collections", header: "Collections", get: (r) => r.collections, currency: true, sortValue: (r) => r.collections },
+    { key: "outstanding", header: "Outstanding", get: (r) => r.outstanding, currency: true, sortValue: (r) => r.outstanding },
   ];
 
   const meta = { reportName: "Date-Wise Revenue", propertyName: current?.name ?? "Property", from, to,
@@ -115,14 +117,14 @@ function Page() {
         <div><Label>From</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-40" /></div>
         <div><Label>To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" /></div>
       </>}
-      onExcel={() => exportExcel(rows, columns, meta)}
-      onPdf={() => exportPdf(rows, columns, meta)}
+      onExcel={() => exportExcel(derived, columns, meta)}
+      onPdf={() => exportPdf(derived, columns, meta)}
       disabled={rows.length === 0}
     >
       <Card><CardContent className="pt-4">
         <div className="h-64 mb-6">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={rows.map((r) => ({ name: fmtDate(r.date), total: r.total }))}>
+            <BarChart data={derived.map((r) => ({ name: fmtDate(r.date), total: r.total }))}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} />
@@ -131,36 +133,24 @@ function Page() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead className="bg-muted/40"><tr>
-              {columns.map((c) => <th key={c.key} className={`px-2 py-2 text-left ${c.currency ? "text-right" : ""}`}>{c.header}</th>)}
-            </tr></thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.date} className="border-t">
-                  {columns.map((c) => (
-                    <td key={c.key} className={`px-2 py-1.5 ${c.currency ? "text-right tabular-nums" : ""}`}>
-                      {c.currency ? fmtINR(c.get(r) as number) : c.get(r)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-            <tfoot className="bg-emerald-50 font-semibold">
-              <tr>
-                <td className="px-2 py-2">Grand Total</td>
-                <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.rooms)}</td>
-                <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.food)}</td>
-                <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.banquet)}</td>
-                <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.other)}</td>
-                <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.total)}</td>
-                <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.collections)}</td>
-                <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.outstanding)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+        <ReportDataTable
+          rows={rows}
+          columns={columns}
+          onDerivedRowsChange={setDerived}
+          rowKey={(r) => r.date}
+          totalsRow={() => (
+            <tr>
+              <td className="px-2 py-2">Grand Total</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.rooms)}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.food)}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.banquet)}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.other)}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.total)}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.collections)}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand.outstanding)}</td>
+            </tr>
+          )}
+        />
       </CardContent></Card>
     </ReportShell>
   );

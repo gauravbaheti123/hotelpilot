@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RequirePermission } from "@/components/RequirePermission";
+import { ReportDataTable } from "@/components/ReportDataTable";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
@@ -34,6 +35,7 @@ function Page() {
   const [cats, setCats] = useState<Array<{ id: string; name: string }>>([]);
   const [roomsList, setRoomsList] = useState<Array<{ id: string; room_number: string }>>([]);
   const [rows, setRows] = useState<Row[]>([]);
+  const [derived, setDerived] = useState<Row[]>([]);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -76,31 +78,23 @@ function Page() {
 
   useEffect(() => { load(); }, [load]);
 
-  const grand = useMemo(() => rows.reduce((s, r) => s + r.total_amount, 0), [rows]);
-
-  const grouped = useMemo(() => {
-    const m = new Map<string, Row[]>();
-    for (const r of rows) {
-      const a = m.get(r.room_no) ?? []; a.push(r); m.set(r.room_no, a);
-    }
-    return Array.from(m.entries());
-  }, [rows]);
+  const grandDerived = useMemo(() => derived.reduce((s, r) => s + r.total_amount, 0), [derived]);
 
   const columns: ReportColumn<Row>[] = [
-    { key: "room_no", header: "Room No", get: (r) => r.room_no },
-    { key: "category", header: "Category", get: (r) => r.category },
-    { key: "guest", header: "Guest Name", get: (r) => r.guest_name },
-    { key: "ci", header: "Check-in", get: (r) => fmtDate(r.check_in) },
-    { key: "co", header: "Checkout", get: (r) => fmtDate(r.check_out) },
-    { key: "nights", header: "Nights", get: (r) => r.nights },
-    { key: "tariff", header: "Tariff Plan", get: (r) => r.tariff_plan },
-    { key: "rate", header: "Rate/Night", get: (r) => r.rate, currency: true },
-    { key: "total", header: "Total Amount", get: (r) => r.total_amount, currency: true },
-    { key: "ps", header: "Payment Status", get: (r) => r.payment_status },
+    { key: "room_no", header: "Room No", get: (r) => r.room_no, type: "enum" },
+    { key: "category", header: "Category", get: (r) => r.category, type: "enum" },
+    { key: "guest", header: "Guest Name", get: (r) => r.guest_name, type: "text" },
+    { key: "ci", header: "Check-in", get: (r) => fmtDate(r.check_in), type: "date", sortValue: (r) => r.check_in, dateValue: (r) => r.check_in },
+    { key: "co", header: "Checkout", get: (r) => fmtDate(r.check_out), type: "date", sortValue: (r) => r.check_out, dateValue: (r) => r.check_out },
+    { key: "nights", header: "Nights", get: (r) => r.nights, numeric: true, sortValue: (r) => r.nights },
+    { key: "tariff", header: "Tariff Plan", get: (r) => r.tariff_plan, type: "enum" },
+    { key: "rate", header: "Rate/Night", get: (r) => r.rate, currency: true, sortValue: (r) => r.rate },
+    { key: "total", header: "Total Amount", get: (r) => r.total_amount, currency: true, sortValue: (r) => r.total_amount },
+    { key: "ps", header: "Payment Status", get: (r) => r.payment_status, type: "enum" },
   ];
 
   const meta = { reportName: "Room-Wise Report", propertyName: current?.name ?? "Property", from, to,
-    totals: [["All rooms total", fmtINR(grand)]] as [string, string|number][] };
+    totals: [["All rooms total", fmtINR(grandDerived)]] as [string, string|number][] };
 
   return (
     <ReportShell title="Room-Wise Report"
@@ -126,48 +120,25 @@ function Page() {
           </Select>
         </div>
       </>}
-      onExcel={() => exportExcel(rows, columns, meta)}
-      onPdf={() => exportPdf(rows, columns, meta)}
+      onExcel={() => exportExcel(derived, columns, meta)}
+      onPdf={() => exportPdf(derived, columns, meta)}
       disabled={rows.length === 0}
     >
-      <Card><CardContent className="pt-4 overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/40"><tr>
-            {columns.map((c) => <th key={c.key} className={`px-2 py-2 text-left ${c.currency ? "text-right" : ""}`}>{c.header}</th>)}
-          </tr></thead>
-          {grouped.map(([rno, items]) => {
-            const subN = items.reduce((s, r) => s + r.nights, 0);
-            const subA = items.reduce((s, r) => s + r.total_amount, 0);
-            return (
-              <tbody key={rno}>
-                {items.map((r) => (
-                  <tr key={r._id} className="border-t">
-                    {columns.map((c) => (
-                      <td key={c.key} className={`px-2 py-1.5 ${c.currency ? "text-right tabular-nums" : ""}`}>
-                        {c.currency ? fmtINR(c.get(r) as number) : c.get(r)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-                <tr className="bg-emerald-50 font-semibold">
-                  <td colSpan={5} className="px-2 py-1.5 text-right">Room {rno} Subtotal</td>
-                  <td className="px-2 py-1.5 text-right">{subN}</td>
-                  <td colSpan={2} />
-                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtINR(subA)}</td>
-                  <td />
-                </tr>
-              </tbody>
-            );
-          })}
-          <tfoot className="bg-emerald-100 font-bold">
+      <Card><CardContent className="pt-4">
+        <ReportDataTable
+          rows={rows}
+          columns={columns}
+          onDerivedRowsChange={setDerived}
+          rowKey={(r) => r._id}
+          emptyText="No bookings in range."
+          totalsRow={(d) => (
             <tr>
               <td colSpan={8} className="px-2 py-2 text-right">All rooms total</td>
-              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand)}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(d.reduce((s, r) => s + r.total_amount, 0))}</td>
               <td />
             </tr>
-          </tfoot>
-        </table>
-        {rows.length === 0 && <p className="text-center py-6 text-muted-foreground text-sm">No bookings in range.</p>}
+          )}
+        />
       </CardContent></Card>
     </ReportShell>
   );

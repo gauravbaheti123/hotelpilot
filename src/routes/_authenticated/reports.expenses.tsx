@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RequirePermission } from "@/components/RequirePermission";
+import { ReportDataTable } from "@/components/ReportDataTable";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
   buildTallyPaymentXml, downloadXml, buildFileName,
@@ -33,6 +34,7 @@ function Page() {
   const [mode, setMode] = useState("all");
   const [cats, setCats] = useState<Array<{ id: string; name: string }>>([]);
   const [rows, setRows] = useState<Row[]>([]);
+  const [derived, setDerived] = useState<Row[]>([]);
   const [profiles, setProfiles] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
@@ -68,35 +70,35 @@ function Page() {
 
   useEffect(() => { load(); }, [load]);
 
-  const grouped = useMemo(() => {
+  const groupedDerived = useMemo(() => {
     const m = new Map<string, Row[]>();
-    for (const r of rows) {
+    for (const r of derived) {
       const a = m.get(r.category) ?? []; a.push(r); m.set(r.category, a);
     }
     return Array.from(m.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [rows]);
-  const grand = useMemo(() => rows.reduce((s, r) => s + r.amount, 0), [rows]);
+  }, [derived]);
+  const grandDerived = useMemo(() => derived.reduce((s, r) => s + r.amount, 0), [derived]);
 
   const columns: ReportColumn<Row>[] = [
-    { key: "date", header: "Date", get: (r) => fmtDate(r.date) },
-    { key: "cat", header: "Category", get: (r) => r.category },
-    { key: "desc", header: "Description", get: (r) => r.description },
-    { key: "vendor", header: "Vendor", get: (r) => r.vendor },
-    { key: "amount", header: "Amount", get: (r) => r.amount, currency: true },
-    { key: "mode", header: "Payment Mode", get: (r) => r.mode },
-    { key: "approved", header: "Approved By", get: (r) => r.approved_by },
+    { key: "date", header: "Date", get: (r) => fmtDate(r.date), type: "date", sortValue: (r) => r.date, dateValue: (r) => r.date },
+    { key: "cat", header: "Category", get: (r) => r.category, type: "enum" },
+    { key: "desc", header: "Description", get: (r) => r.description, type: "text" },
+    { key: "vendor", header: "Vendor", get: (r) => r.vendor, type: "enum" },
+    { key: "amount", header: "Amount", get: (r) => r.amount, currency: true, sortValue: (r) => r.amount },
+    { key: "mode", header: "Payment Mode", get: (r) => r.mode, type: "enum" },
+    { key: "approved", header: "Approved By", get: (r) => r.approved_by, type: "enum" },
   ];
 
   const meta = {
     reportName: "Expense Report", propertyName: current?.name ?? "Property", from, to,
     totals: [
-      ...grouped.map(([cat, items]) => [cat, fmtINR(items.reduce((s, r) => s + r.amount, 0))] as [string, string]),
-      ["Grand Total", fmtINR(grand)] as [string, string],
+      ...groupedDerived.map(([cat, items]) => [cat, fmtINR(items.reduce((s, r) => s + r.amount, 0))] as [string, string]),
+      ["Grand Total", fmtINR(grandDerived)] as [string, string],
     ],
   };
 
   function tallyXml() {
-    const xml = buildTallyPaymentXml(rows.map((r, i) => ({
+    const xml = buildTallyPaymentXml(derived.map((r, i) => ({
       date: r.date, voucher_number: `EXP-${(i + 1).toString().padStart(5, "0")}`,
       category: r.category, amount: r.amount,
     })));
@@ -130,50 +132,27 @@ function Page() {
           </Select>
         </div>
       </>}
-      onExcel={() => exportExcel(rows, columns, meta)}
-      onPdf={() => exportPdf(rows, columns, meta)}
+      onExcel={() => exportExcel(derived, columns, meta)}
+      onPdf={() => exportPdf(derived, columns, meta)}
       onTally={tallyXml}
       tallyLabel="Export for Tally"
       disabled={rows.length === 0}
     >
-      <Card><CardContent className="pt-4 overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/40"><tr>
-            {columns.map((c) => <th key={c.key} className={`px-2 py-2 text-left ${c.currency ? "text-right" : ""}`}>{c.header}</th>)}
-          </tr></thead>
-          {grouped.map(([cat, items]) => {
-            const sub = items.reduce((s, r) => s + r.amount, 0);
-            return (
-              <tbody key={cat}>
-                <tr className="bg-muted/20 font-semibold">
-                  <td colSpan={columns.length} className="px-2 py-1.5">{cat}</td>
-                </tr>
-                {items.map((r) => (
-                  <tr key={r._id} className="border-t">
-                    {columns.map((c) => (
-                      <td key={c.key} className={`px-2 py-1.5 ${c.currency ? "text-right tabular-nums" : ""}`}>
-                        {c.currency ? fmtINR(c.get(r) as number) : c.get(r)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-                <tr className="bg-emerald-50 font-semibold">
-                  <td colSpan={4} className="px-2 py-1.5 text-right">{cat} Subtotal</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtINR(sub)}</td>
-                  <td colSpan={2} />
-                </tr>
-              </tbody>
-            );
-          })}
-          <tfoot className="bg-emerald-100 font-bold">
+      <Card><CardContent className="pt-4">
+        <ReportDataTable
+          rows={rows}
+          columns={columns}
+          onDerivedRowsChange={setDerived}
+          rowKey={(r) => r._id}
+          emptyText="No expenses in range."
+          totalsRow={(d) => (
             <tr>
               <td colSpan={4} className="px-2 py-2 text-right">Grand Total</td>
-              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(grand)}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{fmtINR(d.reduce((s, r) => s + r.amount, 0))}</td>
               <td colSpan={2} />
             </tr>
-          </tfoot>
-        </table>
-        {rows.length === 0 && <p className="text-center py-6 text-muted-foreground text-sm">No expenses in range.</p>}
+          )}
+        />
       </CardContent></Card>
     </ReportShell>
   );
