@@ -647,13 +647,13 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
             </div>
 
             {booking.custom_remark && booking.custom_remark.trim() && (
-              <div className="rounded-md border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/40 p-3 flex gap-2">
-                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="rounded-md border-2 border-red-500 bg-amber-50 dark:bg-amber-950/40 p-3 flex gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                  <div className="text-xs font-bold uppercase tracking-wide text-red-700 dark:text-red-400">
                     Custom Remark
                   </div>
-                  <div className="text-sm font-medium text-amber-900 dark:text-amber-100 whitespace-pre-wrap break-words">
+                  <div className="text-sm font-bold text-red-700 dark:text-red-400 whitespace-pre-wrap break-words">
                     {booking.custom_remark}
                   </div>
                 </div>
