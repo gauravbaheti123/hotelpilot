@@ -68,6 +68,7 @@ interface Folio {
   discount_type?: "percent" | "amount";
   discount_value?: number;
   round_off_amount?: number;
+  complimentary_food_used?: number;
 }
 interface BookingCtx {
   id: string; booking_number: string; status: string;
@@ -1659,6 +1660,12 @@ function FolioPage() {
                         )}
                       </td>
                       <td style={{ textAlign: "right" }}>- {inr(folio.discount_amount)}</td>
+                    </tr>
+                  )}
+                  {Number(folio.complimentary_food_used ?? 0) > 0 && (
+                    <tr>
+                      <td style={{ color: "#555" }}>Complimentary (MAP/AP)</td>
+                      <td style={{ textAlign: "right" }}>- {inr(Number(folio.complimentary_food_used))}</td>
                     </tr>
                   )}
                   {isGst && <tr><td style={{ color: "#555" }}>GST</td><td style={{ textAlign: "right" }}>{inr(folio.gst_amount)}</td></tr>}
