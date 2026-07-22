@@ -2703,6 +2703,56 @@ export type Database = {
           },
         ]
       }
+      label_nutrient_master: {
+        Row: {
+          created_at: string
+          default_show_rda: boolean
+          display_order: number
+          id: string
+          is_active: boolean
+          key: string
+          label: string
+          property_id: string
+          rda_reference: number | null
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_show_rda?: boolean
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          key: string
+          label: string
+          property_id: string
+          rda_reference?: number | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_show_rda?: boolean
+          display_order?: number
+          id?: string
+          is_active?: boolean
+          key?: string
+          label?: string
+          property_id?: string
+          rda_reference?: number | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "label_nutrient_master_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       label_print_batches: {
         Row: {
           batch_no: string | null
