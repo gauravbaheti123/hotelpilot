@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import JsBarcode from "jsbarcode";
 import { format, addDays, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +31,8 @@ import {
   Search,
   ChevronDown,
   ChevronRight,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -51,95 +53,117 @@ export const Route = createFileRoute("/_authenticated/label-printing/")({
   ),
 });
 
-// ---- Nutrition schema ----
-type NutrientKey =
-  | "energy_kcal"
-  | "total_fat_g"
-  | "saturated_fat_g"
-  | "trans_fat_g"
-  | "cholesterol_mg"
-  | "monounsaturated_fat_g"
-  | "polyunsaturated_fat_g"
-  | "sodium_mg"
-  | "carbohydrate_g"
-  | "total_sugars_g"
-  | "protein_g";
+// ---- Nutrition schema (dynamic master) ----
+interface NutrientMaster {
+  id: string;
+  property_id: string;
+  key: string;
+  label: string;
+  unit: string | null;
+  rda_reference: number | null;
+  default_show_rda: boolean;
+  display_order: number;
+  is_active: boolean;
+}
 
 interface NutrientCell {
   value: number;
   show_rda: boolean;
   rda_override?: number | null;
 }
-type NutritionInfo = Partial<Record<NutrientKey, NutrientCell>>;
+type NutritionInfo = Record<string, NutrientCell>;
 
-const NUTRIENTS: { key: NutrientKey; label: string; defaultShow: boolean }[] = [
-  { key: "energy_kcal", label: "Energy (kcal)", defaultShow: false },
-  { key: "total_fat_g", label: "Total Fat (g)", defaultShow: true },
-  { key: "saturated_fat_g", label: "Saturated Fat (g)", defaultShow: true },
-  { key: "trans_fat_g", label: "Trans Fat (g)", defaultShow: false },
-  { key: "cholesterol_mg", label: "Cholesterol (mg)", defaultShow: true },
-  { key: "monounsaturated_fat_g", label: "Monounsaturated Fatty Acids (g)", defaultShow: true },
-  { key: "polyunsaturated_fat_g", label: "Polyunsaturated Fatty Acids (g)", defaultShow: true },
-  { key: "sodium_mg", label: "Sodium (mg)", defaultShow: true },
-  { key: "carbohydrate_g", label: "Carbohydrate (g)", defaultShow: true },
-  { key: "total_sugars_g", label: "Total Sugars (g)", defaultShow: false },
-  { key: "protein_g", label: "Protein (g)", defaultShow: false },
-];
-
-const RDA_REFERENCE: Record<NutrientKey, number> = {
-  energy_kcal: 2000,
-  total_fat_g: 67,
-  saturated_fat_g: 22,
-  trans_fat_g: 2.2,
-  cholesterol_mg: 300,
-  monounsaturated_fat_g: 20,
-  polyunsaturated_fat_g: 20,
-  sodium_mg: 2000,
-  carbohydrate_g: 300,
-  total_sugars_g: 50,
-  protein_g: 50,
-};
-
-function normalizeNutrition(raw: any): NutritionInfo {
+function normalizeNutrition(raw: any, nutrients: NutrientMaster[]): NutritionInfo {
   const out: NutritionInfo = {};
   const src = (raw ?? {}) as Record<string, any>;
-  // Legacy flat mapping
-  const legacyMap: Record<string, NutrientKey> = {
-    energy_kcal: "energy_kcal",
-    protein_g: "protein_g",
+  // Legacy flat mapping (kept for backward compatibility with pre-master data)
+  const legacyMap: Record<string, string> = {
     fat_g: "total_fat_g",
     carbs_g: "carbohydrate_g",
     sugar_g: "total_sugars_g",
   };
-  for (const n of NUTRIENTS) {
+  for (const n of nutrients) {
     const v = src[n.key];
     if (v && typeof v === "object" && "value" in v) {
       out[n.key] = {
         value: Number(v.value) || 0,
-        show_rda: v.show_rda ?? n.defaultShow,
+        show_rda: v.show_rda ?? n.default_show_rda,
         rda_override:
           v.rda_override === null || v.rda_override === undefined || v.rda_override === ""
             ? null
             : Number(v.rda_override),
       };
     } else {
-      out[n.key] = { value: 0, show_rda: n.defaultShow, rda_override: null };
+      out[n.key] = { value: 0, show_rda: n.default_show_rda, rda_override: null };
     }
   }
-  // Backfill from legacy flat fields when new structure absent/zero.
   for (const [legacy, key] of Object.entries(legacyMap)) {
     const legacyVal = src[legacy];
-    if (typeof legacyVal === "number" && !out[key]?.value) {
-      out[key] = { value: legacyVal, show_rda: out[key]?.show_rda ?? true };
+    if (typeof legacyVal === "number" && out[key] && !out[key].value) {
+      out[key] = { ...out[key], value: legacyVal };
+    }
+  }
+  // Preserve any historical keys that are no longer in the active master
+  // (e.g. a nutrient that was deactivated) so re-activating restores values.
+  for (const [k, v] of Object.entries(src)) {
+    if (!(k in out) && v && typeof v === "object" && "value" in v) {
+      out[k] = {
+        value: Number((v as any).value) || 0,
+        show_rda: (v as any).show_rda ?? false,
+        rda_override:
+          (v as any).rda_override === null || (v as any).rda_override === undefined || (v as any).rda_override === ""
+            ? null
+            : Number((v as any).rda_override),
+      };
     }
   }
   return out;
 }
 
-function computeRda(perHundred: number, servingSize: number | null | undefined, key: NutrientKey): string {
-  if (!servingSize || !perHundred) return "..";
-  const pct = ((perHundred * servingSize) / 100 / RDA_REFERENCE[key]) * 100;
+function computeRda(perHundred: number, servingSize: number | null | undefined, rdaReference: number | null): string {
+  if (!servingSize || !perHundred || !rdaReference) return "..";
+  const pct = ((perHundred * servingSize) / 100 / rdaReference) * 100;
   return pct.toFixed(2);
+}
+
+function slugifyKey(label: string): string {
+  return label
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 60);
+}
+
+function useNutrients(propertyId: string | null | undefined, opts?: { activeOnly?: boolean }) {
+  const [rows, setRows] = useState<NutrientMaster[]>([]);
+  const [loading, setLoading] = useState(true);
+  const activeOnly = opts?.activeOnly ?? false;
+
+  const reload = useCallback(async () => {
+    if (!propertyId) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    let q = supabase
+      .from("label_nutrient_master" as any)
+      .select("*")
+      .eq("property_id", propertyId)
+      .order("display_order", { ascending: true });
+    if (activeOnly) q = q.eq("is_active", true);
+    const { data, error } = await q;
+    if (error) toast.error(error.message);
+    setRows(((data ?? []) as unknown) as NutrientMaster[]);
+    setLoading(false);
+  }, [propertyId, activeOnly]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { nutrients: rows, loading, reload };
 }
 
 interface CompanySettings {
@@ -204,6 +228,7 @@ function LabelPrintingPage() {
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="history">Print History</TabsTrigger>
           <TabsTrigger value="settings">Company Details</TabsTrigger>
+          <TabsTrigger value="nutrients">Nutrient Master</TabsTrigger>
         </TabsList>
         <TabsContent value="print" className="mt-4">
           <PrintLabelTab />
@@ -216,6 +241,9 @@ function LabelPrintingPage() {
         </TabsContent>
         <TabsContent value="settings" className="mt-4">
           <CompanySettingsTab />
+        </TabsContent>
+        <TabsContent value="nutrients" className="mt-4">
+          <NutrientMasterTab />
         </TabsContent>
       </Tabs>
       </div>
@@ -352,6 +380,230 @@ function ProductsTab() {
   );
 }
 
+// ---------- Nutrient Master Tab ----------
+function NutrientMasterTab() {
+  const { current } = useCurrentProperty();
+  const { can } = usePermissions();
+  const canEdit = can("label_printing", "edit");
+  const { nutrients, loading, reload } = useNutrients(current?.id);
+  const [addOpen, setAddOpen] = useState(false);
+  const [editing, setEditing] = useState<NutrientMaster | null>(null);
+
+  async function move(row: NutrientMaster, dir: -1 | 1) {
+    const sorted = [...nutrients].sort((a, b) => a.display_order - b.display_order);
+    const idx = sorted.findIndex((r) => r.id === row.id);
+    const swap = sorted[idx + dir];
+    if (!swap) return;
+    const a = supabase.from("label_nutrient_master" as any).update({ display_order: swap.display_order }).eq("id", row.id);
+    const b = supabase.from("label_nutrient_master" as any).update({ display_order: row.display_order }).eq("id", swap.id);
+    const [r1, r2] = await Promise.all([a, b]);
+    if (r1.error || r2.error) return toast.error((r1.error ?? r2.error)!.message);
+    reload();
+  }
+
+  async function toggleActive(row: NutrientMaster) {
+    if (row.is_active) {
+      if (!confirm(
+        `Deactivate "${row.label}"?\n\nExisting product data for this nutrient is preserved — it just stops appearing on new label prints. You can re-activate it any time to bring the old values back.`,
+      )) return;
+    }
+    const { error } = await supabase
+      .from("label_nutrient_master" as any)
+      .update({ is_active: !row.is_active })
+      .eq("id", row.id);
+    if (error) return toast.error(error.message);
+    toast.success(row.is_active ? "Deactivated" : "Reactivated");
+    reload();
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-base">Nutrient Master</CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Drives the Nutrition Information form on Products and the Nutrition Facts table on labels.
+          </p>
+        </div>
+        {canEdit && (
+          <Button size="sm" onClick={() => { setEditing(null); setAddOpen(true); }}>
+            <Plus className="h-4 w-4 mr-1" /> Add Nutrient
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : nutrients.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No nutrients yet — add one to get started.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="py-2 pr-3 w-20">Order</th>
+                  <th className="py-2 pr-3">Label</th>
+                  <th className="py-2 pr-3">Key</th>
+                  <th className="py-2 pr-3">Unit</th>
+                  <th className="py-2 pr-3">RDA Ref</th>
+                  <th className="py-2 pr-3">Default %RDA</th>
+                  <th className="py-2 pr-3">Status</th>
+                  <th className="py-2 pr-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...nutrients].sort((a, b) => a.display_order - b.display_order).map((r, i, arr) => (
+                  <tr key={r.id} className="border-b last:border-b-0">
+                    <td className="py-2 pr-3">
+                      <div className="flex items-center gap-1">
+                        <Button size="icon" variant="ghost" className="h-6 w-6" disabled={!canEdit || i === 0} onClick={() => move(r, -1)}>
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6" disabled={!canEdit || i === arr.length - 1} onClick={() => move(r, 1)}>
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                    <td className="py-2 pr-3 font-medium">{r.label}</td>
+                    <td className="py-2 pr-3 font-mono text-xs text-muted-foreground">{r.key}</td>
+                    <td className="py-2 pr-3">{r.unit ?? "—"}</td>
+                    <td className="py-2 pr-3">{r.rda_reference ?? "—"}</td>
+                    <td className="py-2 pr-3">{r.default_show_rda ? "Yes" : "No"}</td>
+                    <td className="py-2 pr-3">
+                      {r.is_active ? <Badge>Active</Badge> : <Badge variant="secondary">Inactive</Badge>}
+                    </td>
+                    <td className="py-2 pr-3 text-right space-x-1">
+                      {canEdit && (
+                        <>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditing(r); setAddOpen(true); }}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={r.is_active ? "outline" : "default"}
+                            className="h-7 text-xs"
+                            onClick={() => toggleActive(r)}
+                          >
+                            {r.is_active ? "Deactivate" : "Reactivate"}
+                          </Button>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+      {addOpen && (
+        <NutrientDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          initial={editing}
+          existing={nutrients}
+          onSaved={() => { setAddOpen(false); reload(); }}
+        />
+      )}
+    </Card>
+  );
+}
+
+function NutrientDialog({
+  open,
+  onOpenChange,
+  initial,
+  existing,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  initial: NutrientMaster | null;
+  existing: NutrientMaster[];
+  onSaved: () => void;
+}) {
+  const { current } = useCurrentProperty();
+  const [label, setLabel] = useState(initial?.label ?? "");
+  const [unit, setUnit] = useState(initial?.unit ?? "");
+  const [rdaRef, setRdaRef] = useState<string>(initial?.rda_reference != null ? String(initial.rda_reference) : "");
+  const [defaultShowRda, setDefaultShowRda] = useState(initial?.default_show_rda ?? false);
+  const [saving, setSaving] = useState(false);
+
+  const key = useMemo(() => (initial?.key ?? slugifyKey(label)), [initial, label]);
+
+  async function save() {
+    if (!current) return;
+    if (!label.trim()) return toast.error("Label is required");
+    if (!key) return toast.error("Cannot generate a key from this label");
+    if (!initial && existing.some((n) => n.key === key)) {
+      return toast.error(`A nutrient with key "${key}" already exists`);
+    }
+    setSaving(true);
+    const payload: any = {
+      property_id: current.id,
+      key,
+      label: label.trim(),
+      unit: unit.trim() || null,
+      rda_reference: rdaRef === "" ? null : Number(rdaRef),
+      default_show_rda: defaultShowRda,
+    };
+    let error;
+    if (initial) {
+      ({ error } = await supabase
+        .from("label_nutrient_master" as any)
+        .update(payload)
+        .eq("id", initial.id));
+    } else {
+      const nextOrder = (existing.reduce((m, n) => Math.max(m, n.display_order), 0) || 0) + 1;
+      ({ error } = await supabase
+        .from("label_nutrient_master" as any)
+        .insert({ ...payload, display_order: nextOrder, is_active: true }));
+    }
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(initial ? "Nutrient updated" : "Nutrient added — propagated to all products");
+    onSaved();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{initial ? "Edit Nutrient" : "Add Nutrient"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <Field label="Label *">
+            <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. Fiber (g)" />
+          </Field>
+          <Field label="Storage Key (auto)">
+            <Input value={key} readOnly className="font-mono text-xs" />
+          </Field>
+          <Field label="Unit">
+            <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="e.g. g, mg, kcal" />
+          </Field>
+          <Field label="RDA Reference (optional)">
+            <Input
+              type="number"
+              step="0.01"
+              value={rdaRef}
+              onChange={(e) => setRdaRef(e.target.value)}
+              placeholder="Blank = %RDA can only be set manually"
+            />
+          </Field>
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={defaultShowRda} onCheckedChange={(v) => setDefaultShowRda(!!v)} />
+            Default: show %RDA column on new products
+          </label>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ---------- Premium Label ----------
 function PremiumLabel({
   product,
@@ -360,6 +612,7 @@ function PremiumLabel({
   expiryOn,
   batchNo,
   mrp,
+  nutrients,
 }: {
   product: LabelProduct;
   company: CompanySettings | null;
@@ -367,9 +620,10 @@ function PremiumLabel({
   expiryOn: string;
   batchNo: string;
   mrp: string;
+  nutrients: NutrientMaster[];
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const nutrition = useMemo(() => normalizeNutrition(product.nutrition_info), [product]);
+  const nutrition = useMemo(() => normalizeNutrition(product.nutrition_info, nutrients), [product, nutrients]);
   const barcodeValue = useMemo(() => {
     const bn = batchNo || product.batch_no || product.id.slice(0, 8);
     return `${bn}-${packedOn.replace(/-/g, "")}`;
@@ -395,7 +649,7 @@ function PremiumLabel({
   const fssai = product.fssai_lic_override || product.fssai_no || company?.fssai_lic_no || "";
   const servingSize = product.serving_size_g ?? null;
 
-  const rows = NUTRIENTS.filter((n) => (nutrition[n.key]?.value ?? 0) > 0 || nutrition[n.key]?.show_rda);
+  const rows = nutrients.filter((n) => (nutrition[n.key]?.value ?? 0) > 0 || nutrition[n.key]?.show_rda);
 
   return (
     <div className="premium-label">
@@ -425,7 +679,7 @@ function PremiumLabel({
                 if (!cell.show_rda) rdaDisplay = "..";
                 else if (cell.rda_override != null && !Number.isNaN(cell.rda_override))
                   rdaDisplay = String(cell.rda_override);
-                else rdaDisplay = computeRda(cell.value, servingSize, n.key);
+                else rdaDisplay = computeRda(cell.value, servingSize, n.rda_reference);
                 return (
                   <tr key={n.key}>
                     <td className="left">{n.label}</td>
@@ -455,9 +709,9 @@ function PremiumLabel({
           )}
           <div className="pack-block">
             {product.net_weight && <div>Net Wt: {product.net_weight}</div>}
-            {mrp && <div>MRP: ₹{mrp} (incl. of all taxes)</div>}
-            <div>Packed: {packedOn}</div>
-            <div>Best Before: {expiryOn}</div>
+            {mrp && <div className="hi">MRP: ₹{mrp} (incl. of all taxes)</div>}
+            <div className="hi">Packed: {packedOn}</div>
+            <div className="hi">Best Before: {expiryOn}</div>
             {(batchNo || product.batch_no) && (
               <div>Batch: {batchNo || product.batch_no}</div>
             )}
@@ -606,6 +860,7 @@ function ProductDialog({
   onSaved: () => void;
 }) {
   const { current } = useCurrentProperty();
+  const { nutrients } = useNutrients(current?.id, { activeOnly: true });
   const [form, setForm] = useState<Partial<LabelProduct>>(
     initial ?? {
       name: "",
@@ -623,11 +878,14 @@ function ProductDialog({
       default_label_template: "thermal",
     },
   );
-  const [nutrition, setNutrition] = useState<NutritionInfo>(() =>
-    normalizeNutrition(initial?.nutrition_info),
-  );
+  const [nutrition, setNutrition] = useState<NutritionInfo>({});
   const [overridesOpen, setOverridesOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Re-normalize when the nutrient list arrives / changes.
+  useEffect(() => {
+    setNutrition(normalizeNutrition(initial?.nutrition_info, nutrients));
+  }, [initial, nutrients]);
 
   async function save() {
     if (!current) return;
@@ -769,65 +1027,76 @@ function ProductDialog({
           </div>
         </div>
 
-        {/* Nutrition Information */}
+        {/* Nutrition Information (dynamic — driven by Nutrient Master) */}
         <div className="mt-2 border rounded p-3">
           <div className="text-sm font-medium mb-2">Nutrition Information (per 100g)</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {NUTRIENTS.map((n) => {
-              const cell = nutrition[n.key] ?? { value: 0, show_rda: n.defaultShow, rda_override: null };
-              return (
-                <div key={n.key} className="flex items-center gap-2 border rounded px-2 py-1.5">
-                  <div className="flex-1 text-xs">{n.label}</div>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    className="h-8 w-24"
-                    value={cell.value === 0 && !cell.show_rda ? "" : cell.value}
-                    onChange={(e) =>
-                      setNutrition({
-                        ...nutrition,
-                        [n.key]: {
-                          ...cell,
-                          value: e.target.value === "" ? 0 : Number(e.target.value),
-                          show_rda: cell.show_rda,
-                        },
-                      })
-                    }
-                  />
-                  <label className="flex items-center gap-1 text-xs whitespace-nowrap">
-                    <Checkbox
-                      checked={cell.show_rda}
-                      onCheckedChange={(v) =>
+          {nutrients.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              No active nutrients — add rows in the "Nutrient Master" tab.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {nutrients.map((n) => {
+                const cell = nutrition[n.key] ?? { value: 0, show_rda: n.default_show_rda, rda_override: null };
+                const canAutoRda = n.rda_reference != null;
+                return (
+                  <div key={n.key} className="flex items-center gap-2 border rounded px-2 py-1.5">
+                    <div className="flex-1 text-xs">{n.label}</div>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      className="h-8 w-24"
+                      value={cell.value === 0 && !cell.show_rda ? "" : cell.value}
+                      onChange={(e) =>
                         setNutrition({
                           ...nutrition,
-                          [n.key]: { ...cell, value: cell.value, show_rda: !!v },
+                          [n.key]: {
+                            ...cell,
+                            value: e.target.value === "" ? 0 : Number(e.target.value),
+                            show_rda: cell.show_rda,
+                          },
                         })
                       }
                     />
-                    %RDA
-                  </label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    className="h-8 w-20"
-                    placeholder="auto"
-                    disabled={!cell.show_rda}
-                    value={cell.rda_override ?? ""}
-                    onChange={(e) =>
-                      setNutrition({
-                        ...nutrition,
-                        [n.key]: {
-                          ...cell,
-                          rda_override: e.target.value === "" ? null : Number(e.target.value),
-                        },
-                      })
-                    }
-                    title="Manual %RDA override (leave blank for auto)"
-                  />
-                </div>
-              );
-            })}
-          </div>
+                    <label
+                      className="flex items-center gap-1 text-xs whitespace-nowrap"
+                      title={canAutoRda ? "Show %RDA" : "No RDA reference — use Manual % only"}
+                    >
+                      <Checkbox
+                        checked={cell.show_rda}
+                        disabled={!canAutoRda && !cell.rda_override}
+                        onCheckedChange={(v) =>
+                          setNutrition({
+                            ...nutrition,
+                            [n.key]: { ...cell, value: cell.value, show_rda: !!v },
+                          })
+                        }
+                      />
+                      %RDA
+                    </label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      className="h-8 w-20"
+                      placeholder={canAutoRda ? "auto" : "manual"}
+                      value={cell.rda_override ?? ""}
+                      onChange={(e) =>
+                        setNutrition({
+                          ...nutrition,
+                          [n.key]: {
+                            ...cell,
+                            rda_override: e.target.value === "" ? null : Number(e.target.value),
+                            show_rda: cell.show_rda || e.target.value !== "",
+                          },
+                        })
+                      }
+                      title={canAutoRda ? "Manual %RDA override (leave blank for auto)" : "Manual %RDA (no auto-calc — no RDA reference)"}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Label Overrides */}
@@ -915,6 +1184,7 @@ function Field({
 function PrintLabelTab() {
   const { current } = useCurrentProperty();
   const { user } = useAuth();
+  const { nutrients } = useNutrients(current?.id, { activeOnly: true });
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<LabelProduct[]>([]);
   const [selected, setSelected] = useState<LabelProduct | null>(null);
@@ -1087,6 +1357,7 @@ function PrintLabelTab() {
                   expiryOn={expiryOn}
                   batchNo={batchNo}
                   mrp={mrp}
+                  nutrients={nutrients}
                 />
               ) : (
                 <LabelSheet
@@ -1124,6 +1395,8 @@ function PrintLabelTab() {
         .label-sheet .row { display: flex; justify-content: space-between; gap: 2mm; margin: 0.3mm 0; }
         .label-sheet .k { color: #333; }
         .label-sheet .v { font-weight: 600; }
+        .label-sheet .row.hi { font-weight: 800; font-size: 10pt; }
+        .label-sheet .row.hi .k, .label-sheet .row.hi .v { font-weight: 800; }
         .label-sheet .ingredients { font-size: 7pt; margin-top: 1mm; line-height: 1.15; }
         .label-sheet .barcode { display: flex; justify-content: center; margin-top: 1mm; }
         .label-sheet .fssai { text-align: center; font-size: 7pt; margin-top: 0.5mm; }
@@ -1152,11 +1425,12 @@ function PrintLabelTab() {
         .premium-label .nf-table .nutrient-col { width: 55%; }
         .premium-label .nf-table .value-col { width: 22%; }
         .premium-label .nf-table .rda-col { width: 23%; }
-        .premium-label .pack-block { margin-top: 2mm; font-size: 5pt; line-height: 1.25; }
+        .premium-label .pack-block { margin-top: 1.6mm; font-size: 5pt; line-height: 1.25; }
         .premium-label .pack-block > div { margin: 0.1mm 0; }
-        .premium-label .barcode-inline { display: flex; justify-content: center; align-items: center; margin: 0.6mm 0; }
+        .premium-label .pack-block .hi { font-weight: 800; font-size: 6.5pt; letter-spacing: 0.1px; }
+        .premium-label .barcode-inline { display: flex; justify-content: center; align-items: center; margin: 0.4mm 0; }
         .premium-label .barcode-inline svg { height: 7mm; width: auto; max-width: 34mm; }
-        .premium-label .company-block { margin-top: 2.4mm; font-size: 5pt; line-height: 1.25; }
+        .premium-label .company-block { margin-top: 1.8mm; font-size: 5pt; line-height: 1.25; }
         .premium-label .company-block > div { margin: 0.1mm 0; }
 
         @media print {
@@ -1228,16 +1502,16 @@ function LabelSheet({
         </div>
       )}
       {mrp && (
-        <div className="row">
+        <div className="row hi">
           <span className="k">MRP:</span>
           <span className="v">₹{mrp}</span>
         </div>
       )}
-      <div className="row">
+      <div className="row hi">
         <span className="k">Packed:</span>
         <span className="v">{packedOn}</span>
       </div>
-      <div className="row">
+      <div className="row hi">
         <span className="k">Best Before:</span>
         <span className="v">{expiryOn}</span>
       </div>
