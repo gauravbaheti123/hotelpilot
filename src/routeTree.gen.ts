@@ -33,6 +33,7 @@ import { Route as AuthenticatedRestaurantIndexRouteImport } from './routes/_auth
 import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports.index'
 import { Route as AuthenticatedPosIndexRouteImport } from './routes/_authenticated/pos.index'
 import { Route as AuthenticatedMastersIndexRouteImport } from './routes/_authenticated/masters.index'
+import { Route as AuthenticatedLabelPrintingIndexRouteImport } from './routes/_authenticated/label-printing.index'
 import { Route as AuthenticatedInventoryIndexRouteImport } from './routes/_authenticated/inventory.index'
 import { Route as AuthenticatedGuestsIndexRouteImport } from './routes/_authenticated/guests.index'
 import { Route as AuthenticatedFeedbackIndexRouteImport } from './routes/_authenticated/feedback.index'
@@ -235,6 +236,12 @@ const AuthenticatedMastersIndexRoute =
   AuthenticatedMastersIndexRouteImport.update({
     id: '/masters/',
     path: '/masters/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedLabelPrintingIndexRoute =
+  AuthenticatedLabelPrintingIndexRouteImport.update({
+    id: '/label-printing/',
+    path: '/label-printing/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedInventoryIndexRoute =
@@ -780,6 +787,7 @@ export interface FileRoutesByFullPath {
   '/feedback/': typeof AuthenticatedFeedbackIndexRoute
   '/guests/': typeof AuthenticatedGuestsIndexRoute
   '/inventory/': typeof AuthenticatedInventoryIndexRoute
+  '/label-printing/': typeof AuthenticatedLabelPrintingIndexRoute
   '/masters/': typeof AuthenticatedMastersIndexRoute
   '/pos/': typeof AuthenticatedPosIndexRoute
   '/reports/': typeof AuthenticatedReportsIndexRoute
@@ -883,6 +891,7 @@ export interface FileRoutesByTo {
   '/feedback': typeof AuthenticatedFeedbackIndexRoute
   '/guests': typeof AuthenticatedGuestsIndexRoute
   '/inventory': typeof AuthenticatedInventoryIndexRoute
+  '/label-printing': typeof AuthenticatedLabelPrintingIndexRoute
   '/masters': typeof AuthenticatedMastersIndexRoute
   '/pos': typeof AuthenticatedPosIndexRoute
   '/reports': typeof AuthenticatedReportsIndexRoute
@@ -988,6 +997,7 @@ export interface FileRoutesById {
   '/_authenticated/feedback/': typeof AuthenticatedFeedbackIndexRoute
   '/_authenticated/guests/': typeof AuthenticatedGuestsIndexRoute
   '/_authenticated/inventory/': typeof AuthenticatedInventoryIndexRoute
+  '/_authenticated/label-printing/': typeof AuthenticatedLabelPrintingIndexRoute
   '/_authenticated/masters/': typeof AuthenticatedMastersIndexRoute
   '/_authenticated/pos/': typeof AuthenticatedPosIndexRoute
   '/_authenticated/reports/': typeof AuthenticatedReportsIndexRoute
@@ -1093,6 +1103,7 @@ export interface FileRouteTypes {
     | '/feedback/'
     | '/guests/'
     | '/inventory/'
+    | '/label-printing/'
     | '/masters/'
     | '/pos/'
     | '/reports/'
@@ -1196,6 +1207,7 @@ export interface FileRouteTypes {
     | '/feedback'
     | '/guests'
     | '/inventory'
+    | '/label-printing'
     | '/masters'
     | '/pos'
     | '/reports'
@@ -1300,6 +1312,7 @@ export interface FileRouteTypes {
     | '/_authenticated/feedback/'
     | '/_authenticated/guests/'
     | '/_authenticated/inventory/'
+    | '/_authenticated/label-printing/'
     | '/_authenticated/masters/'
     | '/_authenticated/pos/'
     | '/_authenticated/reports/'
@@ -1503,6 +1516,13 @@ declare module '@tanstack/react-router' {
       path: '/masters'
       fullPath: '/masters/'
       preLoaderRoute: typeof AuthenticatedMastersIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/label-printing/': {
+      id: '/_authenticated/label-printing/'
+      path: '/label-printing'
+      fullPath: '/label-printing/'
+      preLoaderRoute: typeof AuthenticatedLabelPrintingIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/inventory/': {
@@ -2147,6 +2167,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFeedbackIndexRoute: typeof AuthenticatedFeedbackIndexRoute
   AuthenticatedGuestsIndexRoute: typeof AuthenticatedGuestsIndexRoute
   AuthenticatedInventoryIndexRoute: typeof AuthenticatedInventoryIndexRoute
+  AuthenticatedLabelPrintingIndexRoute: typeof AuthenticatedLabelPrintingIndexRoute
   AuthenticatedMastersIndexRoute: typeof AuthenticatedMastersIndexRoute
   AuthenticatedPosIndexRoute: typeof AuthenticatedPosIndexRoute
   AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
@@ -2243,6 +2264,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFeedbackIndexRoute: AuthenticatedFeedbackIndexRoute,
   AuthenticatedGuestsIndexRoute: AuthenticatedGuestsIndexRoute,
   AuthenticatedInventoryIndexRoute: AuthenticatedInventoryIndexRoute,
+  AuthenticatedLabelPrintingIndexRoute: AuthenticatedLabelPrintingIndexRoute,
   AuthenticatedMastersIndexRoute: AuthenticatedMastersIndexRoute,
   AuthenticatedPosIndexRoute: AuthenticatedPosIndexRoute,
   AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
