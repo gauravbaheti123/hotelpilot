@@ -73,9 +73,13 @@ export interface InvoiceBooking {
   check_out: string;
   adults?: number | null;
   children?: number | null;
+  source?: string | null;
+  ota_partner_name?: string | null;
+  ota_channels?: { name?: string | null } | null;
   guests?: {
     name: string;
     mobile?: string | null;
+    address?: string | null;
     nationality?: string | null;
     id_proof_type?: string | null;
     id_proof_number?: string | null;
