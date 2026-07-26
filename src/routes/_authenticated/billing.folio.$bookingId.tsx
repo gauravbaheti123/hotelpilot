@@ -2255,9 +2255,15 @@ function FolioPage() {
               This will reopen the bill and mark the guest as <b>checked-in</b> again.
               Any payment already collected will remain on file.
             </p>
-            <p className="text-muted-foreground">
-              Available for <b>{undoMinutesLeft}</b> more minute(s). After 1 hour of checkout this option is not available.
-            </p>
+            {undoPrivileged ? (
+              <p className="text-muted-foreground">
+                Manager override — the 1-hour window does not apply for your role.
+              </p>
+            ) : (
+              <p className="text-muted-foreground">
+                Available for <b>{undoMinutesLeft}</b> more minute(s). After 1 hour of checkout this option is not available.
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setUndoOpen(false)} disabled={undoBusy}>Cancel</Button>
