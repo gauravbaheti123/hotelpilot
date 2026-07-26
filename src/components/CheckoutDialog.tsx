@@ -491,7 +491,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     const now = new Date().toISOString();
 
     if (booking.status !== "checked_out" && booking.status !== "cancelled") {
-      await supabase
+      const { error: bkErr } = await supabase
         .from("bookings")
         .update({
           status: "checked_out",
@@ -499,14 +499,24 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
           checked_out_by: user?.id ?? null,
         } as any)
         .eq("id", booking.id);
+      if (bkErr) {
+        setBusy(false);
+        console.error("[CheckoutDialog] booking status update failed", bkErr);
+        return toast.error(`Checkout failed: ${bkErr.message}`);
+      }
     }
 
     const roomIds: string[] = [];
     for (const br of booking.booking_rooms ?? []) {
-      await supabase
+      const { error: brErr } = await supabase
         .from("booking_rooms")
         .update({ actual_check_out: now } as any)
         .eq("id", br.id);
+      if (brErr) {
+        setBusy(false);
+        console.error("[CheckoutDialog] booking_rooms update failed", brErr);
+        return toast.error(`Checkout failed (room ${br.rooms?.room_number ?? ""}): ${brErr.message}`);
+      }
       if (br.rooms?.id) roomIds.push(br.rooms.id);
     }
     if (roomIds.length > 0) {
@@ -517,10 +527,15 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
           room_number: br.rooms.room_number ?? null,
           old_status: br.rooms.status ?? "occupied",
         }));
-      await supabase
+      const { error: rmErr } = await supabase
         .from("rooms")
         .update({ status: "vacant", housekeeping_status: "dirty" } as any)
         .in("id", roomIds);
+      if (rmErr) {
+        setBusy(false);
+        console.error("[CheckoutDialog] rooms status update failed", rmErr);
+        return toast.error(`Checkout partial: room status not updated — ${rmErr.message}`);
+      }
       for (const p of priorStatuses) {
         logActivity({
           property_id: booking.property_id,
