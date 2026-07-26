@@ -1364,9 +1364,14 @@ function FolioPage() {
                 size="sm"
                 onClick={() => setUndoOpen(true)}
                 className="border-amber-500 text-amber-700 hover:bg-amber-50"
-                title={`Available for ${undoMinutesLeft} more minute(s)`}
+                title={undoPrivileged
+                  ? "Manager override — undo checkout"
+                  : `Available for ${undoMinutesLeft} more minute(s)`}
               >
-                <ArrowLeft className="h-4 w-4 mr-1" /> Undo Checkout ({undoMinutesLeft}m)
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                {undoPrivileged
+                  ? "Undo Checkout"
+                  : `Undo Checkout (${undoMinutesLeft}m)`}
               </Button>
             )}
           </div>
