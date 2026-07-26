@@ -1270,9 +1270,15 @@ function FolioPage() {
   const canUndoCheckout = (() => {
     if (!booking?.checked_out_at) return false;
     if (booking.status !== "checked_out") return false;
+    // Manager / Owner / Superadmin can undo a checkout at any time (server RPC
+    // still enforces Night-Audit and room-reassignment safety).
+    if (hasRole(roles, "owner") || hasRole(roles, "superadmin") || hasRole(roles, "manager")) {
+      return true;
+    }
     const elapsed = nowTick - new Date(booking.checked_out_at).getTime();
     return elapsed >= 0 && elapsed <= 60 * 60 * 1000;
   })();
+  const undoPrivileged = hasRole(roles, "owner") || hasRole(roles, "superadmin") || hasRole(roles, "manager");
   const undoMinutesLeft = booking?.checked_out_at
     ? Math.max(0, Math.ceil((60 * 60 * 1000 - (nowTick - new Date(booking.checked_out_at).getTime())) / 60000))
     : 0;
