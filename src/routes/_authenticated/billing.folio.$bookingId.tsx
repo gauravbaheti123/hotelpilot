@@ -81,7 +81,6 @@ interface BookingCtx {
   checked_out_at?: string | null;
   source?: string | null;
   ota_partner_name?: string | null;
-  channel_id?: string | null;
   ota_channels?: { name: string | null } | null;
   guests: {
     name: string; mobile: string | null; gst_number: string | null; company: string | null; address: string | null;
