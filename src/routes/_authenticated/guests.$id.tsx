@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { Ban, ShieldCheck } from "lucide-react";
 import { ID_PROOF_TYPES, guestSchema, emptyToNull } from "@/lib/guests";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
+import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
 import { inr } from "@/lib/billing";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 
@@ -90,6 +91,7 @@ function GuestDetail() {
     });
     if (!parsed.success) { toast.error(parsed.error.issues[0]?.message ?? "Invalid"); return; }
     if (g.gst_number && !isValidOrEmptyGSTIN(g.gst_number)) { toast.error(GSTIN_ERROR); return; }
+    if (!isValidMobile(g.mobile ?? "")) { toast.error(MOBILE_ERROR); return; }
     setBusy(true);
     try {
       const { name, ...rest } = parsed.data;
@@ -175,7 +177,20 @@ function GuestDetail() {
           <CardContent className="space-y-3">
             <div className="grid gap-3 md:grid-cols-2">
               <Field label="Name"><Input value={g.name} onChange={(e) => patch("name", e.target.value)} maxLength={120} /></Field>
-              <Field label="Mobile"><Input value={g.mobile ?? ""} onChange={(e) => patch("mobile", e.target.value)} maxLength={20} /></Field>
+              <Field label="Mobile *">
+                <Input
+                  value={g.mobile ?? ""}
+                  onChange={(e) => patch("mobile", sanitizeMobile(e.target.value))}
+                  inputMode="numeric"
+                  pattern="\d{10}"
+                  maxLength={10}
+                  placeholder="10-digit mobile"
+                  className={g.mobile && !isValidMobile(g.mobile) ? "border-red-500 focus-visible:ring-red-500" : ""}
+                />
+                {g.mobile && !isValidMobile(g.mobile) && (
+                  <p className="mt-1 text-[11px] text-red-600">{MOBILE_ERROR}</p>
+                )}
+              </Field>
               <Field label="Email"><Input value={g.email ?? ""} onChange={(e) => patch("email", e.target.value)} maxLength={255} /></Field>
               <Field label="Gender">
                 <Select value={g.gender ?? ""} onValueChange={(v) => patch("gender", v)}>
