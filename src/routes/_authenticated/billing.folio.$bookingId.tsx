@@ -173,6 +173,14 @@ function FolioPage() {
   // Edit line-item dialog (for sundry/extra "Other Charges")
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+
+  // Edit payment mode (Manager/Owner only)
+  const canEditPaymentMode = hasRole(roles, "owner") || hasRole(roles, "superadmin") || hasRole(roles, "manager");
+  const [payEditOpen, setPayEditOpen] = useState(false);
+  const [payEditTarget, setPayEditTarget] = useState<Payment | null>(null);
+  const [payEditMode, setPayEditMode] = useState<string>("cash");
+  const [payEditSaving, setPayEditSaving] = useState(false);
+  const [payModeHistory, setPayModeHistory] = useState<Record<string, Array<{ old_mode: string; new_mode: string; user_name: string; created_at: string }>>>({});
   const [editDesc, setEditDesc] = useState("");
   const [editQty, setEditQty] = useState("1");
   const [editRate, setEditRate] = useState("0");
