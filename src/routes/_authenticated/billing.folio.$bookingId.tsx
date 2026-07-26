@@ -79,6 +79,10 @@ interface BookingCtx {
   check_in: string; check_out: string; total_amount: number;
   property_id: string; adults: number | null; children: number | null;
   checked_out_at?: string | null;
+  source?: string | null;
+  ota_partner_name?: string | null;
+  channel_id?: string | null;
+  ota_channels?: { name: string | null } | null;
   guests: {
     name: string; mobile: string | null; gst_number: string | null; company: string | null; address: string | null;
     id_proof_type: string | null; id_proof_number: string | null; nationality: string | null;
@@ -230,7 +234,8 @@ function FolioPage() {
     setLoading(true);
     const { data: b, error: be } = await supabase
       .from("bookings")
-      .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,checked_out_at,
+      .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,checked_out_at,source,ota_partner_name,channel_id,
+        ota_channels(name),
         guests(name,mobile,gst_number,company,address,id_proof_type,id_proof_number,nationality),
         booking_rooms(id,rate,check_in,check_out,actual_check_in,actual_check_out,rooms!booking_rooms_room_id_fkey(room_number),room_categories(name,gst_rate))`)
       .eq("id", bookingId).single();

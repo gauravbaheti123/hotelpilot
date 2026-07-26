@@ -859,6 +859,7 @@ export type Database = {
           id: string
           is_wiped: boolean
           notes: string | null
+          ota_partner_name: string | null
           property_id: string
           rate_type: string
           restaurant_ledger_balance: number
@@ -891,6 +892,7 @@ export type Database = {
           id?: string
           is_wiped?: boolean
           notes?: string | null
+          ota_partner_name?: string | null
           property_id: string
           rate_type?: string
           restaurant_ledger_balance?: number
@@ -923,6 +925,7 @@ export type Database = {
           id?: string
           is_wiped?: boolean
           notes?: string | null
+          ota_partner_name?: string | null
           property_id?: string
           rate_type?: string
           restaurant_ledger_balance?: number
