@@ -22,6 +22,7 @@ interface Row {
   _id: string; room_no: string; category: string; guest_name: string;
   check_in: string; check_out: string; nights: number; tariff_plan: string;
   rate: number; total_amount: number; payment_status: string;
+  checked_in_by_name: string; checked_out_by_name: string;
 }
 
 function Page() {
@@ -50,18 +51,35 @@ function Page() {
       rooms:room_id(id,room_number),
       room_categories(name),
       tariff:tariff_id(name),
-      bookings(id,status,total_amount,balance_amount,guests(name))
+      bookings(id,status,total_amount,balance_amount,checked_in_by,checked_out_by,guests(name))
     `).eq("property_id", propertyId)
       .gte("check_in", from).lte("check_in", to);
     if (catId !== "all") q = q.eq("category_id", catId);
     if (roomId !== "all") q = q.eq("room_id", roomId);
     const { data, error } = await q;
     if (error) { console.error("[room-wise] load failed:", error); setRows([]); return; }
-    const out: Row[] = ((data ?? []) as any[]).map((br) => {
+    const raw = (data ?? []) as any[];
+    const uids = new Set<string>();
+    for (const br of raw) {
+      const b = br.bookings;
+      if (b?.checked_in_by) uids.add(b.checked_in_by);
+      if (b?.checked_out_by) uids.add(b.checked_out_by);
+    }
+    const nameMap = new Map<string, string>();
+    if (uids.size) {
+      const { data: profs } = await supabase.from("profiles")
+        .select("id,name,email").in("id", Array.from(uids));
+      for (const p of (profs ?? []) as any[]) {
+        nameMap.set(p.id, p.name || p.email || "");
+      }
+    }
+    const out: Row[] = raw.map((br) => {
       const inD = new Date(br.check_in), outD = new Date(br.check_out);
       const nights = Math.max(1, Math.round((+outD - +inD) / 86400000));
       const total = nights * Number(br.rate || 0);
       const bal = Number(br.bookings?.balance_amount ?? 0);
+      const cib = br.bookings?.checked_in_by as string | null;
+      const cob = br.bookings?.checked_out_by as string | null;
       return {
         _id: br.id, room_no: br.rooms?.room_number ?? "",
         category: br.room_categories?.name ?? "",
@@ -70,6 +88,8 @@ function Page() {
         tariff_plan: br.tariff?.name ?? "Rack",
         rate: Number(br.rate || 0), total_amount: total,
         payment_status: bal > 0 ? "Pending" : "Paid",
+        checked_in_by_name: cib ? (nameMap.get(cib) ?? "—") : "—",
+        checked_out_by_name: cob ? (nameMap.get(cob) ?? "—") : "—",
       };
     });
     out.sort((a, b) => a.room_no.localeCompare(b.room_no) || a.check_in.localeCompare(b.check_in));
@@ -91,6 +111,8 @@ function Page() {
     { key: "rate", header: "Rate/Night", get: (r) => r.rate, currency: true, sortValue: (r) => r.rate },
     { key: "total", header: "Total Amount", get: (r) => r.total_amount, currency: true, sortValue: (r) => r.total_amount },
     { key: "ps", header: "Payment Status", get: (r) => r.payment_status, type: "enum" },
+    { key: "cib", header: "Checked-in By", get: (r) => r.checked_in_by_name, type: "enum" },
+    { key: "cob", header: "Checked-out By", get: (r) => r.checked_out_by_name, type: "enum" },
   ];
 
   const meta = { reportName: "Room-Wise Report", propertyName: current?.name ?? "Property", from, to,
@@ -135,6 +157,8 @@ function Page() {
             <tr>
               <td colSpan={8} className="px-2 py-2 text-right">All rooms total</td>
               <td className="px-2 py-2 text-right tabular-nums">{fmtINR(d.reduce((s, r) => s + r.total_amount, 0))}</td>
+              <td />
+              <td />
               <td />
             </tr>
           )}
