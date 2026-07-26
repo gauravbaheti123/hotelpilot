@@ -297,14 +297,28 @@ function OwnerDashboard({
       // no active booking_room covering today are stale "ghost" tiles. Reset
       // them to vacant so the dashboard reflects reality.
       if (isToday) {
-        const ghosts = (rms.data ?? [])
+        const potentialGhosts = (rms.data ?? [])
           .filter((r: any) => r.status === "occupied" && !occSet.has(r.id))
           .map((r: any) => r.id);
-        if (ghosts.length > 0) {
-          supabase.from("rooms")
-            .update({ status: "vacant" as any, housekeeping_status: "dirty" as any })
-            .in("id", ghosts)
-            .then(({ error }) => { if (error) console.warn("ghost cleanup failed", error); });
+        if (potentialGhosts.length > 0) {
+          // Re-check against ALL active bookings (no date filter) so overdue
+          // checked-in bookings still hold their room until an explicit checkout.
+          const { data: stillActive } = await supabase
+            .from("booking_rooms")
+            .select("room_id, bookings!inner(status,property_id)")
+            .eq("bookings.property_id", propertyId)
+            .in("bookings.status", ["reserved", "checked_in"])
+            .in("room_id", potentialGhosts);
+          const heldRoomIds = new Set(
+            (stillActive ?? []).map((b: any) => b.room_id).filter(Boolean),
+          );
+          const ghosts = potentialGhosts.filter((id: string) => !heldRoomIds.has(id));
+          if (ghosts.length > 0) {
+            supabase.from("rooms")
+              .update({ status: "vacant" as any, housekeeping_status: "dirty" as any })
+              .in("id", ghosts)
+              .then(({ error }) => { if (error) console.warn("ghost cleanup failed", error); });
+          }
         }
       }
       setKpi({
