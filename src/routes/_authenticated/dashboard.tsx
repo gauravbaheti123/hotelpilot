@@ -995,7 +995,7 @@ function RoomGroups({
               {g.name} <span className="text-muted-foreground/60 font-normal">· {g.rooms.length}</span>
             </div>
           </div>
-          <div className="grid gap-2.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 w-full">
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 w-full">
             {g.rooms.map((r) => (
               <RoomCard
                 key={r.id}
