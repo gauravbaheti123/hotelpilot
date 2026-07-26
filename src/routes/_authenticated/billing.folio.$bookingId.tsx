@@ -2089,6 +2089,58 @@ function FolioPage() {
           </DialogContent>
         </Dialog>
 
+        {/* EDIT PAYMENT MODE (Manager/Owner only) */}
+        <Dialog open={payEditOpen} onOpenChange={setPayEditOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Edit payment mode</DialogTitle></DialogHeader>
+            {payEditTarget && (
+              <div className="space-y-3">
+                <div className="rounded-md border bg-muted/30 p-2 text-xs">
+                  <div><span className="text-muted-foreground">Amount:</span> <span className="font-semibold">{inr(payEditTarget.amount)}</span></div>
+                  <div><span className="text-muted-foreground">Paid on:</span> {new Date(payEditTarget.paid_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+                  <div><span className="text-muted-foreground">Current mode:</span> <span className="capitalize">{payEditTarget.mode.replace(/_/g, " ")}</span></div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">New mode</Label>
+                  <Select value={payEditMode} onValueChange={setPayEditMode}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {payMethods.map((m) => <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-800">
+                  Only the payment mode changes. Amount, reference and date remain the same. This change is recorded in the activity log.
+                </div>
+                {(payModeHistory[payEditTarget.id] ?? []).length > 0 && (
+                  <div className="rounded-md border p-2 text-[11px]">
+                    <div className="mb-1 font-semibold text-gray-700">Previous changes</div>
+                    <ul className="space-y-0.5 text-gray-600">
+                      {(payModeHistory[payEditTarget.id] ?? []).map((h, i) => (
+                        <li key={i}>
+                          <span className="capitalize">{h.old_mode}</span> → <span className="capitalize">{h.new_mode}</span>
+                          {" "}by {h.user_name}
+                          {" · "}{new Date(h.created_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPayEditOpen(false)}>Cancel</Button>
+              <Button
+                onClick={savePaymentMode}
+                disabled={payEditSaving || !payEditTarget || payEditMode === payEditTarget.mode}
+                style={{ background: TEAL, color: "#fff" }}
+              >
+                {payEditSaving ? "Saving…" : "Save mode"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* DISCOUNT (bill-level or line-item) */}
         <Dialog open={discOpen} onOpenChange={setDiscOpen}>
           <DialogContent>
