@@ -20,6 +20,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RequirePermission } from "@/components/RequirePermission";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
+import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
 import {
   pickAvailableRooms, commitRoomBlocks, nightsBetween,
   type AssignedBlock,
@@ -196,7 +197,10 @@ function NewBanquetPage() {
 
   async function save() {
     if (!propertyId) return;
-    if (!guestName.trim() || !guestMobile.trim()) return toast.error("Guest name & mobile required");
+    if (!guestName.trim()) return toast.error("Guest name required");
+    if (!isValidMobile(guestMobile)) return toast.error(MOBILE_ERROR);
+    const badAssign = assignments.find((a) => a.guest_mobile && !isValidMobile(a.guest_mobile));
+    if (badAssign) return toast.error(`Assigned room mobile invalid — ${MOBILE_ERROR.toLowerCase()}`);
     if (!hallId) return toast.error("Pick a hall");
     if (!eventDate || !startTime || !endTime) return toast.error("Event date/time required");
     if ((roomMode === "single" || roomMode === "bulk") && !eventName.trim()) {
@@ -363,7 +367,20 @@ function NewBanquetPage() {
             <CardHeader><CardTitle className="text-base">Guest / Host</CardTitle></CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-3">
               <Field label="Name *"><Input value={guestName} onChange={(e) => setGuestName(e.target.value)} /></Field>
-              <Field label="Mobile *"><Input value={guestMobile} onChange={(e) => setGuestMobile(e.target.value)} /></Field>
+              <Field label="Mobile *">
+                <Input
+                  value={guestMobile}
+                  onChange={(e) => setGuestMobile(sanitizeMobile(e.target.value))}
+                  inputMode="numeric"
+                  pattern="\d{10}"
+                  maxLength={10}
+                  placeholder="10-digit mobile"
+                  className={guestMobile && !isValidMobile(guestMobile) ? "border-red-500 focus-visible:ring-red-500" : ""}
+                />
+                {guestMobile && !isValidMobile(guestMobile) && (
+                  <p className="mt-1 text-[11px] text-red-600">{MOBILE_ERROR}</p>
+                )}
+              </Field>
               <Field label="Email"><Input type="email" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} /></Field>
             </CardContent>
           </Card>
@@ -541,8 +558,15 @@ function NewBanquetPage() {
                         <div><b>Room {a.room_number}</b><div className="text-xs text-muted-foreground">{a.room_category}</div></div>
                         <Input placeholder="Guest name" value={a.guest_name ?? ""}
                           onChange={(e) => setAssignments((prev) => prev.map((x, idx) => idx === i ? { ...x, guest_name: e.target.value } : x))} />
-                        <Input placeholder="Mobile" value={a.guest_mobile ?? ""}
-                          onChange={(e) => setAssignments((prev) => prev.map((x, idx) => idx === i ? { ...x, guest_mobile: e.target.value } : x))} />
+                        <Input
+                          placeholder="10-digit mobile"
+                          value={a.guest_mobile ?? ""}
+                          inputMode="numeric"
+                          pattern="\d{10}"
+                          maxLength={10}
+                          onChange={(e) => setAssignments((prev) => prev.map((x, idx) => idx === i ? { ...x, guest_mobile: sanitizeMobile(e.target.value) } : x))}
+                          className={a.guest_mobile && !isValidMobile(a.guest_mobile) ? "border-red-500 focus-visible:ring-red-500" : ""}
+                        />
                       </div>
                     ))}
                     <p className="text-xs text-muted-foreground">Leave blank to mark as "Unassigned" — can be filled later from event page or dashboard.</p>
