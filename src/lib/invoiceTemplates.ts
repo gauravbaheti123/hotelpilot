@@ -211,19 +211,32 @@ function metaBlock(ctx: InvoiceContext): string {
     ? `<span style="color:#9ca3af;letter-spacing:4px">- - - - -</span>`
     : esc(folio.invoice_number);
 
+  // OTA / third-party channel name for "Company To" (priority: mapped OTA channel → manual partner name → generic "OTA")
+  const otaName =
+    booking.ota_channels?.name?.trim() ||
+    booking.ota_partner_name?.trim() ||
+    (booking.source === "ota" ? "OTA" : "");
+
+  const guestName = booking.guests?.name ?? "";
+  const hasCompany = !!folio.guest_company;
+  const billToPrimary = hasCompany
+    ? `${esc(folio.guest_company)} <span style="font-weight:500;color:#374151">(${esc(guestName)})</span>`
+    : esc(guestName);
+
   return `
     <div style="display:flex;justify-content:space-between;gap:24px;margin-bottom:14px">
       <div style="flex:1">
         <div class="small" style="text-transform:uppercase;letter-spacing:1px">Bill To</div>
-        <div style="font-weight:600;font-size:13px;margin-top:2px">${esc(booking.guests?.name ?? "")}</div>
+        <div style="font-weight:600;font-size:13px;margin-top:2px">${billToPrimary}</div>
+        ${hasCompany && folio.guest_gstin ? `<div class="small">GSTIN: ${esc(folio.guest_gstin)}</div>` : ""}
+        ${booking.guests?.address ? `<div class="small">${esc(booking.guests.address)}</div>` : ""}
         ${booking.guests?.mobile ? `<div class="small">${esc(booking.guests.mobile)}</div>` : ""}
         ${booking.guests?.nationality ? `<div class="small">Nationality: ${esc(booking.guests.nationality)}</div>` : ""}
         ${booking.guests?.id_proof_type && booking.guests?.id_proof_number
           ? `<div class="small">${esc(booking.guests.id_proof_type)}: ${esc(booking.guests.id_proof_number)}</div>` : ""}
-        ${folio.guest_company ? `
+        ${otaName ? `
           <div class="small" style="text-transform:uppercase;letter-spacing:1px;margin-top:8px">Company To</div>
-          <div style="font-weight:600;font-size:12px;margin-top:2px">${esc(folio.guest_company)}</div>
-          ${folio.guest_gstin ? `<div class="small">GSTIN: ${esc(folio.guest_gstin)}</div>` : ""}
+          <div style="font-weight:600;font-size:12px;margin-top:2px">${esc(otaName)}</div>
         ` : ""}
       </div>
       <div style="text-align:right">
