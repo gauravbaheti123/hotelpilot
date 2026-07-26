@@ -56,4 +56,5 @@ export const ACTIVITY = {
   BILL_VOIDED: { action_type: "BILL_VOIDED", module: "Billing" },
   BILL_DELETED: { action_type: "BILL_DELETED", module: "Billing" },
   BILL_NUMBER_EDITED: { action_type: "BILL_NUMBER_EDITED", module: "Billing" },
+  PAYMENT_MODE_CHANGED: { action_type: "PAYMENT_MODE_CHANGED", module: "Billing" },
 } as const;
