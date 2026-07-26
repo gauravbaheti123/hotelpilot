@@ -13,9 +13,9 @@ import { logAuthEvent } from "@/lib/auth-security";
  * Adjust the constants below to retune. Activity is tracked via
  * mousemove / keydown / click / scroll / touchstart on the window.
  */
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const IDLE_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 hours
 const ABSOLUTE_SESSION_MS = 12 * 60 * 60 * 1000; // 12 hours
-const WARN_BEFORE_MS = 60 * 1000; // 1 minute warning
+const WARN_BEFORE_MS = 2 * 60 * 1000; // 2 minute warning
 
 const LAST_ACTIVITY_KEY = "hp.lastActivity";
 const SESSION_START_KEY = "hp.sessionStart";
