@@ -68,6 +68,39 @@ interface SplitRow {
   reference: string;
 }
 
+function checkoutFolioRank(f: any) {
+  const status = String(f?.status ?? "");
+  const balance = Number(f?.balance_amount ?? 0);
+  const total = Number(f?.total_amount ?? 0);
+  const isChild = Boolean(f?.parent_folio_id);
+  const createdAt = new Date(f?.created_at ?? 0).getTime() || 0;
+  return {
+    payableOpen: status === "open" && balance > 0.01 ? 0 : 1,
+    open: status === "open" ? 0 : 1,
+    child: isChild ? 0 : 1,
+    balance: -balance,
+    total: -total,
+    createdAt: -createdAt,
+  };
+}
+
+function pickCheckoutFolio(rows: any[]) {
+  return [...rows]
+    .filter((f) => !f?.is_deleted && !["void", "refunded"].includes(String(f?.status ?? "")))
+    .sort((a, b) => {
+      const ar = checkoutFolioRank(a);
+      const br = checkoutFolioRank(b);
+      return (
+        ar.payableOpen - br.payableOpen ||
+        ar.open - br.open ||
+        ar.child - br.child ||
+        ar.balance - br.balance ||
+        ar.total - br.total ||
+        ar.createdAt - br.createdAt
+      );
+    })[0] ?? null;
+}
+
 export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props) {
   const { user } = useAuth();
   const { can } = usePermissions();
@@ -131,17 +164,44 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       setProperty(prop as any);
     }
 
-    const { data: folioId, error: fErr } = await supabase.rpc("get_or_create_folio", {
-      _booking_id: bookingId,
-    });
-    if (fErr) {
-      toast.error(fErr.message);
+    const { data: liveFolios, error: liveFoliosErr } = await supabase
+      .from("folios")
+      .select("*")
+      .eq("booking_id", bookingId)
+      .eq("is_deleted", false)
+      .not("status", "in", "(void,refunded)");
+    if (liveFoliosErr) {
+      toast.error(liveFoliosErr.message);
       setLoading(false);
       return;
     }
 
-    const [{ data: f }, { data: c }, { data: p }, { data: pk }, { data: pos }] = await Promise.all([
-      supabase.from("folios").select("*").eq("id", folioId as any).single(),
+    let selectedFolio = pickCheckoutFolio((liveFolios ?? []) as any[]);
+    if (!selectedFolio) {
+      const { data: folioId, error: fErr } = await supabase.rpc("get_or_create_folio", {
+        _booking_id: bookingId,
+      });
+      if (fErr) {
+        toast.error(fErr.message);
+        setLoading(false);
+        return;
+      }
+      const { data: createdFolio, error: createdFolioErr } = await supabase
+        .from("folios")
+        .select("*")
+        .eq("id", folioId as any)
+        .single();
+      if (createdFolioErr) {
+        toast.error(createdFolioErr.message);
+        setLoading(false);
+        return;
+      }
+      selectedFolio = createdFolio;
+    }
+
+    const folioId = selectedFolio.id;
+
+    const [{ data: c }, { data: p }, { data: pk }, { data: pos }] = await Promise.all([
       supabase.from("folio_charges").select("*").eq("folio_id", folioId as any),
       supabase.from("payments").select("*").eq("folio_id", folioId as any),
       supabase
@@ -157,7 +217,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
         .eq("booking_id", bookingId)
         .eq("status", "pending"),
     ]);
-    setFolio(f);
+    setFolio(selectedFolio);
     setCharges(c ?? []);
     setPayments(p ?? []);
     setPendingKots((pk ?? []) as unknown as PendingKot[]);
