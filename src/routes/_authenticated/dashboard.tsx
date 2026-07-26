@@ -886,6 +886,10 @@ function OwnerDashboard({
           if (roomNo) toast.success(`Opening Other Charges for Room ${roomNo}`);
         }}
         onAddExtraBed={(bid: string) => { setModalRoom(null); setExtraBedBookingId(bid); }}
+        onCollectAdvance={(bid: string) => {
+          setModalRoom(null);
+          navigate({ to: "/billing/folio/$bookingId", params: { bookingId: bid } });
+        }}
       />
       <CheckoutDialog
         bookingId={checkoutBookingId}
