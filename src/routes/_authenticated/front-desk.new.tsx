@@ -151,6 +151,7 @@ function NewBookingPage() {
   // is stored as NULL. See feature: "Room-less Future Reservations".
   const [assignLater, setAssignLater] = useState(false);
   const [source, setSource] = useState("walk_in");
+  const [otaPartnerName, setOtaPartnerName] = useState("");
   const [advance, setAdvance] = useState(0);
   const [paymentMode, setPaymentMode] = useState<string>("cash");
   const [paymentRef, setPaymentRef] = useState("");
@@ -431,6 +432,10 @@ function NewBookingPage() {
           booking_number: "",
           guest_id: guestId!,
           source,
+          ota_partner_name:
+            (source === "ota" || source === "agent") && otaPartnerName.trim()
+              ? otaPartnerName.trim()
+              : null,
           status: checkInNow ? "checked_in" : "reserved",
           check_in: checkIn,
           check_out: checkOut,
@@ -989,6 +994,16 @@ function NewBookingPage() {
                 </SelectContent>
               </Select>
             </F>
+            {(source === "ota" || source === "agent") && (
+              <F label="OTA / Travel Partner Name (optional)">
+                <Input
+                  value={otaPartnerName}
+                  onChange={(e) => setOtaPartnerName(e.target.value)}
+                  maxLength={80}
+                  placeholder="e.g. MakeMyTrip, Goibibo, Agoda"
+                />
+              </F>
+            )}
             <F label="Extra bed">
               <div className="space-y-1.5">
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
