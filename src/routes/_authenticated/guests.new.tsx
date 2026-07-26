@@ -12,6 +12,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { ID_PROOF_TYPES } from "@/lib/guests";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
+import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
 import { toast } from "sonner";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 
@@ -41,7 +42,7 @@ function NewGuestPage() {
 
   async function save() {
     if (!name.trim()) { toast.error("Name is required"); return; }
-    if (!mobile.trim()) { toast.error("Mobile is required"); return; }
+    if (!isValidMobile(mobile)) { toast.error(MOBILE_ERROR); return; }
     if (!isValidOrEmptyGSTIN(gstNumber)) { toast.error(GSTIN_ERROR); return; }
     setBusy(true);
     const tags = guestType === "regular" ? [] : [guestType];
@@ -83,7 +84,20 @@ function NewGuestPage() {
         <CardContent className="space-y-3">
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Full name *"><Input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} /></Field>
-            <Field label="Mobile *"><Input value={mobile} onChange={(e) => setMobile(e.target.value)} maxLength={20} /></Field>
+            <Field label="Mobile *">
+              <Input
+                value={mobile}
+                onChange={(e) => setMobile(sanitizeMobile(e.target.value))}
+                inputMode="numeric"
+                pattern="\d{10}"
+                maxLength={10}
+                placeholder="10-digit mobile"
+                className={mobile && !isValidMobile(mobile) ? "border-red-500 focus-visible:ring-red-500" : ""}
+              />
+              {mobile && !isValidMobile(mobile) && (
+                <p className="mt-1 text-[11px] text-red-600">{MOBILE_ERROR}</p>
+              )}
+            </Field>
             <Field label="Date of Birth (optional)"><Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} /></Field>
             <Field label="Email"><Input value={email} onChange={(e) => setEmail(e.target.value)} maxLength={255} /></Field>
             <Field label="Guest type">

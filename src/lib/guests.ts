@@ -4,7 +4,7 @@ export const ID_PROOF_TYPES = ["aadhaar", "pan", "passport", "driving_license", 
 
 export const guestSchema = z.object({
   name: z.string().trim().min(1, "Name required").max(120, "Too long"),
-  mobile: z.string().trim().max(20, "Too long").regex(/^[+\d\s-]*$/, "Invalid mobile").optional().or(z.literal("")),
+  mobile: z.string().trim().regex(/^\d{10}$/, "Enter a valid 10-digit mobile number").optional().or(z.literal("")),
   email: z.string().trim().email("Invalid email").max(255).optional().or(z.literal("")),
   gender: z.enum(["male", "female", "other", ""]).optional(),
   dob: z.string().optional().or(z.literal("")),

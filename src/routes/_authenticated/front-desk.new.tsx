@@ -28,6 +28,7 @@ import { GuestIdUploadField, type SelectedIdFile } from "@/components/GuestIdUpl
 import { uploadFileToDrive, safeName } from "@/lib/driveUpload";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
+import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 
@@ -330,7 +331,7 @@ function NewBookingPage() {
   async function save(checkInNow: boolean) {
     if (!current) return;
     if (!name.trim()) return toast.error("Guest name required");
-    if (!mobile.trim()) return toast.error("Mobile required");
+    if (!isValidMobile(mobile)) return toast.error(MOBILE_ERROR);
     if (!categoryId) return toast.error("Pick a category");
     if (!assignLater && !roomId) return toast.error("Pick a room (or tick 'Assign room later')");
     if (assignLater && checkInNow)
@@ -717,7 +718,20 @@ function NewBookingPage() {
 
             <div className="grid grid-cols-2 gap-3">
             <F label="Full name *"><Input value={name} onChange={(e) => setName(e.target.value)} /></F>
-            <F label="Mobile *"><Input value={mobile} onChange={(e) => setMobile(e.target.value)} /></F>
+            <F label="Mobile *">
+              <Input
+                value={mobile}
+                onChange={(e) => setMobile(sanitizeMobile(e.target.value))}
+                inputMode="numeric"
+                pattern="\d{10}"
+                maxLength={10}
+                placeholder="10-digit mobile"
+                className={mobile && !isValidMobile(mobile) ? "border-red-500 focus-visible:ring-red-500" : ""}
+              />
+              {mobile && !isValidMobile(mobile) && (
+                <p className="mt-1 text-[11px] text-red-600">{MOBILE_ERROR}</p>
+              )}
+            </F>
             <F label="Date of Birth (optional)">
               <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
             </F>
