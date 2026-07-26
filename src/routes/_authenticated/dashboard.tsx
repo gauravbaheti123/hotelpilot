@@ -1397,6 +1397,10 @@ function RoomStatusModal({
             <Button variant="outline" disabled={!bookingId} onClick={() => bookingId && onOpenBooking(bookingId)}>View Booking</Button>
             <Button variant="outline" disabled={!bookingId}
               onClick={() => bookingId && onOpenBooking(bookingId)}>Room Shift</Button>
+            <Button variant="outline" disabled={!bookingId}
+              onClick={() => bookingId && onCollectAdvance(bookingId)}>
+              <Receipt className="h-4 w-4 mr-2" /> Collect Advance Payment
+            </Button>
             {showNewKot && (
               <Button variant="outline" onClick={() => bookingId && onNewKot(bookingId)}>
                 <UtensilsCrossed className="h-4 w-4 mr-2" /> New KOT
