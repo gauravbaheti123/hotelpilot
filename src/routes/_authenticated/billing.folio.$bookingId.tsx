@@ -1954,14 +1954,45 @@ function FolioPage() {
               ) : (
                 <table>
                   <tbody className="zebra">
-                    {payments.map((p) => (
-                      <tr key={p.id}>
-                        <td style={{ textTransform: "capitalize" }}>{p.mode.replace(/_/g, " ")}</td>
-                        <td style={{ fontSize: 11, color: "#666" }}>{new Date(p.paid_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                        <td style={{ fontSize: 11, color: "#666" }}>{p.reference_no ?? ""}</td>
-                        <td style={{ textAlign: "right" }}>{inr(p.amount)}</td>
-                      </tr>
-                    ))}
+                    {payments.map((p) => {
+                      const history = payModeHistory[p.id] ?? [];
+                      const latestEdit = history[0];
+                      const tooltip = history.length
+                        ? history
+                            .map((h) => `${h.old_mode} → ${h.new_mode} by ${h.user_name} on ${new Date(h.created_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}`)
+                            .join("\n")
+                        : undefined;
+                      return (
+                        <tr key={p.id}>
+                          <td style={{ textTransform: "capitalize" }}>
+                            {p.mode.replace(/_/g, " ")}
+                            {latestEdit && (
+                              <span
+                                className="print:hidden ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-800"
+                                title={tooltip}
+                              >
+                                edited
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ fontSize: 11, color: "#666" }}>{new Date(p.paid_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                          <td style={{ fontSize: 11, color: "#666" }}>{p.reference_no ?? ""}</td>
+                          <td style={{ textAlign: "right" }}>
+                            <span>{inr(p.amount)}</span>
+                            {canEditPaymentMode && canEditNow && (
+                              <button
+                                type="button"
+                                onClick={() => openEditPaymentMode(p)}
+                                className="print:hidden ml-2 inline-flex items-center rounded border border-gray-300 px-1.5 py-0.5 text-[10px] text-gray-600 hover:bg-gray-50"
+                                title="Edit payment mode"
+                              >
+                                <Pencil className="h-3 w-3 mr-0.5" /> Mode
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                     <tr style={{ borderTop: "2px solid #ddd" }}>
                       <td colSpan={3} style={{ fontWeight: 700 }}>Total Paid</td>
                       <td style={{ textAlign: "right", fontWeight: 700 }}>{inr(folio.paid_amount)}</td>
