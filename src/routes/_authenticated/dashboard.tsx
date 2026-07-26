@@ -886,6 +886,10 @@ function OwnerDashboard({
           if (roomNo) toast.success(`Opening Other Charges for Room ${roomNo}`);
         }}
         onAddExtraBed={(bid: string) => { setModalRoom(null); setExtraBedBookingId(bid); }}
+        onCollectAdvance={(bid: string) => {
+          setModalRoom(null);
+          navigate({ to: "/billing/folio/$bookingId", params: { bookingId: bid } });
+        }}
       />
       <CheckoutDialog
         bookingId={checkoutBookingId}
@@ -995,7 +999,7 @@ function RoomGroups({
               {g.name} <span className="text-muted-foreground/60 font-normal">· {g.rooms.length}</span>
             </div>
           </div>
-          <div className="grid gap-2.5 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 w-full">
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 w-full">
             {g.rooms.map((r) => (
               <RoomCard
                 key={r.id}
@@ -1091,9 +1095,9 @@ function RoomCard({
           ? (e) => { if (e.key === "Enter" || e.key === " ") onPick(); }
           : undefined}
         className="relative transition cursor-pointer overflow-hidden flex flex-col"
-        style={{ backgroundColor: evBg, color: "#ffffff", minHeight: 140, borderRadius: 10 }}
+        style={{ backgroundColor: evBg, color: "#ffffff", minHeight: 118, borderRadius: 10 }}
       >
-        <div className="px-2.5 pt-2 pb-1.5 flex-1 min-h-0 flex flex-col">
+        <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
           <div className="flex items-start justify-between gap-2">
             <span style={{ color: "#ffffff", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
             <span className="font-semibold uppercase tracking-wide rounded-full"
@@ -1152,7 +1156,7 @@ function RoomCard({
   }
 
   const isCompact = kind !== "occupied";
-  const cardHeight = 140;
+  const cardHeight = 118;
   const hintText =
     kind === "dirty" ? "🧹 Needs cleaning"
     : kind === "maintenance" ? "🔧 Under repair"
@@ -1167,9 +1171,9 @@ function RoomCard({
       onClick={onPick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPick(); }}
       className="relative transition cursor-pointer overflow-hidden flex flex-col"
-      style={{ backgroundColor: meta.bg, color: "#ffffff", minHeight: 140, borderRadius: 10 }}
+      style={{ backgroundColor: meta.bg, color: "#ffffff", minHeight: 118, borderRadius: 10 }}
     >
-      <div className="px-2.5 pt-2 pb-1.5 flex-1 min-h-0 flex flex-col">
+      <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
         <div className="flex items-start justify-between gap-2">
           <span style={{ color: "#ffffff", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
           <span
@@ -1281,7 +1285,7 @@ function roomTileStyle(r: Room, isOccupied: boolean): { bg: string; label: strin
 }
 
 function RoomStatusModal({
-  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onNewKot, onOtherCharges, onAddExtraBed,
+  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onNewKot, onOtherCharges, onAddExtraBed, onCollectAdvance,
 }: {
   room: Room | null;
   kind: TileKind | null;
@@ -1295,6 +1299,7 @@ function RoomStatusModal({
   onNewKot: (bookingId: string) => void;
   onOtherCharges: (bookingId: string) => void;
   onAddExtraBed: (bookingId: string) => void;
+  onCollectAdvance: (bookingId: string) => void;
 }) {
   const [staffId, setStaffId] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
@@ -1392,6 +1397,10 @@ function RoomStatusModal({
             <Button variant="outline" disabled={!bookingId} onClick={() => bookingId && onOpenBooking(bookingId)}>View Booking</Button>
             <Button variant="outline" disabled={!bookingId}
               onClick={() => bookingId && onOpenBooking(bookingId)}>Room Shift</Button>
+            <Button variant="outline" disabled={!bookingId}
+              onClick={() => bookingId && onCollectAdvance(bookingId)}>
+              <Receipt className="h-4 w-4 mr-2" /> Collect Advance Payment
+            </Button>
             {showNewKot && (
               <Button variant="outline" onClick={() => bookingId && onNewKot(bookingId)}>
                 <UtensilsCrossed className="h-4 w-4 mr-2" /> New KOT

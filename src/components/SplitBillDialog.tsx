@@ -291,6 +291,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         const { data: f, error: fErr } = await supabase.from("folios").insert({
           property_id: booking.property_id,
           booking_id: booking.id,
+          parent_folio_id: folio.id,
           gst_mode: mode,
           bill_type: party.bill_type,
           guest_gstin: party.gstin || null,
@@ -457,6 +458,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         const { data: f, error: fErr } = await supabase.from("folios").insert({
           property_id: booking.property_id,
           booking_id: booking.id,
+          parent_folio_id: folio.id,
           gst_mode: mode,
           bill_type: party.bill_type,
           guest_gstin: party.gstin || null,

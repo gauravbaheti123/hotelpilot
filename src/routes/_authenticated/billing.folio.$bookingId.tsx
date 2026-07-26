@@ -1270,9 +1270,15 @@ function FolioPage() {
   const canUndoCheckout = (() => {
     if (!booking?.checked_out_at) return false;
     if (booking.status !== "checked_out") return false;
+    // Manager / Owner / Superadmin can undo a checkout at any time (server RPC
+    // still enforces Night-Audit and room-reassignment safety).
+    if (hasRole(roles, "owner") || hasRole(roles, "superadmin") || hasRole(roles, "manager")) {
+      return true;
+    }
     const elapsed = nowTick - new Date(booking.checked_out_at).getTime();
     return elapsed >= 0 && elapsed <= 60 * 60 * 1000;
   })();
+  const undoPrivileged = hasRole(roles, "owner") || hasRole(roles, "superadmin") || hasRole(roles, "manager");
   const undoMinutesLeft = booking?.checked_out_at
     ? Math.max(0, Math.ceil((60 * 60 * 1000 - (nowTick - new Date(booking.checked_out_at).getTime())) / 60000))
     : 0;
@@ -1358,9 +1364,14 @@ function FolioPage() {
                 size="sm"
                 onClick={() => setUndoOpen(true)}
                 className="border-amber-500 text-amber-700 hover:bg-amber-50"
-                title={`Available for ${undoMinutesLeft} more minute(s)`}
+                title={undoPrivileged
+                  ? "Manager override — undo checkout"
+                  : `Available for ${undoMinutesLeft} more minute(s)`}
               >
-                <ArrowLeft className="h-4 w-4 mr-1" /> Undo Checkout ({undoMinutesLeft}m)
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                {undoPrivileged
+                  ? "Undo Checkout"
+                  : `Undo Checkout (${undoMinutesLeft}m)`}
               </Button>
             )}
           </div>
@@ -2244,9 +2255,15 @@ function FolioPage() {
               This will reopen the bill and mark the guest as <b>checked-in</b> again.
               Any payment already collected will remain on file.
             </p>
-            <p className="text-muted-foreground">
-              Available for <b>{undoMinutesLeft}</b> more minute(s). After 1 hour of checkout this option is not available.
-            </p>
+            {undoPrivileged ? (
+              <p className="text-muted-foreground">
+                Manager override — the 1-hour window does not apply for your role.
+              </p>
+            ) : (
+              <p className="text-muted-foreground">
+                Available for <b>{undoMinutesLeft}</b> more minute(s). After 1 hour of checkout this option is not available.
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setUndoOpen(false)} disabled={undoBusy}>Cancel</Button>

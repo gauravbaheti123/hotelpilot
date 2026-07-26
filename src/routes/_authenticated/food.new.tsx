@@ -428,7 +428,27 @@ function NewKotPage() {
                 <Button key={c.id} size="sm" variant={activeCat === c.id ? "default" : "outline"} onClick={() => setActiveCat(c.id)}>{c.name}</Button>
               ))}
             </div>
-            <Input placeholder="Search items…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input
+              placeholder="Search items or shortcut code…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                const q = search.trim().toLowerCase();
+                if (!q) return;
+                const codeMatches = items.filter(
+                  (i) => (i.short_code ?? "").trim().toLowerCase() === q,
+                );
+                if (codeMatches.length === 1) {
+                  addItem(codeMatches[0]);
+                  setSearch("");
+                } else if (codeMatches.length > 1) {
+                  toast.message(
+                    `${codeMatches.length} items share code "${q.toUpperCase()}" — click one below to add`,
+                  );
+                }
+              }}
+            />
             <div className="grid gap-2 sm:grid-cols-2">
               {filtered.map((it) => {
                 const cat = cats.find((c) => c.id === it.category_id);

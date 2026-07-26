@@ -137,13 +137,8 @@ function MenuPage() {
   async function saveItem() {
     if (!editingItem?.name || !current) return toast.error("Name required");
     const sc = (editingItem.short_code ?? "").trim();
-    if (sc) {
-      const dup = items.find(
-        (x) => x.id !== editingItem.id
-          && (x.short_code ?? "").trim().toLowerCase() === sc.toLowerCase(),
-      );
-      if (dup) return toast.error(`This short code is already used by ${dup.name}`);
-    }
+    // Duplicate short codes are allowed — when the same code matches multiple
+    // items, the New KOT screen prompts the user to pick one.
     const payload: any = {
       property_id: current.id,
       category_id: editingItem.category_id ?? null,
