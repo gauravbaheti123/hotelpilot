@@ -1661,6 +1661,7 @@ export type Database = {
           is_reopened: boolean
           notes: string | null
           paid_amount: number
+          parent_folio_id: string | null
           property_id: string
           round_off_amount: number
           settled_at: string | null
@@ -1693,6 +1694,7 @@ export type Database = {
           is_reopened?: boolean
           notes?: string | null
           paid_amount?: number
+          parent_folio_id?: string | null
           property_id: string
           round_off_amount?: number
           settled_at?: string | null
@@ -1725,6 +1727,7 @@ export type Database = {
           is_reopened?: boolean
           notes?: string | null
           paid_amount?: number
+          parent_folio_id?: string | null
           property_id?: string
           round_off_amount?: number
           settled_at?: string | null
@@ -1741,6 +1744,13 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folios_parent_folio_id_fkey"
+            columns: ["parent_folio_id"]
+            isOneToOne: false
+            referencedRelation: "folios"
             referencedColumns: ["id"]
           },
           {
