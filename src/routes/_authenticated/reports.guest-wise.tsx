@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_authenticated/reports/guest-wise")({
 interface BookingLite {
   id: string; booking_number: string; check_in: string; check_out: string;
   total: number; balance: number; status: string;
+  checked_in_by_name: string; checked_out_by_name: string;
 }
 interface GuestRow {
   _id: string; name: string; mobile: string;
@@ -43,12 +44,26 @@ function Page() {
     if (!propertyId) return;
     const { data } = await supabase.from("bookings").select(`
       id,booking_number,check_in,check_out,total_amount,balance_amount,status,guest_id,
+      checked_in_by,checked_out_by,
       guests(name,mobile)
     `).eq("property_id", propertyId)
       .gte("check_in", from).lte("check_in", to);
 
+    const raw = (data ?? []) as any[];
+    const uids = new Set<string>();
+    for (const b of raw) {
+      if (b.checked_in_by) uids.add(b.checked_in_by);
+      if (b.checked_out_by) uids.add(b.checked_out_by);
+    }
+    const nameMap = new Map<string, string>();
+    if (uids.size) {
+      const { data: profs } = await supabase.from("profiles")
+        .select("id,name,email").in("id", Array.from(uids));
+      for (const p of (profs ?? []) as any[]) nameMap.set(p.id, p.name || p.email || "");
+    }
+
     const m = new Map<string, GuestRow>();
-    for (const b of (data ?? []) as any[]) {
+    for (const b of raw) {
       const gid = b.guest_id; if (!gid) continue;
       const inD = new Date(b.check_in), outD = new Date(b.check_out);
       const nights = Math.max(1, Math.round((+outD - +inD) / 86400000));
@@ -64,6 +79,8 @@ function Page() {
       ex.bookings.push({
         id: b.id, booking_number: b.booking_number, check_in: b.check_in, check_out: b.check_out,
         total: Number(b.total_amount || 0), balance: Number(b.balance_amount || 0), status: b.status,
+        checked_in_by_name: b.checked_in_by ? (nameMap.get(b.checked_in_by) ?? "—") : "—",
+        checked_out_by_name: b.checked_out_by ? (nameMap.get(b.checked_out_by) ?? "—") : "—",
       });
       m.set(gid, ex);
     }
@@ -141,6 +158,8 @@ function Page() {
                           <th className="text-right py-1">Total</th>
                           <th className="text-right py-1">Balance</th>
                           <th className="text-left py-1">Status</th>
+                          <th className="text-left py-1">Checked-in By</th>
+                          <th className="text-left py-1">Checked-out By</th>
                         </tr></thead>
                         <tbody>
                           {r.bookings.map((b) => (
@@ -151,6 +170,8 @@ function Page() {
                               <td className="text-right tabular-nums">{fmtINR(b.total)}</td>
                               <td className="text-right tabular-nums">{fmtINR(b.balance)}</td>
                               <td>{b.status}</td>
+                              <td>{b.checked_in_by_name}</td>
+                              <td>{b.checked_out_by_name}</td>
                             </tr>
                           ))}
                         </tbody>
