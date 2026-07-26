@@ -173,6 +173,14 @@ function FolioPage() {
   // Edit line-item dialog (for sundry/extra "Other Charges")
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+
+  // Edit payment mode (Manager/Owner only)
+  const canEditPaymentMode = hasRole(roles, "owner") || hasRole(roles, "superadmin") || hasRole(roles, "manager");
+  const [payEditOpen, setPayEditOpen] = useState(false);
+  const [payEditTarget, setPayEditTarget] = useState<Payment | null>(null);
+  const [payEditMode, setPayEditMode] = useState<string>("cash");
+  const [payEditSaving, setPayEditSaving] = useState(false);
+  const [payModeHistory, setPayModeHistory] = useState<Record<string, Array<{ old_mode: string; new_mode: string; user_name: string; created_at: string }>>>({});
   const [editDesc, setEditDesc] = useState("");
   const [editQty, setEditQty] = useState("1");
   const [editRate, setEditRate] = useState("0");
@@ -880,6 +888,78 @@ function FolioPage() {
         });
       }
     } catch { /* ignore */ }
+    load();
+  }
+
+  // Load mode-change audit history for the current folio's payments so we
+  // can surface an "edited" chip inline with each row.
+  useEffect(() => {
+    if (!booking || payments.length === 0) { setPayModeHistory({}); return; }
+    const ids = payments.map((p) => p.id);
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("activity_log" as any)
+        .select("reference_id,user_name,details,created_at")
+        .eq("property_id", booking.property_id)
+        .eq("action_type", "PAYMENT_MODE_CHANGED")
+        .in("reference_id", ids)
+        .order("created_at", { ascending: false });
+      if (cancelled) return;
+      const map: Record<string, Array<{ old_mode: string; new_mode: string; user_name: string; created_at: string }>> = {};
+      ((data ?? []) as any[]).forEach((row) => {
+        const pid = row.reference_id as string;
+        if (!pid) return;
+        (map[pid] ||= []).push({
+          old_mode: row.details?.old_mode ?? "",
+          new_mode: row.details?.new_mode ?? "",
+          user_name: row.user_name ?? "Unknown",
+          created_at: row.created_at,
+        });
+      });
+      setPayModeHistory(map);
+    })();
+    return () => { cancelled = true; };
+  }, [booking, payments]);
+
+  function openEditPaymentMode(p: Payment) {
+    if (!canEditPaymentMode) return;
+    setPayEditTarget(p);
+    setPayEditMode(p.mode);
+    setPayEditOpen(true);
+  }
+
+  async function savePaymentMode() {
+    if (!payEditTarget || !folio || !booking) return;
+    const oldMode = payEditTarget.mode;
+    const newMode = payEditMode;
+    if (!newMode || newMode === oldMode) { setPayEditOpen(false); return; }
+    setPayEditSaving(true);
+    const { error } = await supabase
+      .from("payments")
+      .update({ mode: newMode })
+      .eq("id", payEditTarget.id);
+    setPayEditSaving(false);
+    if (error) return toast.error(error.message);
+    await logActivity({
+      property_id: booking.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      ...ACTIVITY.PAYMENT_MODE_CHANGED,
+      reference_id: payEditTarget.id,
+      reference_label: `${booking.booking_number} — ₹${payEditTarget.amount}: ${oldMode} → ${newMode}`,
+      details: {
+        payment_id: payEditTarget.id,
+        folio_id: folio.id,
+        booking_id: booking.id,
+        amount: Number(payEditTarget.amount),
+        old_mode: oldMode,
+        new_mode: newMode,
+      },
+    });
+    setPayEditOpen(false);
+    setPayEditTarget(null);
+    toast.success("Payment mode updated");
     load();
   }
 
@@ -1874,14 +1954,45 @@ function FolioPage() {
               ) : (
                 <table>
                   <tbody className="zebra">
-                    {payments.map((p) => (
-                      <tr key={p.id}>
-                        <td style={{ textTransform: "capitalize" }}>{p.mode.replace(/_/g, " ")}</td>
-                        <td style={{ fontSize: 11, color: "#666" }}>{new Date(p.paid_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                        <td style={{ fontSize: 11, color: "#666" }}>{p.reference_no ?? ""}</td>
-                        <td style={{ textAlign: "right" }}>{inr(p.amount)}</td>
-                      </tr>
-                    ))}
+                    {payments.map((p) => {
+                      const history = payModeHistory[p.id] ?? [];
+                      const latestEdit = history[0];
+                      const tooltip = history.length
+                        ? history
+                            .map((h) => `${h.old_mode} → ${h.new_mode} by ${h.user_name} on ${new Date(h.created_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}`)
+                            .join("\n")
+                        : undefined;
+                      return (
+                        <tr key={p.id}>
+                          <td style={{ textTransform: "capitalize" }}>
+                            {p.mode.replace(/_/g, " ")}
+                            {latestEdit && (
+                              <span
+                                className="print:hidden ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-800"
+                                title={tooltip}
+                              >
+                                edited
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ fontSize: 11, color: "#666" }}>{new Date(p.paid_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                          <td style={{ fontSize: 11, color: "#666" }}>{p.reference_no ?? ""}</td>
+                          <td style={{ textAlign: "right" }}>
+                            <span>{inr(p.amount)}</span>
+                            {canEditPaymentMode && canEditNow && (
+                              <button
+                                type="button"
+                                onClick={() => openEditPaymentMode(p)}
+                                className="print:hidden ml-2 inline-flex items-center rounded border border-gray-300 px-1.5 py-0.5 text-[10px] text-gray-600 hover:bg-gray-50"
+                                title="Edit payment mode"
+                              >
+                                <Pencil className="h-3 w-3 mr-0.5" /> Mode
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                     <tr style={{ borderTop: "2px solid #ddd" }}>
                       <td colSpan={3} style={{ fontWeight: 700 }}>Total Paid</td>
                       <td style={{ textAlign: "right", fontWeight: 700 }}>{inr(folio.paid_amount)}</td>
@@ -1973,6 +2084,58 @@ function FolioPage() {
               <Button variant="outline" onClick={() => setEmailOpen(false)}>Cancel</Button>
               <Button onClick={sendEmail} style={{ background: TEAL, color: "#fff" }}>
                 <Mail className="h-4 w-4 mr-1" /> Open email client
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* EDIT PAYMENT MODE (Manager/Owner only) */}
+        <Dialog open={payEditOpen} onOpenChange={setPayEditOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Edit payment mode</DialogTitle></DialogHeader>
+            {payEditTarget && (
+              <div className="space-y-3">
+                <div className="rounded-md border bg-muted/30 p-2 text-xs">
+                  <div><span className="text-muted-foreground">Amount:</span> <span className="font-semibold">{inr(payEditTarget.amount)}</span></div>
+                  <div><span className="text-muted-foreground">Paid on:</span> {new Date(payEditTarget.paid_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+                  <div><span className="text-muted-foreground">Current mode:</span> <span className="capitalize">{payEditTarget.mode.replace(/_/g, " ")}</span></div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">New mode</Label>
+                  <Select value={payEditMode} onValueChange={setPayEditMode}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {payMethods.map((m) => <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-800">
+                  Only the payment mode changes. Amount, reference and date remain the same. This change is recorded in the activity log.
+                </div>
+                {(payModeHistory[payEditTarget.id] ?? []).length > 0 && (
+                  <div className="rounded-md border p-2 text-[11px]">
+                    <div className="mb-1 font-semibold text-gray-700">Previous changes</div>
+                    <ul className="space-y-0.5 text-gray-600">
+                      {(payModeHistory[payEditTarget.id] ?? []).map((h, i) => (
+                        <li key={i}>
+                          <span className="capitalize">{h.old_mode}</span> → <span className="capitalize">{h.new_mode}</span>
+                          {" "}by {h.user_name}
+                          {" · "}{new Date(h.created_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPayEditOpen(false)}>Cancel</Button>
+              <Button
+                onClick={savePaymentMode}
+                disabled={payEditSaving || !payEditTarget || payEditMode === payEditTarget.mode}
+                style={{ background: TEAL, color: "#fff" }}
+              >
+                {payEditSaving ? "Saving…" : "Save mode"}
               </Button>
             </DialogFooter>
           </DialogContent>
