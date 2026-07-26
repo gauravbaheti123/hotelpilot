@@ -891,6 +891,78 @@ function FolioPage() {
     load();
   }
 
+  // Load mode-change audit history for the current folio's payments so we
+  // can surface an "edited" chip inline with each row.
+  useEffect(() => {
+    if (!booking || payments.length === 0) { setPayModeHistory({}); return; }
+    const ids = payments.map((p) => p.id);
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("activity_log" as any)
+        .select("reference_id,user_name,details,created_at")
+        .eq("property_id", booking.property_id)
+        .eq("action_type", "PAYMENT_MODE_CHANGED")
+        .in("reference_id", ids)
+        .order("created_at", { ascending: false });
+      if (cancelled) return;
+      const map: Record<string, Array<{ old_mode: string; new_mode: string; user_name: string; created_at: string }>> = {};
+      ((data ?? []) as any[]).forEach((row) => {
+        const pid = row.reference_id as string;
+        if (!pid) return;
+        (map[pid] ||= []).push({
+          old_mode: row.details?.old_mode ?? "",
+          new_mode: row.details?.new_mode ?? "",
+          user_name: row.user_name ?? "Unknown",
+          created_at: row.created_at,
+        });
+      });
+      setPayModeHistory(map);
+    })();
+    return () => { cancelled = true; };
+  }, [booking, payments]);
+
+  function openEditPaymentMode(p: Payment) {
+    if (!canEditPaymentMode) return;
+    setPayEditTarget(p);
+    setPayEditMode(p.mode);
+    setPayEditOpen(true);
+  }
+
+  async function savePaymentMode() {
+    if (!payEditTarget || !folio || !booking) return;
+    const oldMode = payEditTarget.mode;
+    const newMode = payEditMode;
+    if (!newMode || newMode === oldMode) { setPayEditOpen(false); return; }
+    setPayEditSaving(true);
+    const { error } = await supabase
+      .from("payments")
+      .update({ mode: newMode })
+      .eq("id", payEditTarget.id);
+    setPayEditSaving(false);
+    if (error) return toast.error(error.message);
+    await logActivity({
+      property_id: booking.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      ...ACTIVITY.PAYMENT_MODE_CHANGED,
+      reference_id: payEditTarget.id,
+      reference_label: `${booking.booking_number} — ₹${payEditTarget.amount}: ${oldMode} → ${newMode}`,
+      details: {
+        payment_id: payEditTarget.id,
+        folio_id: folio.id,
+        booking_id: booking.id,
+        amount: Number(payEditTarget.amount),
+        old_mode: oldMode,
+        new_mode: newMode,
+      },
+    });
+    setPayEditOpen(false);
+    setPayEditTarget(null);
+    toast.success("Payment mode updated");
+    load();
+  }
+
   async function settle() {
     if (!folio) return;
     if (Number(folio.balance_amount) > 0.01) return toast.error("Balance not zero");
