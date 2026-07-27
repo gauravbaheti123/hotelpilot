@@ -30,7 +30,7 @@ export const Route = createFileRoute("/")({
       { title: "HotelPilot — Hotel Management Platform" },
       { name: "description", content: "HotelPilot is an end-to-end hotel management platform: front desk, rooms, billing, kitchen, housekeeping and reports. Powered by Growth Story Company." },
       { property: "og:title", content: "HotelPilot — Hotel Management Platform" },
-      { property: "og:description", content: "End-to-end SaaS for independent hotels and small chains." },
+      { property: "og:description", content: "HotelPilot is an end-to-end hotel management platform: front desk, rooms, billing, kitchen, housekeeping and reports. Powered by Growth Story Company." },
     ],
   }),
   component: Index,
