@@ -228,6 +228,13 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     setPayments(p ?? []);
     setPendingKots((pk ?? []) as unknown as PendingKot[]);
     setPendingPos((pos ?? []) as unknown as PendingPosCharge[]);
+    const { data: segs } = await supabase.rpc("has_pending_segment_bills", { _booking_id: bookingId });
+    setPendingSegments(((segs ?? []) as any[]).map((s) => ({
+      id: s.id, segment: s.segment, bill_number: s.bill_number,
+      total_amount: Number(s.total_amount || 0),
+      paid_amount: Number(s.paid_amount || 0),
+      balance: Number(s.balance || 0),
+    })));
     setLoading(false);
   }, [bookingId]);
 
