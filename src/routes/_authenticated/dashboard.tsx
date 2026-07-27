@@ -211,6 +211,14 @@ function OwnerDashboard({
   const [grouping, setGrouping] = useState<"category" | "floor">("category");
   const [unassigned, setUnassigned] = useState<UnassignedReservation[]>([]);
   const [assignTarget, setAssignTarget] = useState<UnassignedReservation | null>(null);
+  const [segment, setSegment] = useState<"rooms" | "food" | "laundry">("rooms");
+  const [punchTarget, setPunchTarget] = useState<{
+    segment: "food" | "laundry";
+    bookingId: string | null;
+    roomId: string | null;
+    roomNumber: string | null;
+    guestName: string | null;
+  } | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
