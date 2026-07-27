@@ -19,6 +19,9 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { toast } from "sonner";
 import { Pencil, Trash2, FileSpreadsheet, Hash, AlertTriangle, Wallet } from "lucide-react";
 import { ChangePaymentModeDialog, type ChangePaymentModeFolio } from "@/components/ChangePaymentModeDialog";
+import { Printer } from "lucide-react";
+import { printSegmentBill } from "@/components/PunchChargeDialog";
+import { useCurrentPropertyName } from "@/hooks/use-property";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/invoices")({
@@ -51,6 +54,13 @@ function InvoicesPage() {
 
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState("");
+  const [segTab, setSegTab] = useState<"lodge" | "food" | "laundry">("lodge");
+  const [segRows, setSegRows] = useState<Array<{
+    id: string; bill_number: string; segment: string; status: string;
+    total_amount: number; paid_amount: number;
+    is_walkin: boolean; guest_name: string | null; room_id: string | null;
+    created_at: string;
+  }>>([]);
   const [audit, setAudit] = useState(false);
   const [delTarget, setDelTarget] = useState<Row | null>(null);
   const [busy, setBusy] = useState(false);
