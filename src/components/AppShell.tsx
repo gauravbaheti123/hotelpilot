@@ -31,6 +31,7 @@ import {
   PlusCircle,
   ChefHat,
   ClipboardList,
+  ClipboardCheck,
   Receipt,
   FileText,
   PartyPopper,
