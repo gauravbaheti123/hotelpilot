@@ -133,7 +133,7 @@ function Page() {
   return (
     <ReportShell
       title="Bill-Wise Report"
-      filters={<Filters {...{ from, to, setFrom, setTo, billType, setBillType, payMode, setPayMode, status, setStatus }} />}
+      filters={<Filters {...{ from, to, setFrom, setTo, billType, setBillType, payMode, setPayMode, status, setStatus, paymentMethods }} />}
       onExcel={() => exportExcel(derived, columns, meta)}
       onPdf={() => exportPdf(derived, columns, meta)}
       onTally={tallyXml}
