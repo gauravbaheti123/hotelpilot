@@ -4031,6 +4031,7 @@ export type Database = {
           is_active: boolean
           mobile: string | null
           name: string | null
+          photo_url: string | null
           updated_at: string
         }
         Insert: {
@@ -4040,6 +4041,7 @@ export type Database = {
           is_active?: boolean
           mobile?: string | null
           name?: string | null
+          photo_url?: string | null
           updated_at?: string
         }
         Update: {
@@ -4049,6 +4051,7 @@ export type Database = {
           is_active?: boolean
           mobile?: string | null
           name?: string | null
+          photo_url?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -4330,36 +4333,60 @@ export type Database = {
       }
       reminders: {
         Row: {
+          category: string | null
           created_at: string
           created_by: string | null
           id: string
           is_dismissed: boolean
+          is_read: boolean
+          message: string | null
           notes: string | null
           property_id: string
+          read_at: string | null
+          read_by: string | null
+          related_record_id: string | null
           reminder_datetime: string
+          reminder_day: string | null
           title: string
+          type: string
           updated_at: string
         }
         Insert: {
+          category?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           is_dismissed?: boolean
+          is_read?: boolean
+          message?: string | null
           notes?: string | null
           property_id: string
+          read_at?: string | null
+          read_by?: string | null
+          related_record_id?: string | null
           reminder_datetime: string
+          reminder_day?: string | null
           title: string
+          type?: string
           updated_at?: string
         }
         Update: {
+          category?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           is_dismissed?: boolean
+          is_read?: boolean
+          message?: string | null
           notes?: string | null
           property_id?: string
+          read_at?: string | null
+          read_by?: string | null
+          related_record_id?: string | null
           reminder_datetime?: string
+          reminder_day?: string | null
           title?: string
+          type?: string
           updated_at?: string
         }
         Relationships: [
@@ -5828,6 +5855,7 @@ export type Database = {
         Args: { _property_id: string; _segment: string }
         Returns: string
       }
+      generate_system_reminders: { Args: never; Returns: number }
       get_gst_rate: {
         Args: { p_amount: number; p_category: string; p_property_id: string }
         Returns: number
