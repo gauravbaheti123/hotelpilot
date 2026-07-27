@@ -116,6 +116,12 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
   const [payments, setPayments] = useState<any[]>([]);
   const [pendingKots, setPendingKots] = useState<PendingKot[]>([]);
   const [pendingPos, setPendingPos] = useState<PendingPosCharge[]>([]);
+  const [pendingSegments, setPendingSegments] = useState<Array<{
+    id: string; segment: string; bill_number: string; total_amount: number; paid_amount: number; balance: number;
+  }>>([]);
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [overrideReason, setOverrideReason] = useState("");
+  const isOwnerRole = can("billing", "owner_override") || (usePermissions().isSuperadmin);
   const [property, setProperty] = useState<{ checkout_grace_time: string | null } | null>(null);
   const { methods: payMethods } = usePaymentMethods(booking?.property_id ?? null);
 
