@@ -1320,7 +1320,7 @@ const RoomCard = memo(function RoomCard({
       )}
     </div>
   );
-}
+});
 
 function Kpi({ label, value, icon: Icon, iconClassName }: { label: string; value: number | string; icon: any; iconClassName?: string }) {
   return (
