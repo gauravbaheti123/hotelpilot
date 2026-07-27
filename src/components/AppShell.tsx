@@ -9,6 +9,14 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   LayoutDashboard,
   Building2,
   Users,
@@ -57,6 +65,9 @@ import {
   ScrollText,
   Menu,
   Tag,
+  PanelLeftClose,
+  PanelLeftOpen,
+  UserRound,
 } from "lucide-react";
 import { ShieldAlert } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -67,6 +78,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { RemindersBell } from "./Reminders";
 import { useSuperadminView } from "@/lib/superadmin-view";
 import { QZStatusIndicator } from "./QZStatusIndicator";
+import { ProfileDialog } from "./ProfileDialog";
 
 interface NavItem {
   to: string;
@@ -164,7 +176,7 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
   return <AppShellInner title={title}>{children}</AppShellInner>;
 }
 
-function NavEntry({ item, currentPath }: { item: NavItem; currentPath: string }) {
+function NavEntry({ item, currentPath, collapsed }: { item: NavItem; currentPath: string; collapsed: boolean }) {
   const Icon = item.icon;
   const hasChildren = !!item.children?.length;
   const childActive = hasChildren && item.children!.some(
@@ -172,6 +184,23 @@ function NavEntry({ item, currentPath }: { item: NavItem; currentPath: string })
   );
   const selfActive = currentPath === item.to || currentPath.startsWith(item.to + "/");
   const [open, setOpen] = useState<boolean>(childActive || selfActive);
+
+  if (collapsed) {
+    // Icon-only mode — always render top-level item as a link to its primary route.
+    return (
+      <Link
+        to={item.to}
+        title={item.label}
+        className={`flex items-center justify-center px-2 py-2 rounded-md transition-colors ${
+          selfActive || childActive
+            ? "bg-sidebar-primary text-sidebar-primary-foreground"
+            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        }`}
+      >
+        <Icon className="h-5 w-5" />
+      </Link>
+    );
+  }
 
   if (!hasChildren) {
     return (
@@ -260,6 +289,56 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
   const propertyPaused = current?.status === "paused";
   const propertyId = current?.id ?? null;
 
+  // Sidebar collapsed state, persisted per-user in localStorage.
+  const storageKey = user?.id ? `hp:sidebar_collapsed:${user.id}` : "hp:sidebar_collapsed";
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try { return window.localStorage.getItem("hp:sidebar_collapsed") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const v = window.localStorage.getItem(storageKey);
+      if (v !== null) setCollapsed(v === "1");
+    } catch { /* ignore */ }
+  }, [storageKey]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(storageKey, collapsed ? "1" : "0");
+      window.localStorage.setItem("hp:sidebar_collapsed", collapsed ? "1" : "0");
+    } catch { /* ignore */ }
+  }, [collapsed, storageKey]);
+
+  // Profile dialog + display name/photo
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [displayName, setDisplayName] = useState<string>("");
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!user?.id) return;
+    let mounted = true;
+    (async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("name, photo_url")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!mounted) return;
+      setDisplayName((data as any)?.name ?? "");
+      setPhotoUrl((data as any)?.photo_url ?? null);
+    })();
+    return () => { mounted = false; };
+  }, [user?.id, profileOpen]);
+
+  const shownName = displayName?.trim() || (user?.email?.split("@")[0] ?? "");
+  const initials = (shownName || "?")
+    .split(/\s+/)
+    .map((s) => s.charAt(0))
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
   async function signOut() {
     await supabase.auth.signOut();
     toast.success("Signed out");
@@ -307,46 +386,51 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
 
   const sidebarBody = (
     <>
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
-        <Logo size={36} />
-        <div>
-          <div className="font-semibold">HotelPilot</div>
-          <div className="text-[10px] text-sidebar-foreground/60">Hotel Management System</div>
-        </div>
+      <div className={`flex items-center border-b border-sidebar-border ${collapsed ? "justify-center px-2 py-4" : "gap-3 px-5 py-5"}`}>
+        <Logo size={collapsed ? 30 : 36} />
+        {!collapsed && (
+          <div>
+            <div className="font-semibold">HotelPilot</div>
+            <div className="text-[10px] text-sidebar-foreground/60">Hotel Management System</div>
+          </div>
+        )}
       </div>
-      <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+      <nav className={`flex-1 py-4 space-y-4 overflow-y-auto ${collapsed ? "px-1" : "px-3"}`}>
         {visibleGroups.map((group, gi) => (
           <div key={gi} className="space-y-1">
-            {group.label && (
+            {group.label && !collapsed && (
               <div className="px-3 pt-1 pb-1 text-[10px] uppercase tracking-wider text-sidebar-foreground/50">
                 {group.label}
               </div>
             )}
             {group.items.map((item) => (
-              <NavEntry key={item.to} item={item} currentPath={currentPath} />
+              <NavEntry key={item.to} item={item} currentPath={currentPath} collapsed={collapsed} />
             ))}
           </div>
         ))}
       </nav>
-      <div className="px-3 py-4 border-t border-sidebar-border space-y-2">
+      <div className={`py-3 border-t border-sidebar-border space-y-2 ${collapsed ? "px-1" : "px-3"}`}>
         {!inAdminMode && (
-          <div className="px-1 sm:hidden">
+          <div className={`sm:hidden ${collapsed ? "hidden" : "px-1"}`}>
             <PropertySelector />
           </div>
         )}
-        <div className="px-3 text-xs text-sidebar-foreground/60 truncate">
-          {user?.email}
-        </div>
-        <div className="px-3 text-[10px] uppercase tracking-wider text-sidebar-foreground/50">
-          {roles.length ? roles.join(", ") : "no role"}
-        </div>
+        {!collapsed && (
+          <>
+            <div className="px-3 text-xs text-sidebar-foreground/60 truncate">{user?.email}</div>
+            <div className="px-3 text-[10px] uppercase tracking-wider text-sidebar-foreground/50">
+              {roles.length ? roles.join(", ") : "no role"}
+            </div>
+          </>
+        )}
         <Button
           variant="ghost"
           size="sm"
           onClick={signOut}
-          className="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          className={`w-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ${collapsed ? "justify-center px-0" : "justify-start"}`}
+          title="Sign out"
         >
-          <LogOut className="h-4 w-4 mr-2" /> Sign out
+          <LogOut className="h-4 w-4" /> {!collapsed && <span className="ml-2">Sign out</span>}
         </Button>
       </div>
     </>
@@ -354,7 +438,11 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
 
   return (
     <div className="min-h-screen flex bg-background">
-      <aside className="hidden md:flex w-64 flex-col bg-sidebar text-sidebar-foreground">
+      <aside
+        className={`hidden md:flex flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200 ${
+          collapsed ? "w-16" : "w-64"
+        }`}
+      >
         {sidebarBody}
       </aside>
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -400,24 +488,65 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
             >
               <Menu className="h-5 w-5" />
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hidden md:inline-flex h-9 w-9 shrink-0"
+              onClick={() => setCollapsed((c) => !c)}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+            </Button>
             <div className="md:hidden shrink-0"><Logo size={28} /></div>
             <h1 className="text-base sm:text-lg font-semibold truncate">{headerTitle}</h1>
           </div>
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <QZStatusIndicator />
             {user?.id && (
               <RemindersBell propertyId={propertyId} userId={user.id} />
             )}
-            <QZStatusIndicator />
-            {!inAdminMode && (
-              <div className="hidden sm:block"><PropertySelector /></div>
-            )}
-            <div className="text-xs text-muted-foreground hidden lg:block">
-              Support: 8007444464
-            </div>
+            <span className="hidden sm:inline text-sm font-medium text-foreground truncate max-w-[140px]">
+              {shownName}
+            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center overflow-hidden ring-1 ring-border hover:ring-primary/40 transition"
+                  aria-label="Account menu"
+                >
+                  {photoUrl ? (
+                    <img src={photoUrl} alt="avatar" className="h-full w-full object-cover" />
+                  ) : initials ? (
+                    <span className="text-sm font-semibold">{initials}</span>
+                  ) : (
+                    <UserRound className="h-5 w-5" />
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="truncate">{shownName || user?.email}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setProfileOpen(true)}>
+                  <UserRound className="h-4 w-4 mr-2" /> Edit Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={signOut}>
+                  <LogOut className="h-4 w-4 mr-2" /> Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
         <main className="flex-1 p-3 sm:p-6 overflow-auto">{children}</main>
       </div>
+      {user?.id && (
+        <ProfileDialog
+          open={profileOpen}
+          onOpenChange={setProfileOpen}
+          userId={user.id}
+          email={user.email ?? null}
+        />
+      )}
       {propertyPaused && !isSuperadmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur">
           <div className="max-w-md text-center px-6 py-10 rounded-lg border bg-card shadow-lg space-y-4">
