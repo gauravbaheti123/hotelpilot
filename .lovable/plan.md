@@ -1,69 +1,45 @@
-## Goal
-Add per-column sort + filter to all Reports tables, with filtered/sorted data flowing into Excel/PDF exports. Reusable component shared across the 10 report routes.
+## Phase 0 — Foundation Plan
 
-## Approach
+Before writing migrations, flagging what I found so we don't rebuild things that already exist. All 4 sub-items are still doable, but 0.1 and 0.3 are mostly complete already.
 
-### 1. New reusable component: `src/components/ReportDataTable.tsx`
-Generic table with:
-- **Column config**: `{ key, header, accessor(row), type: 'text'|'number'|'date'|'enum', sortable?, filterable?, enumOptions?, currency?, render?(row), exportValue?(row) }`
-- **Sort**: click header cycles asc → desc → none. Chevron icon + highlight active direction.
-- **Filter**: popover on header (Filter icon). Type-driven UI:
-  - text → contains input
-  - number → min/max
-  - date → from/to date inputs
-  - enum → checkbox list (with All/None)
-- **Active filter chips** above the table, each removable + "Clear all".
-- **AND logic** across columns.
-- **Uncontrolled internal state** but exposes `onDerivedRowsChange(rows)` so parent can export filtered+sorted data.
-- Perf: `useMemo` for filter + sort; keep < ~5k rows in RAM without virtualization (adequate for reports).
+### Findings on current state
 
-### 2. Wire into `ReportShell`
-Add an optional `getExportRows: () => T[]` prop path — simpler: parent tracks `derivedRows` via state from `ReportDataTable`'s callback and passes those to `exportExcel` / `exportPdf` / Tally builder.
+- **0.1 Payment Modes master**: `payment_methods` table already exists per-property (id, name, is_default, is_active, display_order) with seed trigger (`seed_payment_methods_for_property`) that inserts Cash/Card/UPI on property create, plus `usePaymentMethods(propertyId)` hook and Master Data CRUD page (`masters.payment-methods.tsx`). What's missing is that ~10 files (`billing.ts`, `expenses.*`, `banquet.*`, `restaurant.index.tsx`, `reports.bill-wise.tsx`, `reports.expenses.tsx`) still reference the hardcoded `PAYMENT_MODES` union. Payments themselves already store `payment_method` as free text, so no schema change is needed — just wire the dropdowns/filters to `usePaymentMethods`.
+- **0.2 Segmented bill numbering**: `bill_sequences` table already exists but its CHECK constraint only allows `sequence_type IN ('regular','event')` and `properties.short_code` already exists (`BRIJ`). Need to widen the enum, add lodge/food/laundry/banquet types, and add a new `generate_bill_number(property_id, segment)` SECURITY DEFINER function that formats `{short_code}-{segment_code}-NNNN`. Existing per-domain assigners (`tg_assign_invoice_number`, `tg_assign_food_bill_number`, `tg_assign_banquet_number`) will be pointed at the new function so numbering becomes consistent across segments.
+- **0.3 Auto-settle on checkout**: Already implemented — `tg_folios_balance_before_write` flips status to `settled` when `balance_amount <= 0.01` and `paid_amount > 0`, and `tg_payments_sync`/`tg_folio_charges_sync` recompute on every payment/charge change. I ran the diagnostic query for Brij Motel and **zero folios** are `open` with `paid_amount >= total_amount`, so there's nothing to backfill for this property. I'll still add a defensive one-time backfill migration (property-scoped, logged) for safety, and a smoke check that runs across all properties.
+- **0.4 Owner bypass + generic audit**: `has_permission()` already bypasses for superadmin + owner. The gap is that non-permission-based locks (settled-bill-lock, day-lock via `is_day_locked`, folio `is_reopened` gating) don't have an Owner override. And `activity_log` exists but callers write to it inconsistently. Rather than build a generic diff-audit across every table (huge blast radius, would take multiple turns), I'll add a small `log_owner_override(table, record_id, action, old, new, reason)` helper + audit rows for the specific unlock actions Owners will now use (edit settled folio, edit locked payment mode, edit charge on locked day). Payment-mode changes already log old→new via `PAYMENT_MODE_CHANGED`.
 
-### 3. Migrate report routes (10 total)
-Replace hand-rolled `<table>` markup in each with `<ReportDataTable columns={...} rows={...} onDerivedRowsChange={setDerived} />` and export from `derived`:
-1. `reports.gst.tsx` (keep slab grouping semantics — treat each display row as independent for filter/sort; `is_first_of_invoice` display flag disabled once sorted — accept that limitation, header cells become populated on every visible row)
-2. `reports.mis.tsx`
-3. `reports.sales.tsx`
-4. `reports.night-audit.tsx`
-5. `reports.kot-activity.tsx`
-6. `reports.food-kot.tsx`
-7. `reports.daily.tsx`
-8. `reports.cash-collection.tsx`
-9. `reports.date-wise-revenue.tsx`
-10. `reports.room-wise.tsx`
-11. `reports.guest-wise.tsx`
-12. `reports.bill-wise.tsx`
-13. `reports.expenses.tsx`
-14. `reports.banquet.tsx`
-15. `reports.room-shift.tsx`
-16. `reports.activity.tsx`
-17. `reports.analytics.tsx` (skip — chart-based, no tabular)
+### Proposed migration (single file)
 
-Actual tabular routes get the treatment; chart/analytics pages left alone.
+```text
+1. Widen bill_sequences.sequence_type CHECK → add 'lodge','food','laundry','banquet'
+2. Seed sequence rows for existing properties for the 4 new segments
+3. Create public.generate_bill_number(_property_id uuid, _segment text) -> text
+   - SECURITY DEFINER, SELECT ... FOR UPDATE row-lock, atomic increment
+   - Prefix = {properties.short_code}-{segment_code}-NNNN
+   - segment_code map: lodge→LDG, food→F, laundry→L, banquet→B
+4. Update tg_assign_food_bill_number, tg_assign_banquet_number,
+   tg_assign_invoice_number → call generate_bill_number for the right segment
+   (keep the legacy prefix as fallback when short_code is null so historical
+   numbering doesn't renumber)
+5. Backfill: UPDATE folios SET status='settled', settled_at=COALESCE(settled_at,now())
+   WHERE status='open' AND balance_amount<=0.01 AND paid_amount>0
+   AND is_deleted=false — insert one activity_log row per fixed folio
+6. Add owner-override helper + widen can_billing / edit gates via new
+   is_owner_or_super() checks in DB functions that currently hard-lock
+   (void_folio_safe already gates; extend to settled-folio edit path)
+```
 
-### 4. GST report caveat
-GST report currently renders a "grouped" view where the invoice number / guest / bill total appears only on the first slab row. After sort, grouping breaks. Solution: always render those fields on every row when a sort/filter is active; keep existing "first only" look only when unsorted+unfiltered. Totals footer keeps summing all visible rows.
+### Code changes
 
-### 5. Exports
-`exportExcel` / `exportPdf` / Tally XML builders receive the `derived` array (post filter+sort). No changes to `reportExports.ts` needed.
+- Refactor these files to use `usePaymentMethods(propertyId)` and drop hardcoded arrays:
+  `src/lib/billing.ts` (kept as fallback constant only), `expenses.new.tsx`, `expenses.index.tsx`, `reports.bill-wise.tsx`, `reports.expenses.tsx`, `banquet.bill.$id.tsx`, `banquet.event.$id.tsx`, `restaurant.index.tsx`.
+- `CheckoutDialog`: add Owner-only "Edit after settlement" affordance that calls the new override helper (logs to activity_log).
 
-### 6. UI stays the same visually
-- Same table density, colors, muted header row, emerald totals footer.
-- Add small icons in headers only (chevron + funnel). Chips row appears only when filters active.
+### What I'll NOT do in this phase (flagging so we're aligned)
 
-## Technical notes
-- Filter/sort state kept as `Record<columnKey, FilterValue>` + `{ key, dir }` inside component.
-- Enum options auto-derived from the row set unless caller provides `enumOptions`.
-- Numbers: `accessor` returns number; filter compares numerically.
-- Dates: caller marks `type: 'date'` and returns ISO string / Date; component parses.
-- Export values use `column.exportValue ?? column.accessor` so currency stays numeric in Excel.
+- Generic diff-audit table covering every column of every table — too large; the existing `activity_log` + targeted override logging covers Owner edits.
+- Renumbering historical invoices to the new BRIJ-LDG- format. New numbering applies from migration forward only.
+- Touching Night Audit / day-lock logic beyond adding Owner override for editing folios inside locked days.
 
-## Out of scope
-- Virtualization (not needed at current data sizes).
-- Server-side filtering (all reports already fetch bounded windows).
-- Column resize / reorder / pinning.
-
-## Verification
-- Typecheck.
-- Manual: on GST + MIS + Sales, test text/number/date/enum filters, multi-column AND, chip removal, clear-all, and confirm Excel/PDF exports reflect filtered rows.
+Confirm and I'll ship the migration + code refactor. If you want the full generic diff-audit across all tables, say so and I'll scope it as its own phase.
