@@ -255,46 +255,38 @@ function OwnerDashboard({
     if (!propertyId) return;
     const date = viewDate;
     const isToday = date === todayISO();
-    const [arr, dep, pay, rms, activeBR, kotsRes] = await Promise.all([
-      supabase.from("bookings").select("id, booking_number, balance_amount, guest_id, guests:guest_id(name), booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))")
-        .eq("property_id", propertyId).in("status", ["reserved", "checked_in"]).eq("check_in", date),
-      supabase.from("bookings").select("id, booking_number, balance_amount, guest_id, guests:guest_id(name), booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))")
-        .eq("property_id", propertyId).eq("status", "checked_in").eq("check_out", date),
-      supabase.from("payments").select("amount").eq("property_id", propertyId)
-        .gte("paid_at", `${date}T00:00:00`).lte("paid_at", `${date}T23:59:59`),
-      supabase.from("rooms").select("id, room_number, status, housekeeping_status, category_id, floor")
-        .eq("property_id", propertyId).eq("is_active", true).order("room_number"),
-      // Date-wise occupied rooms: booking spans the selected date and is active
-      supabase.from("booking_rooms").select("room_id, booking_id, bookings!inner(id, status, property_id, balance_amount, check_in, check_out, guests:guest_id(name))")
-        .eq("property_id", propertyId)
-        .lte("bookings.check_in", date)
-        .gt("bookings.check_out", date)
-        .in("bookings.status", ["reserved", "checked_in"]),
-      // Pending food KOTs (hotel copy only) — only fetched for today
-      isToday
-        ? supabase
-            .from("kot_orders")
-            .select("id, booking_id, room_id, total_amount, created_at, status, kot_items(item_name, qty)")
-            .eq("property_id", propertyId)
-            .eq("kot_copy", "hotel_copy")
-            .in("status", ["open", "printed", "served"])
-        : Promise.resolve({ data: [] as any[] } as any),
-    ]);
-      const revenue = (pay.data ?? []).reduce((a, x: any) => a + Number(x.amount || 0), 0);
+    // Single consolidated RPC replaces the 6 sequential selects that used to
+    // run here — 1 network round-trip and 1 SQL join plan instead of 6.
+    const { data: gridData, error: gridErr } = await supabase.rpc(
+      "dashboard_grid" as any,
+      { _property_id: propertyId, _date: date, _include_kots: isToday },
+    );
+    if (gridErr) {
+      console.warn("dashboard_grid rpc failed", gridErr);
+      return;
+    }
+    const grid: any = gridData ?? {};
+    const arrRows: any[] = grid.arrivals ?? [];
+    const depRows: any[] = grid.departures ?? [];
+    const rmsRows: any[] = grid.rooms ?? [];
+    const activeBRRows: any[] = grid.active_booking_rooms ?? [];
+    const kotRows: any[] = grid.kots ?? [];
+    const revenue = Number(grid.payments_total ?? 0);
+
       const occSet = new Set<string>(
-        (activeBR.data ?? []).map((b: any) => b.room_id).filter(Boolean),
+        activeBRRows.map((b: any) => b.room_id).filter(Boolean),
       );
       const bMap = new Map<string, string>();
       const oMap = new Map<string, OccInfo>();
-      (activeBR.data ?? []).forEach((b: any) => {
+      activeBRRows.forEach((b: any) => {
         if (b.room_id && b.booking_id) bMap.set(b.room_id, b.booking_id);
-        if (b.room_id && b.bookings) {
+        if (b.room_id) {
           oMap.set(b.room_id, {
             bookingId: b.booking_id,
-            guestName: b.bookings.guests?.name ?? null,
-            checkIn: b.bookings.check_in ?? null,
-            checkOut: b.bookings.check_out ?? null,
-            balance: Number(b.bookings.balance_amount || 0),
+            guestName: b.guest_name ?? null,
+            checkIn: b.check_in ?? null,
+            checkOut: b.check_out ?? null,
+            balance: Number(b.balance_amount || 0),
           });
         }
       });
@@ -306,7 +298,7 @@ function OwnerDashboard({
       // no active booking_room covering today are stale "ghost" tiles. Reset
       // them to vacant so the dashboard reflects reality.
       if (isToday) {
-        const potentialGhosts = (rms.data ?? [])
+        const potentialGhosts = rmsRows
           .filter((r: any) => r.status === "occupied" && !occSet.has(r.id))
           .map((r: any) => r.id);
         if (potentialGhosts.length > 0) {
@@ -332,28 +324,28 @@ function OwnerDashboard({
       }
       setKpi({
         occupied: occSet.size,
-        arrivals: arr.data?.length ?? 0,
-        departures: dep.data?.length ?? 0,
+        arrivals: arrRows.length,
+        departures: depRows.length,
         revenue,
       });
       const mapRow = (b: any): ScheduleRow => ({
         id: b.id,
         booking_number: b.booking_number,
         balance_amount: Number(b.balance_amount || 0),
-        guest_name: b.guests?.name ?? null,
-        room_numbers: (b.booking_rooms ?? []).map((br: any) => br.rooms?.room_number).filter(Boolean).join(", ") || "—",
+        guest_name: b.guest_name ?? null,
+        room_numbers: b.room_numbers ?? "—",
       });
-      setArrivals((arr.data ?? []).map(mapRow));
-      setDepartures((dep.data ?? []).map(mapRow));
-      setRooms((rms.data ?? []) as Room[]);
+      setArrivals(arrRows.map(mapRow));
+      setDepartures(depRows.map(mapRow));
+      setRooms(rmsRows as Room[]);
 
       // Pending food per room (open/printed/served, hotel copy only) — only meaningful today
-      const kots = (kotsRes as any)?.data ?? [];
+      const kots = kotRows;
       const pfMap = new Map<string, PendingFood>();
       (kots ?? []).forEach((k: any) => {
         if (!k.room_id || !k.booking_id) return;
         const prev = pfMap.get(k.room_id) ?? { bookingId: k.booking_id, amount: 0, count: 0, lastAt: null, items: "" };
-        const itemSummary = (k.kot_items ?? []).map((i: any) => `${i.item_name}×${i.qty}`).join(", ");
+        const itemSummary = (k.items ?? k.kot_items ?? []).map((i: any) => `${i.item_name}×${i.qty}`).join(", ");
         prev.amount += Number(k.total_amount || 0);
         prev.count += 1;
         prev.lastAt = !prev.lastAt || k.created_at > prev.lastAt ? k.created_at : prev.lastAt;
@@ -365,8 +357,8 @@ function OwnerDashboard({
 
       // Build per-row list for the collapsible section
       const guestByBooking = new Map<string, string | null>();
-      (arr.data ?? []).concat(dep.data ?? []).forEach((b: any) => guestByBooking.set(b.id, b.guests?.name ?? null));
-      const roomNumberById = new Map<string, string>((rms.data ?? []).map((r: any) => [r.id, r.room_number]));
+      arrRows.concat(depRows).forEach((b: any) => guestByBooking.set(b.id, b.guest_name ?? null));
+      const roomNumberById = new Map<string, string>(rmsRows.map((r: any) => [r.id, r.room_number]));
       const missingBookingIds = Array.from(new Set(Array.from(pfMap.values()).map((v) => v.bookingId)))
         .filter((bid) => !guestByBooking.has(bid));
       if (missingBookingIds.length > 0) {
