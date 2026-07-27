@@ -16,7 +16,8 @@ import {
   exportExcel, exportPdf, fmtDateTime, fmtINR, firstOfMonthIso, type ReportColumn,
 } from "@/lib/reportExports";
 import { formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
-import { Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Printer } from "lucide-react";
+import { printHandover } from "@/lib/handoverPrint";
 
 export const Route = createFileRoute("/_authenticated/reports/cash-handover")({
   head: () => ({ meta: [{ title: "Cash Handover Report — HotelPilot" }] }),
@@ -34,6 +35,7 @@ interface HandoverRow {
   id: string;
   created_at: string;
   window_start: string;
+  window_end?: string | null;
   outgoing_user_id: string;
   outgoing_user_name: string;
   incoming_user_id: string | null;
@@ -59,7 +61,7 @@ function Page() {
     if (!propertyId) return;
     const { data } = await supabase
       .from("shift_handovers")
-      .select("id,created_at,window_start,outgoing_user_id,outgoing_user_name,incoming_user_id,incoming_user_name,total_system,total_manual,total_difference,notes,shift_handover_lines(id,mode,system_total,manual_entry,difference,note)")
+      .select("id,created_at,window_start,window_end,outgoing_user_id,outgoing_user_name,incoming_user_id,incoming_user_name,total_system,total_manual,total_difference,notes,shift_handover_lines(id,mode,system_total,manual_entry,difference,note)")
       .eq("property_id", propertyId)
       .gte("created_at", `${from}T00:00:00`)
       .lte("created_at", `${to}T23:59:59`)
@@ -68,6 +70,7 @@ function Page() {
       id: r.id,
       created_at: r.created_at,
       window_start: r.window_start,
+      window_end: r.window_end ?? null,
       outgoing_user_id: r.outgoing_user_id,
       outgoing_user_name: r.outgoing_user_name,
       incoming_user_id: r.incoming_user_id,
@@ -220,6 +223,35 @@ function Page() {
                     {r.notes && (
                       <p className="mt-2 text-xs text-muted-foreground"><b>Overall notes:</b> {r.notes}</p>
                     )}
+                    <div className="mt-3 flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => printHandover({
+                          id: r.id,
+                          propertyId: propertyId!,
+                          propertyName: current?.name ?? "Property",
+                          outgoing_user_name: r.outgoing_user_name,
+                          incoming_user_name: r.incoming_user_name,
+                          window_start: r.window_start,
+                          window_end: r.window_end ?? null,
+                          submitted_at: r.created_at,
+                          notes: r.notes,
+                          total_system: r.total_system,
+                          total_manual: r.total_manual,
+                          total_difference: r.total_difference,
+                          lines: r.lines.map((l) => ({
+                            mode: l.mode,
+                            system_total: l.system_total,
+                            manual_entry: l.manual_entry,
+                            difference: l.difference,
+                            note: l.note,
+                          })),
+                        })}
+                      >
+                        <Printer className="h-4 w-4 mr-1" /> Print Handover
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
