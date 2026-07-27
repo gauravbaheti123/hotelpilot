@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { logClientError, installGlobalErrorLogging } from "@/lib/client-error-log";
 import { Toaster } from "@/components/ui/sonner";
 import { useSessionTimeout } from "@/hooks/use-session-timeout";
 
@@ -41,6 +42,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    void logClientError(error, {
+      boundary: "tanstack_root_error_component",
+      componentStack: (error as unknown as { componentStack?: string })?.componentStack ?? null,
+    });
   }, [error]);
 
   return (
@@ -123,6 +128,9 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   useSessionTimeout();
+  useEffect(() => {
+    installGlobalErrorLogging();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
