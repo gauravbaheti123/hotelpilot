@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { CrudPage, type FieldDef, type ColumnDef } from "@/components/master/CrudPage";
 import { Badge } from "@/components/ui/badge";
 import { SUNDRY_CATEGORIES, SUNDRY_UNITS, categoryColor, categoryLabel } from "@/lib/sundry";
 import { RequirePermission } from "@/components/RequirePermission";
+import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
+import { useCurrentProperty } from "@/hooks/use-property";
 
 export const Route = createFileRoute("/_authenticated/masters/sundry-items")({
   head: () => ({ meta: [{ title: "Sundry Items — HotelPilot" }] }),
@@ -16,12 +19,14 @@ interface Item {
   rate: number;
   gst_rate: number;
   unit: string;
+  short_code: string | null;
   sku: string | null;
   is_active: boolean;
 }
 
 const fields: FieldDef[] = [
   { name: "name", label: "Item name", type: "text", required: true, colSpan: 2 },
+  { name: "short_code", label: "Short Code (optional)", type: "text" },
   {
     name: "category",
     label: "Category",
@@ -52,6 +57,13 @@ const columns: ColumnDef<Item>[] = [
       </div>
     ),
   },
+  {
+    header: "Short Code",
+    render: (r) =>
+      r.short_code
+        ? <Badge variant="outline" className="text-[10px] uppercase font-mono">{r.short_code}</Badge>
+        : <span className="text-xs text-muted-foreground">—</span>,
+  },
   { header: "Category", render: (r) => <Badge variant="outline">{categoryLabel(r.category)}</Badge> },
   { header: "Rate", render: (r) => `₹${Number(r.rate).toLocaleString("en-IN")}` },
   { header: "GST", render: (r) => `${r.gst_rate}%` },
@@ -64,15 +76,44 @@ const columns: ColumnDef<Item>[] = [
 ];
 
 function SundryItemsPage() {
+  const { current } = useCurrentProperty();
+  const [reloadKey, setReloadKey] = useState(0);
   return (
     <RequirePermission module="master_data">
     <CrudPage<Item>
+      key={reloadKey}
       title="Sundry / POS Items"
       subtitle="Mini-bar, laundry, spa and other extras posted from the POS module."
       table="sundry_items"
       fields={fields}
       columns={columns}
       orderBy={{ column: "name", ascending: true }}
+      headerActions={current ? (
+        <BulkCsvButtons
+          table="sundry_items"
+          propertyId={current.id}
+          module="sundry-items"
+          hotelName={current.name}
+          extraDefaults={{ property_id: current.id }}
+          columns={[
+            { header: "name", field: "name", required: true },
+            { header: "short_code", field: "short_code" },
+            { header: "category", field: "category" },
+            { header: "rate", field: "rate",
+              parse: (v) => Number(v || 0),
+              format: (v) => (v == null ? "" : String(v)) },
+            { header: "gst_rate", field: "gst_rate",
+              parse: (v) => Number(v || 0),
+              format: (v) => (v == null ? "" : String(v)) },
+            { header: "unit", field: "unit" },
+            { header: "sku", field: "sku" },
+            { header: "is_active", field: "is_active",
+              parse: (v) => v.toLowerCase() !== "false" && v !== "0" && v !== "",
+              format: (v) => (v ? "true" : "false") },
+          ]}
+          onImported={() => setReloadKey((k) => k + 1)}
+        />
+      ) : null}
     />
     </RequirePermission>
   );
