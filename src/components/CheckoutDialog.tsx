@@ -1022,7 +1022,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
                   <SplitSquareHorizontal className="h-4 w-4 mr-1" /> Split Bill
                 </Button>
               )}
-              <Button onClick={collectAndCheckout} disabled={busy}>
+              <Button onClick={collectAndCheckout} disabled={busy || !billToConfirmed}>
                 {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
                 Collect &amp; Checkout
               </Button>
