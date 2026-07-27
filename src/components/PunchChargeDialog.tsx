@@ -12,6 +12,7 @@ import { Trash2, Plus, Printer } from "lucide-react";
 import { inr } from "@/lib/billing";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useAuth } from "@/hooks/use-auth";
+import { ItemPickerCombobox, type PickerItem } from "@/components/ItemPickerCombobox";
 
 export type SegmentKind = "food" | "laundry";
 
@@ -22,16 +23,9 @@ interface Line {
   rate: number;
   gst_rate: number;
   menu_item_id?: string | null;
+  master_id?: string | null;
 }
 
-interface MenuItem {
-  id: string;
-  name: string;
-  price: number;
-  gst_rate: number | null;
-  short_code: string | null;
-  is_available: boolean | null;
-}
 
 interface Props {
   open: boolean;
@@ -55,7 +49,7 @@ export function PunchChargeDialog({
   const { user } = useAuth();
   const { methods: paymentMethods } = usePaymentMethods(propertyId);
   const [lines, setLines] = useState<Line[]>([]);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [pickerItems, setPickerItems] = useState<PickerItem[]>([]);
   const [walkin, setWalkin] = useState(!bookingId);
   const [walkinGuest, setWalkinGuest] = useState("");
   const [payMode, setPayMode] = useState<string>("cash");
@@ -70,14 +64,35 @@ export function PunchChargeDialog({
   }, [open, segment, bookingId]);
 
   useEffect(() => {
-    if (!open || segment !== "food" || !propertyId) return;
+    if (!open || !propertyId) return;
     let cancelled = false;
-    supabase.from("menu_items")
-      .select("id,name,price,gst_rate,short_code,is_available")
-      .eq("property_id", propertyId)
-      .eq("is_available", true)
-      .order("name")
-      .then(({ data }) => { if (!cancelled) setMenuItems((data ?? []) as MenuItem[]); });
+    if (segment === "food") {
+      supabase.from("menu_items")
+        .select("id,name,price,gst_rate,short_code,is_available")
+        .eq("property_id", propertyId)
+        .eq("is_available", true)
+        .order("name")
+        .then(({ data }) => {
+          if (cancelled) return;
+          setPickerItems((data ?? []).map((m: any) => ({
+            id: m.id, name: m.name, rate: Number(m.price ?? 0),
+            gst_rate: m.gst_rate, short_code: m.short_code, category: null,
+          })));
+        });
+    } else {
+      supabase.from("sundry_items")
+        .select("id,name,rate,gst_rate,sku,category,is_active")
+        .eq("property_id", propertyId)
+        .eq("is_active", true)
+        .order("name")
+        .then(({ data }) => {
+          if (cancelled) return;
+          setPickerItems((data ?? []).map((s: any) => ({
+            id: s.id, name: s.name, rate: Number(s.rate ?? 0),
+            gst_rate: s.gst_rate, short_code: s.sku, category: s.category,
+          })));
+        });
+    }
     return () => { cancelled = true; };
   }, [open, segment, propertyId]);
 
@@ -107,14 +122,13 @@ export function PunchChargeDialog({
   function updateLine(k: string, patch: Partial<Line>) {
     setLines((prev) => prev.map((l) => l.key === k ? { ...l, ...patch } : l));
   }
-  function pickMenu(k: string, id: string) {
-    const mi = menuItems.find((m) => m.id === id);
-    if (!mi) return;
+  function pickItem(k: string, it: PickerItem) {
     updateLine(k, {
-      menu_item_id: mi.id,
-      description: mi.name,
-      rate: Number(mi.price ?? 0),
-      gst_rate: Number(mi.gst_rate ?? defaultGst),
+      master_id: it.id,
+      menu_item_id: segment === "food" ? it.id : null,
+      description: it.name,
+      rate: Number(it.rate ?? 0),
+      gst_rate: Number(it.gst_rate ?? defaultGst),
     });
   }
 
@@ -274,30 +288,15 @@ export function PunchChargeDialog({
         <div className="space-y-2">
           {lines.map((l, idx) => (
             <div key={l.key} className="grid gap-2 items-end" style={{ gridTemplateColumns: segment === "food" ? "1fr 80px 100px 80px 36px" : "1fr 80px 100px 80px 36px" }}>
-              {segment === "food" && menuItems.length > 0 && idx === 0 && (
-                <div className="col-span-5 flex flex-wrap gap-1 pb-1">
-                  <span className="text-xs text-muted-foreground self-center mr-1">Quick pick:</span>
-                  {menuItems.slice(0, 8).map((m) => (
-                    <Button key={m.id} type="button" size="sm" variant="outline" className="h-7 text-xs"
-                      onClick={() => {
-                        const empty = lines.find((x) => !x.description.trim());
-                        if (empty) pickMenu(empty.key, m.id);
-                        else {
-                          const nk = uid();
-                          setLines((prev) => [...prev, { key: nk, description: m.name, qty: 1, rate: Number(m.price ?? 0), gst_rate: Number(m.gst_rate ?? defaultGst), menu_item_id: m.id }]);
-                        }
-                      }}>
-                      {m.short_code ? `${m.short_code} · ` : ""}{m.name}
-                    </Button>
-                  ))}
-                </div>
-              )}
               <div>
-                {idx === 0 && <Label className="text-xs">Description</Label>}
-                <Input
+                {idx === 0 && <Label className="text-xs">Item</Label>}
+                <ItemPickerCombobox
+                  items={pickerItems}
                   value={l.description}
-                  onChange={(e) => updateLine(l.key, { description: e.target.value })}
-                  placeholder={segment === "food" ? "Item / dish" : "Service (shirt, trouser, ...)"}
+                  selectedId={l.master_id ?? null}
+                  onSelect={(it) => pickItem(l.key, it)}
+                  onTextChange={(t) => updateLine(l.key, { description: t, master_id: null, menu_item_id: null })}
+                  placeholder={segment === "food" ? "Search food item…" : "Search laundry / sundry item…"}
                 />
               </div>
               <div>
