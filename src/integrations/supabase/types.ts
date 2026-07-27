@@ -5017,6 +5017,106 @@ export type Database = {
           },
         ]
       }
+      shift_handover_lines: {
+        Row: {
+          created_at: string
+          difference: number
+          handover_id: string
+          id: string
+          manual_entry: number
+          mode: string
+          note: string | null
+          system_total: number
+        }
+        Insert: {
+          created_at?: string
+          difference?: number
+          handover_id: string
+          id?: string
+          manual_entry?: number
+          mode: string
+          note?: string | null
+          system_total?: number
+        }
+        Update: {
+          created_at?: string
+          difference?: number
+          handover_id?: string
+          id?: string
+          manual_entry?: number
+          mode?: string
+          note?: string | null
+          system_total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_handover_lines_handover_id_fkey"
+            columns: ["handover_id"]
+            isOneToOne: false
+            referencedRelation: "shift_handovers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_handovers: {
+        Row: {
+          created_at: string
+          id: string
+          incoming_user_id: string | null
+          incoming_user_name: string | null
+          notes: string | null
+          outgoing_user_id: string
+          outgoing_user_name: string
+          property_id: string
+          total_difference: number
+          total_manual: number
+          total_system: number
+          updated_at: string
+          window_end: string
+          window_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          incoming_user_id?: string | null
+          incoming_user_name?: string | null
+          notes?: string | null
+          outgoing_user_id: string
+          outgoing_user_name: string
+          property_id: string
+          total_difference?: number
+          total_manual?: number
+          total_system?: number
+          updated_at?: string
+          window_end?: string
+          window_start: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          incoming_user_id?: string | null
+          incoming_user_name?: string | null
+          notes?: string | null
+          outgoing_user_id?: string
+          outgoing_user_name?: string
+          property_id?: string
+          total_difference?: number
+          total_manual?: number
+          total_system?: number
+          updated_at?: string
+          window_end?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_handovers_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff: {
         Row: {
           address: string | null
@@ -5733,6 +5833,10 @@ export type Database = {
       }
       is_owner_or_super: { Args: { _user_id: string }; Returns: boolean }
       is_superadmin: { Args: { _uid: string }; Returns: boolean }
+      last_handover_window_start: {
+        Args: { _property_id: string }
+        Returns: string
+      }
       log_auth_event: {
         Args: {
           _event_type: string
