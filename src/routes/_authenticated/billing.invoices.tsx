@@ -368,6 +368,7 @@ function InvoicesPage() {
           </Button>
         )}
       </div>
+      {segTab === "lodge" && (
       <Card>
         <CardContent className="p-0 divide-y">
           {filtered.length === 0 && <p className="p-4 text-sm text-muted-foreground">No invoices.</p>}
@@ -453,6 +454,49 @@ function InvoicesPage() {
           })}
         </CardContent>
       </Card>
+      )}
+
+      {segTab !== "lodge" && (
+        <Card>
+          <CardContent className="p-0 divide-y">
+            {segRows.filter((r) => !q ||
+              r.bill_number.toLowerCase().includes(q.toLowerCase()) ||
+              (r.guest_name ?? "").toLowerCase().includes(q.toLowerCase())
+            ).length === 0 && (
+              <p className="p-4 text-sm text-muted-foreground">No {segTab} bills.</p>
+            )}
+            {segRows
+              .filter((r) => !q ||
+                r.bill_number.toLowerCase().includes(q.toLowerCase()) ||
+                (r.guest_name ?? "").toLowerCase().includes(q.toLowerCase()))
+              .map((r) => {
+                const balance = Math.max(0, Number(r.total_amount || 0) - Number(r.paid_amount || 0));
+                return (
+                  <div key={r.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="font-medium text-sm">{r.bill_number}</div>
+                        <Badge variant="outline" className="uppercase text-[10px]">{r.status}</Badge>
+                        <Badge variant="outline" className="text-[10px] uppercase">{segTab}</Badge>
+                        {r.is_walkin && <Badge variant="outline" className="text-[10px]">Walk-in</Badge>}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {r.guest_name ?? "—"} · {new Date(r.created_at).toLocaleString("en-IN")}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium">{inr(r.total_amount)}</div>
+                      <div className="text-xs text-muted-foreground">Bal {inr(balance)}</div>
+                    </div>
+                    <Button size="sm" variant="ghost" title="Print bill" onClick={() => printSegBill(r)}>
+                      <Printer className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+          </CardContent>
+        </Card>
+      )}
 
       <ChangePaymentModeDialog
         folio={payModeTarget}
