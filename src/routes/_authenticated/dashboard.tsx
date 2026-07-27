@@ -1061,6 +1061,7 @@ function OwnerDashboard({
 
 function RoomGroups({
   rooms, categories, grouping, occupiedRoomIds, pendingFoodByRoom, occInfoByRoom, eventBlockByRoom,
+  segmentMode, segmentPendingByRoom,
   onPick, onPickFood, onCheckout, onAssignEvent, onEventCheckIn,
 }: {
   rooms: Room[];
@@ -1070,6 +1071,8 @@ function RoomGroups({
   pendingFoodByRoom: Map<string, PendingFood>;
   occInfoByRoom: Map<string, OccInfo>;
   eventBlockByRoom: Map<string, RoomEventInfo>;
+  segmentMode: "rooms" | "food" | "laundry";
+  segmentPendingByRoom: Map<string, { amount: number; count: number; bills: Array<{ id: string; bill_number: string; amount: number }> }>;
   onPick: (r: Room) => void;
   onPickFood: (r: Room) => void;
   onCheckout: (bookingId: string) => void;
