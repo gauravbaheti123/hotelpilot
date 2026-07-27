@@ -326,6 +326,7 @@ function MenuPage() {
                     extraDefaults={{ property_id: current.id }}
                     columns={[
                       { header: "name", field: "name", required: true },
+                    { header: "short_code", field: "short_code" },
                       { header: "category_name", required: true,
                         format: (_v, row) =>
                           cats.find((c) => c.id === (row as { category_id?: string }).category_id)?.name ?? "" },
@@ -472,6 +473,7 @@ function MenuPage() {
                   <TableRow>
                     <TableHead></TableHead>
                     <TableHead>Name</TableHead>
+                    <TableHead>Short Code</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Price</TableHead>
                     <TableHead>GST</TableHead>
@@ -489,14 +491,16 @@ function MenuPage() {
                         }`} />
                       </TableCell>
                       <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <span>{i.name}</span>
-                          {i.short_code && (
-                            <Badge variant="outline" className="text-[10px] uppercase">
-                              {i.short_code}
-                            </Badge>
-                          )}
-                        </div>
+                        {i.name}
+                      </TableCell>
+                      <TableCell>
+                        {i.short_code ? (
+                          <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                            {i.short_code}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell>{cats.find((c) => c.id === i.category_id)?.name ?? "—"}</TableCell>
                       <TableCell>₹{i.price}</TableCell>
