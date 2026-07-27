@@ -5493,6 +5493,10 @@ export type Database = {
       }
       current_user_totp_required: { Args: never; Returns: boolean }
       delete_night_audit: { Args: { _id: string }; Returns: undefined }
+      generate_bill_number: {
+        Args: { _property_id: string; _segment: string }
+        Returns: string
+      }
       get_gst_rate: {
         Args: { p_amount: number; p_category: string; p_property_id: string }
         Returns: number
@@ -5539,6 +5543,18 @@ export type Database = {
           _ip?: string
           _metadata?: Json
           _user_agent?: string
+        }
+        Returns: string
+      }
+      log_owner_override: {
+        Args: {
+          _action: string
+          _new: Json
+          _old: Json
+          _property_id: string
+          _reason: string
+          _record_id: string
+          _table_name: string
         }
         Returns: string
       }
