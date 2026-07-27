@@ -36,8 +36,20 @@ export function useAuth(): AuthState {
       return (data ?? []).map((r) => r.role as AppRole);
     }
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
+      // TOKEN_REFRESHED fires hourly (and on tab focus). It carries a new
+      // access token but the same user identity — updating the session in
+      // state is enough. Re-fetching user_roles on every refresh caused the
+      // "sluggish after leaving tab open" regression. INITIAL_SESSION is
+      // handled by the getSession() call below on mount, so skip it here.
+      if (event === "TOKEN_REFRESHED") {
+        setState((s) => ({ ...s, session, user: session?.user ?? s.user }));
+        return;
+      }
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") {
+        return;
+      }
       setState((s) => ({ ...s, session, user: session?.user ?? null }));
       if (session?.user) {
         setTimeout(async () => {
