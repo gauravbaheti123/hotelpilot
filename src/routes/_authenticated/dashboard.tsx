@@ -1115,9 +1115,27 @@ function RoomGroups({
     return out;
   }, [rooms, categories, grouping]);
 
+  // In segment mode, hide rooms that can't take a charge (vacant, dirty,
+  // maintenance, blocked/event). Only in-house guests (occupied) qualify.
+  const filteredGroups = useMemo(() => {
+    if (segmentMode === "rooms") return ordered;
+    return ordered
+      .map((g) => ({
+        name: g.name,
+        rooms: g.rooms.filter((r) => occupiedRoomIds.has(r.id)),
+      }))
+      .filter((g) => g.rooms.length > 0);
+  }, [ordered, segmentMode, occupiedRoomIds]);
+
   return (
     <div className="space-y-4">
-      {ordered.map((g) => (
+      {segmentMode !== "rooms" && filteredGroups.length === 0 && (
+        <div className="text-sm text-muted-foreground border rounded-md p-6 text-center">
+          No occupied rooms — {segmentMode === "food" ? "food" : "laundry"} charges can only be punched against in-house guests.
+          Use <span className="font-medium">Walk-in Sale</span> for counter sales.
+        </div>
+      )}
+      {filteredGroups.map((g) => (
         <div key={g.name} className="space-y-2">
           <div className="pb-1.5 border-b border-border/60">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
@@ -1126,6 +1144,17 @@ function RoomGroups({
           </div>
           <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 w-full">
             {g.rooms.map((r) => (
+              segmentMode !== "rooms" ? (
+                <SegmentRoomCard
+                  key={r.id}
+                  room={r}
+                  category={g.name}
+                  segment={segmentMode}
+                  occ={occInfoByRoom.get(r.id) ?? null}
+                  pending={segmentPendingByRoom.get(r.id) ?? null}
+                  onPick={() => onPick(r)}
+                />
+              ) : (
               <RoomCard
                 key={r.id}
                 room={r}
@@ -1140,10 +1169,73 @@ function RoomGroups({
                 onAssignEvent={onAssignEvent}
                 onEventCheckIn={onEventCheckIn}
               />
+              )
             ))}
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// Segment tile — used when Food/Laundry tab is active. Displays the guest
+// name and this segment's pending bill amount (₹0 = clean). Tapping opens
+// the Punch Food/Laundry Charge dialog via the parent's onPick.
+function SegmentRoomCard({
+  room, category, segment, occ, pending, onPick,
+}: {
+  room: Room;
+  category: string;
+  segment: "food" | "laundry";
+  occ: OccInfo | null;
+  pending: { amount: number; count: number; bills: Array<{ id: string; bill_number: string; amount: number }> } | null;
+  onPick: () => void;
+}) {
+  const amount = pending?.amount ?? 0;
+  const hasPending = amount > 0.01;
+  const bg = hasPending ? "#f59e0b" : "#0ea5e9"; // amber = pending, sky = clean
+  const label = segment === "food" ? "Food" : "Laundry";
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onPick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPick(); }}
+      className="relative transition cursor-pointer overflow-hidden flex flex-col"
+      style={{ backgroundColor: bg, color: "#ffffff", minHeight: 118, borderRadius: 10 }}
+    >
+      <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
+        <div className="flex items-start justify-between gap-2">
+          <span style={{ color: "#ffffff", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
+          <span
+            className="font-semibold uppercase tracking-wide rounded-full"
+            style={{ backgroundColor: "rgba(255,255,255,0.25)", color: "#ffffff", fontSize: 10, padding: "2px 7px" }}
+          >
+            {label}
+          </span>
+        </div>
+        <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 11, marginTop: 1 }}>{category}</div>
+        <div className="truncate" style={{ color: "#ffffff", fontSize: 13, fontWeight: 700, marginTop: 2 }}>
+          {occ?.guestName ?? "Guest"}
+        </div>
+        <div className="mt-auto pt-1">
+          {hasPending ? (
+            <>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#ffffff" }}>
+                ₹{amount.toLocaleString("en-IN")} pending
+              </div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>
+                {pending!.count} open bill{pending!.count > 1 ? "s" : ""} · tap to add more
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.95)" }}>No pending</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>Tap to punch {label.toLowerCase()} charge</div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
