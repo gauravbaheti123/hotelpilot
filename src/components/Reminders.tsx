@@ -23,6 +23,10 @@ export interface Reminder {
   notes: string | null;
   is_dismissed: boolean;
   created_at: string;
+  is_read?: boolean;
+  type?: string;
+  category?: string | null;
+  message?: string | null;
 }
 
 function playBeep() {
@@ -62,10 +66,11 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
     if (!propertyId) { setReminders([]); return; }
     const { data } = await supabase
       .from("reminders")
-      .select("id, property_id, title, reminder_datetime, notes, is_dismissed, created_at")
+      .select("id, property_id, title, reminder_datetime, notes, is_dismissed, created_at, is_read, type, category, message")
       .eq("property_id", propertyId)
       .eq("is_dismissed", false)
-      .order("reminder_datetime", { ascending: true });
+      .order("created_at", { ascending: false })
+      .limit(100);
     setReminders((data ?? []) as Reminder[]);
   }, [propertyId]);
 
@@ -114,6 +119,23 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
     setReminders((rs) => rs.filter((r) => r.id !== id));
   }
 
+  async function markRead(id: string) {
+    await supabase.from("reminders")
+      .update({ is_read: true, read_by: userId, read_at: new Date().toISOString() } as any)
+      .eq("id", id);
+    setReminders((rs) => rs.map((r) => (r.id === id ? { ...r, is_read: true } : r)));
+  }
+
+  async function markAllRead() {
+    if (!propertyId) return;
+    await supabase.from("reminders")
+      .update({ is_read: true, read_by: userId, read_at: new Date().toISOString() } as any)
+      .eq("property_id", propertyId)
+      .eq("is_dismissed", false)
+      .eq("is_read", false);
+    setReminders((rs) => rs.map((r) => ({ ...r, is_read: true })));
+  }
+
   async function addReminder() {
     if (!propertyId) return;
     if (!title.trim()) { toast.error("Title is required"); return; }
@@ -124,6 +146,7 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
       title: title.trim(),
       reminder_datetime: new Date(when).toISOString(),
       notes: notes.trim() || null,
+      type: "manual",
     } as any);
     if (error) { toast.error(error.message); return; }
     toast.success("Reminder added");
@@ -132,7 +155,7 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
     load();
   }
 
-  const count = reminders.length;
+  const count = reminders.filter((r) => !r.is_read).length;
 
   return (
     <>
@@ -150,22 +173,49 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
         <PopoverContent align="end" className="w-80 p-0">
           <div className="flex items-center justify-between px-3 py-2 border-b">
             <div className="font-semibold text-sm">Reminders</div>
-            <Button size="sm" variant="ghost" onClick={() => { setOpen(false); setAddOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1" /> Add
-            </Button>
+            <div className="flex items-center gap-1">
+              {count > 0 && (
+                <Button size="sm" variant="ghost" className="text-xs h-7" onClick={markAllRead}>
+                  Mark all read
+                </Button>
+              )}
+              <Button size="sm" variant="ghost" onClick={() => { setOpen(false); setAddOpen(true); }}>
+                <Plus className="h-4 w-4 mr-1" /> Add
+              </Button>
+            </div>
           </div>
           <div className="max-h-80 overflow-auto">
             {reminders.length === 0 ? (
-              <div className="px-3 py-6 text-center text-xs text-muted-foreground">No upcoming reminders</div>
+              <div className="px-3 py-6 text-center text-xs text-muted-foreground">No reminders</div>
             ) : reminders.map((r) => (
-              <div key={r.id} className="px-3 py-2 border-b last:border-0 text-sm">
+              <div
+                key={r.id}
+                onClick={() => { if (!r.is_read) markRead(r.id); }}
+                className={`px-3 py-2 border-b last:border-0 text-sm cursor-pointer ${
+                  r.is_read ? "bg-background" : "bg-primary/5"
+                }`}
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="font-medium truncate">{r.title}</div>
-                    <div className="text-[11px] text-muted-foreground">{fmtWhen(r.reminder_datetime)}</div>
-                    {r.notes && <div className="text-xs text-muted-foreground mt-1">{r.notes}</div>}
+                    <div className={`truncate ${r.is_read ? "font-medium" : "font-semibold"}`}>
+                      {!r.is_read && <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary mr-1.5 align-middle" />}
+                      {r.title}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {r.type === "system" && r.category ? `${r.category.replace(/_/g, " ")} · ` : ""}
+                      {fmtWhen(r.reminder_datetime)}
+                    </div>
+                    {(r.message || r.notes) && (
+                      <div className="text-xs text-muted-foreground mt-1">{r.message || r.notes}</div>
+                    )}
                   </div>
-                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => dismiss(r.id)} aria-label="Dismiss">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6"
+                    onClick={(e) => { e.stopPropagation(); dismiss(r.id); }}
+                    aria-label="Dismiss"
+                  >
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </div>
