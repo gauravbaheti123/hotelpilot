@@ -931,14 +931,34 @@ function FolioPage() {
     if (!payEditTarget || !folio || !booking) return;
     const oldMode = payEditTarget.mode;
     const newMode = payEditMode;
-    if (!newMode || newMode === oldMode) { setPayEditOpen(false); return; }
+    if (!newMode) return toast.error("Select a payment mode");
+    // Validate against active methods
+    const active = payMethods.filter((m) => m.is_active).map((m) => m.name);
+    if (!active.includes(newMode)) return toast.error("Select an active payment method");
+    if (newMode === oldMode) { setPayEditOpen(false); return; }
+    const locked = (folio as any).status === "settled" || (folio as any).status === "void" || (folio as any).is_deleted === true;
+    const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+    if (locked && !isOwner) {
+      return toast.error("Bill is locked — only Owner/Superadmin can change payment mode");
+    }
     setPayEditSaving(true);
     const { error } = await supabase
       .from("payments")
       .update({ mode: newMode })
       .eq("id", payEditTarget.id);
+    if (error) { setPayEditSaving(false); return toast.error(error.message); }
+    if (locked) {
+      await supabase.rpc("log_owner_override" as any, {
+        _property_id: booking.property_id,
+        _table_name: "payments",
+        _record_id: payEditTarget.id,
+        _action: "PAYMENT_MODE_CHANGED",
+        _old: { mode: oldMode, amount: payEditTarget.amount, folio_id: folio.id },
+        _new: { mode: newMode },
+        _reason: "",
+      } as any);
+    }
     setPayEditSaving(false);
-    if (error) return toast.error(error.message);
     await logActivity({
       property_id: booking.property_id,
       user_id: user?.id ?? "",
@@ -949,10 +969,15 @@ function FolioPage() {
       details: {
         payment_id: payEditTarget.id,
         folio_id: folio.id,
+        bill_id: folio.id,
+        bill_number: folio.invoice_number,
         booking_id: booking.id,
         amount: Number(payEditTarget.amount),
         old_mode: oldMode,
         new_mode: newMode,
+        changed_by: user?.id ?? null,
+        changed_at: new Date().toISOString(),
+        locked,
       },
     });
     setPayEditOpen(false);
@@ -1977,7 +2002,7 @@ function FolioPage() {
                           <td style={{ fontSize: 11, color: "#666" }}>{p.reference_no ?? ""}</td>
                           <td style={{ textAlign: "right" }}>
                             <span>{inr(p.amount)}</span>
-                            {canEditPaymentMode && canEditNow && (
+                            {canEditPaymentMode && (
                               <button
                                 type="button"
                                 onClick={() => openEditPaymentMode(p)}
