@@ -21,7 +21,6 @@ import { Pencil, Trash2, FileSpreadsheet, Hash, AlertTriangle, Wallet } from "lu
 import { ChangePaymentModeDialog, type ChangePaymentModeFolio } from "@/components/ChangePaymentModeDialog";
 import { Printer } from "lucide-react";
 import { printSegmentBill } from "@/components/PunchChargeDialog";
-import { useCurrentPropertyName } from "@/hooks/use-property";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/invoices")({
