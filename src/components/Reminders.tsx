@@ -49,8 +49,20 @@ function playBeep() {
 }
 
 function fmtWhen(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleString("en-IN", { dateStyle: "medium", hour: "2-digit", minute: "2-digit", hour12: false });
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso ?? "");
+    return d.toLocaleString("en-IN", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  } catch {
+    try { return new Date(iso).toString(); } catch { return String(iso ?? ""); }
+  }
 }
 
 export function RemindersBell({ propertyId, userId }: { propertyId: string | null; userId: string }) {
