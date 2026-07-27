@@ -1573,6 +1573,7 @@ export type Database = {
           is_wiped: boolean
           qty: number
           rate: number
+          segment_bill_ref: string | null
           source_id: string | null
           source_table: string | null
           wipe_log_id: string | null
@@ -1596,6 +1597,7 @@ export type Database = {
           is_wiped?: boolean
           qty?: number
           rate?: number
+          segment_bill_ref?: string | null
           source_id?: string | null
           source_table?: string | null
           wipe_log_id?: string | null
@@ -1619,6 +1621,7 @@ export type Database = {
           is_wiped?: boolean
           qty?: number
           rate?: number
+          segment_bill_ref?: string | null
           source_id?: string | null
           source_table?: string | null
           wipe_log_id?: string | null
@@ -4833,6 +4836,145 @@ export type Database = {
           },
         ]
       }
+      segment_bill_items: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          gst_amount: number
+          gst_rate: number
+          id: string
+          qty: number
+          rate: number
+          segment_bill_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          description: string
+          gst_amount?: number
+          gst_rate?: number
+          id?: string
+          qty?: number
+          rate?: number
+          segment_bill_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          gst_amount?: number
+          gst_rate?: number
+          id?: string
+          qty?: number
+          rate?: number
+          segment_bill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "segment_bill_items_segment_bill_id_fkey"
+            columns: ["segment_bill_id"]
+            isOneToOne: false
+            referencedRelation: "segment_bills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      segment_bills: {
+        Row: {
+          bill_number: string
+          booking_id: string | null
+          created_at: string
+          created_by: string | null
+          folio_id: string | null
+          gst_amount: number
+          guest_name: string | null
+          id: string
+          is_walkin: boolean
+          notes: string | null
+          paid_amount: number
+          payment_mode: string | null
+          property_id: string
+          room_id: string | null
+          segment: string
+          settled_at: string | null
+          status: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          bill_number: string
+          booking_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          folio_id?: string | null
+          gst_amount?: number
+          guest_name?: string | null
+          id?: string
+          is_walkin?: boolean
+          notes?: string | null
+          paid_amount?: number
+          payment_mode?: string | null
+          property_id: string
+          room_id?: string | null
+          segment: string
+          settled_at?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          bill_number?: string
+          booking_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          folio_id?: string | null
+          gst_amount?: number
+          guest_name?: string | null
+          id?: string
+          is_walkin?: boolean
+          notes?: string | null
+          paid_amount?: number
+          payment_mode?: string | null
+          property_id?: string
+          room_id?: string | null
+          segment?: string
+          settled_at?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "segment_bills_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "segment_bills_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "segment_bills_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "segment_bills_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff: {
         Row: {
           address: string | null
@@ -5515,6 +5657,17 @@ export type Database = {
         }[]
       }
       has_open_kot: { Args: { _booking_id: string }; Returns: boolean }
+      has_pending_segment_bills: {
+        Args: { _booking_id: string }
+        Returns: {
+          balance: number
+          bill_number: string
+          id: string
+          paid_amount: number
+          segment: string
+          total_amount: number
+        }[]
+      }
       has_permission: {
         Args: {
           _action: string

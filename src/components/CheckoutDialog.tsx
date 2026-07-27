@@ -102,8 +102,9 @@ function pickCheckoutFolio(rows: any[]) {
 }
 
 export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props) {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const { can } = usePermissions();
+  const isOwnerRole = roles.includes("owner") || roles.includes("superadmin");
   const canShiftMis = can("billing", "mis_shift");
   const [misOpen, setMisOpen] = useState(false);
   const canSplit = can("billing", "split_bill");
@@ -116,6 +117,11 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
   const [payments, setPayments] = useState<any[]>([]);
   const [pendingKots, setPendingKots] = useState<PendingKot[]>([]);
   const [pendingPos, setPendingPos] = useState<PendingPosCharge[]>([]);
+  const [pendingSegments, setPendingSegments] = useState<Array<{
+    id: string; segment: string; bill_number: string; total_amount: number; paid_amount: number; balance: number;
+  }>>([]);
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [overrideReason, setOverrideReason] = useState("");
   const [property, setProperty] = useState<{ checkout_grace_time: string | null } | null>(null);
   const { methods: payMethods } = usePaymentMethods(booking?.property_id ?? null);
 
@@ -222,6 +228,13 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     setPayments(p ?? []);
     setPendingKots((pk ?? []) as unknown as PendingKot[]);
     setPendingPos((pos ?? []) as unknown as PendingPosCharge[]);
+    const { data: segs } = await supabase.rpc("has_pending_segment_bills", { _booking_id: bookingId });
+    setPendingSegments(((segs ?? []) as any[]).map((s) => ({
+      id: s.id, segment: s.segment, bill_number: s.bill_number,
+      total_amount: Number(s.total_amount || 0),
+      paid_amount: Number(s.paid_amount || 0),
+      balance: Number(s.balance || 0),
+    })));
     setLoading(false);
   }, [bookingId]);
 
@@ -473,6 +486,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     if (pendingPos.length > 0) {
       return toast.error("Add pending POS charges to bill first");
     }
+    if (pendingSegments.length > 0) {
+      return toast.error("Settle or transfer pending Food/Laundry bills before checkout");
+    }
 
     // Build payment rows
     const rows: { amount: number; mode: string; reference_no: string | null }[] = [];
@@ -659,8 +675,30 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
           <div className="py-12 text-center text-sm text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading…
           </div>
-        ) : pendingKots.length > 0 || pendingPos.length > 0 ? (
+        ) : pendingKots.length > 0 || pendingPos.length > 0 || pendingSegments.length > 0 ? (
           <div className="space-y-4">
+            {pendingSegments.length > 0 && (
+            <div className="rounded-md border border-destructive/60 bg-destructive/5 p-4">
+              <div className="flex items-center gap-2 font-medium text-destructive mb-2">
+                <AlertTriangle className="h-5 w-5" /> Pending Food/Laundry bills
+              </div>
+              <div className="space-y-1 text-sm">
+                {pendingSegments.map((s) => (
+                  <div key={s.id} className="flex justify-between">
+                    <span className="uppercase text-xs">
+                      <Badge variant="outline" className="mr-1 text-[10px]">{s.segment}</Badge>
+                      {s.bill_number}
+                    </span>
+                    <span>{inr(s.balance)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="text-xs text-muted-foreground mt-3">
+                Settle these segment bills (or transfer to room folio) before checkout.
+                {isOwnerRole && " Owner may override with a reason from the folio page."}
+              </div>
+            </div>
+            )}
             {pendingKots.length > 0 && (
             <div className="rounded-md border border-destructive/60 bg-destructive/5 p-4">
               <div className="flex items-center gap-2 font-medium text-destructive mb-2">

@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrossed, ChevronDown, ChevronRight, DoorOpen, Sparkles, Wrench, PartyPopper, CheckCircle2, Receipt } from "lucide-react";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { AddExtraBedDialog } from "@/components/AddExtraBedDialog";
+import { PunchChargeDialog } from "@/components/PunchChargeDialog";
 // Bell moved to global header (AppShell). Reminders section removed here.
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { Input } from "@/components/ui/input";
@@ -211,6 +212,14 @@ function OwnerDashboard({
   const [grouping, setGrouping] = useState<"category" | "floor">("category");
   const [unassigned, setUnassigned] = useState<UnassignedReservation[]>([]);
   const [assignTarget, setAssignTarget] = useState<UnassignedReservation | null>(null);
+  const [segment, setSegment] = useState<"rooms" | "food" | "laundry">("rooms");
+  const [punchTarget, setPunchTarget] = useState<{
+    segment: "food" | "laundry";
+    bookingId: string | null;
+    roomId: string | null;
+    roomNumber: string | null;
+    guestName: string | null;
+  } | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -553,7 +562,39 @@ function OwnerDashboard({
                 {liveStatus === "live" ? "Live" : liveStatus === "polling" ? "Polling" : "…"}
               </span>
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="inline-flex rounded-md border overflow-hidden text-xs">
+                {(["rooms", "food", "laundry"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setSegment(s)}
+                    className={`px-3 h-8 font-medium transition-colors ${
+                      segment === s
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background hover:bg-muted"
+                    }`}
+                  >
+                    {s === "rooms" ? "Lodge" : s === "food" ? "Food" : "Laundry"}
+                  </button>
+                ))}
+              </div>
+              {segment !== "rooms" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs"
+                  onClick={() => setPunchTarget({
+                    segment: segment as "food" | "laundry",
+                    bookingId: null,
+                    roomId: null,
+                    roomNumber: null,
+                    guestName: null,
+                  })}
+                >
+                  Walk-in Sale
+                </Button>
+              )}
               <Input
                 type="date"
                 value={viewDate}
@@ -579,7 +620,21 @@ function OwnerDashboard({
                 pendingFoodByRoom={pendingFoodByRoom}
                 occInfoByRoom={occInfoByRoom}
                 eventBlockByRoom={eventBlockByRoom}
-                onPick={(r) => setModalRoom(r)}
+                onPick={(r) => {
+                  if (segment !== "rooms") {
+                    const bid = bookingByRoom.get(r.id) ?? null;
+                    const occ = occInfoByRoom.get(r.id) ?? null;
+                    setPunchTarget({
+                      segment: segment as "food" | "laundry",
+                      bookingId: bid,
+                      roomId: r.id,
+                      roomNumber: r.room_number,
+                      guestName: occ?.guestName ?? null,
+                    });
+                    return;
+                  }
+                  setModalRoom(r);
+                }}
                 onPickFood={(r) => {
                   const pf = pendingFoodByRoom.get(r.id);
                   if (pf?.bookingId) navigate({ to: "/front-desk/booking/$id", params: { id: pf.bookingId } });
@@ -937,6 +992,20 @@ function OwnerDashboard({
           checkIn={assignTarget.check_in}
           checkOut={assignTarget.check_out}
           onDone={() => { setAssignTarget(null); reload(); }}
+        />
+      )}
+      {punchTarget && propertyId && (
+        <PunchChargeDialog
+          open={!!punchTarget}
+          onClose={() => setPunchTarget(null)}
+          segment={punchTarget.segment}
+          propertyId={propertyId}
+          propertyName={propertyName}
+          bookingId={punchTarget.bookingId}
+          roomId={punchTarget.roomId}
+          roomNumber={punchTarget.roomNumber}
+          guestName={punchTarget.guestName}
+          onSaved={() => { setPunchTarget(null); reload(); }}
         />
       )}
     </AppShell>

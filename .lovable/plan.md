@@ -1,45 +1,73 @@
-## Phase 0 — Foundation Plan
+# Phase 1 — Unified Segment Billing Dashboard
 
-Before writing migrations, flagging what I found so we don't rebuild things that already exist. All 4 sub-items are still doable, but 0.1 and 0.3 are mostly complete already.
+Builds on Phase 0 numbering + `payment_methods`. Food already has a full flow (KOTs, `food_bills`, `tg_assign_food_bill_number`). Laundry has no module yet — this phase introduces a minimal punch flow that mirrors Food.
 
-### Findings on current state
+## 1. Database (single migration)
 
-- **0.1 Payment Modes master**: `payment_methods` table already exists per-property (id, name, is_default, is_active, display_order) with seed trigger (`seed_payment_methods_for_property`) that inserts Cash/Card/UPI on property create, plus `usePaymentMethods(propertyId)` hook and Master Data CRUD page (`masters.payment-methods.tsx`). What's missing is that ~10 files (`billing.ts`, `expenses.*`, `banquet.*`, `restaurant.index.tsx`, `reports.bill-wise.tsx`, `reports.expenses.tsx`) still reference the hardcoded `PAYMENT_MODES` union. Payments themselves already store `payment_method` as free text, so no schema change is needed — just wire the dropdowns/filters to `usePaymentMethods`.
-- **0.2 Segmented bill numbering**: `bill_sequences` table already exists but its CHECK constraint only allows `sequence_type IN ('regular','event')` and `properties.short_code` already exists (`BRIJ`). Need to widen the enum, add lodge/food/laundry/banquet types, and add a new `generate_bill_number(property_id, segment)` SECURITY DEFINER function that formats `{short_code}-{segment_code}-NNNN`. Existing per-domain assigners (`tg_assign_invoice_number`, `tg_assign_food_bill_number`, `tg_assign_banquet_number`) will be pointed at the new function so numbering becomes consistent across segments.
-- **0.3 Auto-settle on checkout**: Already implemented — `tg_folios_balance_before_write` flips status to `settled` when `balance_amount <= 0.01` and `paid_amount > 0`, and `tg_payments_sync`/`tg_folio_charges_sync` recompute on every payment/charge change. I ran the diagnostic query for Brij Motel and **zero folios** are `open` with `paid_amount >= total_amount`, so there's nothing to backfill for this property. I'll still add a defensive one-time backfill migration (property-scoped, logged) for safety, and a smoke check that runs across all properties.
-- **0.4 Owner bypass + generic audit**: `has_permission()` already bypasses for superadmin + owner. The gap is that non-permission-based locks (settled-bill-lock, day-lock via `is_day_locked`, folio `is_reopened` gating) don't have an Owner override. And `activity_log` exists but callers write to it inconsistently. Rather than build a generic diff-audit across every table (huge blast radius, would take multiple turns), I'll add a small `log_owner_override(table, record_id, action, old, new, reason)` helper + audit rows for the specific unlock actions Owners will now use (edit settled folio, edit locked payment mode, edit charge on locked day). Payment-mode changes already log old→new via `PAYMENT_MODE_CHANGED`.
+- **`laundry_bills`** table (mirrors `food_bills`): `id, property_id, booking_id (nullable), folio_id (nullable), laundry_bill_number, total_amount, status ('open'|'settled'|'void'), is_walkin, created_by, created_at, updated_at`. GRANT authenticated + service_role, RLS via `user_has_property` + `has_permission('billing', ...)`.
+- **`laundry_bill_items`**: `id, laundry_bill_number ref, description, qty, rate, amount, gst_rate, gst_amount`. Same RLS.
+- **`tg_assign_laundry_bill_number`** trigger — copy of `tg_assign_food_bill_number`, uses `generate_bill_number(property_id, 'laundry')` → `BRIJ-L-0001` (legacy `LB-0001` fallback if no short_code).
+- Extend **`folio_charges`** with nullable `segment_bill_ref TEXT` column so posted food/laundry lines carry their originating bill number for the consolidated invoice breakup. Backfill existing food charges from `food_bills.food_bill_number` where `source_id` matches.
+- Add DB helper **`has_pending_segment_bills(_booking_id uuid)`** returning `TABLE(segment text, bill_number text, amount numeric)` — queried by checkout guard.
 
-### Proposed migration (single file)
+## 2. Dashboard segment selector
 
-```text
-1. Widen bill_sequences.sequence_type CHECK → add 'lodge','food','laundry','banquet'
-2. Seed sequence rows for existing properties for the 4 new segments
-3. Create public.generate_bill_number(_property_id uuid, _segment text) -> text
-   - SECURITY DEFINER, SELECT ... FOR UPDATE row-lock, atomic increment
-   - Prefix = {properties.short_code}-{segment_code}-NNNN
-   - segment_code map: lodge→LDG, food→F, laundry→L, banquet→B
-4. Update tg_assign_food_bill_number, tg_assign_banquet_number,
-   tg_assign_invoice_number → call generate_bill_number for the right segment
-   (keep the legacy prefix as fallback when short_code is null so historical
-   numbering doesn't renumber)
-5. Backfill: UPDATE folios SET status='settled', settled_at=COALESCE(settled_at,now())
-   WHERE status='open' AND balance_amount<=0.01 AND paid_amount>0
-   AND is_deleted=false — insert one activity_log row per fixed folio
-6. Add owner-override helper + widen can_billing / edit gates via new
-   is_owner_or_super() checks in DB functions that currently hard-lock
-   (void_folio_safe already gates; extend to settled-folio edit path)
+Edit `src/routes/_authenticated/dashboard.tsx` only (no new page):
+
+- Add a top segment toggle: **Rooms | Food | Laundry** (default Rooms = today's behavior).
+- Rooms view unchanged.
+- Food/Laundry view: same room grid, but each tile shows that segment's *pending amount for the room's active booking* (sum of unsettled `folio_charges` where segment matches) instead of housekeeping status. Empty rooms are dimmed.
+- Tapping a tile opens a **PunchChargeDialog** for the selected segment.
+
+## 3. PunchChargeDialog (new component)
+
+`src/components/PunchChargeDialog.tsx`, one dialog handles both segments:
+
+- Food: reuse existing menu items lookup (from `menu_items`); Laundry: free-text items + rate + qty rows.
+- "Walk-in / counter sale" toggle when opened without a booking (or explicitly from a new dashboard "Walk-in Food/Laundry" button in the segment toolbar).
+- On save:
+  1. Insert parent bill row (`food_bills` or `laundry_bills`) → trigger stamps `BRIJ-F-####` / `BRIJ-L-####`.
+  2. Insert item rows.
+  3. If **linked to a booking**: also insert into `folio_charges` (`charge_type='food'|'laundry'`, `segment_bill_ref=<bill number>`, `source_table`, `source_id`). Existing `tg_folio_charges_sync` recomputes folio totals.
+  4. If **walk-in**: record payment straight into `payments` (folio_id NULL, booking_id NULL, method from `usePaymentMethods`), mark bill `settled`.
+  5. Print standalone segment bill via `window.print()` — reuse `printStyles.ts` + a new small template `renderSegmentBillHtml()` in `src/lib/invoiceTemplates.ts`.
+
+## 4. Checkout guard
+
+In `src/components/CheckoutDialog.tsx`:
+
+- On open, call `supabase.rpc('has_pending_segment_bills', { _booking_id })`.
+- If any rows returned, block checkout with a listing panel ("Pending Food/Laundry — settle or transfer to folio"). Buttons:
+  - **Transfer to folio** → sets those bills' `folio_id` + status remains open, then re-runs check (already posted via section 3, so this is only for stray walk-in-style bills that were tagged to booking but not folio).
+  - **Settle now** → opens payment on that segment bill.
+  - **Owner override** (owner/superadmin only) → prompt for reason → `log_owner_override('checkout_pending_segment', ...)` → proceed.
+
+## 5. Consolidated lodge invoice
+
+`src/lib/invoiceTemplates.ts` — in the itemized section, group folio charges by segment when `segment_bill_ref` present:
 ```
+Lodge Charges                     ₹X
+Food (Ref: BRIJ-F-0001)          ₹Y
+Laundry (Ref: BRIJ-L-0002)       ₹Z
+```
+Rows without a ref keep current behavior. No structural template change.
 
-### Code changes
+## 6. Banquet — untouched
 
-- Refactor these files to use `usePaymentMethods(propertyId)` and drop hardcoded arrays:
-  `src/lib/billing.ts` (kept as fallback constant only), `expenses.new.tsx`, `expenses.index.tsx`, `reports.bill-wise.tsx`, `reports.expenses.tsx`, `banquet.bill.$id.tsx`, `banquet.event.$id.tsx`, `restaurant.index.tsx`.
-- `CheckoutDialog`: add Owner-only "Edit after settlement" affordance that calls the new override helper (logs to activity_log).
+Explicitly excluded from segment selector. Verify `tg_assign_banquet_number` still routes bulk-room banquet bookings to `BRIJ-B-####` and confirm no code path in Phase 1 writes into banquet tables.
 
-### What I'll NOT do in this phase (flagging so we're aligned)
+## Verification checklist (after apply)
 
-- Generic diff-audit table covering every column of every table — too large; the existing `activity_log` + targeted override logging covers Owner edits.
-- Renumbering historical invoices to the new BRIJ-LDG- format. New numbering applies from migration forward only.
-- Touching Night Audit / day-lock logic beyond adding Owner override for editing folios inside locked days.
+- Segment toggle switches grid data source without route change.
+- Food punch → creates `food_bills` row `BRIJ-F-####`, `folio_charges` row with matching `segment_bill_ref`, prints bill.
+- Laundry punch → same, `BRIJ-L-####`.
+- Walk-in Food/Laundry → bill + settled payment, no folio touched.
+- Checkout on room with pending segment bill → blocked with listing; owner override logs to `activity_log`.
+- Final invoice shows segment-wise ref breakup.
+- Banquet checkout still yields `BRIJ-B-####`, no interference.
 
-Confirm and I'll ship the migration + code refactor. If you want the full generic diff-audit across all tables, say so and I'll scope it as its own phase.
+## Notes / non-goals
+
+- Not adding a new sidebar entry; segment lives inside the dashboard.
+- Not migrating historical food bills into the new `segment_bill_ref` column beyond the one-time backfill.
+- Laundry master (services catalog) is out of scope — free-text lines are enough for Phase 1.
