@@ -2281,6 +2281,48 @@ export type Database = {
           },
         ]
       }
+      housekeeping_room_notes: {
+        Row: {
+          created_at: string
+          note: string
+          property_id: string
+          room_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          note?: string
+          property_id: string
+          room_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          note?: string
+          property_id?: string
+          room_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "housekeeping_room_notes_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "housekeeping_room_notes_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: true
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       housekeeping_tasks: {
         Row: {
           assigned_to: string | null
