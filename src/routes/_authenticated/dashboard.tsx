@@ -984,7 +984,7 @@ function OwnerDashboard({
         onOtherCharges={(bid: string) => {
           const roomNo = modalRoom?.room_number;
           setModalRoom(null);
-          navigate({ to: "/pos", search: { booking_id: bid } } as any);
+          navigate({ to: "/billing/folio/$bookingId", params: { bookingId: bid } });
           if (roomNo) toast.success(`Opening Other Charges for Room ${roomNo}`);
         }}
         onAddExtraBed={(bid: string) => { setModalRoom(null); setExtraBedBookingId(bid); }}
