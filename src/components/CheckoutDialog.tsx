@@ -744,17 +744,27 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
               </div>
               <div className="space-y-1 text-sm">
                 {pendingSegments.map((s) => (
-                  <div key={s.id} className="flex justify-between">
-                    <span className="uppercase text-xs">
+                  <div key={s.id} className="flex items-center justify-between gap-2">
+                    <span className="uppercase text-xs flex-1 min-w-0 truncate">
                       <Badge variant="outline" className="mr-1 text-[10px]">{s.segment}</Badge>
                       {s.bill_number}
                     </span>
-                    <span>{inr(s.balance)}</span>
+                    <span className="text-sm font-medium">{inr(s.balance)}</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => transferSegmentBillToFolio({
+                        id: s.id, segment: s.segment, bill_number: s.bill_number,
+                      })}
+                    >
+                      Add to bill
+                    </Button>
                   </div>
                 ))}
               </div>
               <div className="text-xs text-muted-foreground mt-3">
-                Settle these segment bills (or transfer to room folio) before checkout.
+                Transfer each pending {`${""}`}Food/Laundry bill into the room folio before checkout.
                 {isOwnerRole && " Owner may override with a reason from the folio page."}
               </div>
             </div>
