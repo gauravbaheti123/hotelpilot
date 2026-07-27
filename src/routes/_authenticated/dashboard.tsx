@@ -665,6 +665,8 @@ function OwnerDashboard({
                 pendingFoodByRoom={pendingFoodByRoom}
                 occInfoByRoom={occInfoByRoom}
                 eventBlockByRoom={eventBlockByRoom}
+                segmentMode={segment}
+                segmentPendingByRoom={segmentPendingByRoom}
                 onPick={(r) => {
                   if (segment !== "rooms") {
                     const bid = bookingByRoom.get(r.id) ?? null;
