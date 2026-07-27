@@ -17,7 +17,8 @@ import { useAuth, hasRole } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { toast } from "sonner";
-import { Pencil, Trash2, FileSpreadsheet, Hash, AlertTriangle } from "lucide-react";
+import { Pencil, Trash2, FileSpreadsheet, Hash, AlertTriangle, Wallet } from "lucide-react";
+import { ChangePaymentModeDialog, type ChangePaymentModeFolio } from "@/components/ChangePaymentModeDialog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/invoices")({
@@ -43,6 +44,7 @@ function InvoicesPage() {
   const navigate = useNavigate();
   const canEdit = can("invoices", "edit");
   const canDelete = can("invoices", "delete");
+  const canEditPaymentMode = hasRole(roles, "owner") || hasRole(roles, "superadmin") || hasRole(roles, "manager");
   // Bill renumbering is intentionally owner-only — no dedicated permission key
   // exists for renumbering, so keep the hardcoded role gate.
   const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
@@ -61,6 +63,8 @@ function InvoicesPage() {
   const [numTarget, setNumTarget] = useState<Row | null>(null);
   const [numNew, setNumNew] = useState("");
   const [numReason, setNumReason] = useState("");
+  // Change Payment Mode dialog (list-view quick action)
+  const [payModeTarget, setPayModeTarget] = useState<ChangePaymentModeFolio | null>(null);
   // Audit rows for BILL_DELETED / BILL_NUMBER_EDITED
   const [auditRows, setAuditRows] = useState<Array<{
     id: string; created_at: string; user_name: string | null;
@@ -323,6 +327,15 @@ function InvoicesPage() {
                         <Hash className="h-4 w-4" />
                       </Button>
                     )}
+                    {canEditPaymentMode && (
+                      <Button size="sm" variant="ghost" title="Change payment mode"
+                        onClick={(e) => { e.preventDefault(); setPayModeTarget({
+                          id: r.id, invoice_number: r.invoice_number, property_id: propertyId!,
+                          booking_id: r.booking_id, status: r.status, is_deleted: r.is_deleted,
+                        }); }}>
+                        <Wallet className="h-4 w-4" />
+                      </Button>
+                    )}
                     {canEdit && (
                       <Button size="sm" variant="ghost"
                         onClick={() => navigate({ to: "/billing/folio/$bookingId", params: { bookingId: r.booking_id } })}>
@@ -338,18 +351,38 @@ function InvoicesPage() {
                     )}
                   </div>
                 )}
-                {isOwner && voided && (
-                  <Button size="sm" variant="ghost" title="Permanently delete voided bill"
-                    className="text-destructive hover:text-destructive ml-2"
-                    onClick={(e) => { e.preventDefault(); setHardDelTarget(r); setHardDelStep(1); setHardDelPwd(""); setHardDelReason(""); }}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                {voided && (
+                  <div className="flex items-center gap-1 ml-2">
+                    {canEditPaymentMode && (
+                      <Button size="sm" variant="ghost" title="Change payment mode (owner override)"
+                        onClick={(e) => { e.preventDefault(); setPayModeTarget({
+                          id: r.id, invoice_number: r.invoice_number, property_id: propertyId!,
+                          booking_id: r.booking_id, status: r.status, is_deleted: r.is_deleted,
+                        }); }}>
+                        <Wallet className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {isOwner && (
+                      <Button size="sm" variant="ghost" title="Permanently delete voided bill"
+                        className="text-destructive hover:text-destructive"
+                        onClick={(e) => { e.preventDefault(); setHardDelTarget(r); setHardDelStep(1); setHardDelPwd(""); setHardDelReason(""); }}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             );
           })}
         </CardContent>
       </Card>
+
+      <ChangePaymentModeDialog
+        folio={payModeTarget}
+        open={!!payModeTarget}
+        onOpenChange={(o) => { if (!o) setPayModeTarget(null); }}
+        onSaved={() => { setPayModeTarget(null); load(); }}
+      />
 
       {isOwner && audit && auditRows.length > 0 && (
         <Card className="mt-4">
