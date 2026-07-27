@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -66,7 +67,29 @@ function fmtWhen(iso: string) {
 }
 
 export function RemindersBell({ propertyId, userId }: { propertyId: string | null; userId: string }) {
-  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const qc = useQueryClient();
+  const qKey = ["reminders", propertyId] as const;
+  const { data: reminders = [] } = useQuery<Reminder[]>({
+    queryKey: qKey,
+    enabled: !!propertyId,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      if (!propertyId) return [];
+      const { data } = await supabase
+        .from("reminders")
+        .select("id, property_id, title, reminder_datetime, notes, is_dismissed, created_at, is_read, type, category, message")
+        .eq("property_id", propertyId)
+        .eq("is_dismissed", false)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      return (data ?? []) as Reminder[];
+    },
+  });
+  const setReminders = (updater: (rs: Reminder[]) => Reminder[]) => {
+    qc.setQueryData<Reminder[]>(qKey, (rs) => updater(rs ?? []));
+  };
   const [open, setOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -75,18 +98,8 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
   const alertedRef = useRef<Map<string, { pre: boolean; now: boolean }>>(new Map());
 
   const load = useCallback(async () => {
-    if (!propertyId) { setReminders([]); return; }
-    const { data } = await supabase
-      .from("reminders")
-      .select("id, property_id, title, reminder_datetime, notes, is_dismissed, created_at, is_read, type, category, message")
-      .eq("property_id", propertyId)
-      .eq("is_dismissed", false)
-      .order("created_at", { ascending: false })
-      .limit(100);
-    setReminders((data ?? []) as Reminder[]);
-  }, [propertyId]);
-
-  useEffect(() => { load(); }, [load]);
+    await qc.invalidateQueries({ queryKey: qKey });
+  }, [qc, propertyId]);
 
   // 60-second poll: refresh + check 15-min advance window
   useEffect(() => {

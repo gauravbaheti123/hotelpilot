@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./use-auth";
 import { useCurrentProperty } from "./use-property";
@@ -10,7 +10,6 @@ export type PermStdAction = "view" | "create" | "edit" | "delete";
 export type PermAction = PermStdAction | (string & {});
 export type PermMap = Record<string, Record<string, boolean>>;
 
-const PERMS_EVENT = "hp:permissions-changed";
 const DEBUG_PERMISSION_MODULE = "dashboard";
 const DEBUG_PERMISSION_ACTION = "view";
 
@@ -24,10 +23,12 @@ function debugEnabled() {
 }
 
 /** Notify all mounted usePermissions() hooks to re-fetch. */
+let _qcRef: ReturnType<typeof useQueryClient> | null = null;
+export function _setPermissionsQueryClient(qc: ReturnType<typeof useQueryClient>) {
+  _qcRef = qc;
+}
 export function invalidatePermissions() {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(PERMS_EVENT));
-  }
+  if (_qcRef) _qcRef.invalidateQueries({ queryKey: ["permissions"] });
 }
 
 interface PermState {
@@ -47,135 +48,59 @@ export function usePermissions(): PermState & {
   const { user, roles, loading: authLoading } = useAuth();
   const { currentId: propertyId } = useCurrentProperty();
   const isSuperadmin = roles.includes("superadmin");
-  // Owners have full access to every module — bypass the permission map.
   const isOwner = roles.includes("owner");
   const userId = user?.id ?? null;
-  const [state, setState] = useState<PermState>({
-    loading: true,
-    isSuperadmin,
-    map: {},
-  });
-  const [tick, setTick] = useState(0);
-  const refresh = () => setTick((n) => n + 1);
+  const qc = useQueryClient();
+  _setPermissionsQueryClient(qc);
 
-  useEffect(() => {
-    const onChange = () => setTick((n) => n + 1);
-    window.addEventListener(PERMS_EVENT, onChange);
-    return () => window.removeEventListener(PERMS_EVENT, onChange);
-  }, []);
+  const bypass = isSuperadmin || isOwner;
+  const enabled = !authLoading && !!userId && !bypass;
 
-  useEffect(() => {
-    let cancelled = false;
-    if (authLoading) return;
-    if (!userId) {
-      setState({ loading: false, isSuperadmin: false, map: {} });
-      return;
-    }
-    if (isSuperadmin || isOwner) {
-      setState({ loading: false, isSuperadmin: isSuperadmin || isOwner, map: {} });
-      return;
-    }
-
-    (async () => {
-      if (!cancelled) {
-        setState((prev) => ({ ...prev, loading: true, isSuperadmin: false }));
-      }
-      // Find role_id assignments for this user (scoped to current property or global)
-      const q = supabase
+  const { data: map = {}, isLoading: qLoading, refetch } = useQuery<PermMap>({
+    queryKey: ["permissions", userId, propertyId],
+    enabled,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data: assigns, error: assignsErr } = await supabase
         .from("user_roles")
         .select("role_id, property_id")
-        .eq("user_id", userId)
+        .eq("user_id", userId!)
         .not("role_id", "is", null);
-      const { data: assigns, error: assignsErr } = await q;
-      if (debugEnabled()) {
-        console.log("[usePermissions:debug] user_roles result", {
-          user_id: userId,
-          property_id_used_for_check: propertyId,
-          assignments: assigns ?? [],
-          error: assignsErr,
-        });
-      }
-      if (assignsErr) {
-        // Do NOT flip loading→false with an empty map on transient errors —
-        // that would trigger downstream "Access denied" guards. Keep the
-        // hook in the loading state so the UI shows a spinner/skeleton
-        // instead of a definitive denial.
-        console.error("[usePermissions] user_roles read failed", assignsErr);
-        return;
-      }
+      if (assignsErr) throw assignsErr;
       const assignments = ((assigns ?? []) as Array<{ role_id: string | null; property_id: string | null }>)
         .filter((r) => !!r.role_id);
-
-      const matchingAssignments = propertyId
+      const matching = propertyId
         ? assignments.filter((r) => !r.property_id || r.property_id === propertyId)
         : [];
-
-      // A stale selected property can survive from a previous login in localStorage.
-      // If it does not match any role assignment for the current user, fall back to
-      // the user's actual assignments instead of denying every permission.
-      const effectiveAssignments = matchingAssignments.length > 0 ? matchingAssignments : assignments;
-      const roleIds = Array.from(new Set(effectiveAssignments.map((r) => r.role_id as string)));
-      if (debugEnabled()) {
-        console.log("[usePermissions:debug] resolved role_ids", {
-          user_id: userId,
-          property_id_used_for_check: propertyId,
-          all_assignments: assignments,
-          matching_assignments_for_property: matchingAssignments,
-          effective_assignments_used: effectiveAssignments,
-          resolved_role_ids: roleIds,
-        });
-      }
-      if (roleIds.length === 0) {
-        if (!cancelled) setState({ loading: false, isSuperadmin: false, map: {} });
-        return;
-      }
+      const effective = matching.length > 0 ? matching : assignments;
+      const roleIds = Array.from(new Set(effective.map((r) => r.role_id as string)));
+      if (roleIds.length === 0) return {};
       const { data: rps, error: rpsErr } = await supabase
         .from("role_permissions")
         .select("allowed, permissions!role_permissions_permission_id_fkey(module, action)")
         .in("role_id", roleIds)
         .eq("allowed", true);
-      const permissionRows = (rps ?? []) as any[];
-      if (debugEnabled()) {
-        const dashboardViewRows = permissionRows.filter((row) => {
-          const p = row.permissions;
-          return p?.module === DEBUG_PERMISSION_MODULE && p?.action === DEBUG_PERMISSION_ACTION;
-        });
-        console.log("[usePermissions:debug] role_permissions result", {
-          user_id: userId,
-          property_id_used_for_check: propertyId,
-          resolved_role_ids: roleIds,
-          error: rpsErr,
-          dashboard_view_rows: dashboardViewRows,
-          fetched_permissions: permissionRows,
-        });
-      }
-      if (rpsErr) {
-        console.error("[usePermissions] role_permissions read failed", rpsErr);
-        return;
-      }
-      const map: PermMap = {};
+      if (rpsErr) throw rpsErr;
+      const out: PermMap = {};
       for (const row of (rps ?? []) as any[]) {
         const p = row.permissions;
         if (!p) continue;
-        if (!map[p.module]) map[p.module] = { view: false, create: false, edit: false, delete: false };
-        map[p.module][p.action as string] = true;
+        if (!out[p.module]) out[p.module] = { view: false, create: false, edit: false, delete: false };
+        out[p.module][p.action as string] = true;
       }
       if (debugEnabled()) {
-        console.log("[usePermissions:debug] permission map built", {
-          user_id: userId,
-          property_id_used_for_check: propertyId,
-          resolved_role_ids: roleIds,
-          dashboard_view_in_map: map[DEBUG_PERMISSION_MODULE]?.[DEBUG_PERMISSION_ACTION] === true,
-          map,
-        });
+        console.log("[usePermissions:debug] built map", { userId, propertyId, roleIds, map: out });
       }
-      if (!cancelled) setState({ loading: false, isSuperadmin: false, map });
-    })();
+      return out;
+    },
+  });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, authLoading, isSuperadmin, isOwner, propertyId, tick]);
+  const state: PermState = bypass
+    ? { loading: false, isSuperadmin: true, map: {} }
+    : { loading: authLoading || (enabled && qLoading), isSuperadmin: false, map };
+  const refresh = () => { refetch(); };
 
   const can = (module: string, action: PermAction = "view") => {
     if (state.isSuperadmin) return true;

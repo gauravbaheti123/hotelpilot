@@ -1,73 +1,54 @@
-# Phase 1 — Unified Segment Billing Dashboard
+## Root cause (verified from source)
 
-Builds on Phase 0 numbering + `payment_methods`. Food already has a full flow (KOTs, `food_bills`, `tg_assign_food_bill_number`). Laundry has no module yet — this phase introduces a minimal punch flow that mirrors Food.
+`AppShell` is rendered inside every route component (`dashboard.tsx`, `front-desk.*`, etc.), so it **remounts on every navigation**. Every hook it (and its children) call re-runs its `useEffect` and re-fires Supabase from scratch:
 
-## 1. Database (single migration)
+- `useAuth` → `supabase.auth.getSession()` + `user_roles.select(role)`
+- `useProperties` → `properties.select(...)`
+- `useCurrentProperty` → another `user_roles.select(property_id)`
+- `usePermissions` → `user_roles.select(role_id, property_id)` + `role_permissions` join (the expensive one)
+- `RemindersBell` → reminders fetch
+- Plus each page loader's own fetches
 
-- **`laundry_bills`** table (mirrors `food_bills`): `id, property_id, booking_id (nullable), folio_id (nullable), laundry_bill_number, total_amount, status ('open'|'settled'|'void'), is_walkin, created_by, created_at, updated_at`. GRANT authenticated + service_role, RLS via `user_has_property` + `has_permission('billing', ...)`.
-- **`laundry_bill_items`**: `id, laundry_bill_number ref, description, qty, rate, amount, gst_rate, gst_amount`. Same RLS.
-- **`tg_assign_laundry_bill_number`** trigger — copy of `tg_assign_food_bill_number`, uses `generate_bill_number(property_id, 'laundry')` → `BRIJ-L-0001` (legacy `LB-0001` fallback if no short_code).
-- Extend **`folio_charges`** with nullable `segment_bill_ref TEXT` column so posted food/laundry lines carry their originating bill number for the consolidated invoice breakup. Backfill existing food charges from `food_bills.food_bill_number` where `source_id` matches.
-- Add DB helper **`has_pending_segment_bills(_booking_id uuid)`** returning `TABLE(segment text, bill_number text, amount numeric)` — queried by checkout guard.
+None of these use TanStack Query, so nothing is cached across navigations. Result: 5+ serial round-trips fire on every click, and until `usePermissions` resolves, the sidebar/`RequirePermission` guards show spinners → the ~5-second stall.
 
-## 2. Dashboard segment selector
+This matches the "every page, not one page" symptom exactly. Route-specific loaders are not the culprit.
 
-Edit `src/routes/_authenticated/dashboard.tsx` only (no new page):
+## Fix
 
-- Add a top segment toggle: **Rooms | Food | Laundry** (default Rooms = today's behavior).
-- Rooms view unchanged.
-- Food/Laundry view: same room grid, but each tile shows that segment's *pending amount for the room's active booking* (sum of unsettled `folio_charges` where segment matches) instead of housekeeping status. Empty rooms are dimmed.
-- Tapping a tile opens a **PunchChargeDialog** for the selected segment.
+Convert the shared session/property/permission/reminders fetches to **TanStack Query** with a long `staleTime` so remounting `AppShell` reuses cached data instead of refetching. Invalidate only on real change (auth event, property switch, `invalidatePermissions()`).
 
-## 3. PunchChargeDialog (new component)
+### 1. `src/hooks/use-auth.ts`
+- Replace `useState` + `useEffect` with `useQuery({ queryKey: ["auth","session"], staleTime: Infinity })` returning `{ user, session, roles }`.
+- Keep a single module-level `supabase.auth.onAuthStateChange` subscriber that calls `queryClient.setQueryData(["auth","session"], …)` on `SIGNED_IN` / `SIGNED_OUT` / `TOKEN_REFRESHED` (session only, no role refetch).
+- Roles fetched once inside the same query.
 
-`src/components/PunchChargeDialog.tsx`, one dialog handles both segments:
+### 2. `src/hooks/use-property.ts`
+- `useProperties` → `useQuery({ queryKey: ["properties"], staleTime: 5*60_000 })`.
+- `useCurrentProperty`'s `user_roles` sync → `useQuery({ queryKey: ["user-assigned-properties", userId], staleTime: 5*60_000 })`.
+- `setCurrentId` invalidates `["permissions", userId, newPropertyId]`.
 
-- Food: reuse existing menu items lookup (from `menu_items`); Laundry: free-text items + rate + qty rows.
-- "Walk-in / counter sale" toggle when opened without a booking (or explicitly from a new dashboard "Walk-in Food/Laundry" button in the segment toolbar).
-- On save:
-  1. Insert parent bill row (`food_bills` or `laundry_bills`) → trigger stamps `BRIJ-F-####` / `BRIJ-L-####`.
-  2. Insert item rows.
-  3. If **linked to a booking**: also insert into `folio_charges` (`charge_type='food'|'laundry'`, `segment_bill_ref=<bill number>`, `source_table`, `source_id`). Existing `tg_folio_charges_sync` recomputes folio totals.
-  4. If **walk-in**: record payment straight into `payments` (folio_id NULL, booking_id NULL, method from `usePaymentMethods`), mark bill `settled`.
-  5. Print standalone segment bill via `window.print()` — reuse `printStyles.ts` + a new small template `renderSegmentBillHtml()` in `src/lib/invoiceTemplates.ts`.
+### 3. `src/hooks/use-permissions.ts`
+- Replace ad-hoc `useEffect` + `tick` + custom event with `useQuery({ queryKey: ["permissions", userId, propertyId], staleTime: 5*60_000, enabled: !!userId })`.
+- `invalidatePermissions()` becomes `queryClient.invalidateQueries({ queryKey: ["permissions"] })`.
+- Keep the owner/superadmin bypass — return synchronously without a query.
 
-## 4. Checkout guard
+### 4. `src/components/Reminders.tsx`
+- Wrap the fetch in `useQuery({ queryKey: ["reminders", propertyId, userId], staleTime: 60_000 })` and keep the existing realtime subscription to `setQueryData`/invalidate. Remove the per-mount refetch.
 
-In `src/components/CheckoutDialog.tsx`:
+### 5. `_authenticated/route.tsx` `beforeLoad`
+- It runs on every navigation and calls `supabase.auth.getUser()` + `rpc("current_user_totp_required")`. Cache both in router `context` via a memo keyed on session, so repeat navigations skip the network:
+  - Store the last-verified `user.id` and a `totpChecked` flag in `sessionStorage`; short-circuit when the same user is already verified this tab.
+  - Continue to force a real check when session changes (auth listener already invalidates the router with `router.invalidate()` — verify this exists in `__root.tsx`; if not, add it).
 
-- On open, call `supabase.rpc('has_pending_segment_bills', { _booking_id })`.
-- If any rows returned, block checkout with a listing panel ("Pending Food/Laundry — settle or transfer to folio"). Buttons:
-  - **Transfer to folio** → sets those bills' `folio_id` + status remains open, then re-runs check (already posted via section 3, so this is only for stray walk-in-style bills that were tagged to booking but not folio).
-  - **Settle now** → opens payment on that segment bill.
-  - **Owner override** (owner/superadmin only) → prompt for reason → `log_owner_override('checkout_pending_segment', ...)` → proceed.
+### 6. Verify no regressions
+- After edits, click through Dashboard → Front Desk → Billing → Reports → Dashboard and confirm on the Network tab: `user_roles`, `role_permissions`, `properties` fire **once** for the session, not per navigation.
+- Confirm sign-out clears the QueryClient (`queryClient.clear()`).
+- Confirm `PropertySelector` switch still refetches permissions for the new property.
 
-## 5. Consolidated lodge invoice
+## Out of scope
+- No UI/layout changes.
+- No route-loader restructuring beyond the `_authenticated` `beforeLoad` cache above.
+- No code-splitting/bundle changes (all evidence points to redundant network, not chunk load).
 
-`src/lib/invoiceTemplates.ts` — in the itemized section, group folio charges by segment when `segment_bill_ref` present:
-```
-Lodge Charges                     ₹X
-Food (Ref: BRIJ-F-0001)          ₹Y
-Laundry (Ref: BRIJ-L-0002)       ₹Z
-```
-Rows without a ref keep current behavior. No structural template change.
-
-## 6. Banquet — untouched
-
-Explicitly excluded from segment selector. Verify `tg_assign_banquet_number` still routes bulk-room banquet bookings to `BRIJ-B-####` and confirm no code path in Phase 1 writes into banquet tables.
-
-## Verification checklist (after apply)
-
-- Segment toggle switches grid data source without route change.
-- Food punch → creates `food_bills` row `BRIJ-F-####`, `folio_charges` row with matching `segment_bill_ref`, prints bill.
-- Laundry punch → same, `BRIJ-L-####`.
-- Walk-in Food/Laundry → bill + settled payment, no folio touched.
-- Checkout on room with pending segment bill → blocked with listing; owner override logs to `activity_log`.
-- Final invoice shows segment-wise ref breakup.
-- Banquet checkout still yields `BRIJ-B-####`, no interference.
-
-## Notes / non-goals
-
-- Not adding a new sidebar entry; segment lives inside the dashboard.
-- Not migrating historical food bills into the new `segment_bill_ref` column beyond the one-time backfill.
-- Laundry master (services catalog) is out of scope — free-text lines are enough for Phase 1.
+## Verification target
+Sub-1s cached navigation between already-visited routes; ≤1 `user_roles` + 1 `role_permissions` request per session (not per click).
