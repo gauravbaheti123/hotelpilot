@@ -5819,6 +5819,10 @@ export type Database = {
         Returns: number
       }
       current_user_totp_required: { Args: never; Returns: boolean }
+      dashboard_grid: {
+        Args: { _date: string; _include_kots?: boolean; _property_id: string }
+        Returns: Json
+      }
       delete_night_audit: { Args: { _id: string }; Returns: undefined }
       generate_bill_number: {
         Args: { _property_id: string; _segment: string }
