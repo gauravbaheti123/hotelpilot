@@ -344,7 +344,7 @@ export function PunchChargeDialog({
 }
 
 /* --- Standalone segment bill print (window.print in hidden iframe) --- */
-function printSegmentBill(opts: {
+export function printSegmentBill(opts: {
   billNumber: string;
   segment: SegmentKind;
   propertyName: string;
