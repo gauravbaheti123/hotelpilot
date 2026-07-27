@@ -124,6 +124,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
   const [overrideReason, setOverrideReason] = useState("");
   const [property, setProperty] = useState<{ checkout_grace_time: string | null } | null>(null);
   const { methods: payMethods } = usePaymentMethods(booking?.property_id ?? null);
+  // Bill-To confirmation gate (Phase 13.3).
+  const [billToCompany, setBillToCompany] = useState<{ name: string; gstin: string | null } | null>(null);
+  const [billToConfirmed, setBillToConfirmed] = useState(false);
 
   // Payment form
   const [splitMode, setSplitMode] = useState(false);
@@ -148,7 +151,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     const { data: b, error } = await supabase
       .from("bookings")
       .select(
-        `id,booking_number,status,check_in,check_out,property_id,advance_amount,custom_remark,
+        `id,booking_number,status,check_in,check_out,property_id,advance_amount,custom_remark,billing_company_id,
          guests(name,mobile),
          booking_rooms(id,room_id,rate,check_in,check_out,rooms!booking_rooms_room_id_fkey(id,room_number),room_categories(name))`,
       )
@@ -160,6 +163,18 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       return;
     }
     setBooking(b);
+
+    // Load linked billing company (if any) for the Bill-To gate.
+    if ((b as any)?.billing_company_id) {
+      const { data: co } = await supabase
+        .from("billing_companies")
+        .select("name,gstin")
+        .eq("id", (b as any).billing_company_id)
+        .maybeSingle();
+      setBillToCompany(co ? { name: (co as any).name, gstin: (co as any).gstin ?? null } : null);
+    } else {
+      setBillToCompany(null);
+    }
 
     if ((b as any)?.property_id) {
       const { data: prop } = await supabase
