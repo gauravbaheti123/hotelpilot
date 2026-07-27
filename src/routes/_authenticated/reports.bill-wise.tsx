@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { RequirePermission } from "@/components/RequirePermission";
 import { ReportDataTable } from "@/components/ReportDataTable";
+import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
   buildTallySalesXml, downloadXml, buildFileName,
@@ -32,6 +33,7 @@ interface Row {
 function Page() {
   const { current } = useCurrentProperty();
   const propertyId = current?.id ?? null;
+  const { methods: paymentMethods } = usePaymentMethods(propertyId);
   const today = new Date().toISOString().slice(0, 10);
   const [from, setFrom] = useState(firstOfMonthIso());
   const [to, setTo] = useState(today);
@@ -174,6 +176,7 @@ function Filters(p: {
   billType: string; setBillType: (v: string)=>void;
   payMode: string; setPayMode: (v: string)=>void;
   status: string; setStatus: (v: string)=>void;
+  paymentMethods?: { id: string; name: string }[];
 }) {
   return (<>
     <div><Label>From</Label><Input type="date" value={p.from} onChange={(e) => p.setFrom(e.target.value)} className="w-40" /></div>
@@ -193,10 +196,9 @@ function Filters(p: {
         <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All</SelectItem>
-          <SelectItem value="cash">Cash</SelectItem>
-          <SelectItem value="card">Card</SelectItem>
-          <SelectItem value="upi">UPI</SelectItem>
-          <SelectItem value="complimentary">Comp</SelectItem>
+          {(p.paymentMethods ?? []).map((m) => (
+            <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>
