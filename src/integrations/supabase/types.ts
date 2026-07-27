@@ -603,6 +603,56 @@ export type Database = {
           },
         ]
       }
+      billing_companies: {
+        Row: {
+          address: string | null
+          contact_person: string | null
+          created_at: string
+          email: string | null
+          gstin: string | null
+          id: string
+          is_active: boolean
+          name: string
+          phone: string | null
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          phone?: string | null
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          gstin?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone?: string | null
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_companies_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       booking_extra_beds: {
         Row: {
           added_by: string | null
@@ -841,6 +891,7 @@ export type Database = {
           adults: number
           advance_amount: number
           balance_amount: number
+          billing_company_id: string | null
           booking_number: string
           cancelled_at: string | null
           cancelled_reason: string | null
@@ -874,6 +925,7 @@ export type Database = {
           adults?: number
           advance_amount?: number
           balance_amount?: number
+          billing_company_id?: string | null
           booking_number: string
           cancelled_at?: string | null
           cancelled_reason?: string | null
@@ -907,6 +959,7 @@ export type Database = {
           adults?: number
           advance_amount?: number
           balance_amount?: number
+          billing_company_id?: string | null
           booking_number?: string
           cancelled_at?: string | null
           cancelled_reason?: string | null
@@ -937,6 +990,13 @@ export type Database = {
           wiped_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_billing_company_id_fkey"
+            columns: ["billing_company_id"]
+            isOneToOne: false
+            referencedRelation: "billing_companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookings_event_id_fkey"
             columns: ["event_id"]
@@ -1690,6 +1750,7 @@ export type Database = {
         Row: {
           balance_amount: number
           bill_type: string | null
+          billing_company_id: string | null
           booking_id: string
           complimentary_food_used: number
           created_at: string
@@ -1723,6 +1784,7 @@ export type Database = {
         Insert: {
           balance_amount?: number
           bill_type?: string | null
+          billing_company_id?: string | null
           booking_id: string
           complimentary_food_used?: number
           created_at?: string
@@ -1756,6 +1818,7 @@ export type Database = {
         Update: {
           balance_amount?: number
           bill_type?: string | null
+          billing_company_id?: string | null
           booking_id?: string
           complimentary_food_used?: number
           created_at?: string
@@ -1787,6 +1850,13 @@ export type Database = {
           voided_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "folios_billing_company_id_fkey"
+            columns: ["billing_company_id"]
+            isOneToOne: false
+            referencedRelation: "billing_companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "folios_booking_id_fkey"
             columns: ["booking_id"]
