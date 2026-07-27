@@ -620,7 +620,21 @@ function OwnerDashboard({
                 pendingFoodByRoom={pendingFoodByRoom}
                 occInfoByRoom={occInfoByRoom}
                 eventBlockByRoom={eventBlockByRoom}
-                onPick={(r) => setModalRoom(r)}
+                onPick={(r) => {
+                  if (segment !== "rooms") {
+                    const bid = bookingByRoom.get(r.id) ?? null;
+                    const occ = occInfoByRoom.get(r.id) ?? null;
+                    setPunchTarget({
+                      segment: segment as "food" | "laundry",
+                      bookingId: bid,
+                      roomId: r.id,
+                      roomNumber: r.room_number,
+                      guestName: occ?.guestName ?? null,
+                    });
+                    return;
+                  }
+                  setModalRoom(r);
+                }}
                 onPickFood={(r) => {
                   const pf = pendingFoodByRoom.get(r.id);
                   if (pf?.bookingId) navigate({ to: "/front-desk/booking/$id", params: { id: pf.bookingId } });
