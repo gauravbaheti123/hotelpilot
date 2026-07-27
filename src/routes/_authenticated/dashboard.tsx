@@ -1129,7 +1129,11 @@ function fmtShort(dateStr: string | null) {
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
 }
 
-function RoomCard({
+// React.memo with a data-only comparator: skip re-render when only the
+// callback references changed (they're recreated inline every parent render).
+// This is the room-grid re-render fix from Phase 2 — an unrelated dashboard
+// state tick no longer re-renders all N tiles.
+const RoomCard = memo(function RoomCard({
   room, category, isOccupied, pendingFood, occ, eventInfo, onPick, onPickFood, onCheckout, onAssignEvent, onEventCheckIn,
 }: {
   room: Room;
