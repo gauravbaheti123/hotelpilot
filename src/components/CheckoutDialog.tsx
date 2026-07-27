@@ -1013,6 +1013,29 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
               </div>
             )}
 
+            <div className={`mb-2 rounded-md border-2 p-3 ${billToConfirmed ? "border-emerald-500 bg-emerald-50" : "border-amber-500 bg-amber-50"}`}>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={billToConfirmed}
+                  onChange={(e) => setBillToConfirmed(e.target.checked)}
+                />
+                <div className="text-sm">
+                  <div className="font-semibold">
+                    Confirm: bill will be raised to{" "}
+                    <span className="text-primary">
+                      {billToCompany
+                        ? `${billToCompany.name}${billToCompany.gstin ? ` (${billToCompany.gstin})` : ""}`
+                        : (booking?.guests?.name ?? "Guest")}
+                    </span>
+                  </div>
+                  {!billToConfirmed && (
+                    <div className="text-[11px] text-amber-800 mt-0.5">Tick to enable Collect &amp; Checkout.</div>
+                  )}
+                </div>
+              </label>
+            </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
                 Cancel
