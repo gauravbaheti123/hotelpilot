@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./use-auth";
 
@@ -23,24 +24,25 @@ function debugEnabled() {
 }
 
 export function useProperties() {
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(true);
-
+  const qc = useQueryClient();
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ["properties"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("properties")
+        .select("id,name,city,is_active,status")
+        .order("created_at", { ascending: true });
+      return (data ?? []) as Property[];
+    },
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: false,
+  });
   const reload = useCallback(async () => {
-    setLoading(true);
-    const { data } = await supabase
-      .from("properties")
-      .select("id,name,city,is_active,status")
-      .order("created_at", { ascending: true });
-    setProperties((data ?? []) as Property[]);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    reload();
-  }, [reload]);
-
-  return { properties, loading, reload };
+    await qc.invalidateQueries({ queryKey: ["properties"] });
+    await refetch();
+  }, [qc, refetch]);
+  return { properties: data ?? [], loading: isLoading, reload };
 }
 
 export function useCurrentProperty() {
@@ -49,6 +51,7 @@ export function useCurrentProperty() {
   const isSuperadmin = roles.includes("superadmin");
   const canSwitch = isSuperadmin;
   const userId = user?.id ?? null;
+  const qc = useQueryClient();
   const [currentId, setCurrentIdState] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     return localStorage.getItem(LS_KEY);
@@ -72,39 +75,31 @@ export function useCurrentProperty() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!userId || isSuperadmin) return;
-    let cancelled = false;
-    (async () => {
+  const { data: assignedPropertyIds } = useQuery({
+    queryKey: ["user-assigned-properties", userId],
+    enabled: !!userId && !isSuperadmin,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
       const { data } = await supabase
         .from("user_roles")
         .select("property_id")
-        .eq("user_id", userId)
+        .eq("user_id", userId!)
         .not("property_id", "is", null);
-      if (cancelled) return;
-      const assignedPropertyIds = Array.from(
+      return Array.from(
         new Set((data ?? []).map((row) => row.property_id).filter(Boolean) as string[]),
       );
-      if (debugEnabled()) {
-        console.log("[useCurrentProperty:debug] assigned properties", {
-          user_id: userId,
-          current_property_id_before_sync: currentIdRef.current,
-          assigned_property_ids: assignedPropertyIds,
-        });
-      }
-      const latestId = currentIdRef.current;
-      if (
-        assignedPropertyIds.length > 0 &&
-        !assignedPropertyIds.includes(latestId ?? "") &&
-        assignedPropertyIds[0] !== latestId
-      ) {
-        setCurrentId(assignedPropertyIds[0]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, isSuperadmin]);
+    },
+  });
+  useEffect(() => {
+    if (!userId || isSuperadmin) return;
+    if (!assignedPropertyIds || assignedPropertyIds.length === 0) return;
+    const latestId = currentIdRef.current;
+    if (!assignedPropertyIds.includes(latestId ?? "") && assignedPropertyIds[0] !== latestId) {
+      setCurrentId(assignedPropertyIds[0]);
+    }
+  }, [userId, isSuperadmin, assignedPropertyIds]);
 
   // Auto-pick: non-superadmin users are locked to their linked property.
   // Superadmin keeps last-selected or falls back to first.
@@ -135,6 +130,8 @@ export function useCurrentProperty() {
     localStorage.setItem(LS_KEY, id);
     setCurrentIdState(id);
     window.dispatchEvent(new Event(EVT));
+    // Permissions are property-scoped; invalidate so consumers refetch.
+    qc.invalidateQueries({ queryKey: ["permissions"] });
   };
 
   const current = properties.find((p) => p.id === currentId) ?? null;
