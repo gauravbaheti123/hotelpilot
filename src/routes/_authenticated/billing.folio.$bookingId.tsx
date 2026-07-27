@@ -270,6 +270,15 @@ function FolioPage() {
       });
     }
 
+    // Load active billing companies for this property (used by Bill To picker).
+    const { data: bcs } = await supabase
+      .from("billing_companies" as any)
+      .select("id,name,gstin,address,phone,email")
+      .eq("property_id", bk.property_id)
+      .eq("is_active", true)
+      .order("name", { ascending: true });
+    setBillingCompanies(((bcs ?? []) as any));
+
     // Load custom GST slabs for this property (used to resolve room-charge GST%).
     const { data: sl } = await supabase
       .from("gst_slabs" as any)
