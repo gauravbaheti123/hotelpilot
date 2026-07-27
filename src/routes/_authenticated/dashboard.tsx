@@ -513,7 +513,11 @@ function OwnerDashboard({
       .channel(`dashboard-live-${propertyId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "rooms", filter }, debouncedReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings", filter }, debouncedReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "booking_rooms" }, debouncedReload)
+      // booking_rooms carries property_id — filter to this property so a
+      // sibling tenant's booking activity doesn't fan out to every open
+      // dashboard. Prior version subscribed unfiltered which caused
+      // cross-tenant reload chatter.
+      .on("postgres_changes", { event: "*", schema: "public", table: "booking_rooms", filter }, debouncedReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "kot_orders", filter }, debouncedReload)
       .on("postgres_changes", { event: "*", schema: "public", table: "event_room_blocks", filter }, debouncedReload)
       .subscribe((status) => {
