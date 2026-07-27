@@ -675,8 +675,30 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
           <div className="py-12 text-center text-sm text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin inline mr-2" /> Loading…
           </div>
-        ) : pendingKots.length > 0 || pendingPos.length > 0 ? (
+        ) : pendingKots.length > 0 || pendingPos.length > 0 || pendingSegments.length > 0 ? (
           <div className="space-y-4">
+            {pendingSegments.length > 0 && (
+            <div className="rounded-md border border-destructive/60 bg-destructive/5 p-4">
+              <div className="flex items-center gap-2 font-medium text-destructive mb-2">
+                <AlertTriangle className="h-5 w-5" /> Pending Food/Laundry bills
+              </div>
+              <div className="space-y-1 text-sm">
+                {pendingSegments.map((s) => (
+                  <div key={s.id} className="flex justify-between">
+                    <span className="uppercase text-xs">
+                      <Badge variant="outline" className="mr-1 text-[10px]">{s.segment}</Badge>
+                      {s.bill_number}
+                    </span>
+                    <span>{inr(s.balance)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="text-xs text-muted-foreground mt-3">
+                Settle these segment bills (or transfer to room folio) before checkout.
+                {isOwnerRole && " Owner may override with a reason from the folio page."}
+              </div>
+            </div>
+            )}
             {pendingKots.length > 0 && (
             <div className="rounded-md border border-destructive/60 bg-destructive/5 p-4">
               <div className="flex items-center gap-2 font-medium text-destructive mb-2">
