@@ -216,6 +216,7 @@ function OwnerDashboard({
   const [segmentPendingByRoom, setSegmentPendingByRoom] = useState<
     Map<string, { amount: number; count: number; bills: Array<{ id: string; bill_number: string; amount: number }> }>
   >(new Map());
+  const [segmentReloadTick, setSegmentReloadTick] = useState(0);
   const [punchTarget, setPunchTarget] = useState<{
     segment: "food" | "laundry";
     bookingId: string | null;
@@ -472,7 +473,7 @@ function OwnerDashboard({
       setSegmentPendingByRoom(m);
     })();
     return () => { cancelled = true; };
-  }, [propertyId, segment, viewDate]);
+  }, [propertyId, segment, viewDate, segmentReloadTick]);
 
   // Realtime: refresh the segment-pending map when segment_bills change.
   useEffect(() => {
@@ -481,7 +482,7 @@ function OwnerDashboard({
       .channel(`dashboard-segment-${propertyId}-${segment}`)
       .on("postgres_changes",
         { event: "*", schema: "public", table: "segment_bills", filter: `property_id=eq.${propertyId}` },
-        () => { setSegment((s) => s); /* trigger effect above via state tick */ }
+        () => { setSegmentReloadTick((n) => n + 1); }
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
