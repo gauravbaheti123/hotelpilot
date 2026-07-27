@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { logClientError, installGlobalErrorLogging } from "@/lib/client-error-log";
 import { Toaster } from "@/components/ui/sonner";
 import { useSessionTimeout } from "@/hooks/use-session-timeout";
+import { supabase } from "@/integrations/supabase/client";
+import { AUTH_QUERY_KEY } from "@/hooks/use-auth";
 
 function NotFoundComponent() {
   return (
@@ -131,6 +133,21 @@ function RootComponent() {
   useEffect(() => {
     installGlobalErrorLogging();
   }, []);
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      // Ignore token refreshes (hourly + tab focus) and INITIAL_SESSION;
+      // only identity transitions should bust caches.
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ["permissions"] });
+      queryClient.invalidateQueries({ queryKey: ["user-assigned-properties"] });
+      if (event === "SIGNED_OUT") {
+        queryClient.clear();
+        try { window.sessionStorage.removeItem("hp_authed_user"); } catch { /* ignore */ }
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
