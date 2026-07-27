@@ -353,12 +353,14 @@ function footerBlock(ctx: InvoiceContext): string {
 
   return `
     ${showSig ? `
-      <div style="margin-top:40px;display:flex;justify-content:space-between;gap:32px">
-        <div style="text-align:center;width:200px">
-          <div style="border-top:1px solid #000;padding-top:8px;font-size:12px">Received by</div>
+      <div style="margin-top:28px;display:flex;justify-content:flex-start;gap:28px">
+        <div style="width:180px">
+          <div style="height:28px;border-bottom:1px solid #000"></div>
+          <div style="padding-top:3px;font-size:10.5px;color:#374151">Guest Signature</div>
         </div>
-        <div style="text-align:center;width:200px">
-          <div style="border-top:1px solid #000;padding-top:8px;font-size:12px">Guest Signature</div>
+        <div style="width:180px">
+          <div style="height:28px;border-bottom:1px solid #000"></div>
+          <div style="padding-top:3px;font-size:10.5px;color:#374151">Manager Signature</div>
         </div>
       </div>
     ` : ""}
