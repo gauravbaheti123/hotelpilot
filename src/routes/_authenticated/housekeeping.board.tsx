@@ -200,41 +200,36 @@ function RoomTile({
   const kind = tileKind(room);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(note);
+  const [pickerOpen, setPickerOpen] = useState(false);
   useEffect(() => { setDraft(note); }, [note]);
 
   const isSplit = kind === "occupied_dirty";
   const style: React.CSSProperties = isSplit
-    ? { background: `linear-gradient(to bottom, ${COLOR.occupied} 0 50%, ${COLOR.dirty} 50% 100%)` }
+    ? { background: `linear-gradient(to bottom, ${COLOR.occupied} 0 25%, ${COLOR.dirty} 25% 100%)` }
     : { background: COLOR[kind as Exclude<TileKind, "occupied_dirty">] };
 
   return (
-    <div className="rounded-md overflow-hidden text-white shadow-sm border border-black/10" style={style}>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => { if (!editing) setPickerOpen(true); }}
+      onKeyDown={(e) => { if (!editing && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setPickerOpen(true); } }}
+      className="rounded-md overflow-hidden text-white shadow-sm border border-black/10 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/40"
+      style={style}
+    >
       <div className="p-3">
         <div className="flex items-start justify-between gap-1">
           <div className="min-w-0">
             <div className="font-semibold text-base leading-tight drop-shadow-sm">{room.room_number}</div>
-            <div className="text-[10px] opacity-90 truncate">{room.room_categories?.name ?? ""}</div>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-white hover:bg-white/20 hover:text-white">
-                <MoreVertical className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Mark as</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {HK_STATUSES.map((s) => (
-                <DropdownMenuItem key={s} onClick={() => onSetHk(s)}>
-                  {s.replace("_", " ")}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
         <div className="text-[10px] font-medium mt-1 opacity-95">{tileLabel(kind)}</div>
 
-        <div className="mt-2 pt-2 border-t border-white/25">
+        <div
+          className="mt-2 pt-2 border-t border-white/25"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
           {editing && canEditNote ? (
             <div className="space-y-1">
               <Textarea
@@ -290,6 +285,25 @@ function RoomTile({
           )}
         </div>
       </div>
+      <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Room {room.room_number} — Set status</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-2">
+            {HK_STATUSES.map((s) => (
+              <Button
+                key={s}
+                variant={room.housekeeping_status === s ? "default" : "outline"}
+                className="justify-start capitalize"
+                onClick={() => { onSetHk(s); setPickerOpen(false); }}
+              >
+                {s.replace("_", " ")}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
