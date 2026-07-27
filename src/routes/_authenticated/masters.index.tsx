@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RequirePermission } from "@/components/RequirePermission";
 import {
   BedDouble, IndianRupee, TrendingUp, UtensilsCrossed, PartyPopper,
-  Users, Printer, Tags, MessageSquare, ShoppingCart, Cloud, CalendarDays, Wallet,
+  Users, Printer, Tags, MessageSquare, ShoppingCart, Cloud, CalendarDays, Wallet, Building2,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/masters/")({
@@ -25,6 +25,7 @@ const ITEMS = [
   { to: "/masters/pos-categories", label: "POS Categories", icon: Tags },
   { to: "/masters/sundry-items", label: "Sundry Items", icon: ShoppingCart },
   { to: "/masters/payment-methods", label: "Payment Methods", icon: Wallet },
+  { to: "/masters/billing-companies", label: "Billing Companies", icon: Building2 },
   { to: "/masters/channels", label: "OTA Channels", icon: Cloud },
   { to: "/masters/message-templates", label: "Message Templates", icon: MessageSquare },
 ];

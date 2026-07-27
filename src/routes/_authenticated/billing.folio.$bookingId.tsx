@@ -73,6 +73,7 @@ interface Folio {
   discount_value?: number;
   round_off_amount?: number;
   complimentary_food_used?: number;
+  billing_company_id?: string | null;
 }
 interface BookingCtx {
   id: string; booking_number: string; status: string;
@@ -153,6 +154,9 @@ function FolioPage() {
   const [loading, setLoading] = useState(true);
   const [foodBillNumber, setFoodBillNumber] = useState<string | null>(null);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
+  const [billingCompanies, setBillingCompanies] = useState<
+    Array<{ id: string; name: string; gstin: string | null; address: string | null; phone: string | null; email: string | null }>
+  >([]);
   const { methods: payMethods } = usePaymentMethods(folio?.property_id ?? booking?.property_id ?? null);
 
   // Guards so auto-seed effects run at most once per folio load.
@@ -265,6 +269,15 @@ function FolioPage() {
         if (url) setProperty((cur) => cur ? { ...cur, logo_url: url } : cur);
       });
     }
+
+    // Load active billing companies for this property (used by Bill To picker).
+    const { data: bcs } = await supabase
+      .from("billing_companies" as any)
+      .select("id,name,gstin,address,phone,email")
+      .eq("property_id", bk.property_id)
+      .eq("is_active", true)
+      .order("name", { ascending: true });
+    setBillingCompanies(((bcs ?? []) as any));
 
     // Load custom GST slabs for this property (used to resolve room-charge GST%).
     const { data: sl } = await supabase
@@ -1593,7 +1606,7 @@ function FolioPage() {
                   <Input
                     className={`h-9 w-56 ${folio.guest_gstin && !isValidOrEmptyGSTIN(folio.guest_gstin) ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     value={folio.guest_gstin ?? ""}
-                    disabled={!isOpen}
+                    disabled={!isOpen || !!folio.billing_company_id}
                     maxLength={15}
                     placeholder="e.g. 27AASFB5351R1ZM"
                     onChange={async (e) => {
@@ -1607,12 +1620,50 @@ function FolioPage() {
                   )}
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Company Name</Label>
-                  <Input className="h-9 w-64" value={folio.guest_company ?? ""} disabled={!isOpen}
-                    onChange={async (e) => {
-                      setFolio({ ...folio, guest_company: e.target.value });
-                      await supabase.from("folios").update({ guest_company: e.target.value }).eq("id", folio.id);
-                    }} />
+                  <Label className="text-xs">Bill To</Label>
+                  <Select
+                    value={folio.billing_company_id ?? "__guest__"}
+                    disabled={!isOpen}
+                    onValueChange={async (val) => {
+                      if (val === "__guest__") {
+                        setFolio({ ...folio, billing_company_id: null, guest_company: "", guest_gstin: "" });
+                        await supabase.from("folios").update({
+                          billing_company_id: null, guest_company: null, guest_gstin: null,
+                        } as any).eq("id", folio.id);
+                        if (booking?.id) {
+                          await supabase.from("bookings").update({ billing_company_id: null } as any).eq("id", booking.id);
+                        }
+                        return;
+                      }
+                      const co = billingCompanies.find((c) => c.id === val);
+                      if (!co) return;
+                      setFolio({
+                        ...folio,
+                        billing_company_id: co.id,
+                        guest_company: co.name,
+                        guest_gstin: co.gstin ?? "",
+                      });
+                      await supabase.from("folios").update({
+                        billing_company_id: co.id,
+                        guest_company: co.name,
+                        guest_gstin: co.gstin ?? null,
+                      } as any).eq("id", folio.id);
+                      if (booking?.id) {
+                        await supabase.from("bookings").update({ billing_company_id: co.id } as any).eq("id", booking.id);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-9 w-64"><SelectValue placeholder="Guest (individual)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__guest__">Guest (individual)</SelectItem>
+                      {billingCompanies.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Manage companies in Master Data → Billing Companies.
+                  </p>
                 </div>
               </>
             )}
@@ -1760,20 +1811,45 @@ function FolioPage() {
           <div className="grid grid-cols-1 gap-0 border-b sm:grid-cols-2">
             <div className="border-r px-8 py-4">
               <div className="mb-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Bill To</div>
-              <div className="text-base font-semibold">{booking.guests?.name ?? "—"}</div>
-              {booking.guests?.mobile && <div className="text-xs text-gray-700">Mobile: {booking.guests.mobile}</div>}
-              {(folio.guest_company || booking.guests?.company) && (
-                <>
-                  <div className="mt-3 mb-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Company To</div>
-                  <div className="text-sm font-semibold">{folio.guest_company || booking.guests?.company}</div>
-                  {(folio.guest_gstin || booking.guests?.gst_number) && (
-                    <div className="text-xs text-gray-700">GSTIN: {folio.guest_gstin || booking.guests?.gst_number}</div>
-                  )}
-                  {booking.guests?.address && (
-                    <div className="text-xs text-gray-700">{booking.guests.address}</div>
-                  )}
-                </>
-              )}
+              {(() => {
+                const companyName = folio.guest_company || booking.guests?.company || "";
+                const companyGstin = folio.guest_gstin || booking.guests?.gst_number || "";
+                const linkedCo = folio.billing_company_id
+                  ? billingCompanies.find((c) => c.id === folio.billing_company_id) ?? null
+                  : null;
+                const companyAddress = linkedCo?.address || booking.guests?.address || "";
+                const otaName =
+                  booking.ota_channels?.name?.trim() ||
+                  booking.ota_partner_name?.trim() ||
+                  (booking.source === "ota" ? "OTA" : "");
+                if (companyName) {
+                  return (
+                    <>
+                      <div className="text-base font-semibold">{companyName}</div>
+                      {companyGstin && <div className="text-xs text-gray-700">GSTIN: {companyGstin}</div>}
+                      {companyAddress && <div className="text-xs text-gray-700">{companyAddress}</div>}
+                      {linkedCo?.phone && <div className="text-xs text-gray-700">Ph: {linkedCo.phone}</div>}
+                      <div className="mt-3 text-xs text-gray-700">
+                        <span className="font-semibold">Guest Stayed:</span> {booking.guests?.name ?? "—"}
+                        {booking.guests?.mobile ? ` · ${booking.guests.mobile}` : ""}
+                      </div>
+                      {otaName && (
+                        <div className="text-[11px] text-gray-500 mt-1">Booking via: {otaName}</div>
+                      )}
+                    </>
+                  );
+                }
+                return (
+                  <>
+                    <div className="text-base font-semibold">{booking.guests?.name ?? "—"}</div>
+                    {booking.guests?.mobile && <div className="text-xs text-gray-700">Mobile: {booking.guests.mobile}</div>}
+                    {booking.guests?.address && <div className="text-xs text-gray-700">{booking.guests.address}</div>}
+                    {otaName && (
+                      <div className="text-[11px] text-gray-500 mt-1">Booking via: {otaName}</div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
             <div className="px-8 py-4">
               <div className="mb-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Stay Details</div>
