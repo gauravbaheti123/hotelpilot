@@ -994,6 +994,20 @@ function OwnerDashboard({
           onDone={() => { setAssignTarget(null); reload(); }}
         />
       )}
+      {punchTarget && propertyId && (
+        <PunchChargeDialog
+          open={!!punchTarget}
+          onClose={() => setPunchTarget(null)}
+          segment={punchTarget.segment}
+          propertyId={propertyId}
+          propertyName={propertyName}
+          bookingId={punchTarget.bookingId}
+          roomId={punchTarget.roomId}
+          roomNumber={punchTarget.roomNumber}
+          guestName={punchTarget.guestName}
+          onSaved={() => { setPunchTarget(null); reload(); }}
+        />
+      )}
     </AppShell>
   );
 }
