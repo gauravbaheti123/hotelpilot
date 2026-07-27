@@ -81,7 +81,7 @@ export function PunchChargeDialog({
         });
     } else {
       supabase.from("sundry_items")
-        .select("id,name,rate,gst_rate,sku,category,is_active")
+        .select("id,name,rate,gst_rate,short_code,sku,category,is_active")
         .eq("property_id", propertyId)
         .eq("is_active", true)
         .order("name")
@@ -89,7 +89,7 @@ export function PunchChargeDialog({
           if (cancelled) return;
           setPickerItems((data ?? []).map((s: any) => ({
             id: s.id, name: s.name, rate: Number(s.rate ?? 0),
-            gst_rate: s.gst_rate, short_code: s.sku, category: s.category,
+            gst_rate: s.gst_rate, short_code: s.short_code ?? s.sku, category: s.category,
           })));
         });
     }

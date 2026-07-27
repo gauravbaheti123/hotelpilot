@@ -5404,6 +5404,7 @@ export type Database = {
           name: string
           property_id: string
           rate: number
+          short_code: string | null
           sku: string | null
           unit: string
           updated_at: string
@@ -5417,6 +5418,7 @@ export type Database = {
           name: string
           property_id: string
           rate?: number
+          short_code?: string | null
           sku?: string | null
           unit?: string
           updated_at?: string
@@ -5430,6 +5432,7 @@ export type Database = {
           name?: string
           property_id?: string
           rate?: number
+          short_code?: string | null
           sku?: string | null
           unit?: string
           updated_at?: string
