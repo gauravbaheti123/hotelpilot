@@ -154,6 +154,9 @@ function FolioPage() {
   const [loading, setLoading] = useState(true);
   const [foodBillNumber, setFoodBillNumber] = useState<string | null>(null);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
+  const [billingCompanies, setBillingCompanies] = useState<
+    Array<{ id: string; name: string; gstin: string | null; address: string | null; phone: string | null; email: string | null }>
+  >([]);
   const { methods: payMethods } = usePaymentMethods(folio?.property_id ?? booking?.property_id ?? null);
 
   // Guards so auto-seed effects run at most once per folio load.
