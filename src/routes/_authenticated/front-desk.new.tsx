@@ -152,6 +152,10 @@ function NewBookingPage() {
   const [assignLater, setAssignLater] = useState(false);
   const [source, setSource] = useState("walk_in");
   const [otaPartnerName, setOtaPartnerName] = useState("");
+  // Bill To — optional company billing (Phase 13.3).
+  const [billToOther, setBillToOther] = useState(false);
+  const [billingCompanyId, setBillingCompanyId] = useState<string>("");
+  const [billingCompanies, setBillingCompanies] = useState<Array<{ id: string; name: string; gstin: string | null }>>([]);
   const [advance, setAdvance] = useState(0);
   const [paymentMode, setPaymentMode] = useState<string>("cash");
   const [paymentRef, setPaymentRef] = useState("");
@@ -165,14 +169,16 @@ function NewBookingPage() {
   useEffect(() => {
     if (!current) return;
     (async () => {
-      const [c, r, t] = await Promise.all([
+      const [c, r, t, bc] = await Promise.all([
         supabase.from("room_categories").select("id,name,base_rate,max_occupancy,extra_bed_rate").eq("property_id", current.id).order("name"),
         supabase.from("rooms").select("id,room_number,category_id,status").eq("property_id", current.id).order("room_number"),
         supabase.from("tariff_plans").select("id,name,category_id,rate,meal_plan").eq("property_id", current.id).eq("is_active", true).order("name"),
+        supabase.from("billing_companies").select("id,name,gstin").eq("property_id", current.id).eq("is_active", true).order("name"),
       ]);
       setCats((c.data ?? []) as Category[]);
       setRooms((r.data ?? []) as RoomRow[]);
       setTariffs((t.data ?? []) as Tariff[]);
+      setBillingCompanies(((bc.data ?? []) as any[]).map((x) => ({ id: x.id, name: x.name, gstin: x.gstin ?? null })));
     })();
   }, [current?.id]);
 
