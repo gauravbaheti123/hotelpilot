@@ -78,6 +78,7 @@ import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenti
 import { Route as AuthenticatedMastersHallsRouteImport } from './routes/_authenticated/masters.halls'
 import { Route as AuthenticatedMastersExpenseCategoriesRouteImport } from './routes/_authenticated/masters.expense-categories'
 import { Route as AuthenticatedMastersChannelsRouteImport } from './routes/_authenticated/masters.channels'
+import { Route as AuthenticatedMastersBillingCompaniesRouteImport } from './routes/_authenticated/masters.billing-companies'
 import { Route as AuthenticatedInventoryVendorsRouteImport } from './routes/_authenticated/inventory.vendors'
 import { Route as AuthenticatedInventoryStockRouteImport } from './routes/_authenticated/inventory.stock'
 import { Route as AuthenticatedInventoryMovementsRouteImport } from './routes/_authenticated/inventory.movements'
@@ -504,6 +505,12 @@ const AuthenticatedMastersChannelsRoute =
     path: '/masters/channels',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMastersBillingCompaniesRoute =
+  AuthenticatedMastersBillingCompaniesRouteImport.update({
+    id: '/masters/billing-companies',
+    path: '/masters/billing-companies',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedInventoryVendorsRoute =
   AuthenticatedInventoryVendorsRouteImport.update({
     id: '/inventory/vendors',
@@ -729,6 +736,7 @@ export interface FileRoutesByFullPath {
   '/inventory/movements': typeof AuthenticatedInventoryMovementsRoute
   '/inventory/stock': typeof AuthenticatedInventoryStockRoute
   '/inventory/vendors': typeof AuthenticatedInventoryVendorsRoute
+  '/masters/billing-companies': typeof AuthenticatedMastersBillingCompaniesRoute
   '/masters/channels': typeof AuthenticatedMastersChannelsRoute
   '/masters/expense-categories': typeof AuthenticatedMastersExpenseCategoriesRoute
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
@@ -831,6 +839,7 @@ export interface FileRoutesByTo {
   '/inventory/movements': typeof AuthenticatedInventoryMovementsRoute
   '/inventory/stock': typeof AuthenticatedInventoryStockRoute
   '/inventory/vendors': typeof AuthenticatedInventoryVendorsRoute
+  '/masters/billing-companies': typeof AuthenticatedMastersBillingCompaniesRoute
   '/masters/channels': typeof AuthenticatedMastersChannelsRoute
   '/masters/expense-categories': typeof AuthenticatedMastersExpenseCategoriesRoute
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
@@ -935,6 +944,7 @@ export interface FileRoutesById {
   '/_authenticated/inventory/movements': typeof AuthenticatedInventoryMovementsRoute
   '/_authenticated/inventory/stock': typeof AuthenticatedInventoryStockRoute
   '/_authenticated/inventory/vendors': typeof AuthenticatedInventoryVendorsRoute
+  '/_authenticated/masters/billing-companies': typeof AuthenticatedMastersBillingCompaniesRoute
   '/_authenticated/masters/channels': typeof AuthenticatedMastersChannelsRoute
   '/_authenticated/masters/expense-categories': typeof AuthenticatedMastersExpenseCategoriesRoute
   '/_authenticated/masters/halls': typeof AuthenticatedMastersHallsRoute
@@ -1039,6 +1049,7 @@ export interface FileRouteTypes {
     | '/inventory/movements'
     | '/inventory/stock'
     | '/inventory/vendors'
+    | '/masters/billing-companies'
     | '/masters/channels'
     | '/masters/expense-categories'
     | '/masters/halls'
@@ -1141,6 +1152,7 @@ export interface FileRouteTypes {
     | '/inventory/movements'
     | '/inventory/stock'
     | '/inventory/vendors'
+    | '/masters/billing-companies'
     | '/masters/channels'
     | '/masters/expense-categories'
     | '/masters/halls'
@@ -1244,6 +1256,7 @@ export interface FileRouteTypes {
     | '/_authenticated/inventory/movements'
     | '/_authenticated/inventory/stock'
     | '/_authenticated/inventory/vendors'
+    | '/_authenticated/masters/billing-companies'
     | '/_authenticated/masters/channels'
     | '/_authenticated/masters/expense-categories'
     | '/_authenticated/masters/halls'
@@ -1809,6 +1822,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMastersChannelsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/masters/billing-companies': {
+      id: '/_authenticated/masters/billing-companies'
+      path: '/masters/billing-companies'
+      fullPath: '/masters/billing-companies'
+      preLoaderRoute: typeof AuthenticatedMastersBillingCompaniesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/inventory/vendors': {
       id: '/_authenticated/inventory/vendors'
       path: '/inventory/vendors'
@@ -2085,6 +2105,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInventoryMovementsRoute: typeof AuthenticatedInventoryMovementsRoute
   AuthenticatedInventoryStockRoute: typeof AuthenticatedInventoryStockRoute
   AuthenticatedInventoryVendorsRoute: typeof AuthenticatedInventoryVendorsRoute
+  AuthenticatedMastersBillingCompaniesRoute: typeof AuthenticatedMastersBillingCompaniesRoute
   AuthenticatedMastersChannelsRoute: typeof AuthenticatedMastersChannelsRoute
   AuthenticatedMastersExpenseCategoriesRoute: typeof AuthenticatedMastersExpenseCategoriesRoute
   AuthenticatedMastersHallsRoute: typeof AuthenticatedMastersHallsRoute
@@ -2173,6 +2194,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInventoryMovementsRoute: AuthenticatedInventoryMovementsRoute,
   AuthenticatedInventoryStockRoute: AuthenticatedInventoryStockRoute,
   AuthenticatedInventoryVendorsRoute: AuthenticatedInventoryVendorsRoute,
+  AuthenticatedMastersBillingCompaniesRoute:
+    AuthenticatedMastersBillingCompaniesRoute,
   AuthenticatedMastersChannelsRoute: AuthenticatedMastersChannelsRoute,
   AuthenticatedMastersExpenseCategoriesRoute:
     AuthenticatedMastersExpenseCategoriesRoute,
