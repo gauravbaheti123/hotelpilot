@@ -213,6 +213,9 @@ function OwnerDashboard({
   const [unassigned, setUnassigned] = useState<UnassignedReservation[]>([]);
   const [assignTarget, setAssignTarget] = useState<UnassignedReservation | null>(null);
   const [segment, setSegment] = useState<"rooms" | "food" | "laundry">("rooms");
+  const [segmentPendingByRoom, setSegmentPendingByRoom] = useState<
+    Map<string, { amount: number; count: number; bills: Array<{ id: string; bill_number: string; amount: number }> }>
+  >(new Map());
   const [punchTarget, setPunchTarget] = useState<{
     segment: "food" | "laundry";
     bookingId: string | null;
