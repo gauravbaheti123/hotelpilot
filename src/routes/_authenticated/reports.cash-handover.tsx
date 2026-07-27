@@ -223,6 +223,35 @@ function Page() {
                     {r.notes && (
                       <p className="mt-2 text-xs text-muted-foreground"><b>Overall notes:</b> {r.notes}</p>
                     )}
+                    <div className="mt-3 flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => printHandover({
+                          id: r.id,
+                          propertyId: propertyId!,
+                          propertyName: current?.name ?? "Property",
+                          outgoing_user_name: r.outgoing_user_name,
+                          incoming_user_name: r.incoming_user_name,
+                          window_start: r.window_start,
+                          window_end: r.window_end ?? null,
+                          submitted_at: r.created_at,
+                          notes: r.notes,
+                          total_system: r.total_system,
+                          total_manual: r.total_manual,
+                          total_difference: r.total_difference,
+                          lines: r.lines.map((l) => ({
+                            mode: l.mode,
+                            system_total: l.system_total,
+                            manual_entry: l.manual_entry,
+                            difference: l.difference,
+                            note: l.note,
+                          })),
+                        })}
+                      >
+                        <Printer className="h-4 w-4 mr-1" /> Print Handover
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
