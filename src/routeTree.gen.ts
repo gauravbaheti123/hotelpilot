@@ -60,6 +60,7 @@ import { Route as AuthenticatedReportsFoodKotRouteImport } from './routes/_authe
 import { Route as AuthenticatedReportsExpensesRouteImport } from './routes/_authenticated/reports.expenses'
 import { Route as AuthenticatedReportsDateWiseRevenueRouteImport } from './routes/_authenticated/reports.date-wise-revenue'
 import { Route as AuthenticatedReportsDailyRouteImport } from './routes/_authenticated/reports.daily'
+import { Route as AuthenticatedReportsCashHandoverRouteImport } from './routes/_authenticated/reports.cash-handover'
 import { Route as AuthenticatedReportsCashCollectionRouteImport } from './routes/_authenticated/reports.cash-collection'
 import { Route as AuthenticatedReportsBillWiseRouteImport } from './routes/_authenticated/reports.bill-wise'
 import { Route as AuthenticatedReportsBanquetRouteImport } from './routes/_authenticated/reports.banquet'
@@ -396,6 +397,12 @@ const AuthenticatedReportsDailyRoute =
   AuthenticatedReportsDailyRouteImport.update({
     id: '/reports/daily',
     path: '/reports/daily',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsCashHandoverRoute =
+  AuthenticatedReportsCashHandoverRouteImport.update({
+    id: '/reports/cash-handover',
+    path: '/reports/cash-handover',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedReportsCashCollectionRoute =
@@ -769,6 +776,7 @@ export interface FileRoutesByFullPath {
   '/reports/banquet': typeof AuthenticatedReportsBanquetRoute
   '/reports/bill-wise': typeof AuthenticatedReportsBillWiseRoute
   '/reports/cash-collection': typeof AuthenticatedReportsCashCollectionRoute
+  '/reports/cash-handover': typeof AuthenticatedReportsCashHandoverRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/reports/date-wise-revenue': typeof AuthenticatedReportsDateWiseRevenueRoute
   '/reports/expenses': typeof AuthenticatedReportsExpensesRoute
@@ -874,6 +882,7 @@ export interface FileRoutesByTo {
   '/reports/banquet': typeof AuthenticatedReportsBanquetRoute
   '/reports/bill-wise': typeof AuthenticatedReportsBillWiseRoute
   '/reports/cash-collection': typeof AuthenticatedReportsCashCollectionRoute
+  '/reports/cash-handover': typeof AuthenticatedReportsCashHandoverRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/reports/date-wise-revenue': typeof AuthenticatedReportsDateWiseRevenueRoute
   '/reports/expenses': typeof AuthenticatedReportsExpensesRoute
@@ -981,6 +990,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/banquet': typeof AuthenticatedReportsBanquetRoute
   '/_authenticated/reports/bill-wise': typeof AuthenticatedReportsBillWiseRoute
   '/_authenticated/reports/cash-collection': typeof AuthenticatedReportsCashCollectionRoute
+  '/_authenticated/reports/cash-handover': typeof AuthenticatedReportsCashHandoverRoute
   '/_authenticated/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/_authenticated/reports/date-wise-revenue': typeof AuthenticatedReportsDateWiseRevenueRoute
   '/_authenticated/reports/expenses': typeof AuthenticatedReportsExpensesRoute
@@ -1088,6 +1098,7 @@ export interface FileRouteTypes {
     | '/reports/banquet'
     | '/reports/bill-wise'
     | '/reports/cash-collection'
+    | '/reports/cash-handover'
     | '/reports/daily'
     | '/reports/date-wise-revenue'
     | '/reports/expenses'
@@ -1193,6 +1204,7 @@ export interface FileRouteTypes {
     | '/reports/banquet'
     | '/reports/bill-wise'
     | '/reports/cash-collection'
+    | '/reports/cash-handover'
     | '/reports/daily'
     | '/reports/date-wise-revenue'
     | '/reports/expenses'
@@ -1299,6 +1311,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/banquet'
     | '/_authenticated/reports/bill-wise'
     | '/_authenticated/reports/cash-collection'
+    | '/_authenticated/reports/cash-handover'
     | '/_authenticated/reports/daily'
     | '/_authenticated/reports/date-wise-revenue'
     | '/_authenticated/reports/expenses'
@@ -1718,6 +1731,13 @@ declare module '@tanstack/react-router' {
       path: '/reports/daily'
       fullPath: '/reports/daily'
       preLoaderRoute: typeof AuthenticatedReportsDailyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/cash-handover': {
+      id: '/_authenticated/reports/cash-handover'
+      path: '/reports/cash-handover'
+      fullPath: '/reports/cash-handover'
+      preLoaderRoute: typeof AuthenticatedReportsCashHandoverRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/reports/cash-collection': {
@@ -2164,6 +2184,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsBanquetRoute: typeof AuthenticatedReportsBanquetRoute
   AuthenticatedReportsBillWiseRoute: typeof AuthenticatedReportsBillWiseRoute
   AuthenticatedReportsCashCollectionRoute: typeof AuthenticatedReportsCashCollectionRoute
+  AuthenticatedReportsCashHandoverRoute: typeof AuthenticatedReportsCashHandoverRoute
   AuthenticatedReportsDailyRoute: typeof AuthenticatedReportsDailyRoute
   AuthenticatedReportsDateWiseRevenueRoute: typeof AuthenticatedReportsDateWiseRevenueRoute
   AuthenticatedReportsExpensesRoute: typeof AuthenticatedReportsExpensesRoute
@@ -2260,6 +2281,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsBillWiseRoute: AuthenticatedReportsBillWiseRoute,
   AuthenticatedReportsCashCollectionRoute:
     AuthenticatedReportsCashCollectionRoute,
+  AuthenticatedReportsCashHandoverRoute: AuthenticatedReportsCashHandoverRoute,
   AuthenticatedReportsDailyRoute: AuthenticatedReportsDailyRoute,
   AuthenticatedReportsDateWiseRevenueRoute:
     AuthenticatedReportsDateWiseRevenueRoute,
