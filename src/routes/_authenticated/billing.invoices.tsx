@@ -40,7 +40,7 @@ interface Row {
 }
 
 function InvoicesPage() {
-  const { currentId: propertyId } = useCurrentProperty();
+  const { currentId: propertyId, current: currentProperty } = useCurrentProperty();
   const { user, roles } = useAuth();
   const { can } = usePermissions();
   const navigate = useNavigate();
@@ -94,6 +94,25 @@ function InvoicesPage() {
     })();
   };
   useEffect(load, [propertyId, audit]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Segment bills (Food / Laundry) — loaded when the corresponding tab is active.
+  useEffect(() => {
+    if (!propertyId || segTab === "lodge") { setSegRows([]); return; }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("segment_bills" as any)
+        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,created_at")
+        .eq("property_id", propertyId)
+        .eq("segment", segTab)
+        .order("created_at", { ascending: false })
+        .limit(300);
+      if (cancelled) return;
+      if (error) { toast.error(error.message); return; }
+      setSegRows((data ?? []) as any);
+    })();
+    return () => { cancelled = true; };
+  }, [propertyId, segTab]);
 
   useEffect(() => {
     if (!propertyId || !audit) { setAuditRows([]); return; }
