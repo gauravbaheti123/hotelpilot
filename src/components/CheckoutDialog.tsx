@@ -486,6 +486,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     if (pendingPos.length > 0) {
       return toast.error("Add pending POS charges to bill first");
     }
+    if (pendingSegments.length > 0) {
+      return toast.error("Settle or transfer pending Food/Laundry bills before checkout");
+    }
 
     // Build payment rows
     const rows: { amount: number; mode: string; reference_no: string | null }[] = [];
