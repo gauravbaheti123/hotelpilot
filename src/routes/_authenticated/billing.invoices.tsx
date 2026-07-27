@@ -297,9 +297,58 @@ function InvoicesPage() {
     XLSX.writeFile(wb, `invoices-audit-${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
+  async function printSegBill(bill: {
+    id: string; bill_number: string; segment: string;
+    total_amount: number; is_walkin: boolean; guest_name: string | null; room_id: string | null;
+  }) {
+    try {
+      const [{ data: items }, { data: room }] = await Promise.all([
+        supabase.from("segment_bill_items" as any)
+          .select("description,qty,rate,amount,gst_rate,gst_amount")
+          .eq("segment_bill_id", bill.id),
+        bill.room_id
+          ? supabase.from("rooms").select("room_number").eq("id", bill.room_id).maybeSingle()
+          : Promise.resolve({ data: null as any }),
+      ]);
+      const rows = (items ?? []) as any[];
+      const sub = rows.reduce((s, i) => s + Number(i.amount || 0), 0);
+      const gst = rows.reduce((s, i) => s + Number(i.gst_amount || 0), 0);
+      printSegmentBill({
+        billNumber: bill.bill_number,
+        segment: bill.segment as "food" | "laundry",
+        propertyName: currentProperty?.name ?? "",
+        guestName: bill.guest_name ?? "Walk-in Guest",
+        roomNumber: (room as any)?.room_number ?? null,
+        items: rows.map((i) => ({
+          description: i.description, qty: Number(i.qty), rate: Number(i.rate),
+          amount: Number(i.amount), gst_rate: Number(i.gst_rate),
+        })),
+        sub, gst, total: sub + gst,
+        isWalkin: !!bill.is_walkin,
+        paymentMode: null,
+      });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Print failed");
+    }
+  }
+
   return (
     <AppShell title="Invoices">
       <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="inline-flex rounded-md border overflow-hidden text-xs">
+          {(["lodge", "food", "laundry"] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setSegTab(s)}
+              className={`px-3 h-8 font-medium transition-colors ${
+                segTab === s ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"
+              }`}
+            >
+              {s === "lodge" ? "Lodge" : s === "food" ? "Food" : "Laundry"}
+            </button>
+          ))}
+        </div>
         <Input placeholder="Search invoice / booking / guest…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-sm" />
         {isOwner && (
           <div className="flex gap-1 rounded-md border p-1 bg-muted/30 ml-2">
