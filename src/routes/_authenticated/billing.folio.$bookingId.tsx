@@ -1606,7 +1606,7 @@ function FolioPage() {
                   <Input
                     className={`h-9 w-56 ${folio.guest_gstin && !isValidOrEmptyGSTIN(folio.guest_gstin) ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     value={folio.guest_gstin ?? ""}
-                    disabled={!isOpen}
+                    disabled={!isOpen || !!folio.billing_company_id}
                     maxLength={15}
                     placeholder="e.g. 27AASFB5351R1ZM"
                     onChange={async (e) => {
@@ -1620,12 +1620,50 @@ function FolioPage() {
                   )}
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Company Name</Label>
-                  <Input className="h-9 w-64" value={folio.guest_company ?? ""} disabled={!isOpen}
-                    onChange={async (e) => {
-                      setFolio({ ...folio, guest_company: e.target.value });
-                      await supabase.from("folios").update({ guest_company: e.target.value }).eq("id", folio.id);
-                    }} />
+                  <Label className="text-xs">Bill To</Label>
+                  <Select
+                    value={folio.billing_company_id ?? "__guest__"}
+                    disabled={!isOpen}
+                    onValueChange={async (val) => {
+                      if (val === "__guest__") {
+                        setFolio({ ...folio, billing_company_id: null, guest_company: "", guest_gstin: "" });
+                        await supabase.from("folios").update({
+                          billing_company_id: null, guest_company: null, guest_gstin: null,
+                        } as any).eq("id", folio.id);
+                        if (booking?.id) {
+                          await supabase.from("bookings").update({ billing_company_id: null } as any).eq("id", booking.id);
+                        }
+                        return;
+                      }
+                      const co = billingCompanies.find((c) => c.id === val);
+                      if (!co) return;
+                      setFolio({
+                        ...folio,
+                        billing_company_id: co.id,
+                        guest_company: co.name,
+                        guest_gstin: co.gstin ?? "",
+                      });
+                      await supabase.from("folios").update({
+                        billing_company_id: co.id,
+                        guest_company: co.name,
+                        guest_gstin: co.gstin ?? null,
+                      } as any).eq("id", folio.id);
+                      if (booking?.id) {
+                        await supabase.from("bookings").update({ billing_company_id: co.id } as any).eq("id", booking.id);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-9 w-64"><SelectValue placeholder="Guest (individual)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__guest__">Guest (individual)</SelectItem>
+                      {billingCompanies.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Manage companies in Master Data → Billing Companies.
+                  </p>
                 </div>
               </>
             )}
