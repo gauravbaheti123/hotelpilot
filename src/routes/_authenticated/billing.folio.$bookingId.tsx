@@ -1811,20 +1811,45 @@ function FolioPage() {
           <div className="grid grid-cols-1 gap-0 border-b sm:grid-cols-2">
             <div className="border-r px-8 py-4">
               <div className="mb-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Bill To</div>
-              <div className="text-base font-semibold">{booking.guests?.name ?? "—"}</div>
-              {booking.guests?.mobile && <div className="text-xs text-gray-700">Mobile: {booking.guests.mobile}</div>}
-              {(folio.guest_company || booking.guests?.company) && (
-                <>
-                  <div className="mt-3 mb-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Company To</div>
-                  <div className="text-sm font-semibold">{folio.guest_company || booking.guests?.company}</div>
-                  {(folio.guest_gstin || booking.guests?.gst_number) && (
-                    <div className="text-xs text-gray-700">GSTIN: {folio.guest_gstin || booking.guests?.gst_number}</div>
-                  )}
-                  {booking.guests?.address && (
-                    <div className="text-xs text-gray-700">{booking.guests.address}</div>
-                  )}
-                </>
-              )}
+              {(() => {
+                const companyName = folio.guest_company || booking.guests?.company || "";
+                const companyGstin = folio.guest_gstin || booking.guests?.gst_number || "";
+                const linkedCo = folio.billing_company_id
+                  ? billingCompanies.find((c) => c.id === folio.billing_company_id) ?? null
+                  : null;
+                const companyAddress = linkedCo?.address || booking.guests?.address || "";
+                const otaName =
+                  booking.ota_channels?.name?.trim() ||
+                  booking.ota_partner_name?.trim() ||
+                  (booking.source === "ota" ? "OTA" : "");
+                if (companyName) {
+                  return (
+                    <>
+                      <div className="text-base font-semibold">{companyName}</div>
+                      {companyGstin && <div className="text-xs text-gray-700">GSTIN: {companyGstin}</div>}
+                      {companyAddress && <div className="text-xs text-gray-700">{companyAddress}</div>}
+                      {linkedCo?.phone && <div className="text-xs text-gray-700">Ph: {linkedCo.phone}</div>}
+                      <div className="mt-3 text-xs text-gray-700">
+                        <span className="font-semibold">Guest Stayed:</span> {booking.guests?.name ?? "—"}
+                        {booking.guests?.mobile ? ` · ${booking.guests.mobile}` : ""}
+                      </div>
+                      {otaName && (
+                        <div className="text-[11px] text-gray-500 mt-1">Booking via: {otaName}</div>
+                      )}
+                    </>
+                  );
+                }
+                return (
+                  <>
+                    <div className="text-base font-semibold">{booking.guests?.name ?? "—"}</div>
+                    {booking.guests?.mobile && <div className="text-xs text-gray-700">Mobile: {booking.guests.mobile}</div>}
+                    {booking.guests?.address && <div className="text-xs text-gray-700">{booking.guests.address}</div>}
+                    {otaName && (
+                      <div className="text-[11px] text-gray-500 mt-1">Booking via: {otaName}</div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
             <div className="px-8 py-4">
               <div className="mb-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Stay Details</div>
