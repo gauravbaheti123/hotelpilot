@@ -1621,48 +1621,18 @@ function FolioPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Bill To</Label>
-                  <Select
-                    value={folio.billing_company_id ?? "__guest__"}
-                    disabled={!isOpen}
-                    onValueChange={async (val) => {
-                      if (val === "__guest__") {
-                        setFolio({ ...folio, billing_company_id: null, guest_company: "", guest_gstin: "" });
-                        await supabase.from("folios").update({
-                          billing_company_id: null, guest_company: null, guest_gstin: null,
-                        } as any).eq("id", folio.id);
-                        if (booking?.id) {
-                          await supabase.from("bookings").update({ billing_company_id: null } as any).eq("id", booking.id);
-                        }
-                        return;
-                      }
-                      const co = billingCompanies.find((c) => c.id === val);
-                      if (!co) return;
-                      setFolio({
-                        ...folio,
-                        billing_company_id: co.id,
-                        guest_company: co.name,
-                        guest_gstin: co.gstin ?? "",
-                      });
-                      await supabase.from("folios").update({
-                        billing_company_id: co.id,
-                        guest_company: co.name,
-                        guest_gstin: co.gstin ?? null,
-                      } as any).eq("id", folio.id);
-                      if (booking?.id) {
-                        await supabase.from("bookings").update({ billing_company_id: co.id } as any).eq("id", booking.id);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="h-9 w-64"><SelectValue placeholder="Guest (individual)" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__guest__">Guest (individual)</SelectItem>
-                      {billingCompanies.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="h-9 flex items-center rounded-md border bg-muted/30 px-3 text-sm">
+                    {(() => {
+                      const co = folio.billing_company_id
+                        ? billingCompanies.find((c) => c.id === folio.billing_company_id)
+                        : null;
+                      return co
+                        ? <><span className="font-medium">{co.name}</span>{co.gstin ? <span className="ml-2 text-xs text-muted-foreground">{co.gstin}</span> : null}</>
+                        : <span>Guest (individual)</span>;
+                    })()}
+                  </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Manage companies in Master Data → Billing Companies.
+                    Set at booking (Guest Details → “Bill to someone else?”). Confirmed again at checkout.
                   </p>
                 </div>
               </>
