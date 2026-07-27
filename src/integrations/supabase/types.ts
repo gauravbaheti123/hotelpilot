@@ -1083,6 +1083,48 @@ export type Database = {
           },
         ]
       }
+      client_error_log: {
+        Row: {
+          component_stack: string | null
+          created_at: string
+          extra: Json
+          id: string
+          message: string | null
+          property_id: string | null
+          route: string | null
+          stack: string | null
+          user_agent: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          component_stack?: string | null
+          created_at?: string
+          extra?: Json
+          id?: string
+          message?: string | null
+          property_id?: string | null
+          route?: string | null
+          stack?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          component_stack?: string | null
+          created_at?: string
+          extra?: Json
+          id?: string
+          message?: string | null
+          property_id?: string | null
+          route?: string | null
+          stack?: string | null
+          user_agent?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       communications: {
         Row: {
           body: string
