@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole =
@@ -17,68 +17,36 @@ export interface AuthState {
   roles: AppRole[];
 }
 
+export const AUTH_QUERY_KEY = ["auth", "session"] as const;
+
+async function fetchAuthState(): Promise<Omit<AuthState, "loading">> {
+  const { data } = await supabase.auth.getSession();
+  const session = data.session ?? null;
+  const user = session?.user ?? null;
+  if (!user) return { user: null, session: null, roles: [] };
+  const { data: rows } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id);
+  const roles = ((rows ?? []) as { role: string }[]).map((r) => r.role as AppRole);
+  return { user, session, roles };
+}
+
 export function useAuth(): AuthState {
-  const [state, setState] = useState<AuthState>({
-    loading: true,
-    user: null,
-    session: null,
-    roles: [],
+  const { data, isLoading } = useQuery({
+    queryKey: AUTH_QUERY_KEY,
+    queryFn: fetchAuthState,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function loadRoles(userId: string): Promise<AppRole[]> {
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId);
-      return (data ?? []).map((r) => r.role as AppRole);
-    }
-
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!mounted) return;
-      // TOKEN_REFRESHED fires hourly (and on tab focus). It carries a new
-      // access token but the same user identity — updating the session in
-      // state is enough. Re-fetching user_roles on every refresh caused the
-      // "sluggish after leaving tab open" regression. INITIAL_SESSION is
-      // handled by the getSession() call below on mount, so skip it here.
-      if (event === "TOKEN_REFRESHED") {
-        setState((s) => ({ ...s, session, user: session?.user ?? s.user }));
-        return;
-      }
-      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") {
-        return;
-      }
-      setState((s) => ({ ...s, session, user: session?.user ?? null }));
-      if (session?.user) {
-        setTimeout(async () => {
-          const roles = await loadRoles(session.user.id);
-          if (mounted) setState({ loading: false, session, user: session.user, roles });
-        }, 0);
-      } else {
-        setState({ loading: false, session: null, user: null, roles: [] });
-      }
-    });
-
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return;
-      const session = data.session;
-      if (session?.user) {
-        const roles = await loadRoles(session.user.id);
-        if (mounted) setState({ loading: false, session, user: session.user, roles });
-      } else {
-        setState({ loading: false, session: null, user: null, roles: [] });
-      }
-    });
-
-    return () => {
-      mounted = false;
-      sub.subscription.unsubscribe();
-    };
-  }, []);
-
-  return state;
+  return {
+    loading: isLoading,
+    user: data?.user ?? null,
+    session: data?.session ?? null,
+    roles: data?.roles ?? [],
+  };
 }
 
 export function hasRole(roles: AppRole[], role: AppRole) {
