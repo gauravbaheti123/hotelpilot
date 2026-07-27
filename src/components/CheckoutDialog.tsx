@@ -102,8 +102,9 @@ function pickCheckoutFolio(rows: any[]) {
 }
 
 export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props) {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const { can } = usePermissions();
+  const isOwnerRole = roles.includes("owner") || roles.includes("superadmin");
   const canShiftMis = can("billing", "mis_shift");
   const [misOpen, setMisOpen] = useState(false);
   const canSplit = can("billing", "split_bill");
@@ -121,7 +122,6 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
   }>>([]);
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [overrideReason, setOverrideReason] = useState("");
-  const isOwnerRole = can("billing", "owner_override") || (usePermissions().isSuperadmin);
   const [property, setProperty] = useState<{ checkout_grace_time: string | null } | null>(null);
   const { methods: payMethods } = usePaymentMethods(booking?.property_id ?? null);
 
