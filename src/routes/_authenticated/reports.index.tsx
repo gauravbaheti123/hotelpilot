@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  BarChart3, FileSpreadsheet, FileText, Moon, History, ShieldAlert, ClipboardList,
+  BarChart3, FileSpreadsheet, FileText, Moon, History, ShieldAlert, ClipboardList, Wallet,
 } from "lucide-react";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 
@@ -19,6 +19,7 @@ const ITEMS = [
   { to: "/reports/gst", label: "GST Report", icon: FileText, desc: "Tax-wise summary" },
   { to: "/reports/bill-wise", label: "Bill-Wise", icon: FileSpreadsheet, desc: "Per-invoice details" },
   { to: "/reports/cash-collection", label: "Cash Collection", icon: FileSpreadsheet, desc: "Cash receipts" },
+  { to: "/reports/cash-handover", label: "Cash Handover", icon: Wallet, desc: "Shift handover & mismatches" },
   { to: "/reports/date-wise-revenue", label: "Date-Wise Revenue", icon: BarChart3, desc: "Revenue by date" },
   { to: "/reports/room-wise", label: "Room-Wise", icon: FileSpreadsheet, desc: "Occupancy & revenue per room" },
   { to: "/reports/room-shift", label: "Room Shift", icon: FileSpreadsheet, desc: "Shifts & rate decisions" },
