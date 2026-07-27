@@ -26,13 +26,12 @@ interface Props {
   value: string;                       // current description text
   selectedId?: string | null;
   onSelect: (item: PickerItem) => void;
-  onTextChange: (text: string) => void; // for free-typed descriptions
   placeholder?: string;
   disabled?: boolean;
 }
 
 export function ItemPickerCombobox({
-  items, value, selectedId, onSelect, onTextChange, placeholder, disabled,
+  items, value, selectedId, onSelect, placeholder, disabled,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -74,12 +73,12 @@ export function ItemPickerCombobox({
           <CommandInput
             placeholder="Search or type custom..."
             value={query}
-            onValueChange={(v) => { setQuery(v); onTextChange(v); }}
+            onValueChange={setQuery}
           />
           <CommandList>
             <CommandEmpty>
               <div className="px-2 py-3 text-sm text-muted-foreground">
-                No match. Press Enter to use "{query.trim() || "…"}" as custom item.
+                No matching item. Add it to Master Data first.
               </div>
             </CommandEmpty>
             {filtered.length > 0 && (

@@ -295,7 +295,6 @@ export function PunchChargeDialog({
                   value={l.description}
                   selectedId={l.master_id ?? null}
                   onSelect={(it) => pickItem(l.key, it)}
-                  onTextChange={(t) => updateLine(l.key, { description: t, master_id: null, menu_item_id: null })}
                   placeholder={segment === "food" ? "Search food item…" : "Search laundry / sundry item…"}
                 />
               </div>
