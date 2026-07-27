@@ -507,6 +507,20 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
                 </Link>
               </Button>
             )}
+            {(isOwner || permSuper || can("shift_handover")) && (
+              <Button
+                asChild
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                aria-label="Shift Handover"
+                title="Shift Handover"
+              >
+                <Link to="/handover/new">
+                  <ClipboardCheck className="h-5 w-5" />
+                </Link>
+              </Button>
+            )}
             {user?.id && (
               <RemindersBell propertyId={propertyId} userId={user.id} />
             )}
