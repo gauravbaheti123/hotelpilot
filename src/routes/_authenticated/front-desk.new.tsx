@@ -775,6 +775,38 @@ function NewBookingPage() {
                 <p className="mt-1 text-[11px] text-red-600">{GSTIN_ERROR}</p>
               )}
             </F>
+            <div className="col-span-2 rounded-md border p-3 bg-muted/20 space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={billToOther}
+                  onChange={(e) => {
+                    setBillToOther(e.target.checked);
+                    if (!e.target.checked) setBillingCompanyId("");
+                  }}
+                />
+                Bill to someone else?
+              </label>
+              {billToOther && (
+                <div className="pl-6 space-y-1">
+                  <Label className="text-xs">Billing Company</Label>
+                  <Select value={billingCompanyId || "__none__"} onValueChange={(v) => setBillingCompanyId(v === "__none__" ? "" : v)}>
+                    <SelectTrigger className="max-w-md"><SelectValue placeholder="Select company…" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— Select —</SelectItem>
+                      {billingCompanies.map((co) => (
+                        <SelectItem key={co.id} value={co.id}>
+                          {co.name}{co.gstin ? ` · ${co.gstin}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Manage companies in Master Data → Billing Companies. If unset, bill goes to the guest.
+                  </p>
+                </div>
+              )}
+            </div>
             <F label="Guest type">
               <Select value={guestType} onValueChange={(v) => setGuestType(v as typeof guestType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
