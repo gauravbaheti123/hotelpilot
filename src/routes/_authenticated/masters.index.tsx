@@ -12,37 +12,70 @@ export const Route = createFileRoute("/_authenticated/masters/")({
   component: () => (<RequirePermission module="master_data"><MastersIndex /></RequirePermission>),
 });
 
-const ITEMS = [
-  { to: "/masters/rooms", label: "Rooms & Categories", icon: BedDouble },
-  { to: "/masters/tariff", label: "Tariff Plans", icon: IndianRupee },
-  { to: "/masters/rate-seasons", label: "Rate Seasons", icon: TrendingUp },
-  { to: "/front-desk/rate-calendar", label: "Rate Calendar", icon: CalendarDays },
-  { to: "/masters/menu", label: "Menu", icon: UtensilsCrossed },
-  { to: "/masters/halls", label: "Halls", icon: PartyPopper },
-  { to: "/masters/staff", label: "Staff", icon: Users },
-  { to: "/masters/printers", label: "Printers", icon: Printer },
-  { to: "/masters/expense-categories", label: "Expense Categories", icon: Tags },
-  { to: "/masters/pos-categories", label: "POS Categories", icon: Tags },
-  { to: "/masters/sundry-items", label: "Sundry Items", icon: ShoppingCart },
-  { to: "/masters/payment-methods", label: "Payment Methods", icon: Wallet },
-  { to: "/masters/billing-companies", label: "Billing Companies", icon: Building2 },
-  { to: "/masters/channels", label: "OTA Channels", icon: Cloud },
-  { to: "/masters/message-templates", label: "Message Templates", icon: MessageSquare },
+const GROUPS: Array<{
+  title: string;
+  items: Array<{ to: string; label: string; icon: any }>;
+}> = [
+  {
+    title: "Property Setup",
+    items: [
+      { to: "/masters/rooms", label: "Rooms & Categories", icon: BedDouble },
+      { to: "/masters/tariff", label: "Tariff Plans", icon: IndianRupee },
+      { to: "/masters/rate-seasons", label: "Rate Seasons", icon: TrendingUp },
+      { to: "/front-desk/rate-calendar", label: "Rate Calendar", icon: CalendarDays },
+      { to: "/masters/halls", label: "Halls", icon: PartyPopper },
+    ],
+  },
+  {
+    title: "Food & Billing",
+    items: [
+      { to: "/masters/menu", label: "Menu", icon: UtensilsCrossed },
+      { to: "/masters/sundry-items", label: "Sundry Items & POS Categories", icon: ShoppingCart },
+      { to: "/masters/payment-methods", label: "Payment Methods", icon: Wallet },
+      { to: "/masters/billing-companies", label: "Billing Companies", icon: Building2 },
+    ],
+  },
+  {
+    title: "Operations",
+    items: [
+      { to: "/masters/staff", label: "Staff", icon: Users },
+      { to: "/masters/printers", label: "Printers", icon: Printer },
+      { to: "/masters/expense-categories", label: "Expense Categories", icon: Tags },
+    ],
+  },
+  {
+    title: "Communication",
+    items: [
+      { to: "/masters/channels", label: "OTA Channels", icon: Cloud },
+      { to: "/masters/message-templates", label: "Message Templates", icon: MessageSquare },
+    ],
+  },
 ];
 
 function MastersIndex() {
   return (
     <AppShell title="Master Data">
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {ITEMS.map((it) => (
-          <Link key={it.to} to={it.to}>
-            <Card className="hover:shadow-md hover:border-primary/40 transition-all h-full">
-              <CardContent className="p-5 flex items-center gap-3">
-                <div className="p-2 rounded-md bg-primary/10 text-primary"><it.icon className="h-5 w-5" /></div>
-                <div className="font-medium">{it.label}</div>
-              </CardContent>
-            </Card>
-          </Link>
+      <div className="space-y-8">
+        {GROUPS.map((g) => (
+          <section key={g.title}>
+            <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              {g.title}
+            </h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {g.items.map((it) => (
+                <Link key={it.to} to={it.to}>
+                  <Card className="hover:shadow-md hover:border-primary/40 transition-all h-full">
+                    <CardContent className="p-5 flex items-center gap-3">
+                      <div className="p-2 rounded-md bg-primary/10 text-primary">
+                        <it.icon className="h-5 w-5" />
+                      </div>
+                      <div className="font-medium">{it.label}</div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </section>
         ))}
       </div>
     </AppShell>

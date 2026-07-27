@@ -124,6 +124,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
   const [overrideReason, setOverrideReason] = useState("");
   const [property, setProperty] = useState<{ checkout_grace_time: string | null } | null>(null);
   const { methods: payMethods } = usePaymentMethods(booking?.property_id ?? null);
+  // Bill-To confirmation gate (Phase 13.3).
+  const [billToCompany, setBillToCompany] = useState<{ name: string; gstin: string | null } | null>(null);
+  const [billToConfirmed, setBillToConfirmed] = useState(false);
 
   // Payment form
   const [splitMode, setSplitMode] = useState(false);
@@ -148,7 +151,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     const { data: b, error } = await supabase
       .from("bookings")
       .select(
-        `id,booking_number,status,check_in,check_out,property_id,advance_amount,custom_remark,
+        `id,booking_number,status,check_in,check_out,property_id,advance_amount,custom_remark,billing_company_id,
          guests(name,mobile),
          booking_rooms(id,room_id,rate,check_in,check_out,rooms!booking_rooms_room_id_fkey(id,room_number),room_categories(name))`,
       )
@@ -160,6 +163,18 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       return;
     }
     setBooking(b);
+
+    // Load linked billing company (if any) for the Bill-To gate.
+    if ((b as any)?.billing_company_id) {
+      const { data: co } = await supabase
+        .from("billing_companies")
+        .select("name,gstin")
+        .eq("id", (b as any).billing_company_id)
+        .maybeSingle();
+      setBillToCompany(co ? { name: (co as any).name, gstin: (co as any).gstin ?? null } : null);
+    } else {
+      setBillToCompany(null);
+    }
 
     if ((b as any)?.property_id) {
       const { data: prop } = await supabase
@@ -244,6 +259,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       setSingleAmount("");
       setSingleRef("");
       setSingleMode("cash");
+      setBillToConfirmed(false);
       didSeedRoomCharges.current = false;
       didLateChargeCheck.current = false;
       load();
@@ -997,6 +1013,29 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
               </div>
             )}
 
+            <div className={`mb-2 rounded-md border-2 p-3 ${billToConfirmed ? "border-emerald-500 bg-emerald-50" : "border-amber-500 bg-amber-50"}`}>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={billToConfirmed}
+                  onChange={(e) => setBillToConfirmed(e.target.checked)}
+                />
+                <div className="text-sm">
+                  <div className="font-semibold">
+                    Confirm: bill will be raised to{" "}
+                    <span className="text-primary">
+                      {billToCompany
+                        ? `${billToCompany.name}${billToCompany.gstin ? ` (${billToCompany.gstin})` : ""}`
+                        : (booking?.guests?.name ?? "Guest")}
+                    </span>
+                  </div>
+                  {!billToConfirmed && (
+                    <div className="text-[11px] text-amber-800 mt-0.5">Tick to enable Collect &amp; Checkout.</div>
+                  )}
+                </div>
+              </label>
+            </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
                 Cancel
@@ -1006,7 +1045,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
                   <SplitSquareHorizontal className="h-4 w-4 mr-1" /> Split Bill
                 </Button>
               )}
-              <Button onClick={collectAndCheckout} disabled={busy}>
+              <Button onClick={collectAndCheckout} disabled={busy || !billToConfirmed}>
                 {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
                 Collect &amp; Checkout
               </Button>

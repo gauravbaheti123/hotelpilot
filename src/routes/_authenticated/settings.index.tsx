@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { RequirePermission } from "@/components/RequirePermission";
 import {
-  Building2, MessageCircle, Cloud, Receipt, ShieldCheck, Users,
+  Building2, MessageCircle, Cloud, Receipt, ShieldCheck,
   Lock,
 } from "lucide-react";
 
@@ -19,8 +19,7 @@ const ITEMS: Array<{ to: string; label: string; icon: any; desc: string; soon?: 
   { to: "/settings/whatsapp", label: "WhatsApp / AiSensy", icon: MessageCircle, desc: "Messaging integration" },
   { to: "/channels", label: "Channel Manager", icon: Cloud, desc: "OTA distribution", soon: true },
   { to: "/settings/hotel", label: "Invoice Settings", icon: Receipt, desc: "Numbering, layout, footer" },
-  { to: "/superadmin/roles", label: "Roles & Permissions", icon: ShieldCheck, desc: "Define role access", ownerOnly: true },
-  { to: "/superadmin/users", label: "User Management", icon: Users, desc: "Assign roles to users", ownerOnly: true },
+  { to: "/superadmin/users", label: "Users & Roles", icon: ShieldCheck, desc: "Manage users, roles & permissions", ownerOnly: true },
   { to: "/properties", label: "Properties", icon: Building2, desc: "Manage properties" },
 ];
 
@@ -47,17 +46,14 @@ function SettingsIndex() {
             </Card>
           </Link>
         ))}
-        <Card className="border-dashed bg-muted/40 h-full sm:col-span-2">
+        <Card className="border-dashed bg-muted/40 h-full">
           <CardContent className="p-5 flex items-start gap-3">
             <div className="p-2 rounded-md bg-primary/10 text-primary"><Lock className="h-5 w-5" /></div>
             <div className="flex-1">
               <div className="font-medium flex items-center gap-2">
                 Communications <Badge variant="secondary" className="text-[10px]">Coming Soon</Badge>
               </div>
-              <div className="text-sm text-muted-foreground mt-1">
-                WhatsApp Integration — Connect AiSensy to enable automated guest messaging,
-                inbox, and broadcasts. Configure in <Link to="/settings/whatsapp" className="text-primary hover:underline">Settings → WhatsApp</Link>.
-              </div>
+              <div className="text-xs text-muted-foreground">Guest messaging & broadcasts</div>
             </div>
           </CardContent>
         </Card>
