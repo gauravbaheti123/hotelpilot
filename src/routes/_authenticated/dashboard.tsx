@@ -562,7 +562,39 @@ function OwnerDashboard({
                 {liveStatus === "live" ? "Live" : liveStatus === "polling" ? "Polling" : "…"}
               </span>
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="inline-flex rounded-md border overflow-hidden text-xs">
+                {(["rooms", "food", "laundry"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setSegment(s)}
+                    className={`px-3 h-8 font-medium transition-colors ${
+                      segment === s
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background hover:bg-muted"
+                    }`}
+                  >
+                    {s === "rooms" ? "Lodge" : s === "food" ? "Food" : "Laundry"}
+                  </button>
+                ))}
+              </div>
+              {segment !== "rooms" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs"
+                  onClick={() => setPunchTarget({
+                    segment: segment as "food" | "laundry",
+                    bookingId: null,
+                    roomId: null,
+                    roomNumber: null,
+                    guestName: null,
+                  })}
+                >
+                  Walk-in Sale
+                </Button>
+              )}
               <Input
                 type="date"
                 value={viewDate}
