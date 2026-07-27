@@ -169,26 +169,36 @@ function GrcPage() {
     const source = document.getElementById("grc-print-area");
     if (!source) { window.print(); return; }
     const html = source.outerHTML;
+    // Inline the parent document's stylesheets so Tailwind utility classes
+    // (flex, p-6, h-24 w-24, grid, border-*, etc.) actually resolve inside the
+    // iframe. Without this, the raw HTML renders unstyled — the logo balloons
+    // to its natural size and content overflows across multiple pages.
+    const parentStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((n) => n.outerHTML)
+      .join("\n");
     const printCss = `
-      @page { size: A4 portrait; margin: 15mm; }
-      html, body { background: #fff; margin: 0; padding: 0; color: #000; font-family: Arial, sans-serif; }
+      @page { size: A4 portrait; margin: 12mm; }
+      html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; color: #000 !important; font-family: Arial, sans-serif; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .grc-print {
-        width: 100%; max-width: none;
-        min-height: 267mm;
-        margin: 0; padding: 6mm;
-        border: 2px solid #000;
-        box-sizing: border-box;
-        display: flex; flex-direction: column;
-        font-size: 12.5pt; line-height: 1.55;
+        width: 100% !important; max-width: none !important;
+        margin: 0 !important; padding: 6mm !important;
+        border: 2px solid #000 !important;
+        box-sizing: border-box !important;
+        display: block !important;
+        font-size: 11pt; line-height: 1.45;
+        color: #000 !important;
       }
-      .grc-print .grc-signatures { margin-top: auto; padding-top: 18mm; }
-      .grc-print h1, .grc-print h2, .grc-print .grc-title { font-size: 16pt; }
-      .grc-print .grc-section-label { font-size: 11pt; }
+      .grc-print img { max-width: 22mm !important; max-height: 22mm !important; width: auto !important; height: auto !important; object-fit: contain; }
+      .grc-print .grc-title { font-size: 13pt; }
+      .grc-print .grc-section-label { font-size: 10pt; }
+      .grc-print pre { font-size: 9.5pt; line-height: 1.35; margin: 4px 0 8px; }
+      .grc-print .grc-signatures { padding-top: 10mm !important; }
       table { border-collapse: collapse; width: 100%; }
       td, th { vertical-align: top; }
-      img { max-width: 100%; }
+      .no-print { display: none !important; }
     `;
-    const doc = `<!doctype html><html><head><meta charset="utf-8"><title>GRC ${grc.grc_number ?? ""}</title><style>${printCss}</style></head><body>${html}</body></html>`;
+    const doc = `<!doctype html><html><head><meta charset="utf-8"><title>GRC ${grc.grc_number ?? ""}</title>${parentStyles}<style>${printCss}</style></head><body>${html}</body></html>`;
     const iframe = document.createElement("iframe");
     iframe.setAttribute("aria-hidden", "true");
     iframe.style.position = "fixed";
