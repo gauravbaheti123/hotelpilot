@@ -111,20 +111,9 @@ const NAV_GROUPS: NavGroup[] = [
         ],
       },
       {
-        to: "/food/dashboard", label: "Food & KOT", icon: ChefHat,
-        modules: ["food_dashboard", "all_kots", "new_kot", "pending_bills"],
-        children: [
-          { to: "/food/dashboard", label: "Food Dashboard", icon: LayoutDashboard, module: "food_dashboard" },
-          { to: "/food/kots", label: "All KOTs", icon: ClipboardList, module: "all_kots" },
-          { to: "/food/new", label: "New KOT", icon: PlusCircle, module: "new_kot" },
-          { to: "/food/pending-bills", label: "Pending Bills", icon: Receipt, module: "pending_bills" },
-        ],
-      },
-      {
         to: "/pos", label: "Billing", icon: Receipt,
-        modules: ["pos", "restaurant_billing", "invoices", "mis_ac"],
+        modules: ["restaurant_billing", "invoices", "mis_ac"],
         children: [
-          { to: "/pos", label: "POS", icon: ShoppingCart, module: "pos" },
           { to: "/restaurant", label: "Restaurant Billing", icon: UtensilsCrossed, module: "restaurant_billing" },
           { to: "/billing/invoices", label: "Invoices", icon: FileText, module: "invoices" },
           { to: "/billing/mis", label: "MIS A/c", icon: Banknote, module: "mis_ac" },

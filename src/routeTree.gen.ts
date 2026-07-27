@@ -31,7 +31,6 @@ import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedSecurityIndexRouteImport } from './routes/_authenticated/security.index'
 import { Route as AuthenticatedRestaurantIndexRouteImport } from './routes/_authenticated/restaurant.index'
 import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports.index'
-import { Route as AuthenticatedPosIndexRouteImport } from './routes/_authenticated/pos.index'
 import { Route as AuthenticatedMastersIndexRouteImport } from './routes/_authenticated/masters.index'
 import { Route as AuthenticatedLabelPrintingIndexRouteImport } from './routes/_authenticated/label-printing.index'
 import { Route as AuthenticatedInventoryIndexRouteImport } from './routes/_authenticated/inventory.index'
@@ -94,10 +93,7 @@ import { Route as AuthenticatedFrontDeskNewRouteImport } from './routes/_authent
 import { Route as AuthenticatedFrontDeskInHouseRouteImport } from './routes/_authenticated/front-desk.in-house'
 import { Route as AuthenticatedFrontDeskCalendarRouteImport } from './routes/_authenticated/front-desk.calendar'
 import { Route as AuthenticatedFrontDeskBookingsRouteImport } from './routes/_authenticated/front-desk.bookings'
-import { Route as AuthenticatedFoodPendingBillsRouteImport } from './routes/_authenticated/food.pending-bills'
 import { Route as AuthenticatedFoodNewRouteImport } from './routes/_authenticated/food.new'
-import { Route as AuthenticatedFoodKotsRouteImport } from './routes/_authenticated/food.kots'
-import { Route as AuthenticatedFoodDashboardRouteImport } from './routes/_authenticated/food.dashboard'
 import { Route as AuthenticatedFeedbackNewRouteImport } from './routes/_authenticated/feedback.new'
 import { Route as AuthenticatedExpensesNewRouteImport } from './routes/_authenticated/expenses.new'
 import { Route as AuthenticatedCommsNewRouteImport } from './routes/_authenticated/comms.new'
@@ -229,11 +225,6 @@ const AuthenticatedReportsIndexRoute =
     path: '/reports/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedPosIndexRoute = AuthenticatedPosIndexRouteImport.update({
-  id: '/pos/',
-  path: '/pos/',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedMastersIndexRoute =
   AuthenticatedMastersIndexRouteImport.update({
     id: '/masters/',
@@ -601,28 +592,11 @@ const AuthenticatedFrontDeskBookingsRoute =
     path: '/front-desk/bookings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedFoodPendingBillsRoute =
-  AuthenticatedFoodPendingBillsRouteImport.update({
-    id: '/food/pending-bills',
-    path: '/food/pending-bills',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedFoodNewRoute = AuthenticatedFoodNewRouteImport.update({
   id: '/food/new',
   path: '/food/new',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedFoodKotsRoute = AuthenticatedFoodKotsRouteImport.update({
-  id: '/food/kots',
-  path: '/food/kots',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedFoodDashboardRoute =
-  AuthenticatedFoodDashboardRouteImport.update({
-    id: '/food/dashboard',
-    path: '/food/dashboard',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedFeedbackNewRoute =
   AuthenticatedFeedbackNewRouteImport.update({
     id: '/feedback/new',
@@ -739,10 +713,7 @@ export interface FileRoutesByFullPath {
   '/comms/new': typeof AuthenticatedCommsNewRoute
   '/expenses/new': typeof AuthenticatedExpensesNewRoute
   '/feedback/new': typeof AuthenticatedFeedbackNewRoute
-  '/food/dashboard': typeof AuthenticatedFoodDashboardRoute
-  '/food/kots': typeof AuthenticatedFoodKotsRoute
   '/food/new': typeof AuthenticatedFoodNewRoute
-  '/food/pending-bills': typeof AuthenticatedFoodPendingBillsRoute
   '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
@@ -805,7 +776,6 @@ export interface FileRoutesByFullPath {
   '/inventory/': typeof AuthenticatedInventoryIndexRoute
   '/label-printing/': typeof AuthenticatedLabelPrintingIndexRoute
   '/masters/': typeof AuthenticatedMastersIndexRoute
-  '/pos/': typeof AuthenticatedPosIndexRoute
   '/reports/': typeof AuthenticatedReportsIndexRoute
   '/restaurant/': typeof AuthenticatedRestaurantIndexRoute
   '/security/': typeof AuthenticatedSecurityIndexRoute
@@ -845,10 +815,7 @@ export interface FileRoutesByTo {
   '/comms/new': typeof AuthenticatedCommsNewRoute
   '/expenses/new': typeof AuthenticatedExpensesNewRoute
   '/feedback/new': typeof AuthenticatedFeedbackNewRoute
-  '/food/dashboard': typeof AuthenticatedFoodDashboardRoute
-  '/food/kots': typeof AuthenticatedFoodKotsRoute
   '/food/new': typeof AuthenticatedFoodNewRoute
-  '/food/pending-bills': typeof AuthenticatedFoodPendingBillsRoute
   '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
@@ -911,7 +878,6 @@ export interface FileRoutesByTo {
   '/inventory': typeof AuthenticatedInventoryIndexRoute
   '/label-printing': typeof AuthenticatedLabelPrintingIndexRoute
   '/masters': typeof AuthenticatedMastersIndexRoute
-  '/pos': typeof AuthenticatedPosIndexRoute
   '/reports': typeof AuthenticatedReportsIndexRoute
   '/restaurant': typeof AuthenticatedRestaurantIndexRoute
   '/security': typeof AuthenticatedSecurityIndexRoute
@@ -953,10 +919,7 @@ export interface FileRoutesById {
   '/_authenticated/comms/new': typeof AuthenticatedCommsNewRoute
   '/_authenticated/expenses/new': typeof AuthenticatedExpensesNewRoute
   '/_authenticated/feedback/new': typeof AuthenticatedFeedbackNewRoute
-  '/_authenticated/food/dashboard': typeof AuthenticatedFoodDashboardRoute
-  '/_authenticated/food/kots': typeof AuthenticatedFoodKotsRoute
   '/_authenticated/food/new': typeof AuthenticatedFoodNewRoute
-  '/_authenticated/food/pending-bills': typeof AuthenticatedFoodPendingBillsRoute
   '/_authenticated/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/_authenticated/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/_authenticated/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
@@ -1019,7 +982,6 @@ export interface FileRoutesById {
   '/_authenticated/inventory/': typeof AuthenticatedInventoryIndexRoute
   '/_authenticated/label-printing/': typeof AuthenticatedLabelPrintingIndexRoute
   '/_authenticated/masters/': typeof AuthenticatedMastersIndexRoute
-  '/_authenticated/pos/': typeof AuthenticatedPosIndexRoute
   '/_authenticated/reports/': typeof AuthenticatedReportsIndexRoute
   '/_authenticated/restaurant/': typeof AuthenticatedRestaurantIndexRoute
   '/_authenticated/security/': typeof AuthenticatedSecurityIndexRoute
@@ -1061,10 +1023,7 @@ export interface FileRouteTypes {
     | '/comms/new'
     | '/expenses/new'
     | '/feedback/new'
-    | '/food/dashboard'
-    | '/food/kots'
     | '/food/new'
-    | '/food/pending-bills'
     | '/front-desk/bookings'
     | '/front-desk/calendar'
     | '/front-desk/in-house'
@@ -1127,7 +1086,6 @@ export interface FileRouteTypes {
     | '/inventory/'
     | '/label-printing/'
     | '/masters/'
-    | '/pos/'
     | '/reports/'
     | '/restaurant/'
     | '/security/'
@@ -1167,10 +1125,7 @@ export interface FileRouteTypes {
     | '/comms/new'
     | '/expenses/new'
     | '/feedback/new'
-    | '/food/dashboard'
-    | '/food/kots'
     | '/food/new'
-    | '/food/pending-bills'
     | '/front-desk/bookings'
     | '/front-desk/calendar'
     | '/front-desk/in-house'
@@ -1233,7 +1188,6 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/label-printing'
     | '/masters'
-    | '/pos'
     | '/reports'
     | '/restaurant'
     | '/security'
@@ -1274,10 +1228,7 @@ export interface FileRouteTypes {
     | '/_authenticated/comms/new'
     | '/_authenticated/expenses/new'
     | '/_authenticated/feedback/new'
-    | '/_authenticated/food/dashboard'
-    | '/_authenticated/food/kots'
     | '/_authenticated/food/new'
-    | '/_authenticated/food/pending-bills'
     | '/_authenticated/front-desk/bookings'
     | '/_authenticated/front-desk/calendar'
     | '/_authenticated/front-desk/in-house'
@@ -1340,7 +1291,6 @@ export interface FileRouteTypes {
     | '/_authenticated/inventory/'
     | '/_authenticated/label-printing/'
     | '/_authenticated/masters/'
-    | '/_authenticated/pos/'
     | '/_authenticated/reports/'
     | '/_authenticated/restaurant/'
     | '/_authenticated/security/'
@@ -1528,13 +1478,6 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports/'
       preLoaderRoute: typeof AuthenticatedReportsIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/pos/': {
-      id: '/_authenticated/pos/'
-      path: '/pos'
-      fullPath: '/pos/'
-      preLoaderRoute: typeof AuthenticatedPosIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/masters/': {
@@ -1971,32 +1914,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrontDeskBookingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/food/pending-bills': {
-      id: '/_authenticated/food/pending-bills'
-      path: '/food/pending-bills'
-      fullPath: '/food/pending-bills'
-      preLoaderRoute: typeof AuthenticatedFoodPendingBillsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/food/new': {
       id: '/_authenticated/food/new'
       path: '/food/new'
       fullPath: '/food/new'
       preLoaderRoute: typeof AuthenticatedFoodNewRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/food/kots': {
-      id: '/_authenticated/food/kots'
-      path: '/food/kots'
-      fullPath: '/food/kots'
-      preLoaderRoute: typeof AuthenticatedFoodKotsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/food/dashboard': {
-      id: '/_authenticated/food/dashboard'
-      path: '/food/dashboard'
-      fullPath: '/food/dashboard'
-      preLoaderRoute: typeof AuthenticatedFoodDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/feedback/new': {
@@ -2147,10 +2069,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCommsNewRoute: typeof AuthenticatedCommsNewRoute
   AuthenticatedExpensesNewRoute: typeof AuthenticatedExpensesNewRoute
   AuthenticatedFeedbackNewRoute: typeof AuthenticatedFeedbackNewRoute
-  AuthenticatedFoodDashboardRoute: typeof AuthenticatedFoodDashboardRoute
-  AuthenticatedFoodKotsRoute: typeof AuthenticatedFoodKotsRoute
   AuthenticatedFoodNewRoute: typeof AuthenticatedFoodNewRoute
-  AuthenticatedFoodPendingBillsRoute: typeof AuthenticatedFoodPendingBillsRoute
   AuthenticatedFrontDeskBookingsRoute: typeof AuthenticatedFrontDeskBookingsRoute
   AuthenticatedFrontDeskCalendarRoute: typeof AuthenticatedFrontDeskCalendarRoute
   AuthenticatedFrontDeskInHouseRoute: typeof AuthenticatedFrontDeskInHouseRoute
@@ -2211,7 +2130,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInventoryIndexRoute: typeof AuthenticatedInventoryIndexRoute
   AuthenticatedLabelPrintingIndexRoute: typeof AuthenticatedLabelPrintingIndexRoute
   AuthenticatedMastersIndexRoute: typeof AuthenticatedMastersIndexRoute
-  AuthenticatedPosIndexRoute: typeof AuthenticatedPosIndexRoute
   AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
   AuthenticatedRestaurantIndexRoute: typeof AuthenticatedRestaurantIndexRoute
   AuthenticatedSecurityIndexRoute: typeof AuthenticatedSecurityIndexRoute
@@ -2238,10 +2156,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCommsNewRoute: AuthenticatedCommsNewRoute,
   AuthenticatedExpensesNewRoute: AuthenticatedExpensesNewRoute,
   AuthenticatedFeedbackNewRoute: AuthenticatedFeedbackNewRoute,
-  AuthenticatedFoodDashboardRoute: AuthenticatedFoodDashboardRoute,
-  AuthenticatedFoodKotsRoute: AuthenticatedFoodKotsRoute,
   AuthenticatedFoodNewRoute: AuthenticatedFoodNewRoute,
-  AuthenticatedFoodPendingBillsRoute: AuthenticatedFoodPendingBillsRoute,
   AuthenticatedFrontDeskBookingsRoute: AuthenticatedFrontDeskBookingsRoute,
   AuthenticatedFrontDeskCalendarRoute: AuthenticatedFrontDeskCalendarRoute,
   AuthenticatedFrontDeskInHouseRoute: AuthenticatedFrontDeskInHouseRoute,
@@ -2310,7 +2225,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInventoryIndexRoute: AuthenticatedInventoryIndexRoute,
   AuthenticatedLabelPrintingIndexRoute: AuthenticatedLabelPrintingIndexRoute,
   AuthenticatedMastersIndexRoute: AuthenticatedMastersIndexRoute,
-  AuthenticatedPosIndexRoute: AuthenticatedPosIndexRoute,
   AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
   AuthenticatedRestaurantIndexRoute: AuthenticatedRestaurantIndexRoute,
   AuthenticatedSecurityIndexRoute: AuthenticatedSecurityIndexRoute,
