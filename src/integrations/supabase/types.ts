@@ -5608,6 +5608,7 @@ export type Database = {
     }
     Functions: {
       auto_cancel_incomplete_bookings: { Args: never; Returns: number }
+      auto_close_segment_bills: { Args: never; Returns: number }
       can_billing: {
         Args: { _property_id: string; _user_id: string }
         Returns: boolean
