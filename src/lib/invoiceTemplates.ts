@@ -58,6 +58,7 @@ export interface InvoiceCharge {
   gst_amount: number;
   charge_type: string;
   hsn_code?: string | null;
+  segment_bill_ref?: string | null;
 }
 
 export interface InvoicePayment {
@@ -283,7 +284,7 @@ function chargesTable(ctx: InvoiceContext): string {
     return `
       <tr>
         <td ${tdStyle}>${i + 1}</td>
-        <td ${tdStyle}>${esc(c.description)}</td>
+        <td ${tdStyle}>${esc(c.description)}${c.segment_bill_ref ? ` <span class="small" style="color:#666">(Ref: ${esc(c.segment_bill_ref)})</span>` : ""}</td>
         ${showHsn ? `<td ${tdStyle}>${esc(c.hsn_code ?? defaultHsn(c.charge_type))}</td>` : ""}
         <td ${tdStyle} class="right">${Number(c.qty).toLocaleString("en-IN")}</td>
         <td ${tdStyle} class="right">${inr(c.rate)}</td>
