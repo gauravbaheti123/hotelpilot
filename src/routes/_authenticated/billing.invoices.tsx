@@ -19,6 +19,8 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { toast } from "sonner";
 import { Pencil, Trash2, FileSpreadsheet, Hash, AlertTriangle, Wallet } from "lucide-react";
 import { ChangePaymentModeDialog, type ChangePaymentModeFolio } from "@/components/ChangePaymentModeDialog";
+import { Printer } from "lucide-react";
+import { printSegmentBill } from "@/components/PunchChargeDialog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/invoices")({
@@ -38,7 +40,7 @@ interface Row {
 }
 
 function InvoicesPage() {
-  const { currentId: propertyId } = useCurrentProperty();
+  const { currentId: propertyId, current: currentProperty } = useCurrentProperty();
   const { user, roles } = useAuth();
   const { can } = usePermissions();
   const navigate = useNavigate();
@@ -51,6 +53,13 @@ function InvoicesPage() {
 
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState("");
+  const [segTab, setSegTab] = useState<"lodge" | "food" | "laundry">("lodge");
+  const [segRows, setSegRows] = useState<Array<{
+    id: string; bill_number: string; segment: string; status: string;
+    total_amount: number; paid_amount: number;
+    is_walkin: boolean; guest_name: string | null; room_id: string | null;
+    created_at: string;
+  }>>([]);
   const [audit, setAudit] = useState(false);
   const [delTarget, setDelTarget] = useState<Row | null>(null);
   const [busy, setBusy] = useState(false);
@@ -85,6 +94,25 @@ function InvoicesPage() {
     })();
   };
   useEffect(load, [propertyId, audit]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Segment bills (Food / Laundry) — loaded when the corresponding tab is active.
+  useEffect(() => {
+    if (!propertyId || segTab === "lodge") { setSegRows([]); return; }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("segment_bills" as any)
+        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,created_at")
+        .eq("property_id", propertyId)
+        .eq("segment", segTab)
+        .order("created_at", { ascending: false })
+        .limit(300);
+      if (cancelled) return;
+      if (error) { toast.error(error.message); return; }
+      setSegRows((data ?? []) as any);
+    })();
+    return () => { cancelled = true; };
+  }, [propertyId, segTab]);
 
   useEffect(() => {
     if (!propertyId || !audit) { setAuditRows([]); return; }
@@ -269,9 +297,58 @@ function InvoicesPage() {
     XLSX.writeFile(wb, `invoices-audit-${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
+  async function printSegBill(bill: {
+    id: string; bill_number: string; segment: string;
+    total_amount: number; is_walkin: boolean; guest_name: string | null; room_id: string | null;
+  }) {
+    try {
+      const [{ data: items }, { data: room }] = await Promise.all([
+        supabase.from("segment_bill_items" as any)
+          .select("description,qty,rate,amount,gst_rate,gst_amount")
+          .eq("segment_bill_id", bill.id),
+        bill.room_id
+          ? supabase.from("rooms").select("room_number").eq("id", bill.room_id).maybeSingle()
+          : Promise.resolve({ data: null as any }),
+      ]);
+      const rows = (items ?? []) as any[];
+      const sub = rows.reduce((s, i) => s + Number(i.amount || 0), 0);
+      const gst = rows.reduce((s, i) => s + Number(i.gst_amount || 0), 0);
+      printSegmentBill({
+        billNumber: bill.bill_number,
+        segment: bill.segment as "food" | "laundry",
+        propertyName: currentProperty?.name ?? "",
+        guestName: bill.guest_name ?? "Walk-in Guest",
+        roomNumber: (room as any)?.room_number ?? null,
+        items: rows.map((i) => ({
+          description: i.description, qty: Number(i.qty), rate: Number(i.rate),
+          amount: Number(i.amount), gst_rate: Number(i.gst_rate),
+        })),
+        sub, gst, total: sub + gst,
+        isWalkin: !!bill.is_walkin,
+        paymentMode: null,
+      });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Print failed");
+    }
+  }
+
   return (
     <AppShell title="Invoices">
       <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="inline-flex rounded-md border overflow-hidden text-xs">
+          {(["lodge", "food", "laundry"] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setSegTab(s)}
+              className={`px-3 h-8 font-medium transition-colors ${
+                segTab === s ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"
+              }`}
+            >
+              {s === "lodge" ? "Lodge" : s === "food" ? "Food" : "Laundry"}
+            </button>
+          ))}
+        </div>
         <Input placeholder="Search invoice / booking / guest…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-sm" />
         {isOwner && (
           <div className="flex gap-1 rounded-md border p-1 bg-muted/30 ml-2">
@@ -291,6 +368,7 @@ function InvoicesPage() {
           </Button>
         )}
       </div>
+      {segTab === "lodge" && (
       <Card>
         <CardContent className="p-0 divide-y">
           {filtered.length === 0 && <p className="p-4 text-sm text-muted-foreground">No invoices.</p>}
@@ -376,6 +454,49 @@ function InvoicesPage() {
           })}
         </CardContent>
       </Card>
+      )}
+
+      {segTab !== "lodge" && (
+        <Card>
+          <CardContent className="p-0 divide-y">
+            {segRows.filter((r) => !q ||
+              r.bill_number.toLowerCase().includes(q.toLowerCase()) ||
+              (r.guest_name ?? "").toLowerCase().includes(q.toLowerCase())
+            ).length === 0 && (
+              <p className="p-4 text-sm text-muted-foreground">No {segTab} bills.</p>
+            )}
+            {segRows
+              .filter((r) => !q ||
+                r.bill_number.toLowerCase().includes(q.toLowerCase()) ||
+                (r.guest_name ?? "").toLowerCase().includes(q.toLowerCase()))
+              .map((r) => {
+                const balance = Math.max(0, Number(r.total_amount || 0) - Number(r.paid_amount || 0));
+                return (
+                  <div key={r.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="font-medium text-sm">{r.bill_number}</div>
+                        <Badge variant="outline" className="uppercase text-[10px]">{r.status}</Badge>
+                        <Badge variant="outline" className="text-[10px] uppercase">{segTab}</Badge>
+                        {r.is_walkin && <Badge variant="outline" className="text-[10px]">Walk-in</Badge>}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {r.guest_name ?? "—"} · {new Date(r.created_at).toLocaleString("en-IN")}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-medium">{inr(r.total_amount)}</div>
+                      <div className="text-xs text-muted-foreground">Bal {inr(balance)}</div>
+                    </div>
+                    <Button size="sm" variant="ghost" title="Print bill" onClick={() => printSegBill(r)}>
+                      <Printer className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+          </CardContent>
+        </Card>
+      )}
 
       <ChangePaymentModeDialog
         folio={payModeTarget}

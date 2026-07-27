@@ -474,6 +474,66 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     load();
   }
 
+  async function transferSegmentBillToFolio(bill: {
+    id: string; segment: string; bill_number: string;
+  }) {
+    if (!folio || !booking) return;
+    setBusy(true);
+    try {
+      // Skip if we already transferred this bill (idempotent)
+      const { data: existing } = await supabase
+        .from("folio_charges")
+        .select("id")
+        .eq("source_table", "segment_bills")
+        .eq("source_id", bill.id)
+        .limit(1);
+      if (!existing || existing.length === 0) {
+        const { data: items, error: iErr } = await supabase
+          .from("segment_bill_items" as any)
+          .select("description,qty,rate,amount,gst_rate,gst_amount")
+          .eq("segment_bill_id", bill.id);
+        if (iErr) throw iErr;
+        if (!items || items.length === 0) {
+          throw new Error("Segment bill has no items");
+        }
+        const chargeType = bill.segment === "food" ? "food" : "laundry";
+        const rows = (items as any[]).map((it) => ({
+          folio_id: folio.id,
+          charge_type: chargeType,
+          description: `${it.description} (${bill.bill_number})`,
+          qty: Number(it.qty),
+          rate: Number(it.rate),
+          amount: Number(it.amount),
+          gst_rate: Number(it.gst_rate),
+          gst_amount: Number(it.gst_amount),
+          source_table: "segment_bills",
+          source_id: bill.id,
+          segment_bill_ref: bill.bill_number,
+          created_by: user?.id ?? null,
+        }));
+        const { error: cErr } = await supabase
+          .from("folio_charges")
+          .insert(rows as any);
+        if (cErr) throw cErr;
+      }
+      const { error: uErr } = await supabase
+        .from("segment_bills" as any)
+        .update({
+          status: "settled",
+          settled_at: new Date().toISOString(),
+          folio_id: folio.id,
+        } as any)
+        .eq("id", bill.id);
+      if (uErr) throw uErr;
+      toast.success(`${bill.bill_number} added to room bill`);
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to transfer segment bill");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function setSplit(i: number, patch: Partial<SplitRow>) {
     setSplits((rows) => rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
@@ -684,17 +744,27 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
               </div>
               <div className="space-y-1 text-sm">
                 {pendingSegments.map((s) => (
-                  <div key={s.id} className="flex justify-between">
-                    <span className="uppercase text-xs">
+                  <div key={s.id} className="flex items-center justify-between gap-2">
+                    <span className="uppercase text-xs flex-1 min-w-0 truncate">
                       <Badge variant="outline" className="mr-1 text-[10px]">{s.segment}</Badge>
                       {s.bill_number}
                     </span>
-                    <span>{inr(s.balance)}</span>
+                    <span className="text-sm font-medium">{inr(s.balance)}</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => transferSegmentBillToFolio({
+                        id: s.id, segment: s.segment, bill_number: s.bill_number,
+                      })}
+                    >
+                      Add to bill
+                    </Button>
                   </div>
                 ))}
               </div>
               <div className="text-xs text-muted-foreground mt-3">
-                Settle these segment bills (or transfer to room folio) before checkout.
+                Transfer each pending {`${""}`}Food/Laundry bill into the room folio before checkout.
                 {isOwnerRole && " Owner may override with a reason from the folio page."}
               </div>
             </div>
