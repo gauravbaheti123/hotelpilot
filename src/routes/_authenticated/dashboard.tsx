@@ -442,6 +442,51 @@ function OwnerDashboard({
 
   useEffect(() => { reload(); }, [reload]);
 
+  // Segment view: load per-room open Food/Laundry bill totals when the
+  // Food or Laundry tab is active. Only room-linked (non-walkin) OPEN bills
+  // are surfaced against room tiles.
+  useEffect(() => {
+    if (!propertyId) return;
+    if (segment === "rooms") { setSegmentPendingByRoom(new Map()); return; }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("segment_bills" as any)
+        .select("id,bill_number,room_id,total_amount,paid_amount,segment,status,is_walkin")
+        .eq("property_id", propertyId)
+        .eq("segment", segment)
+        .eq("status", "open")
+        .eq("is_walkin", false);
+      if (cancelled) return;
+      if (error) { console.warn("segment bills load failed", error); return; }
+      const m = new Map<string, { amount: number; count: number; bills: Array<{ id: string; bill_number: string; amount: number }> }>();
+      (data ?? []).forEach((b: any) => {
+        if (!b.room_id) return;
+        const bal = Math.max(0, Number(b.total_amount || 0) - Number(b.paid_amount || 0));
+        const prev = m.get(b.room_id) ?? { amount: 0, count: 0, bills: [] };
+        prev.amount += bal;
+        prev.count += 1;
+        prev.bills.push({ id: b.id, bill_number: b.bill_number, amount: bal });
+        m.set(b.room_id, prev);
+      });
+      setSegmentPendingByRoom(m);
+    })();
+    return () => { cancelled = true; };
+  }, [propertyId, segment, viewDate]);
+
+  // Realtime: refresh the segment-pending map when segment_bills change.
+  useEffect(() => {
+    if (!propertyId || segment === "rooms") return;
+    const ch = supabase
+      .channel(`dashboard-segment-${propertyId}-${segment}`)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "segment_bills", filter: `property_id=eq.${propertyId}` },
+        () => { setSegment((s) => s); /* trigger effect above via state tick */ }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [propertyId, segment]);
+
   async function addPendingFoodToBill(bookingId: string) {
     try {
       const { data: folioId, error: fErr } = await supabase.rpc("get_or_create_folio", { _booking_id: bookingId });
