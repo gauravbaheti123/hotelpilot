@@ -442,6 +442,7 @@ function NewBookingPage() {
             (source === "ota" || source === "agent") && otaPartnerName.trim()
               ? otaPartnerName.trim()
               : null,
+          billing_company_id: billToOther && billingCompanyId ? billingCompanyId : null,
           status: checkInNow ? "checked_in" : "reserved",
           check_in: checkIn,
           check_out: checkOut,
