@@ -298,24 +298,34 @@ function OwnerDashboard({
       setBookingByRoom(bMap);
       setOccInfoByRoom(oMap);
 
-      // Self-heal Issue 2: rooms flagged occupied in the rooms table but with
-      // no active booking_room covering today are stale "ghost" tiles. Reset
-      // them to vacant so the dashboard reflects reality.
+      // Self-heal: reset only TRUE orphans — rooms flagged occupied with no
+      // active booking_rooms row referencing them at all.
+      //
+      // REGRESSION GUARD (audited: "phantom auto checkout" bug, Phase 16):
+      // NEVER vacate a room because its scheduled check_out date/time has
+      // passed. A guest is released only by the explicit Checkout flow. An
+      // overdue stay keeps an OPEN folio with a pending balance; auto-vacating
+      // it makes the front desk think the room is free and re-let it while the
+      // previous bill is unsettled. Overdue stays are surfaced by the
+      // display-only "Overdue / Checkout due" indicator instead.
       if (isToday) {
         const potentialGhosts = rmsRows
           .filter((r: any) => r.status === "occupied" && !occSet.has(r.id))
           .map((r: any) => r.id);
         if (potentialGhosts.length > 0) {
-          // Re-check against ALL active bookings (no date filter) so overdue
-          // checked-in bookings still hold their room until an explicit checkout.
+          // Re-check against ALL active bookings with NO date filter, so an
+          // overdue checked-in booking still holds its room.
           const { data: stillActive } = await supabase
             .from("booking_rooms")
-            .select("room_id, bookings!inner(status,property_id)")
+            .select("room_id, actual_check_out, bookings!inner(status,property_id)")
             .eq("bookings.property_id", propertyId)
             .in("bookings.status", ["reserved", "checked_in"])
             .in("room_id", potentialGhosts);
           const heldRoomIds = new Set(
-            (stillActive ?? []).map((b: any) => b.room_id).filter(Boolean),
+            (stillActive ?? [])
+              .filter((b: any) => !b.actual_check_out)
+              .map((b: any) => b.room_id)
+              .filter(Boolean),
           );
           const ghosts = potentialGhosts.filter((id: string) => !heldRoomIds.has(id));
           if (ghosts.length > 0) {
