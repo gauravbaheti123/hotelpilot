@@ -512,44 +512,53 @@ function OwnerDashboard({
     try {
       const { data: folioId, error: fErr } = await supabase.rpc("get_or_create_folio", { _booking_id: bookingId });
       if (fErr || !folioId) throw fErr ?? new Error("Folio not created");
-      const { data: kots, error: kErr } = await supabase
-        .from("kot_orders")
-        .select("id,kot_number,sub_total,gst_amount,total_amount")
+      const { data: bills, error: kErr } = await supabase
+        .from("segment_bills" as any)
+        .select("id,bill_number")
         .eq("booking_id", bookingId)
-        .eq("kot_copy", "hotel_copy")
-        .not("status", "in", "(billed,cancelled,void)");
+        .eq("segment", "food")
+        .eq("status", "open");
       if (kErr) throw kErr;
-      if (!kots || kots.length === 0) { toast.info("No pending KOTs"); return; }
+      if (!bills || bills.length === 0) { toast.info("No pending food bills"); return; }
       const { data: existingCharges } = await supabase
         .from("folio_charges")
         .select("source_id")
         .eq("folio_id", folioId as any)
-        .eq("source_table", "kot_orders");
+        .eq("source_table", "segment_bills");
       const existing = new Set((existingCharges ?? []).map((c: any) => c.source_id));
-      const toAdd = (kots as any[]).filter((k) => !existing.has(k.id));
-      if (toAdd.length > 0) {
-        const rows = toAdd.map((k) => ({
-          folio_id: folioId,
-          charge_type: "food",
-          description: `Food · ${k.kot_number}`,
-          qty: 1,
-          rate: Number(k.sub_total),
-          amount: Number(k.sub_total),
-          gst_rate: Number(k.sub_total) > 0 ? Math.round((Number(k.gst_amount) / Number(k.sub_total)) * 100) : 5,
-          gst_amount: Number(k.gst_amount),
-          source_table: "kot_orders",
-          source_id: k.id,
-          created_by: userId || null,
-        }));
-        const { error: iErr } = await supabase.from("folio_charges").insert(rows as any);
-        if (iErr) throw iErr;
+      for (const b of bills as any[]) {
+        if (!existing.has(b.id)) {
+          const { data: items, error: iErrS } = await supabase
+            .from("segment_bill_items" as any)
+            .select("description,qty,rate,amount,gst_rate,gst_amount")
+            .eq("segment_bill_id", b.id);
+          if (iErrS) throw iErrS;
+          const rows = (items ?? []).map((it: any) => ({
+            folio_id: folioId,
+            charge_type: "food",
+            description: `${it.description} (${b.bill_number})`,
+            qty: Number(it.qty),
+            rate: Number(it.rate),
+            amount: Number(it.amount),
+            gst_rate: Number(it.gst_rate),
+            gst_amount: Number(it.gst_amount),
+            source_table: "segment_bills",
+            source_id: b.id,
+            segment_bill_ref: b.bill_number,
+            created_by: userId || null,
+          }));
+          if (rows.length > 0) {
+            const { error: iErr } = await supabase.from("folio_charges").insert(rows as any);
+            if (iErr) throw iErr;
+          }
+        }
+        const { error: uErr } = await supabase
+          .from("segment_bills" as any)
+          .update({ status: "settled", settled_at: new Date().toISOString(), folio_id: folioId } as any)
+          .eq("id", b.id);
+        if (uErr) throw uErr;
       }
-      const { error: uErr } = await supabase
-        .from("kot_orders")
-        .update({ status: "billed", billed_at: new Date().toISOString() } as any)
-        .in("id", (kots as any[]).map((k) => k.id));
-      if (uErr) throw uErr;
-      toast.success(`Added ${kots.length} KOT(s) to bill`);
+      toast.success(`Added ${bills.length} food bill(s) to room bill`);
       reload();
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to add to bill");
