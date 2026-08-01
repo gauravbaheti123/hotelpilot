@@ -94,7 +94,6 @@ import { Route as AuthenticatedFrontDeskNewRouteImport } from './routes/_authent
 import { Route as AuthenticatedFrontDeskInHouseRouteImport } from './routes/_authenticated/front-desk.in-house'
 import { Route as AuthenticatedFrontDeskCalendarRouteImport } from './routes/_authenticated/front-desk.calendar'
 import { Route as AuthenticatedFrontDeskBookingsRouteImport } from './routes/_authenticated/front-desk.bookings'
-import { Route as AuthenticatedFoodNewRouteImport } from './routes/_authenticated/food.new'
 import { Route as AuthenticatedFeedbackNewRouteImport } from './routes/_authenticated/feedback.new'
 import { Route as AuthenticatedExpensesNewRouteImport } from './routes/_authenticated/expenses.new'
 import { Route as AuthenticatedCommsNewRouteImport } from './routes/_authenticated/comms.new'
@@ -599,11 +598,6 @@ const AuthenticatedFrontDeskBookingsRoute =
     path: '/front-desk/bookings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedFoodNewRoute = AuthenticatedFoodNewRouteImport.update({
-  id: '/food/new',
-  path: '/food/new',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedFeedbackNewRoute =
   AuthenticatedFeedbackNewRouteImport.update({
     id: '/feedback/new',
@@ -720,7 +714,6 @@ export interface FileRoutesByFullPath {
   '/comms/new': typeof AuthenticatedCommsNewRoute
   '/expenses/new': typeof AuthenticatedExpensesNewRoute
   '/feedback/new': typeof AuthenticatedFeedbackNewRoute
-  '/food/new': typeof AuthenticatedFoodNewRoute
   '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
@@ -823,7 +816,6 @@ export interface FileRoutesByTo {
   '/comms/new': typeof AuthenticatedCommsNewRoute
   '/expenses/new': typeof AuthenticatedExpensesNewRoute
   '/feedback/new': typeof AuthenticatedFeedbackNewRoute
-  '/food/new': typeof AuthenticatedFoodNewRoute
   '/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
@@ -928,7 +920,6 @@ export interface FileRoutesById {
   '/_authenticated/comms/new': typeof AuthenticatedCommsNewRoute
   '/_authenticated/expenses/new': typeof AuthenticatedExpensesNewRoute
   '/_authenticated/feedback/new': typeof AuthenticatedFeedbackNewRoute
-  '/_authenticated/food/new': typeof AuthenticatedFoodNewRoute
   '/_authenticated/front-desk/bookings': typeof AuthenticatedFrontDeskBookingsRoute
   '/_authenticated/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/_authenticated/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
@@ -1033,7 +1024,6 @@ export interface FileRouteTypes {
     | '/comms/new'
     | '/expenses/new'
     | '/feedback/new'
-    | '/food/new'
     | '/front-desk/bookings'
     | '/front-desk/calendar'
     | '/front-desk/in-house'
@@ -1136,7 +1126,6 @@ export interface FileRouteTypes {
     | '/comms/new'
     | '/expenses/new'
     | '/feedback/new'
-    | '/food/new'
     | '/front-desk/bookings'
     | '/front-desk/calendar'
     | '/front-desk/in-house'
@@ -1240,7 +1229,6 @@ export interface FileRouteTypes {
     | '/_authenticated/comms/new'
     | '/_authenticated/expenses/new'
     | '/_authenticated/feedback/new'
-    | '/_authenticated/food/new'
     | '/_authenticated/front-desk/bookings'
     | '/_authenticated/front-desk/calendar'
     | '/_authenticated/front-desk/in-house'
@@ -1934,13 +1922,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrontDeskBookingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/food/new': {
-      id: '/_authenticated/food/new'
-      path: '/food/new'
-      fullPath: '/food/new'
-      preLoaderRoute: typeof AuthenticatedFoodNewRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/feedback/new': {
       id: '/_authenticated/feedback/new'
       path: '/feedback/new'
@@ -2089,7 +2070,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCommsNewRoute: typeof AuthenticatedCommsNewRoute
   AuthenticatedExpensesNewRoute: typeof AuthenticatedExpensesNewRoute
   AuthenticatedFeedbackNewRoute: typeof AuthenticatedFeedbackNewRoute
-  AuthenticatedFoodNewRoute: typeof AuthenticatedFoodNewRoute
   AuthenticatedFrontDeskBookingsRoute: typeof AuthenticatedFrontDeskBookingsRoute
   AuthenticatedFrontDeskCalendarRoute: typeof AuthenticatedFrontDeskCalendarRoute
   AuthenticatedFrontDeskInHouseRoute: typeof AuthenticatedFrontDeskInHouseRoute
@@ -2177,7 +2157,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCommsNewRoute: AuthenticatedCommsNewRoute,
   AuthenticatedExpensesNewRoute: AuthenticatedExpensesNewRoute,
   AuthenticatedFeedbackNewRoute: AuthenticatedFeedbackNewRoute,
-  AuthenticatedFoodNewRoute: AuthenticatedFoodNewRoute,
   AuthenticatedFrontDeskBookingsRoute: AuthenticatedFrontDeskBookingsRoute,
   AuthenticatedFrontDeskCalendarRoute: AuthenticatedFrontDeskCalendarRoute,
   AuthenticatedFrontDeskInHouseRoute: AuthenticatedFrontDeskInHouseRoute,

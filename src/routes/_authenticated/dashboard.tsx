@@ -985,12 +985,6 @@ function OwnerDashboard({
           } as any);
         }}
         onCheckout={(bid: string) => { setModalRoom(null); setCheckoutBookingId(bid); }}
-        onNewKot={(bid: string) => {
-          const roomNo = modalRoom?.room_number;
-          setModalRoom(null);
-          navigate({ to: "/food/new", search: { bookingId: bid } } as any);
-          if (roomNo) toast.success(`Opening New KOT for Room ${roomNo}`);
-        }}
         onOtherCharges={(bid: string) => {
           const roomNo = modalRoom?.room_number;
           setModalRoom(null);
