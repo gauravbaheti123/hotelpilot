@@ -31,7 +31,6 @@ const SECTIONS: { title: string; modules: { key: string; label: string; singleAc
   { title: "Food & KOT", modules: [
     { key: "food_dashboard", label: "Food Dashboard" },
     { key: "all_kots", label: "All KOTs" },
-    { key: "new_kot", label: "New KOT" },
     { key: "pending_bills", label: "Pending Bills" },
   ]},
   { title: "Billing", modules: [
@@ -78,7 +77,7 @@ const DEFAULTS: Record<string, Partial<Record<string, Action[]>>> = {
   manager: Object.fromEntries(ALL_MODULES.map((m) => [m, [...ACTIONS]])),
   receptionist: {
     dashboard: ["view"], bookings: ["view","create","edit"], calendar: ["view"], inhouse: ["view","edit"],
-    food_dashboard: ["view"], all_kots: ["view"], new_kot: ["view","create","edit"], pending_bills: ["view"],
+    food_dashboard: ["view"], all_kots: ["view"], pending_bills: ["view"],
     pos: ["view","create","edit"], restaurant_billing: ["view"], invoices: ["view","create"],
     room_board: ["view"], tasks: ["view","edit"], guest_crm: ["view","create","edit"],
   },

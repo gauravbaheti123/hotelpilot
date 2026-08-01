@@ -311,11 +311,6 @@ function RoomDetailPage() {
 
         {isOccupied && booking && (
           <Section title={`Food Orders (${kots.length})`}>
-            <div className="mb-3">
-              <Button asChild size="sm">
-                <Link to="/food/new" search={{ booking: booking.id } as any}>+ New KOT</Link>
-              </Button>
-            </div>
             {kots.length === 0 ? (
               <p className="text-sm text-muted-foreground">No KOTs for this booking.</p>
             ) : (

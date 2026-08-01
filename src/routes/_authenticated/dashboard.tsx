@@ -353,20 +353,30 @@ function OwnerDashboard({
       setDepartures(depRows.map(mapRow));
       setRooms(rmsRows as Room[]);
 
-      // Pending food per room (open/printed/served, hotel copy only) — only meaningful today
-      const kots = kotRows;
+      // Pending food per room — SINGLE SOURCE OF TRUTH: open segment_bills (segment = 'food').
+      // The legacy kot_orders flow was removed in Phase 17; never read it here again or the
+      // Lodge room badge will drift from the Food segment tab / checkout block.
       const pfMap = new Map<string, PendingFood>();
-      (kots ?? []).forEach((k: any) => {
-        if (!k.room_id || !k.booking_id) return;
-        const prev = pfMap.get(k.room_id) ?? { bookingId: k.booking_id, amount: 0, count: 0, lastAt: null, items: "" };
-        const itemSummary = (k.items ?? k.kot_items ?? []).map((i: any) => `${i.item_name}×${i.qty}`).join(", ");
-        prev.amount += Number(k.total_amount || 0);
-        prev.count += 1;
-        prev.lastAt = !prev.lastAt || k.created_at > prev.lastAt ? k.created_at : prev.lastAt;
-        prev.items = prev.items ? `${prev.items}; ${itemSummary}` : itemSummary;
-        prev.bookingId = k.booking_id;
-        pfMap.set(k.room_id, prev);
-      });
+      {
+        const { data: fbills } = await supabase
+          .from("segment_bills" as any)
+          .select("id,room_id,booking_id,total_amount,created_at,segment_bill_items(description,qty)")
+          .eq("property_id", propertyId)
+          .eq("segment", "food")
+          .eq("status", "open")
+          .eq("is_walkin", false);
+        (fbills ?? []).forEach((b: any) => {
+          if (!b.room_id || !b.booking_id) return;
+          const prev = pfMap.get(b.room_id) ?? { bookingId: b.booking_id, amount: 0, count: 0, lastAt: null, items: "" };
+          const itemSummary = (b.segment_bill_items ?? []).map((i: any) => `${i.description}×${i.qty}`).join(", ");
+          prev.amount += Number(b.total_amount || 0);
+          prev.count += 1;
+          prev.lastAt = !prev.lastAt || b.created_at > prev.lastAt ? b.created_at : prev.lastAt;
+          prev.items = prev.items ? `${prev.items}; ${itemSummary}` : itemSummary;
+          prev.bookingId = b.booking_id;
+          pfMap.set(b.room_id, prev);
+        });
+      }
       setPendingFoodByRoom(pfMap);
 
       // Build per-row list for the collapsible section
@@ -502,44 +512,53 @@ function OwnerDashboard({
     try {
       const { data: folioId, error: fErr } = await supabase.rpc("get_or_create_folio", { _booking_id: bookingId });
       if (fErr || !folioId) throw fErr ?? new Error("Folio not created");
-      const { data: kots, error: kErr } = await supabase
-        .from("kot_orders")
-        .select("id,kot_number,sub_total,gst_amount,total_amount")
+      const { data: bills, error: kErr } = await supabase
+        .from("segment_bills" as any)
+        .select("id,bill_number")
         .eq("booking_id", bookingId)
-        .eq("kot_copy", "hotel_copy")
-        .not("status", "in", "(billed,cancelled,void)");
+        .eq("segment", "food")
+        .eq("status", "open");
       if (kErr) throw kErr;
-      if (!kots || kots.length === 0) { toast.info("No pending KOTs"); return; }
+      if (!bills || bills.length === 0) { toast.info("No pending food bills"); return; }
       const { data: existingCharges } = await supabase
         .from("folio_charges")
         .select("source_id")
         .eq("folio_id", folioId as any)
-        .eq("source_table", "kot_orders");
+        .eq("source_table", "segment_bills");
       const existing = new Set((existingCharges ?? []).map((c: any) => c.source_id));
-      const toAdd = (kots as any[]).filter((k) => !existing.has(k.id));
-      if (toAdd.length > 0) {
-        const rows = toAdd.map((k) => ({
-          folio_id: folioId,
-          charge_type: "food",
-          description: `Food · ${k.kot_number}`,
-          qty: 1,
-          rate: Number(k.sub_total),
-          amount: Number(k.sub_total),
-          gst_rate: Number(k.sub_total) > 0 ? Math.round((Number(k.gst_amount) / Number(k.sub_total)) * 100) : 5,
-          gst_amount: Number(k.gst_amount),
-          source_table: "kot_orders",
-          source_id: k.id,
-          created_by: userId || null,
-        }));
-        const { error: iErr } = await supabase.from("folio_charges").insert(rows as any);
-        if (iErr) throw iErr;
+      for (const b of bills as any[]) {
+        if (!existing.has(b.id)) {
+          const { data: items, error: iErrS } = await supabase
+            .from("segment_bill_items" as any)
+            .select("description,qty,rate,amount,gst_rate,gst_amount")
+            .eq("segment_bill_id", b.id);
+          if (iErrS) throw iErrS;
+          const rows = (items ?? []).map((it: any) => ({
+            folio_id: folioId,
+            charge_type: "food",
+            description: `${it.description} (${b.bill_number})`,
+            qty: Number(it.qty),
+            rate: Number(it.rate),
+            amount: Number(it.amount),
+            gst_rate: Number(it.gst_rate),
+            gst_amount: Number(it.gst_amount),
+            source_table: "segment_bills",
+            source_id: b.id,
+            segment_bill_ref: b.bill_number,
+            created_by: userId || null,
+          }));
+          if (rows.length > 0) {
+            const { error: iErr } = await supabase.from("folio_charges").insert(rows as any);
+            if (iErr) throw iErr;
+          }
+        }
+        const { error: uErr } = await supabase
+          .from("segment_bills" as any)
+          .update({ status: "settled", settled_at: new Date().toISOString(), folio_id: folioId } as any)
+          .eq("id", b.id);
+        if (uErr) throw uErr;
       }
-      const { error: uErr } = await supabase
-        .from("kot_orders")
-        .update({ status: "billed", billed_at: new Date().toISOString() } as any)
-        .in("id", (kots as any[]).map((k) => k.id));
-      if (uErr) throw uErr;
-      toast.success(`Added ${kots.length} KOT(s) to bill`);
+      toast.success(`Added ${bills.length} food bill(s) to room bill`);
       reload();
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to add to bill");
@@ -985,12 +1004,6 @@ function OwnerDashboard({
           } as any);
         }}
         onCheckout={(bid: string) => { setModalRoom(null); setCheckoutBookingId(bid); }}
-        onNewKot={(bid: string) => {
-          const roomNo = modalRoom?.room_number;
-          setModalRoom(null);
-          navigate({ to: "/food/new", search: { bookingId: bid } } as any);
-          if (roomNo) toast.success(`Opening New KOT for Room ${roomNo}`);
-        }}
         onOtherCharges={(bid: string) => {
           const roomNo = modalRoom?.room_number;
           setModalRoom(null);
@@ -1516,7 +1529,7 @@ function roomTileStyle(r: Room, isOccupied: boolean): { bg: string; label: strin
 }
 
 function RoomStatusModal({
-  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onNewKot, onOtherCharges, onAddExtraBed, onCollectAdvance,
+  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onOtherCharges, onAddExtraBed, onCollectAdvance,
 }: {
   room: Room | null;
   kind: TileKind | null;
@@ -1527,7 +1540,6 @@ function RoomStatusModal({
   onOpenBooking: (bookingId: string) => void;
   onNewBooking: () => void;
   onCheckout: (bookingId: string) => void;
-  onNewKot: (bookingId: string) => void;
   onOtherCharges: (bookingId: string) => void;
   onAddExtraBed: (bookingId: string) => void;
   onCollectAdvance: (bookingId: string) => void;
@@ -1536,8 +1548,6 @@ function RoomStatusModal({
   const [notes, setNotes] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const { can } = usePermissions();
-  const canCreateKot = can("new_kot", "create");
-  const showNewKot = !!bookingId && canCreateKot;
   const canCreatePos = can("pos", "create");
   const showOtherCharges = !!bookingId && canCreatePos;
   const canEditBooking = can("bookings", "edit") || can("bookings", "create");
@@ -1632,11 +1642,6 @@ function RoomStatusModal({
               onClick={() => bookingId && onCollectAdvance(bookingId)}>
               <Receipt className="h-4 w-4 mr-2" /> Collect Advance Payment
             </Button>
-            {showNewKot && (
-              <Button variant="outline" onClick={() => bookingId && onNewKot(bookingId)}>
-                <UtensilsCrossed className="h-4 w-4 mr-2" /> New KOT
-              </Button>
-            )}
             {showOtherCharges && (
               <Button variant="outline" onClick={() => bookingId && onOtherCharges(bookingId)}>
                 <Receipt className="h-4 w-4 mr-2" /> Add Other Charges
@@ -1652,11 +1657,6 @@ function RoomStatusModal({
 
         {(kind === "dirty" || kind === "maintenance") && (
           <div className="grid gap-3">
-            {showNewKot && (
-              <Button variant="outline" onClick={() => bookingId && onNewKot(bookingId)}>
-                <UtensilsCrossed className="h-4 w-4 mr-2" /> New KOT
-              </Button>
-            )}
             {showOtherCharges && (
               <Button variant="outline" onClick={() => bookingId && onOtherCharges(bookingId)}>
                 <Receipt className="h-4 w-4 mr-2" /> Add Other Charges
