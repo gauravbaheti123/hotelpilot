@@ -493,20 +493,6 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <QZStatusIndicator />
-            {(isOwner || permSuper || can("new_kot")) && (
-              <Button
-                asChild
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 shrink-0"
-                aria-label="New KOT"
-                title="New KOT"
-              >
-                <Link to="/food/new">
-                  <ChefHat className="h-5 w-5" />
-                </Link>
-              </Button>
-            )}
             {(isOwner || permSuper || can("shift_handover")) && (
               <Button
                 asChild
