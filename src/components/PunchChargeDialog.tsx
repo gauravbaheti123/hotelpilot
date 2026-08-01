@@ -283,6 +283,22 @@ export function PunchChargeDialog({
     return bill;
   }
 
+  async function findTodayBill() {
+    const { data, error } = await supabase
+      .from("segment_bills" as any)
+      .select("id,bill_number,folio_id")
+      .eq("property_id", propertyId)
+      .eq("segment", segment)
+      .eq("status", "open")
+      .eq("is_walkin", false)
+      .eq("booking_id", bookingId!)
+      .gte("created_at", istDayStartIso())
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    return (data && data.length > 0 ? (data[0] as any) : null) as { id: string; bill_number: string; folio_id: string | null } | null;
+  }
+
   /** KOT punch: append items + print the kitchen/service ticket only. No folio posting. */
   async function printKot() {
     const clean = cleanLines();
