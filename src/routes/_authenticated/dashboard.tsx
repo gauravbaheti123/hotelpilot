@@ -353,20 +353,30 @@ function OwnerDashboard({
       setDepartures(depRows.map(mapRow));
       setRooms(rmsRows as Room[]);
 
-      // Pending food per room (open/printed/served, hotel copy only) — only meaningful today
-      const kots = kotRows;
+      // Pending food per room — SINGLE SOURCE OF TRUTH: open segment_bills (segment = 'food').
+      // The legacy kot_orders flow was removed in Phase 17; never read it here again or the
+      // Lodge room badge will drift from the Food segment tab / checkout block.
       const pfMap = new Map<string, PendingFood>();
-      (kots ?? []).forEach((k: any) => {
-        if (!k.room_id || !k.booking_id) return;
-        const prev = pfMap.get(k.room_id) ?? { bookingId: k.booking_id, amount: 0, count: 0, lastAt: null, items: "" };
-        const itemSummary = (k.items ?? k.kot_items ?? []).map((i: any) => `${i.item_name}×${i.qty}`).join(", ");
-        prev.amount += Number(k.total_amount || 0);
-        prev.count += 1;
-        prev.lastAt = !prev.lastAt || k.created_at > prev.lastAt ? k.created_at : prev.lastAt;
-        prev.items = prev.items ? `${prev.items}; ${itemSummary}` : itemSummary;
-        prev.bookingId = k.booking_id;
-        pfMap.set(k.room_id, prev);
-      });
+      {
+        const { data: fbills } = await supabase
+          .from("segment_bills" as any)
+          .select("id,room_id,booking_id,total_amount,created_at,segment_bill_items(description,qty)")
+          .eq("property_id", propertyId)
+          .eq("segment", "food")
+          .eq("status", "open")
+          .eq("is_walkin", false);
+        (fbills ?? []).forEach((b: any) => {
+          if (!b.room_id || !b.booking_id) return;
+          const prev = pfMap.get(b.room_id) ?? { bookingId: b.booking_id, amount: 0, count: 0, lastAt: null, items: "" };
+          const itemSummary = (b.segment_bill_items ?? []).map((i: any) => `${i.description}×${i.qty}`).join(", ");
+          prev.amount += Number(b.total_amount || 0);
+          prev.count += 1;
+          prev.lastAt = !prev.lastAt || b.created_at > prev.lastAt ? b.created_at : prev.lastAt;
+          prev.items = prev.items ? `${prev.items}; ${itemSummary}` : itemSummary;
+          prev.bookingId = b.booking_id;
+          pfMap.set(b.room_id, prev);
+        });
+      }
       setPendingFoodByRoom(pfMap);
 
       // Build per-row list for the collapsible section
