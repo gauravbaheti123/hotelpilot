@@ -187,6 +187,196 @@ export function PunchChargeDialog({
     return (data as string) ?? null;
   }
 
+  /** Start of today in IST, as an ISO timestamp — day boundary for bill consolidation. */
+  function istDayStartIso() {
+    const now = new Date();
+    const ist = new Date(now.getTime() + (330 + now.getTimezoneOffset()) * 60000);
+    ist.setHours(0, 0, 0, 0);
+    return new Date(ist.getTime() - (330 + now.getTimezoneOffset()) * 60000).toISOString();
+  }
+
+  function cleanLines() {
+    return lines.filter((l) => l.description.trim() && Number(l.qty) > 0 && Number(l.rate) >= 0);
+  }
+
+  function itemRowsFor(billId: string, src: Line[]) {
+    return src.map((l) => {
+      const amt = Number(l.qty) * Number(l.rate);
+      const gAmt = (amt * Number(l.gst_rate || 0)) / 100;
+      return {
+        segment_bill_id: billId,
+        description: l.description.trim(),
+        qty: l.qty,
+        rate: l.rate,
+        amount: Math.round(amt * 100) / 100,
+        gst_rate: l.gst_rate,
+        gst_amount: Math.round(gAmt * 100) / 100,
+      };
+    });
+  }
+
+  /**
+   * Finds today's OPEN segment bill for this room+segment, or creates one.
+   * Day-scoped on purpose: a new day always starts a fresh bill number.
+   */
+  async function getOrCreateTodayBill(): Promise<{ id: string; bill_number: string; folio_id: string | null }> {
+    const { data: existing, error: exErr } = await supabase
+      .from("segment_bills" as any)
+      .select("id,bill_number,folio_id")
+      .eq("property_id", propertyId)
+      .eq("segment", segment)
+      .eq("status", "open")
+      .eq("is_walkin", false)
+      .eq("booking_id", bookingId!)
+      .gte("created_at", istDayStartIso())
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (exErr) throw exErr;
+    if (existing && existing.length > 0) return existing[0] as any;
+
+    const folioId = await ensureFolio();
+    const { data: bill, error: bErr } = await supabase
+      .from("segment_bills" as any)
+      .insert({
+        property_id: propertyId,
+        segment,
+        booking_id: bookingId,
+        folio_id: folioId,
+        room_id: roomId,
+        is_walkin: false,
+        guest_name: guestName ?? null,
+        total_amount: 0,
+        gst_amount: 0,
+        paid_amount: 0,
+        status: "open",
+        created_by: user?.id ?? null,
+      } as any)
+      .select("id,bill_number,folio_id")
+      .single();
+    if (bErr) throw bErr;
+    return bill as any;
+  }
+
+  async function recalcBillTotals(billId: string) {
+    const { data: items, error } = await supabase
+      .from("segment_bill_items" as any)
+      .select("amount,gst_amount")
+      .eq("segment_bill_id", billId);
+    if (error) throw error;
+    const sub = (items ?? []).reduce((s: number, i: any) => s + Number(i.amount || 0), 0);
+    const gst = (items ?? []).reduce((s: number, i: any) => s + Number(i.gst_amount || 0), 0);
+    const total = Math.round((sub + gst) * 100) / 100;
+    const { error: uErr } = await supabase
+      .from("segment_bills" as any)
+      .update({ total_amount: total, gst_amount: Math.round(gst * 100) / 100 })
+      .eq("id", billId);
+    if (uErr) throw uErr;
+    return { sub: Math.round(sub * 100) / 100, gst: Math.round(gst * 100) / 100, total };
+  }
+
+  /** Append the currently punched lines to today's consolidated bill. */
+  async function appendToTodayBill(clean: Line[]) {
+    const bill = await getOrCreateTodayBill();
+    const { error } = await supabase.from("segment_bill_items" as any).insert(itemRowsFor(bill.id, clean) as any);
+    if (error) throw error;
+    await recalcBillTotals(bill.id);
+    return bill;
+  }
+
+  /** KOT punch: append items + print the kitchen/service ticket only. No folio posting. */
+  async function printKot() {
+    const clean = cleanLines();
+    if (clean.length === 0) { toast.error("Add at least one item"); return; }
+    setSaving(true);
+    try {
+      const bill = await appendToTodayBill(clean);
+      try {
+        await printKitchenTicket(bill.bill_number, clean);
+      } catch (pe: any) {
+        toast.error(pe?.message ?? "Kitchen print failed");
+      }
+      toast.success(`Added to ${bill.bill_number} — ticket sent`);
+      onSaved?.();
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to punch order");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /** Consolidated bill: append any pending lines, print everything for today, post to folio once. */
+  async function printBill() {
+    setSaving(true);
+    try {
+      const clean = cleanLines();
+      let bill: { id: string; bill_number: string; folio_id: string | null };
+      if (clean.length > 0) {
+        bill = await appendToTodayBill(clean);
+      } else {
+        const existing = await getOrCreateTodayBill();
+        bill = existing;
+      }
+      const { data: allItems, error: iErr } = await supabase
+        .from("segment_bill_items" as any)
+        .select("description,qty,rate,amount,gst_rate,gst_amount")
+        .eq("segment_bill_id", bill.id)
+        .order("id");
+      if (iErr) throw iErr;
+      const rowsAll = (allItems ?? []) as any[];
+      if (rowsAll.length === 0) { toast.error("Nothing to bill yet"); return; }
+      const t = await recalcBillTotals(bill.id);
+
+      const folioId = bill.folio_id ?? (await ensureFolio());
+      if (folioId) {
+        // Re-post idempotently: clear prior charges for this bill, then insert current state.
+        const { error: dErr } = await supabase
+          .from("folio_charges")
+          .delete()
+          .eq("source_table", "segment_bills")
+          .eq("source_id", bill.id);
+        if (dErr) throw dErr;
+        const chargeType = segment === "food" ? "food" : "laundry";
+        const rows = rowsAll.map((l) => ({
+          folio_id: folioId,
+          charge_type: chargeType,
+          description: `${l.description} (${bill.bill_number})`,
+          qty: l.qty,
+          rate: l.rate,
+          amount: l.amount,
+          gst_rate: l.gst_rate,
+          gst_amount: l.gst_amount,
+          source_table: "segment_bills",
+          source_id: bill.id,
+          segment_bill_ref: bill.bill_number,
+          created_by: user?.id ?? null,
+        }));
+        const { error: fcErr } = await supabase.from("folio_charges").insert(rows as any);
+        if (fcErr) throw fcErr;
+        await supabase.from("segment_bills" as any).update({ folio_id: folioId }).eq("id", bill.id);
+      }
+
+      printSegmentBill({
+        billNumber: bill.bill_number, segment, propertyName: propertyName ?? "",
+        guestName: guestName ?? "Guest",
+        roomNumber: roomNumber ?? null,
+        items: rowsAll.map((l) => ({
+          description: l.description, qty: Number(l.qty), rate: Number(l.rate),
+          amount: Number(l.amount), gst_rate: Number(l.gst_rate),
+        })),
+        sub: t.sub, gst: t.gst, total: t.total,
+        isWalkin: false, paymentMode: null,
+      });
+      toast.success(`${bill.bill_number} posted to folio`);
+      onSaved?.();
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to print bill");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function save() {
     const clean = lines.filter((l) => l.description.trim() && Number(l.qty) > 0 && Number(l.rate) >= 0);
     if (clean.length === 0) { toast.error("Add at least one item"); return; }
