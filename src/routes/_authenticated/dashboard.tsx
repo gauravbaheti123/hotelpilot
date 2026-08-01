@@ -1510,7 +1510,7 @@ function roomTileStyle(r: Room, isOccupied: boolean): { bg: string; label: strin
 }
 
 function RoomStatusModal({
-  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onNewKot, onOtherCharges, onAddExtraBed, onCollectAdvance,
+  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onOtherCharges, onAddExtraBed, onCollectAdvance,
 }: {
   room: Room | null;
   kind: TileKind | null;
@@ -1521,7 +1521,6 @@ function RoomStatusModal({
   onOpenBooking: (bookingId: string) => void;
   onNewBooking: () => void;
   onCheckout: (bookingId: string) => void;
-  onNewKot: (bookingId: string) => void;
   onOtherCharges: (bookingId: string) => void;
   onAddExtraBed: (bookingId: string) => void;
   onCollectAdvance: (bookingId: string) => void;
@@ -1530,8 +1529,6 @@ function RoomStatusModal({
   const [notes, setNotes] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const { can } = usePermissions();
-  const canCreateKot = can("new_kot", "create");
-  const showNewKot = !!bookingId && canCreateKot;
   const canCreatePos = can("pos", "create");
   const showOtherCharges = !!bookingId && canCreatePos;
   const canEditBooking = can("bookings", "edit") || can("bookings", "create");
@@ -1626,11 +1623,6 @@ function RoomStatusModal({
               onClick={() => bookingId && onCollectAdvance(bookingId)}>
               <Receipt className="h-4 w-4 mr-2" /> Collect Advance Payment
             </Button>
-            {showNewKot && (
-              <Button variant="outline" onClick={() => bookingId && onNewKot(bookingId)}>
-                <UtensilsCrossed className="h-4 w-4 mr-2" /> New KOT
-              </Button>
-            )}
             {showOtherCharges && (
               <Button variant="outline" onClick={() => bookingId && onOtherCharges(bookingId)}>
                 <Receipt className="h-4 w-4 mr-2" /> Add Other Charges
@@ -1646,11 +1638,6 @@ function RoomStatusModal({
 
         {(kind === "dirty" || kind === "maintenance") && (
           <div className="grid gap-3">
-            {showNewKot && (
-              <Button variant="outline" onClick={() => bookingId && onNewKot(bookingId)}>
-                <UtensilsCrossed className="h-4 w-4 mr-2" /> New KOT
-              </Button>
-            )}
             {showOtherCharges && (
               <Button variant="outline" onClick={() => bookingId && onOtherCharges(bookingId)}>
                 <Receipt className="h-4 w-4 mr-2" /> Add Other Charges
