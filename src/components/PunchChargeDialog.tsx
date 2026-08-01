@@ -330,7 +330,8 @@ export function PunchChargeDialog({
       if (clean.length > 0) {
         bill = await appendToTodayBill(clean);
       } else {
-        const existing = await getOrCreateTodayBill();
+        const existing = await findTodayBill();
+        if (!existing) { toast.error("Nothing to bill yet"); return; }
         bill = existing;
       }
       const { data: allItems, error: iErr } = await supabase
@@ -371,6 +372,12 @@ export function PunchChargeDialog({
         if (fcErr) throw fcErr;
         await supabase.from("segment_bills" as any).update({ folio_id: folioId }).eq("id", bill.id);
       }
+
+      // Posted to folio → close the day's segment bill so it no longer shows as pending.
+      await supabase
+        .from("segment_bills" as any)
+        .update({ status: "settled", settled_at: new Date().toISOString() })
+        .eq("id", bill.id);
 
       printSegmentBill({
         billNumber: bill.bill_number, segment, propertyName: propertyName ?? "",
