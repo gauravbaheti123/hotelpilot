@@ -571,10 +571,23 @@ export function PunchChargeDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button onClick={save} disabled={saving}>
-            <Printer className="h-4 w-4 mr-1.5" />
-            {saving ? "Saving..." : walkin ? "Save & Print" : "Post to Folio & Print"}
-          </Button>
+          {walkin ? (
+            <Button onClick={save} disabled={saving}>
+              <Printer className="h-4 w-4 mr-1.5" />
+              {saving ? "Saving..." : "Save & Print"}
+            </Button>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={printKot} disabled={saving}>
+                <Printer className="h-4 w-4 mr-1.5" />
+                {saving ? "Working..." : segment === "food" ? "Print KOT" : "Print Ticket"}
+              </Button>
+              <Button onClick={printBill} disabled={saving}>
+                <Printer className="h-4 w-4 mr-1.5" />
+                {saving ? "Working..." : "Print Bill"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
