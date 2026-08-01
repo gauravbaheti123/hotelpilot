@@ -13,6 +13,7 @@ import { inr } from "@/lib/billing";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useAuth } from "@/hooks/use-auth";
 import { ItemPickerCombobox, type PickerItem } from "@/components/ItemPickerCombobox";
+import { buildKotPrintPlan, runKotPrintJobs, type PrinterInfo, type KotItemForPrint } from "@/lib/kotPrint";
 
 export type SegmentKind = "food" | "laundry";
 
@@ -24,6 +25,7 @@ interface Line {
   gst_rate: number;
   menu_item_id?: string | null;
   master_id?: string | null;
+  printer_id?: string | null;
 }
 
 
@@ -55,6 +57,8 @@ export function PunchChargeDialog({
   const [payMode, setPayMode] = useState<string>("cash");
   const [saving, setSaving] = useState(false);
   const [defaultGst, setDefaultGst] = useState<number>(segment === "food" ? 5 : 5);
+  const [printers, setPrinters] = useState<PrinterInfo[]>([]);
+  const [printerByItem, setPrinterByItem] = useState<Map<string, string | null>>(new Map());
 
   useEffect(() => {
     if (!open) return;
@@ -68,7 +72,7 @@ export function PunchChargeDialog({
     let cancelled = false;
     if (segment === "food") {
       supabase.from("menu_items")
-        .select("id,name,price,gst_rate,short_code,is_available")
+        .select("id,name,price,gst_rate,short_code,is_available,kitchen_printer_id")
         .eq("property_id", propertyId)
         .eq("is_available", true)
         .order("name")
@@ -78,6 +82,7 @@ export function PunchChargeDialog({
             id: m.id, name: m.name, rate: Number(m.price ?? 0),
             gst_rate: m.gst_rate, short_code: m.short_code, category: null,
           })));
+          setPrinterByItem(new Map((data ?? []).map((m: any) => [m.id, m.kitchen_printer_id ?? null])));
         });
     } else {
       supabase.from("sundry_items")
@@ -93,6 +98,23 @@ export function PunchChargeDialog({
           })));
         });
     }
+    return () => { cancelled = true; };
+  }, [open, segment, propertyId]);
+
+  // Printers for kitchen ticket routing (food only)
+  useEffect(() => {
+    if (!open || segment !== "food" || !propertyId) return;
+    let cancelled = false;
+    supabase.from("printers")
+      .select("id,name,paper_size,printer_role,type,is_active")
+      .eq("property_id", propertyId)
+      .eq("is_active", true)
+      .then(({ data }) => {
+        if (cancelled) return;
+        setPrinters((data ?? []).map((p: any) => ({
+          id: p.id, name: p.name, paper_size: p.paper_size, printer_role: p.printer_role,
+        })));
+      });
     return () => { cancelled = true; };
   }, [open, segment, propertyId]);
 
@@ -129,7 +151,30 @@ export function PunchChargeDialog({
       description: it.name,
       rate: Number(it.rate ?? 0),
       gst_rate: Number(it.gst_rate ?? defaultGst),
+      printer_id: segment === "food" ? (printerByItem.get(it.id) ?? null) : null,
     });
+  }
+
+  /** Kitchen ticket + counter copy, matching the removed legacy New KOT flow. */
+  async function printKitchenTicket(billNumber: string, clean: Line[]) {
+    if (segment !== "food") return;
+    const items: KotItemForPrint[] = clean.map((l) => ({
+      item_name: l.description.trim(),
+      qty: Number(l.qty),
+      rate: Number(l.rate),
+      printer_id: l.printer_id ?? null,
+    }));
+    const counter = printers.find((p) => (p.printer_role ?? "").toLowerCase() === "counter copy") ?? null;
+    const { jobs, warnings } = buildKotPrintPlan(items, printers, counter, "kitchen+counter");
+    warnings.forEach((w) => toast.warning(w));
+    if (jobs.length === 0) return;
+    await runKotPrintJobs({
+      kot_number: billNumber,
+      kot_type: roomNumber && !walkin ? "room" : "table",
+      room_number: walkin ? null : (roomNumber ?? null),
+      guest_name: walkin ? walkinGuest.trim() : (guestName ?? null),
+      created_at: new Date().toISOString(),
+    }, jobs);
   }
 
   async function ensureFolio(): Promise<string | null> {
@@ -213,6 +258,11 @@ export function PunchChargeDialog({
       }
 
       toast.success(`${segment === "food" ? "Food" : "Laundry"} bill ${billNumber} created`);
+      try {
+        await printKitchenTicket(billNumber, clean);
+      } catch (pe: any) {
+        toast.error(pe?.message ?? "Kitchen print failed");
+      }
       printSegmentBill({
         billNumber, segment, propertyName: propertyName ?? "",
         guestName: walkin ? walkinGuest.trim() : (guestName ?? "Guest"),
