@@ -29,7 +29,6 @@ import {
   CalendarCheck,
   ListChecks,
   PlusCircle,
-  ChefHat,
   ClipboardList,
   ClipboardCheck,
   Receipt,
