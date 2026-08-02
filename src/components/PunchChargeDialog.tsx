@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -303,10 +303,17 @@ export function PunchChargeDialog({
   }
 
   /** KOT punch: append items + print the kitchen/service ticket only. No folio posting. */
+  /**
+   * KOT punch — strictly kitchen-side. Appends to today's single open bill and
+   * prints the station ticket. Never touches folio_charges, never settles the
+   * bill, never prints the customer bill.
+   */
   async function printKot() {
+    if (inFlight.current) return;
     const clean = cleanLines();
     if (clean.length === 0) { toast.error("Add at least one item"); return; }
-    setSaving(true);
+    inFlight.current = true;
+    setBusy("kot");
     try {
       const bill = await appendToTodayBill(clean);
       try {
@@ -320,13 +327,16 @@ export function PunchChargeDialog({
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to punch order");
     } finally {
-      setSaving(false);
+      setBusy(null);
+      inFlight.current = false;
     }
   }
 
   /** Consolidated bill: append any pending lines, print everything for today, post to folio once. */
   async function printBill() {
-    setSaving(true);
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy("bill");
     try {
       const clean = cleanLines();
       let bill: { id: string; bill_number: string; folio_id: string | null };
@@ -399,7 +409,8 @@ export function PunchChargeDialog({
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to print bill");
     } finally {
-      setSaving(false);
+      setBusy(null);
+      inFlight.current = false;
     }
   }
 
