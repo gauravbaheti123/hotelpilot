@@ -162,6 +162,7 @@ export async function printHandover(h: HandoverForPrint): Promise<void> {
   // The CSS below is fully self-contained.
   const css = `
     @page { size: A4 portrait; margin: 12mm; }
+    * { visibility: visible !important; }
     html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; color: #000 !important; font-family: Arial, sans-serif; }
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 10.5pt; line-height: 1.4; }
     .page { width: 100%; box-sizing: border-box; }
@@ -246,7 +247,7 @@ export async function printHandover(h: HandoverForPrint): Promise<void> {
       ${page2Detail || '<p style="font-size:10pt;color:#666;">No transactions in this window.</p>'}
     </div>`;
 
-  const doc = `<!doctype html><html><head><meta charset="utf-8"><title>Handover ${esc(h.id.slice(0, 8))}</title>${parentStyles}<style>${css}</style></head><body>${page1}${page2}</body></html>`;
+  const doc = `<!doctype html><html><head><meta charset="utf-8"><title>Handover ${esc(h.id.slice(0, 8))}</title><style>${css}</style></head><body>${page1}${page2}</body></html>`;
 
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
