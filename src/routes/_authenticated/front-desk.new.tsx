@@ -270,6 +270,38 @@ function NewBookingPage() {
     setSearchOpen(false);
   }
 
+  // Phase 21 — debounced lookup of an existing guest by mobile (first) or ID
+  // number, to surface their previously uploaded ID doc + a duplicate warning.
+  const idLookupTimer = useRef<number | null>(null);
+  useEffect(() => {
+    if (!current) return;
+    const m = mobile.trim();
+    const n = idNumber.trim();
+    if (m.length !== 10 && n.length < 6) {
+      setIdLookup(null);
+      setReuseExistingId(false);
+      dupWarnedRef.current = null;
+      return;
+    }
+    if (idLookupTimer.current) window.clearTimeout(idLookupTimer.current);
+    idLookupTimer.current = window.setTimeout(async () => {
+      const res = await lookupExistingGuestId(current.id, m, n);
+      setIdLookup(res);
+      if (!res) { setReuseExistingId(false); dupWarnedRef.current = null; return; }
+      // 21.4 — non-blocking duplicate heads-up (once per matched guest)
+      const key = `${res.guest.id}:${res.matchedOn}`;
+      if (dupWarnedRef.current !== key) {
+        dupWarnedRef.current = key;
+        toast.info(
+          `A guest with this ${res.matchedOn === "mobile" ? "mobile" : "ID"} already exists — ` +
+          `${res.guest.name ?? "Unnamed"}${res.guest.idProofNumber ? `, ${res.guest.idProofNumber}` : ""}`,
+        );
+      }
+    }, 500);
+    return () => { if (idLookupTimer.current) window.clearTimeout(idLookupTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mobile, idNumber, current?.id]);
+
   const nights = nightsBetween(checkIn, checkOut);
   const extraBedRate = useMemo(() => {
     const cat = cats.find((c) => c.id === categoryId);
