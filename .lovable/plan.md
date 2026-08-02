@@ -1,54 +1,46 @@
-## Root cause (verified from source)
+## What I found (read-only checks)
 
-`AppShell` is rendered inside every route component (`dashboard.tsx`, `front-desk.*`, etc.), so it **remounts on every navigation**. Every hook it (and its children) call re-runs its `useEffect` and re-fires Supabase from scratch:
+Verified against the live database and `src/components/PunchChargeDialog.tsx`.
 
-- `useAuth` → `supabase.auth.getSession()` + `user_roles.select(role)`
-- `useProperties` → `properties.select(...)`
-- `useCurrentProperty` → another `user_roles.select(property_id)`
-- `usePermissions` → `user_roles.select(role_id, property_id)` + `role_permissions` join (the expensive one)
-- `RemindersBell` → reminders fetch
-- Plus each page loader's own fetches
+**Working today**
+- Cron job `auto-close-segment-bills-daily` is active at `29 18 * * *` UTC = 23:59 IST and has succeeded every night (last run 2026-08-01 18:29 UTC, no errors).
+- Its selection filter (`status='open'`, segment in food/laundry, `is_walkin=false`, `booking_id IS NOT NULL`) does match bills produced by the new Print-KOT flow — current live examples `BRIJ-F-0011`, `-0012`, `-0013` are open, non-walk-in, booking-linked, with 1-2 items and zero folio charges, so they would be picked up.
 
-None of these use TanStack Query, so nothing is cached across navigations. Result: 5+ serial round-trips fire on every click, and until `usePermissions` resolves, the sidebar/`RequirePermission` guards show spinners → the ~5-second stall.
+**Gaps vs. the manual "Print Bill" path**
 
-This matches the "every page, not one page" symptom exactly. Route-specific loaders are not the culprit.
+| # | Issue | Detail |
+|---|---|---|
+| 1 | Two sources of truth | Settlement is implemented twice — in SQL (`auto_close_segment_bills`) and in TSX (`printBill`). They already differ, which is exactly how they will drift further. |
+| 2 | Partial-post blind spot | SQL only posts when `COUNT(folio_charges)=0`. A bill that was partly posted (e.g. Print Bill posted, then more KOT items were appended) is closed with the newer items **never** reaching the folio. `printBill` avoids this by delete-then-reinsert. |
+| 3 | Stale totals | SQL never recalculates `total_amount`/`gst_amount` from `segment_bill_items` before closing; `printBill` does. The activity log then records a stale amount. |
+| 4 | No day scoping | The job closes *every* open bill regardless of date. Harmless at 23:59, but a manual `SELECT auto_close_segment_bills();` mid-day silently settles in-progress KOT bills — which is exactly what 23.2's test would do. |
 
-## Fix
+Item 2 is a real money bug: line items can be silently dropped from the guest's folio.
 
-Convert the shared session/property/permission/reminders fetches to **TanStack Query** with a long `staleTime` so remounting `AppShell` reuses cached data instead of refetching. Invalidate only on real change (auth event, property switch, `invalidatePermissions()`).
+## Plan
 
-### 1. `src/hooks/use-auth.ts`
-- Replace `useState` + `useEffect` with `useQuery({ queryKey: ["auth","session"], staleTime: Infinity })` returning `{ user, session, roles }`.
-- Keep a single module-level `supabase.auth.onAuthStateChange` subscriber that calls `queryClient.setQueryData(["auth","session"], …)` on `SIGNED_IN` / `SIGNED_OUT` / `TOKEN_REFRESHED` (session only, no role refetch).
-- Roles fetched once inside the same query.
+**1. Single source of truth (DB function)**
 
-### 2. `src/hooks/use-property.ts`
-- `useProperties` → `useQuery({ queryKey: ["properties"], staleTime: 5*60_000 })`.
-- `useCurrentProperty`'s `user_roles` sync → `useQuery({ queryKey: ["user-assigned-properties", userId], staleTime: 5*60_000 })`.
-- `setCurrentId` invalidates `["permissions", userId, newPropertyId]`.
+Create `public.settle_segment_bill(_bill_id uuid, _actor uuid default null, _auto boolean default false)`:
+- recalculate `total_amount` / `gst_amount` from `segment_bill_items`
+- resolve folio via `COALESCE(folio_id, get_or_create_folio(booking_id))`
+- **delete + reinsert** all `folio_charges` for `source_table='segment_bills', source_id=_bill_id` (idempotent, matches `printBill`, fixes the partial-post gap)
+- set `status='settled'`, `settled_at=now()`, `folio_id`
+- append the auto-close note and write the `SEGMENT_BILL_AUTO_CLOSED` / `SEGMENT_BILL_SETTLED` activity log entry
+- no-op safely if the bill is already settled or has zero items
 
-### 3. `src/hooks/use-permissions.ts`
-- Replace ad-hoc `useEffect` + `tick` + custom event with `useQuery({ queryKey: ["permissions", userId, propertyId], staleTime: 5*60_000, enabled: !!userId })`.
-- `invalidatePermissions()` becomes `queryClient.invalidateQueries({ queryKey: ["permissions"] })`.
-- Keep the owner/superadmin bypass — return synchronously without a query.
+**2. Rewrite `auto_close_segment_bills()`** to be a thin loop that calls `settle_segment_bill(id, null, true)`, wrapped per-bill in an exception block so one bad bill can't abort the whole nightly run (currently a single failure aborts everything). Add optional IST-day scoping so mid-day manual invocation only touches bills from the current IST day.
 
-### 4. `src/components/Reminders.tsx`
-- Wrap the fetch in `useQuery({ queryKey: ["reminders", propertyId, userId], staleTime: 60_000 })` and keep the existing realtime subscription to `setQueryData`/invalidate. Remove the per-mount refetch.
+**3. Point `printBill` at the same function** — replace the client-side delete/insert/settle block in `PunchChargeDialog.tsx` with an RPC call to `settle_segment_bill`, keeping the existing print + toast + totals-fetch behaviour unchanged. No UI change.
 
-### 5. `_authenticated/route.tsx` `beforeLoad`
-- It runs on every navigation and calls `supabase.auth.getUser()` + `rpc("current_user_totp_required")`. Cache both in router `context` via a memo keyed on session, so repeat navigations skip the network:
-  - Store the last-verified `user.id` and a `totpChecked` flag in `sessionStorage`; short-circuit when the same user is already verified this tab.
-  - Continue to force a real check when session changes (auth listener already invalidates the router with `router.invalidate()` — verify this exists in `__root.tsx`; if not, add it).
+**4. Test (23.2)** using the live open bills plus fresh punches:
+- punch 3 Print-KOT items on one room/segment → confirm one bill number, 3 items, **0** folio charges
+- run `SELECT public.auto_close_segment_bills();` → confirm `settled_at` set, exactly 3 folio charges (no dupes, none missing), totals match the item sum, activity log row written
+- re-run the job → confirm it is a no-op (no duplicate charges)
+- re-run the partial-post case: settle, append another KOT item, settle again → confirm the folio ends with all items exactly once
+- confirm the dashboard/checkout pending indicator clears for that room
 
-### 6. Verify no regressions
-- After edits, click through Dashboard → Front Desk → Billing → Reports → Dashboard and confirm on the Network tab: `user_roles`, `role_permissions`, `properties` fire **once** for the session, not per navigation.
-- Confirm sign-out clears the QueryClient (`queryClient.clear()`).
-- Confirm `PropertySelector` switch still refetches permissions for the new property.
-
-## Out of scope
-- No UI/layout changes.
-- No route-loader restructuring beyond the `_authenticated` `beforeLoad` cache above.
-- No code-splitting/bundle changes (all evidence points to redundant network, not chunk load).
-
-## Verification target
-Sub-1s cached navigation between already-visited routes; ≤1 `user_roles` + 1 `role_permissions` request per session (not per click).
+## Technical notes
+- Requires two migrations-worth of SQL in one migration: new `settle_segment_bill`, replaced `auto_close_segment_bills`. `SECURITY DEFINER`, `search_path=public`, `EXECUTE` granted to `authenticated` (Print Bill calls it as the signed-in user) and `service_role`.
+- The client keeps doing the printing; only the write path moves into SQL.
+- Cron schedule and job name stay as they are — they are already correct.

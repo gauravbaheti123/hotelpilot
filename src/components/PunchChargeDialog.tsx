@@ -357,40 +357,18 @@ export function PunchChargeDialog({
       if (rowsAll.length === 0) { toast.error("Nothing to bill yet"); return; }
       const t = await recalcBillTotals(bill.id);
 
-      const folioId = bill.folio_id ?? (await ensureFolio());
-      if (folioId) {
-        // Re-post idempotently: clear prior charges for this bill, then insert current state.
-        const { error: dErr } = await supabase
-          .from("folio_charges")
-          .delete()
-          .eq("source_table", "segment_bills")
-          .eq("source_id", bill.id);
-        if (dErr) throw dErr;
-        const chargeType = segment === "food" ? "food" : "laundry";
-        const rows = rowsAll.map((l) => ({
-          folio_id: folioId,
-          charge_type: chargeType,
-          description: `${l.description} (${bill.bill_number})`,
-          qty: l.qty,
-          rate: l.rate,
-          amount: l.amount,
-          gst_rate: l.gst_rate,
-          gst_amount: l.gst_amount,
-          source_table: "segment_bills",
-          source_id: bill.id,
-          segment_bill_ref: bill.bill_number,
-          created_by: user?.id ?? null,
-        }));
-        const { error: fcErr } = await supabase.from("folio_charges").insert(rows as any);
-        if (fcErr) throw fcErr;
-        await supabase.from("segment_bills" as any).update({ folio_id: folioId }).eq("id", bill.id);
+      // Ensure a folio exists for in-house bills, then settle through the single
+      // shared DB routine (same one the 23:59 auto-close job uses).
+      if (!bill.folio_id) await ensureFolio();
+      const { data: settleRes, error: settleErr } = await supabase.rpc(
+        "settle_segment_bill" as any,
+        { _bill_id: bill.id, _actor: user?.id ?? null, _auto: false } as any,
+      );
+      if (settleErr) throw settleErr;
+      const settled = settleRes as any;
+      if (settled && settled.ok === false) {
+        throw new Error(settled.reason === "no_items" ? "Nothing to bill yet" : "Could not settle bill");
       }
-
-      // Posted to folio → close the day's segment bill so it no longer shows as pending.
-      await supabase
-        .from("segment_bills" as any)
-        .update({ status: "settled", settled_at: new Date().toISOString() })
-        .eq("id", bill.id);
 
       printSegmentBill({
         billNumber: bill.bill_number, segment, propertyName: propertyName ?? "",
