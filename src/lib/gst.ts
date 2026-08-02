@@ -63,31 +63,60 @@ export function resolveGstRateInclusive(
 
 export type TaxType = "cgst_sgst" | "igst";
 
-function normState(s: string | null | undefined): string {
-  return String(s ?? "").trim().toLowerCase().replace(/[^a-z]/g, "");
+export interface TaxParty {
+  /** Pre-resolved 2-digit GST state code, when the record already stores one. */
+  stateCode?: string | null;
+  /** GSTIN — its first 2 digits are the authoritative state code. */
+  gstin?: string | null;
+  /** Free-text address state, used only when the two above are unusable. */
+  state?: string | null;
+}
+
+/**
+ * Resolve a party's GST state code, in priority order:
+ *   1. GSTIN state code   2. stored state_code   3. address state name
+ * Returns null when none of them yield a real state code.
+ */
+export function resolveStateCode(party: TaxParty | null | undefined): string | null {
+  if (!party) return null;
+  const fromGstin = stateCodeFromGstin(party.gstin);
+  if (fromGstin) return fromGstin;
+  const stored = String(party.stateCode ?? "").trim();
+  if (/^\d{1,2}$/.test(stored)) return stored.padStart(2, "0");
+  return stateCodeFromName(party.state);
 }
 
 /**
  * Decide the tax split for a bill.
- * - Bill-To state unknown → falls back to CGST+SGST (never blocks billing),
- *   flagged via `unknownState` so the UI can show a subtle data-quality note.
+ * Compares 2-digit state codes (not names), so spelling variants can never
+ * produce a false IGST bill.
+ * - Bill-To state unresolvable → silently inherits the property's own state,
+ *   i.e. intra-state CGST+SGST. No warning is surfaced.
  * - Different state → IGST (single combined-rate line).
  */
 export function resolveTaxType(
-  billToState: string | null | undefined,
-  propertyState: string | null | undefined,
-): { taxType: TaxType; unknownState: boolean } {
-  const bill = normState(billToState);
-  const own = normState(propertyState);
-  if (!bill || !own) return { taxType: "cgst_sgst", unknownState: !bill };
-  return { taxType: bill === own ? "cgst_sgst" : "igst", unknownState: false };
+  billTo: TaxParty | string | null | undefined,
+  property: TaxParty | string | null | undefined,
+): { taxType: TaxType; billToStateCode: string | null; propertyStateCode: string | null } {
+  const asParty = (v: TaxParty | string | null | undefined): TaxParty | null =>
+    typeof v === "string" ? { state: v } : (v ?? null);
+
+  const propertyStateCode = resolveStateCode(asParty(property));
+  // Unknown bill-to → treat as the property's home state (intra-state).
+  const billToStateCode = resolveStateCode(asParty(billTo)) ?? propertyStateCode;
+
+  const taxType: TaxType =
+    billToStateCode && propertyStateCode && billToStateCode !== propertyStateCode
+      ? "igst"
+      : "cgst_sgst";
+  return { taxType, billToStateCode, propertyStateCode };
 }
 
 export function isInterState(
-  billToState: string | null | undefined,
-  propertyState: string | null | undefined,
+  billTo: TaxParty | string | null | undefined,
+  property: TaxParty | string | null | undefined,
 ): boolean {
-  return resolveTaxType(billToState, propertyState).taxType === "igst";
+  return resolveTaxType(billTo, property).taxType === "igst";
 }
 
 /** Split a GST amount into the lines that should print for this tax type. */
