@@ -115,12 +115,17 @@ export function KotHistoryDialog({
     if (!open || !propertyId) return;
     setLoading(true);
     try {
+      // Phase 53 — scope STRICTLY to the room that was tapped. room_id is the
+      // hard filter (never replaced by booking_id, which can span rooms), and
+      // booking_id further narrows to the current guest's stay when known.
+      if (!roomId) { setPunches([]); return; }
       let qb = supabase
         .from("segment_bills" as any)
-        .select("id,bill_number,status,created_at")
+        .select("id,bill_number,status,created_at,room_id,booking_id")
         .eq("property_id", propertyId)
-        .eq("segment", segment);
-      qb = bookingId ? qb.eq("booking_id", bookingId) : qb.eq("room_id", roomId as string);
+        .eq("segment", segment)
+        .eq("room_id", roomId);
+      if (bookingId) qb = qb.eq("booking_id", bookingId);
       const { data: bills, error } = await qb.order("created_at", { ascending: false }).limit(10);
       if (error) throw error;
       const billRows = (bills ?? []) as unknown as BillRow[];
