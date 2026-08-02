@@ -117,6 +117,7 @@ const NAV_GROUPS: NavGroup[] = [
           { to: "/restaurant", label: "Restaurant Billing", icon: UtensilsCrossed, module: "restaurant_billing" },
           { to: "/billing/invoices", label: "Invoices", icon: FileText, module: "invoices" },
           { to: "/billing/mis", label: "MIS A/c", icon: Banknote, module: "mis_ac" },
+          { to: "/billing/companies", label: "Billing Companies", icon: Building2, module: "invoices" },
         ],
       },
       {

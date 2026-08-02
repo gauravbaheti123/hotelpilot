@@ -5,10 +5,10 @@ import { RequirePermission } from "@/components/RequirePermission";
 import { isValidOrEmptyGSTIN } from "@/lib/gstin";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/masters/billing-companies")({
+export const Route = createFileRoute("/_authenticated/billing/companies")({
   head: () => ({ meta: [{ title: "Billing Companies — HotelPilot" }] }),
   component: () => (
-    <RequirePermission module="master_data"><BillingCompaniesPage /></RequirePermission>
+    <RequirePermission module="invoices"><BillingCompaniesPage /></RequirePermission>
   ),
 });
 
