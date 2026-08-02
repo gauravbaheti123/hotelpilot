@@ -6014,6 +6014,15 @@ export type Database = {
         Args: { _property_id: string }
         Returns: string
       }
+      list_property_staff: {
+        Args: { _property_id: string }
+        Returns: {
+          display_name: string
+          email: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }[]
+      }
       log_auth_event: {
         Args: {
           _event_type: string
