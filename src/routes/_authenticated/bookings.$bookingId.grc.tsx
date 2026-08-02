@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CityInput, StateSelect, NationInput } from "@/components/AddressFields";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -81,7 +82,7 @@ function GrcPage() {
       setLoading(true);
       const { data: b, error } = await supabase
         .from("bookings")
-        .select(`id, booking_number, property_id, check_in, check_out, adults, children, source, total_amount, advance_amount,
+        .select(`id, booking_number, property_id, guest_id, check_in, check_out, adults, children, source, total_amount, advance_amount,
                  guests(name, mobile, email, address, city, state, country, pincode, company, id_proof_type, id_proof_number, gender, dob, nationality, gst_number),
                  booking_rooms(rate, meal_plan, actual_check_in, actual_check_out, rooms!booking_rooms_room_id_fkey(room_number), room_categories(name))`)
         .eq("id", bookingId)
