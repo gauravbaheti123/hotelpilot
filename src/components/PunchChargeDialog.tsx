@@ -418,7 +418,9 @@ export function PunchChargeDialog({
     const clean = lines.filter((l) => l.description.trim() && Number(l.qty) > 0 && Number(l.rate) >= 0);
     if (clean.length === 0) { toast.error("Add at least one item"); return; }
     if (walkin && !walkinGuest.trim()) { toast.error("Enter walk-in customer name"); return; }
-    setSaving(true);
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy("save");
     try {
       const folioId = walkin ? null : await ensureFolio();
       const insertBill = {
@@ -506,7 +508,8 @@ export function PunchChargeDialog({
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to save");
     } finally {
-      setSaving(false);
+      setBusy(null);
+      inFlight.current = false;
     }
   }
 
