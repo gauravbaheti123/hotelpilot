@@ -25,6 +25,8 @@ import {
   computeBillDiscountAmount,
   type BillDiscount,
  inrRound,
+  consolidateSegmentCharges,
+  type DisplayCharge,
 } from "@/lib/billing";
 import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil } from "lucide-react";
 import { AlertTriangle, ShieldAlert, ArrowRightLeft } from "lucide-react";
