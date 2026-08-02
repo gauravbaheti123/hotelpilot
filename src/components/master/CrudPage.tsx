@@ -81,6 +81,10 @@ export interface CrudPageProps<T extends { id: string }> {
   initialNew?: Record<string, any>;
   filterEq?: Record<string, any>;
   headerActions?: ReactNode;
+  /** Row fields searched by the toolbar search box (defaults to all string values). */
+  searchFields?: string[];
+  /** Optional data-quality flag: return a reason string to mark a row as suspicious. */
+  flagRow?: (row: T) => string | null;
   /**
    * Optional pre-save hook. Return a string to abort with an error toast,
    * or null/undefined to proceed. `editing` includes an `id` when updating.
