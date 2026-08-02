@@ -23,7 +23,7 @@ import { useGstSlabs } from "@/hooks/use-gst-slabs";
 import { resolveGstRate, resolveGstRateInclusive } from "@/lib/gst";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
-import { addDaysIso, nightsBetween, SOURCES, todayIso } from "@/lib/front-desk";
+import { addDaysIso, isValidStayRange, nightsBetween, SOURCES, todayIso } from "@/lib/front-desk";
 import {
   defaultMealPlanFor,
   extraBedRateFor,
@@ -468,7 +468,7 @@ function NewBookingPage() {
     if (!assignLater && !roomId) return toast.error("Pick a room (or tick 'Assign room later')");
     if (assignLater && checkInNow)
       return toast.error("Assign a room before checking in — a room is required to check in a guest");
-    if (nightsBetween(checkIn, checkOut) < 1) return toast.error("Check-out must be after check-in");
+    if (!isValidStayRange(checkIn, checkOut)) return toast.error("Check-out must be after check-in");
     if (!isValidOrEmptyGSTIN(gstNumber)) {
       toast.error(GSTIN_ERROR);
       if (typeof document !== "undefined") {

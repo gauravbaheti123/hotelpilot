@@ -30,6 +30,7 @@ import {
   BOOKING_STATUS_LABEL,
   BOOKING_STATUS_TONE,
   nightsBetween,
+  isValidStayRange,
 } from "@/lib/front-desk";
 import { fireTrigger } from "@/lib/whatsapp";
 import { verifyManagerPassword } from "@/lib/manager-verify";
@@ -427,8 +428,8 @@ function BookingDetailPage() {
 
   async function modifyDate() {
     if (!b) return;
+    if (!isValidStayRange(b.check_in, newCheckOut)) return toast.error("Check-out must be after check-in");
     const nights = nightsBetween(b.check_in, newCheckOut);
-    if (nights < 1) return toast.error("Check-out must be after check-in");
     const br = b.booking_rooms[0];
     const newTotal = nights * (br?.rate ?? 0);
     const newBalance = Math.max(0, newTotal - b.advance_amount);
