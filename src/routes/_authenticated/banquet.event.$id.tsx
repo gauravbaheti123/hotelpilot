@@ -16,6 +16,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { isValidStayRange } from "@/lib/front-desk";
 import { BANQUET_STATUS_TONE, computeBanquetTotal, FUNCTION_TYPES } from "@/lib/banquet";
 import { ArrowLeft, BedDouble, Trash2, CheckCircle2, Ban, Plus, FileText, Pencil, Save, LogIn, LogOut, UserPlus, Eye } from "lucide-react";
 import { checkInBlock, checkOutBlock, bulkCheckInBlocks, dueForCheckIn, type EventBlockRecord } from "@/lib/eventRoomBlocks";
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/banquet/event/$id")({
 
 interface Bq {
   id: string; property_id: string; banquet_number: string; function_type: string;
-  event_name: string | null; event_date: string; start_time: string; end_time: string; pax: number;
+  event_name: string | null; event_date: string; event_end_date: string | null; start_time: string; end_time: string; pax: number;
   package_rate: number; hall_charge: number; fb_charge: number; extra_charge: number;
   extra_charge_description: string | null;
   discount_amount: number; total_amount: number; advance_amount: number; balance_amount: number;
@@ -74,7 +75,7 @@ function BanquetEventPage() {
 
   // Event meta edit dialog
   const [metaOpen, setMetaOpen] = useState(false);
-  const [meta, setMeta] = useState({ event_name: "", hall_id: "", event_date: "", start_time: "", end_time: "", pax: 0, function_type: "" });
+  const [meta, setMeta] = useState({ event_name: "", hall_id: "", event_date: "", event_end_date: "", start_time: "", end_time: "", pax: 0, function_type: "" });
 
   // Assign guest dialog
   const [assignOpen, setAssignOpen] = useState(false);
@@ -86,7 +87,7 @@ function BanquetEventPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase.from("banquet_bookings").select(`
-      id,property_id,banquet_number,event_name,function_type,event_date,start_time,end_time,pax,
+      id,property_id,banquet_number,event_name,function_type,event_date,event_end_date,start_time,end_time,pax,
       package_rate,hall_charge,fb_charge,extra_charge,extra_charge_description,discount_amount,total_amount,
       advance_amount,balance_amount,advance_payment_mode,status,notes,hall_id,guest_id,
       halls(id,name,capacity),guests(id,name,mobile,email)
@@ -105,6 +106,7 @@ function BanquetEventPage() {
       event_name: bq.event_name ?? "",
       hall_id: bq.hall_id ?? "",
       event_date: bq.event_date,
+      event_end_date: bq.event_end_date ?? bq.event_date,
       start_time: (bq.start_time ?? "").slice(0, 5),
       end_time: (bq.end_time ?? "").slice(0, 5),
       pax: bq.pax ?? 0,
@@ -312,10 +314,14 @@ function BanquetEventPage() {
   async function saveMeta() {
     if (!b) return;
     if (!meta.event_date || !meta.start_time || !meta.end_time) return toast.error("Date and time required");
+    const endDate = meta.event_end_date || meta.event_date;
+    if (!isValidStayRange(meta.event_date, endDate, meta.start_time, meta.end_time))
+      return toast.error("Check-out must be after check-in");
     const { error } = await supabase.from("banquet_bookings").update({
       event_name: meta.event_name.trim() || null,
       hall_id: meta.hall_id || null,
       event_date: meta.event_date,
+      event_end_date: meta.event_end_date || meta.event_date,
       start_time: meta.start_time,
       end_time: meta.end_time,
       pax: Number(meta.pax) || 0,
@@ -382,7 +388,7 @@ function BanquetEventPage() {
           <Badge variant="outline" className={BANQUET_STATUS_TONE[b.status]}>{b.status.toUpperCase()}</Badge>
           <div className="text-sm text-muted-foreground">
             {b.event_name ? <span className="font-medium text-foreground mr-1">{b.event_name} ·</span> : null}
-            {b.halls?.name ?? "—"} · {b.event_date} · {b.start_time?.slice(0,5)}–{b.end_time?.slice(0,5)} · {b.pax} pax
+            {b.halls?.name ?? "—"} · {b.event_date} {b.start_time?.slice(0,5)} → {b.event_end_date && b.event_end_date !== b.event_date ? `${b.event_end_date} ` : ""}{b.end_time?.slice(0,5)} · {b.pax} pax
           </div>
           {editable && (
             <Button size="sm" variant="ghost" onClick={() => setMetaOpen(true)}>
@@ -609,13 +615,18 @@ function BanquetEventPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5"><Label className="text-xs">Date</Label>
-                <Input type="date" value={meta.event_date} onChange={(e) => setMeta({ ...meta, event_date: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Check-in date</Label>
+                <Input type="date" value={meta.event_date} onChange={(e) => {
+                  const v = e.target.value;
+                  setMeta((m) => ({ ...m, event_date: v, event_end_date: !m.event_end_date || m.event_end_date < v ? v : m.event_end_date }));
+                }} /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Check-out date</Label>
+                <Input type="date" min={meta.event_date} value={meta.event_end_date} onChange={(e) => setMeta({ ...meta, event_end_date: e.target.value })} /></div>
               <div className="space-y-1.5"><Label className="text-xs">Pax</Label>
                 <Input type="number" value={meta.pax} onChange={(e) => setMeta({ ...meta, pax: Number(e.target.value) })} /></div>
-              <div className="space-y-1.5"><Label className="text-xs">Start time</Label>
+              <div className="space-y-1.5"><Label className="text-xs">Check-in time</Label>
                 <Input type="time" value={meta.start_time} onChange={(e) => setMeta({ ...meta, start_time: e.target.value })} /></div>
-              <div className="space-y-1.5"><Label className="text-xs">End time</Label>
+              <div className="space-y-1.5"><Label className="text-xs">Check-out time</Label>
                 <Input type="time" value={meta.end_time} onChange={(e) => setMeta({ ...meta, end_time: e.target.value })} /></div>
               <div className="space-y-1.5 sm:col-span-2"><Label className="text-xs">Function type</Label>
                 <Select value={meta.function_type} onValueChange={(v) => setMeta({ ...meta, function_type: v })}>

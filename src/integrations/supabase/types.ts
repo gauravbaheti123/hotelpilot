@@ -225,6 +225,7 @@ export type Database = {
           end_time: string
           event_bill_id: string | null
           event_date: string
+          event_end_date: string | null
           event_name: string | null
           extra_charge: number
           extra_charge_description: string | null
@@ -262,6 +263,7 @@ export type Database = {
           end_time: string
           event_bill_id?: string | null
           event_date: string
+          event_end_date?: string | null
           event_name?: string | null
           extra_charge?: number
           extra_charge_description?: string | null
@@ -299,6 +301,7 @@ export type Database = {
           end_time?: string
           event_bill_id?: string | null
           event_date?: string
+          event_end_date?: string | null
           event_name?: string | null
           extra_charge?: number
           extra_charge_description?: string | null
@@ -785,7 +788,9 @@ export type Database = {
           booking_id: string
           category_id: string | null
           check_in: string
+          check_in_time: string | null
           check_out: string
+          check_out_time: string | null
           children: number
           created_at: string
           end_date: string | null
@@ -810,7 +815,9 @@ export type Database = {
           booking_id: string
           category_id?: string | null
           check_in: string
+          check_in_time?: string | null
           check_out: string
+          check_out_time?: string | null
           children?: number
           created_at?: string
           end_date?: string | null
@@ -835,7 +842,9 @@ export type Database = {
           booking_id?: string
           category_id?: string | null
           check_in?: string
+          check_in_time?: string | null
           check_out?: string
+          check_out_time?: string | null
           children?: number
           created_at?: string
           end_date?: string | null

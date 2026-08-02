@@ -96,6 +96,8 @@ type OccInfo = {
   guestName: string | null;
   checkIn: string | null;
   checkOut: string | null;
+  checkInTime: string | null;
+  checkOutTime: string | null;
   balance: number;
 };
 
@@ -290,6 +292,8 @@ function OwnerDashboard({
             guestName: b.guest_name ?? null,
             checkIn: b.check_in ?? null,
             checkOut: b.check_out ?? null,
+            checkInTime: b.check_in_time ?? null,
+            checkOutTime: b.check_out_time ?? null,
             balance: Number(b.balance_amount || 0),
           });
         }
@@ -1292,6 +1296,24 @@ function fmtShort(dateStr: string | null) {
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
 }
 
+// Phase 34.2 — compact "02 Aug, 8:00 PM" for room cards. Time is optional;
+// falls back to the date alone when the stay has no stored time.
+function fmtTime12(t: string | null | undefined) {
+  if (!t) return "";
+  const [hStr, mStr] = t.split(":");
+  const h = Number(hStr);
+  if (isNaN(h)) return "";
+  const suffix = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${mStr ?? "00"} ${suffix}`;
+}
+
+function fmtShortDT(dateStr: string | null, time?: string | null) {
+  const d = fmtShort(dateStr);
+  const t = fmtTime12(time);
+  return t ? `${d}, ${t}` : d;
+}
+
 // React.memo with a data-only comparator: skip re-render when only the
 // callback references changed (they're recreated inline every parent render).
 // This is the room-grid re-render fix from Phase 2 — an unrelated dashboard
@@ -1433,11 +1455,11 @@ const RoomCard = memo(function RoomCard({
             </div>
             {kind === "overdue" ? (
               <div style={{ color: "#fecaca", fontSize: 11, fontWeight: 600 }}>
-                Due: {fmtShort(occ.checkOut)} ⚠️
+                Due: {fmtShortDT(occ.checkOut, occ.checkOutTime)} ⚠️
               </div>
             ) : (
               <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 11 }}>
-                {fmtShort(occ.checkIn)} → {fmtShort(occ.checkOut)}
+                {fmtShortDT(occ.checkIn, occ.checkInTime)} → {fmtShortDT(occ.checkOut, occ.checkOutTime)}
               </div>
             )}
             <div style={{ fontSize: 12, fontWeight: 700, color: kind === "overdue" ? "#fecaca" : (pending > 0 ? "#fbbf24" : "rgba(255,255,255,0.9)") }}>
