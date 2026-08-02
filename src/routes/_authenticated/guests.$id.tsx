@@ -19,6 +19,7 @@ import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
 import { inr } from "@/lib/billing";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
+import { fetchGuestLedger, type GuestLedger } from "@/lib/guestLedger";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/guests/$id")({
@@ -56,6 +57,7 @@ function GuestDetail() {
   const [g, setG] = useState<Guest | null>(null);
   const [stays, setStays] = useState<Stay[]>([]);
   const [feedback, setFeedback] = useState<Feedback[]>([]);
+  const [ledger, setLedger] = useState<GuestLedger | null>(null);
   const [tagsInput, setTagsInput] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -71,6 +73,7 @@ function GuestDetail() {
       .select("id,feedback_date,overall_rating,comments,source")
       .eq("guest_id", id).order("feedback_date", { ascending: false }).limit(20);
     setFeedback((f ?? []) as Feedback[]);
+    try { setLedger(await fetchGuestLedger(id)); } catch { setLedger(null); }
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
@@ -170,6 +173,12 @@ function GuestDetail() {
         <Stat label="Total stays" value={stayCount.toString()} />
         <Stat label="Lifetime value" value={inr(totalSpend)} />
         <Stat label="Last visit" value={stays[0]?.check_in ?? "—"} />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3 mb-4">
+        <Stat label="Total billed" value={inr(ledger?.totalBilled ?? 0)} />
+        <Stat label="Total paid" value={inr(ledger?.totalPaid ?? 0)} />
+        <Stat label="Total due" value={inr(ledger?.totalDue ?? 0)} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
