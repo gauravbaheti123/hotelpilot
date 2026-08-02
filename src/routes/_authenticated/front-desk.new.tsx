@@ -25,11 +25,14 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { addDaysIso, nightsBetween, SOURCES, todayIso } from "@/lib/front-desk";
 import {
+  defaultMealPlanFor,
   extraBedRateFor,
   fetchTariffPlans,
-  isPlanValidOn,
+  findPlanByNameAndMeal,
+  mealPlansForPlanName,
   NO_TARIFF_PLAN_ERROR,
   pickTariffPlan,
+  planNamesForCategory,
   type TariffPlan,
 } from "@/lib/tariff";
 import { GuestIdUploadField, type SelectedIdFile } from "@/components/GuestIdUploadField";
