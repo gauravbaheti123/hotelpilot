@@ -215,15 +215,23 @@ function NewBanquetPage() {
     if (!propertyId) return;
     if (!guestName.trim()) return toast.error("Guest name required");
     if (!isValidMobile(guestMobile)) return toast.error(MOBILE_ERROR);
-    const badAssign = assignments.find((a) => a.guest_mobile && !isValidMobile(a.guest_mobile));
-    if (badAssign) return toast.error(`Assigned room mobile invalid — ${MOBILE_ERROR.toLowerCase()}`);
-    if (!hallId) return toast.error("Pick a hall");
     if (!eventDate || !startTime || !endTime) return toast.error("Event date/time required");
     if ((roomMode === "single" || roomMode === "bulk") && !eventName.trim()) {
       return toast.error("Event name required when assigning rooms");
     }
     if (roomMode === "single" && !singleRoomId) return toast.error("Pick a room to assign");
-    if (roomMode === "bulk" && blockRows.length === 0) return toast.error("Add at least one bulk block row");
+    if (roomMode === "bulk") {
+      if (blockRows.length === 0) return toast.error("Add at least one room row");
+      for (const [i, row] of blockRows.entries()) {
+        const label = `Row ${i + 1}`;
+        if (!row.room_id) return toast.error(`${label}: pick a room`);
+        if (!row.guest_name.trim()) return toast.error(`${label}: guest name required`);
+        if (!isValidMobile(row.guest_mobile)) return toast.error(`${label}: ${MOBILE_ERROR.toLowerCase()}`);
+        if (!row.checkin_date || !row.checkout_date) return toast.error(`${label}: check-in / check-out dates required`);
+      }
+      const dupe = blockRows.map((r) => r.room_id).find((id, i, arr) => arr.indexOf(id) !== i);
+      if (dupe) return toast.error("Same room selected in more than one row");
+    }
     // Enforce per-role discount limits on any overridden room rate (single + bulk).
     if (roomMode === "single" && singleRoomId) {
       const r = allRooms.find((x) => x.id === singleRoomId);
@@ -236,13 +244,13 @@ function NewBanquetPage() {
     }
     if (roomMode === "bulk") {
       for (const row of blockRows) {
-        if (!row.category_id || !row.special_rate) continue;
-        const cat = cats.find((c) => c.id === row.category_id);
-        const base = stdRate(row.category_id, row.checkin_date || eventDate);
+        if (!row.room_id || !row.special_rate) continue;
+        const room = allRooms.find((x) => x.id === row.room_id);
+        const base = stdRate(room?.category_id, row.checkin_date || eventDate);
         const proposed = Number(row.special_rate) || 0;
         if (base > 0 && proposed > 0 && proposed < base) {
           const chk = canApplyDiscount(discountLimit, { discountRupees: base - proposed, base });
-          if (!chk.allowed) return toast.error(`${cat?.name ?? "Category"}: ${chk.reason ?? describeLimit(discountLimit)}`);
+          if (!chk.allowed) return toast.error(`Room ${room?.room_number ?? ""}: ${chk.reason ?? describeLimit(discountLimit)}`);
         }
       }
     }
@@ -275,29 +283,7 @@ function NewBanquetPage() {
           guest_mobile: guestMobile.trim(),
         }];
       } else if (roomMode === "bulk" && blockRows.length > 0) {
-        finalAssignments = assignments;
-        if (finalAssignments.length === 0) {
-        const out: AssignedBlock[] = [];
-        for (const row of blockRows) {
-          if (!row.category_id) continue;
-          const q = Number(row.quantity) || 0;
-          if (q <= 0) continue;
-          const cat = cats.find((c) => c.id === row.category_id);
-          const rooms = await pickAvailableRooms(propertyId, row.category_id, q);
-          const rate = row.special_rate
-            ? Number(row.special_rate)
-            : stdRate(row.category_id, row.checkin_date || eventDate);
-          rooms.forEach((r) => out.push({
-            room_id: r.id, room_number: r.room_number,
-            room_category: r.category_name || cat?.name || "",
-            category_id: row.category_id,
-            checkin_date: row.checkin_date,
-            checkout_date: row.checkout_date,
-            special_rate: rate,
-          }));
-        }
-        finalAssignments = out;
-        }
+        finalAssignments = buildBulkAssignments();
       }
 
       const totalRoomCharges = finalAssignments.reduce((sum, a) => {
