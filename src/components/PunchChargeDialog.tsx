@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -62,6 +63,8 @@ export function PunchChargeDialog({
   const [walkin, setWalkin] = useState(!bookingId);
   const [walkinGuest, setWalkinGuest] = useState("");
   const [payMode, setPayMode] = useState<string>("cash");
+  /** Free-text preparation instructions for this punch — prints on the KOT only. */
+  const [note, setNote] = useState("");
   // Per-action busy state so one button's click never renders/locks the other's label.
   const [busy, setBusy] = useState<null | "kot" | "bill" | "save">(null);
   const inFlight = useRef(false);
@@ -75,6 +78,7 @@ export function PunchChargeDialog({
     setLines([{ key: uid(), description: "", qty: 1, rate: 0, gst_rate: segment === "food" ? 5 : 5 }]);
     setWalkin(!bookingId);
     setWalkinGuest("");
+    setNote("");
   }, [open, segment, bookingId]);
 
   useEffect(() => {
@@ -166,7 +170,7 @@ export function PunchChargeDialog({
   }
 
   /** Kitchen ticket + counter copy, matching the removed legacy New KOT flow. */
-  async function printKitchenTicket(billNumber: string, clean: Line[]) {
+  async function printKitchenTicket(billNumber: string, clean: Line[], instructions?: string) {
     if (segment !== "food") return;
     const items: KotItemForPrint[] = clean.map((l) => ({
       item_name: l.description.trim(),
@@ -183,6 +187,7 @@ export function PunchChargeDialog({
       kot_type: roomNumber && !walkin ? "room" : "table",
       room_number: walkin ? null : (roomNumber ?? null),
       guest_name: walkin ? walkinGuest.trim() : (guestName ?? null),
+      notes: (instructions ?? "").trim() || null,
       created_at: new Date().toISOString(),
     }, jobs);
   }
