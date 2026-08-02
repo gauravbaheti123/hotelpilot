@@ -3,6 +3,8 @@ import { CrudPage, FieldDef, ColumnDef } from "@/components/master/CrudPage";
 import { Badge } from "@/components/ui/badge";
 import { RequirePermission } from "@/components/RequirePermission";
 import { isValidOrEmptyGSTIN } from "@/lib/gstin";
+import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
+import { useCurrentProperty } from "@/hooks/use-property";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/billing/companies")({
@@ -44,6 +46,7 @@ const columns: ColumnDef<Co>[] = [
 ];
 
 function BillingCompaniesPage() {
+  const { current } = useCurrentProperty();
   return (
     <CrudPage<Co>
       title="Billing Companies"
@@ -52,6 +55,31 @@ function BillingCompaniesPage() {
       fields={fields}
       columns={columns}
       orderBy={{ column: "name", ascending: true }}
+      headerActions={
+        current ? (
+          <BulkCsvButtons
+            table="billing_companies"
+            propertyId={current.id}
+            module="billing-companies"
+            hotelName={current.name}
+            extraDefaults={{ property_id: current.id }}
+            columns={[
+              { header: "name", field: "name", required: true },
+              { header: "gstin", field: "gstin", parse: (v) => (v.trim() ? v.trim().toUpperCase() : null) },
+              { header: "address", field: "address" },
+              { header: "contact_person", field: "contact_person" },
+              { header: "phone", field: "phone" },
+              { header: "email", field: "email" },
+              {
+                header: "is_active",
+                field: "is_active",
+                parse: (v) => v.toLowerCase() !== "false" && v !== "0",
+                format: (v) => (v ? "true" : "false"),
+              },
+            ]}
+          />
+        ) : null
+      }
       validate={(payload) => {
         // Warn-only on invalid GSTIN — do not block save (per spec).
         const g = (payload.gstin ?? "").trim();
