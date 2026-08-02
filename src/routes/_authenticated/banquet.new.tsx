@@ -23,7 +23,7 @@ import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
 import { fetchTariffPlans, pickTariffPlan, type TariffPlan } from "@/lib/tariff";
 import {
-  pickAvailableRooms, commitRoomBlocks, nightsBetween,
+  commitRoomBlocks, nightsBetween,
   type AssignedBlock,
 } from "@/lib/eventRoomBlocks";
 

@@ -258,18 +258,6 @@ function BanquetEventPage() {
     }
   }
 
-  async function doCheckOutLegacy(block: EventBlockRecord) {
-    if (!user) return;
-    if (!confirm(`Checkout room ${block.room_number}?`)) return;
-    try {
-      await checkOutBlock({ block, userId: user.id });
-      toast.success("Checked out");
-      load();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Checkout failed");
-    }
-  }
-
   async function setStatus(next: "confirmed" | "in_progress" | "completed") {
     if (!b) return;
     if (next === "completed") {
