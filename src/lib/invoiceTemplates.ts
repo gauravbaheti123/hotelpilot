@@ -369,6 +369,8 @@ function totalsBlock(ctx: InvoiceContext): string {
   const isGst = isGstBill(folio);
   const color = property.invoice_primary_color || "#1D9E75";
   const showGstSplit = isGst && (property.invoice_show_gst_breakup ?? true);
+  const { taxType, unknownState } = taxContext(ctx);
+  const split = splitGst(Number(folio.gst_amount), taxType);
 
   return `
     <div class="totals-box avoid-break" style="display:flex;gap:18px;margin-top:14px">
@@ -378,10 +380,13 @@ function totalsBlock(ctx: InvoiceContext): string {
         <table style="font-size:11.5px">
           <tr><td style="padding:3px 8px">Sub-total</td><td style="padding:3px 8px;text-align:right">${inr(folio.sub_total)}</td></tr>
           ${Number(folio.discount_amount) > 0 ? `<tr><td style="padding:3px 8px">Discount</td><td style="padding:3px 8px;text-align:right">- ${inr(folio.discount_amount)}</td></tr>` : ""}
-          ${isGst && showGstSplit ? `
-            <tr><td style="padding:3px 8px">CGST</td><td style="padding:3px 8px;text-align:right">${inr(Number(folio.gst_amount) / 2)}</td></tr>
-            <tr><td style="padding:3px 8px">SGST</td><td style="padding:3px 8px;text-align:right">${inr(Number(folio.gst_amount) / 2)}</td></tr>
-          ` : isGst ? `<tr><td style="padding:3px 8px">GST</td><td style="padding:3px 8px;text-align:right">${inr(folio.gst_amount)}</td></tr>` : ""}
+          ${isGst && showGstSplit
+            ? (taxType === "igst"
+              ? `<tr><td style="padding:3px 8px">IGST</td><td style="padding:3px 8px;text-align:right">${inr(split.igst)}</td></tr>`
+              : `
+            <tr><td style="padding:3px 8px">CGST</td><td style="padding:3px 8px;text-align:right">${inr(split.cgst)}</td></tr>
+            <tr><td style="padding:3px 8px">SGST</td><td style="padding:3px 8px;text-align:right">${inr(split.sgst)}</td></tr>`)
+            : isGst ? `<tr><td style="padding:3px 8px">GST</td><td style="padding:3px 8px;text-align:right">${inr(folio.gst_amount)}</td></tr>` : ""}
           <tr style="border-top:2px solid ${color}"><td style="padding:6px 8px;font-weight:700;font-size:13px" class="accent">Grand Total</td><td style="padding:6px 8px;text-align:right;font-weight:700;font-size:13px" class="accent">${inr(folio.total_amount)}</td></tr>
           <tr><td style="padding:3px 8px">Paid</td><td style="padding:3px 8px;text-align:right">${inr(folio.paid_amount)}</td></tr>
           <tr style="background:${Number(folio.balance_amount) > 0 ? "#fef3c7" : "#dcfce7"}"><td style="padding:5px 8px;font-weight:600">Balance Due</td><td style="padding:5px 8px;text-align:right;font-weight:600">${inr(folio.balance_amount)}</td></tr>
@@ -389,6 +394,7 @@ function totalsBlock(ctx: InvoiceContext): string {
       </div>
     </div>
     ${!isGst ? `<p class="small" style="margin-top:6px"><em>Amount is inclusive of all applicable taxes.</em></p>` : ""}
+    ${isGst && unknownState ? `<p class="small" style="margin-top:4px;color:#92400e"><em>Note: Bill-To state not recorded — taxed as intra-state (CGST+SGST). Please update the address for accurate place of supply.</em></p>` : ""}
   `;
 }
 
