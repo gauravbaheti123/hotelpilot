@@ -2277,7 +2277,6 @@ export type Database = {
           is_wiped: boolean
           mobile: string | null
           name: string
-          nation: string
           nationality: string | null
           notes: string | null
           photo_url: string | null
@@ -2311,7 +2310,6 @@ export type Database = {
           is_wiped?: boolean
           mobile?: string | null
           name: string
-          nation?: string
           nationality?: string | null
           notes?: string | null
           photo_url?: string | null
@@ -2345,7 +2343,6 @@ export type Database = {
           is_wiped?: boolean
           mobile?: string | null
           name?: string
-          nation?: string
           nationality?: string | null
           notes?: string | null
           photo_url?: string | null
