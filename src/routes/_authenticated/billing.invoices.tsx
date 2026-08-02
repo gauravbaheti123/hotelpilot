@@ -72,6 +72,7 @@ function InvoicesPage() {
   const [audit, setAudit] = useState(false);
   const [delTarget, setDelTarget] = useState<Row | null>(null);
   const [busy, setBusy] = useState(false);
+  const [segRefresh, setSegRefresh] = useState(0);
   // Hard-delete of a voided bill (owner-only, password re-entry)
   const [hardDelTarget, setHardDelTarget] = useState<Row | null>(null);
   const [hardDelStep, setHardDelStep] = useState<1 | 2>(1);
@@ -131,7 +132,7 @@ function InvoicesPage() {
       setSegRows((data ?? []) as any);
     })();
     return () => { cancelled = true; };
-  }, [propertyId, segTab, busy]);
+  }, [propertyId, segTab, segRefresh]);
 
   useEffect(() => {
     if (!propertyId || !audit) { setAuditRows([]); return; }
@@ -546,14 +547,14 @@ function InvoicesPage() {
         propertyId={propertyId}
         open={!!segEditTarget}
         onClose={() => setSegEditTarget(null)}
-        onSaved={() => setBusy((b) => !b)}
+        onSaved={() => setSegRefresh((n) => n + 1)}
       />
       <SegmentBillDeleteDialog
         bill={segDelTarget}
         propertyId={propertyId}
         open={!!segDelTarget}
         onClose={() => setSegDelTarget(null)}
-        onDeleted={() => setBusy((b) => !b)}
+        onDeleted={() => setSegRefresh((n) => n + 1)}
       />
 
       <ChangePaymentModeDialog
