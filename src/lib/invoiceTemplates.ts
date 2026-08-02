@@ -62,10 +62,12 @@ export interface InvoiceCharge {
 }
 
 export interface InvoicePayment {
+  id?: string | null;
   paid_at: string;
   mode: string;
   reference_no: string | null;
   amount: number;
+  notes?: string | null;
 }
 
 export interface InvoiceBooking {
@@ -300,8 +302,48 @@ function chargesTable(ctx: InvoiceContext): string {
   return `<table style="margin-top:6px"><thead>${head}</thead><tbody>${rows || `<tr><td ${tdStyle} colspan="9" class="center small">No charges</td></tr>`}</tbody></table>`;
 }
 
+/** Entry-wise "Payment Received" log — one row per recorded payment transaction. */
+function paymentsBlock(ctx: InvoiceContext): string {
+  const { payments, property } = ctx;
+  if (!payments.length) return "";
+  const color = property.invoice_primary_color || "#1D9E75";
+  const th = `style="background:${color};color:#fff;padding:6px 8px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px"`;
+  const td = `style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-size:10.5px"`;
+  const receiptNo = (p: InvoicePayment, i: number) =>
+    p.reference_no?.trim() || (p.id ? `RCP-${String(p.id).slice(0, 6).toUpperCase()}` : `RCP-${i + 1}`);
+  const total = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
+  return `
+    <div style="margin-top:14px;page-break-inside:auto">
+      <div class="small" style="text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Payment Received</div>
+      <table>
+        <thead><tr>
+          <th ${th}>Date</th>
+          <th ${th}>Receipt No.</th>
+          <th ${th}>Pay Mode</th>
+          <th ${th} class="right">Amount</th>
+          <th ${th}>Remark</th>
+        </tr></thead>
+        <tbody>
+          ${payments.map((p, i) => `<tr style="page-break-inside:avoid">
+            <td ${td}>${new Date(p.paid_at).toLocaleDateString("en-IN")}</td>
+            <td ${td}>${esc(receiptNo(p, i))}</td>
+            <td ${td}>${esc(String(p.mode || "").toUpperCase())}</td>
+            <td ${td} class="right">${inr(p.amount)}</td>
+            <td ${td}>${esc(p.notes ?? "—")}</td>
+          </tr>`).join("")}
+          <tr>
+            <td ${td} colspan="3"><strong>Total Received</strong></td>
+            <td ${td} class="right"><strong>${inr(total)}</strong></td>
+            <td ${td}></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function totalsBlock(ctx: InvoiceContext): string {
-  const { folio, property, payments } = ctx;
+  const { folio, property } = ctx;
   const isGst = isGstBill(folio);
   const color = property.invoice_primary_color || "#1D9E75";
   const showGstSplit = isGst && (property.invoice_show_gst_breakup ?? true);
@@ -309,23 +351,6 @@ function totalsBlock(ctx: InvoiceContext): string {
   return `
     <div style="display:flex;gap:18px;margin-top:14px">
       <div style="flex:1">
-        ${payments.length > 0 ? `
-          <div class="small" style="text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Payments Received</div>
-          <table style="font-size:10.5px">
-            <thead><tr>
-              <th style="padding:4px 6px;border-bottom:1px solid #d1d5db;text-align:left">Date</th>
-              <th style="padding:4px 6px;border-bottom:1px solid #d1d5db;text-align:left">Mode</th>
-              <th style="padding:4px 6px;border-bottom:1px solid #d1d5db;text-align:left">Ref</th>
-              <th style="padding:4px 6px;border-bottom:1px solid #d1d5db;text-align:right">Amount</th>
-            </tr></thead>
-            <tbody>${payments.map((p) => `<tr>
-              <td style="padding:3px 6px">${new Date(p.paid_at).toLocaleDateString("en-IN")}</td>
-              <td style="padding:3px 6px">${esc(p.mode.toUpperCase())}</td>
-              <td style="padding:3px 6px">${esc(p.reference_no ?? "—")}</td>
-              <td style="padding:3px 6px;text-align:right">${inr(p.amount)}</td>
-            </tr>`).join("")}</tbody>
-          </table>
-        ` : ""}
       </div>
       <div style="width:46%">
         <table style="font-size:11.5px">
@@ -383,6 +408,7 @@ export function renderInvoiceHtml(ctx: InvoiceContext): string {
       ${metaBlock(ctx)}
       ${chargesTable(ctx)}
       ${totalsBlock(ctx)}
+      ${paymentsBlock(ctx)}
       ${footerBlock(ctx)}
     </div>
     <script>window.addEventListener('load',function(){setTimeout(function(){window.focus();window.print();},250);});</script>
