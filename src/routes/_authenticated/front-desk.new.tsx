@@ -115,7 +115,7 @@ function NewBookingPage() {
   const [address, setAddress] = useState("");
   const [gstNumber, setGstNumber] = useState("");
   const [company, setCompany] = useState("");
-  const [guestType, setGuestType] = useState<"regular" | "corporate" | "vip">("regular");
+  const [guestType, setGuestType] = useState<"regular" | "corporate">("regular");
   const [guestNotes, setGuestNotes] = useState("");
   const [idFile, setIdFile] = useState<SelectedIdFile | null>(null);
   // Phase 21 — existing ID document reuse for returning guests
@@ -135,11 +135,14 @@ function NewBookingPage() {
   const [categoryId, setCategoryId] = useState<string>("");
   const [roomId, setRoomId] = useState<string>("");
   const [tariffId, setTariffId] = useState<string>("");
+  // Phase 29 — the selector holds a distinct plan *name*; the concrete
+  // tariff_plans row is resolved from Name + Meal Plan + Category.
+  const [planName, setPlanName] = useState<string>("");
   const [rate, setRate] = useState(0);
   const [rateManuallySet, setRateManuallySet] = useState(false);
   const [rateType, setRateType] = useState<"exclusive" | "inclusive">("exclusive");
   const { limit: discountLimit } = useDiscountLimit();
-  const [mealPlan, setMealPlan] = useState("EP");
+  const [mealPlan, setMealPlan] = useState("CP");
 
   // Phase 27b — pricing resolves exclusively through Tariff Plans. There is no
   // room_categories.base_rate fallback: if nothing resolves, that is a data
