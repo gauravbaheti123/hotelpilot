@@ -48,9 +48,7 @@ interface Category {
   id: string;
   name: string;
   code: string | null;
-  base_rate: number;
   max_occupancy: number;
-  extra_bed_rate: number;
   is_active: boolean;
   complimentary_food_limit_per_person?: number;
 }
@@ -120,9 +118,7 @@ function RoomsMasterPage() {
       property_id: current.id,
       name: editingCat.name,
       code: editingCat.code ?? null,
-      base_rate: Number(editingCat.base_rate ?? 0),
       max_occupancy: Number(editingCat.max_occupancy ?? 2),
-      extra_bed_rate: Number(editingCat.extra_bed_rate ?? 0),
       complimentary_food_limit_per_person: Number(editingCat.complimentary_food_limit_per_person ?? 0),
       is_active: editingCat.is_active ?? true,
     };
@@ -260,9 +256,7 @@ function RoomsMasterPage() {
                     onClick={() =>
                       setEditingCat({
                         name: "",
-                        base_rate: 0,
                         max_occupancy: 2,
-                        extra_bed_rate: 0,
                         is_active: true,
                       })
                     }
@@ -294,18 +288,6 @@ function RoomsMasterPage() {
                           }
                         />
                       </Box>
-                      <Box label="Base rate (₹)">
-                        <Input
-                          type="number"
-                          value={editingCat.base_rate ?? 0}
-                          onChange={(e) =>
-                            setEditingCat({
-                              ...editingCat,
-                              base_rate: Number(e.target.value),
-                            })
-                          }
-                        />
-                      </Box>
                       <Box label="Max occupancy">
                         <Input
                           type="number"
@@ -314,18 +296,6 @@ function RoomsMasterPage() {
                             setEditingCat({
                               ...editingCat,
                               max_occupancy: Number(e.target.value),
-                            })
-                          }
-                        />
-                      </Box>
-                      <Box label="Extra bed rate (₹)">
-                        <Input
-                          type="number"
-                          value={editingCat.extra_bed_rate ?? 0}
-                          onChange={(e) =>
-                            setEditingCat({
-                              ...editingCat,
-                              extra_bed_rate: Number(e.target.value),
                             })
                           }
                         />
@@ -365,9 +335,7 @@ function RoomsMasterPage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Code</TableHead>
-                    <TableHead>Base rate</TableHead>
                     <TableHead>Max occ.</TableHead>
-                    <TableHead>Extra bed</TableHead>
                     {canManage && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
@@ -376,9 +344,7 @@ function RoomsMasterPage() {
                     <TableRow key={c.id}>
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell>{c.code ?? "—"}</TableCell>
-                      <TableCell>₹{c.base_rate}</TableCell>
                       <TableCell>{c.max_occupancy}</TableCell>
-                      <TableCell>₹{c.extra_bed_rate}</TableCell>
                       {canManage && (
                         <TableCell className="text-right">
                           <Button
