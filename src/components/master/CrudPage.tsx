@@ -342,9 +342,30 @@ export function CrudPage<T extends { id: string }>({
 
         <Card>
           <CardContent className="pt-6">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search…"
+                className="max-w-xs"
+              />
+              {flagRow && flaggedCount > 0 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={flaggedOnly ? "default" : "outline"}
+                  onClick={() => setFlaggedOnly((v) => !v)}
+                >
+                  Needs review ({flaggedCount})
+                </Button>
+              )}
+              <span className="text-xs text-muted-foreground">
+                {visibleRows.length} of {rows.length}
+              </span>
+            </div>
             {loading ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : rows.length === 0 ? (
+            ) : visibleRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">No records yet.</p>
             ) : (
               <Table>
@@ -368,8 +389,10 @@ export function CrudPage<T extends { id: string }>({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((r) => (
-                    <TableRow key={r.id}>
+                  {visibleRows.map((r) => {
+                    const flag = flagRow ? flagRow(r) : null;
+                    return (
+                    <TableRow key={r.id} className={flag ? "bg-destructive/5" : undefined}>
                       {canManage && (
                         <TableCell className="w-10">
                           <Checkbox
@@ -405,7 +428,8 @@ export function CrudPage<T extends { id: string }>({
                         </TableCell>
                       )}
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
