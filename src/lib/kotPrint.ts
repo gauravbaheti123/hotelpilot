@@ -134,19 +134,19 @@ export function buildKotPrintPlan(
 
   if (mode !== "counter") {
     const byPrinter = new Map<string, KotItemForPrint[]>();
-    let unresolved = 0;
+    const unresolvedNames: string[] = [];
     for (const it of items) {
       if (!it.printer_id) {
-        unresolved++;
+        unresolvedNames.push(it.item_name || "Unnamed item");
         continue;
       }
       const arr = byPrinter.get(it.printer_id) ?? [];
       arr.push(it);
       byPrinter.set(it.printer_id, arr);
     }
-    if (unresolved > 0) {
+    if (unresolvedNames.length > 0) {
       warnings.push(
-        `No kitchen printer configured for ${unresolved} item(s). Set up in Master Data → Printers.`,
+        `No kitchen printer configured for: ${unresolvedNames.join(", ")}. Assign in Master Data → Food Menu.`,
       );
     }
     for (const [pid, its] of byPrinter) {
@@ -287,7 +287,12 @@ export async function runKotPrintJobs(header: KotHeader, jobs: PrintJob[]): Prom
       const paperSize = job.printer.paper_size ?? "80mm";
       const html = renderKotHtml(header, job.items, paperSize, job.badge, job.printer.name);
       try {
-        console.log(`[kotPrint/qz] ${i + 1}/${jobs.length} → ${job.printer.name} (${job.badge})`);
+        console.log(`[kotPrint/qz] ${i + 1}/${jobs.length} → ${job.printer.name} (${job.badge})`, {
+          itemCount: job.items.length,
+          itemNames: job.items.map((item) => item.item_name),
+          htmlBytes: new Blob([html]).size,
+          paperSize,
+        });
         await printToPrinter(job.printer.name, html, paperSize);
       } catch (err: any) {
         console.error("[kotPrint/qz] failed", err);
