@@ -148,8 +148,10 @@ function NewBookingPage() {
   // room_categories.base_rate fallback: if nothing resolves, that is a data
   // problem and the booking is blocked.
   const resolvedPlan = useMemo(
-    () => pickTariffPlan(tariffs, { categoryId, date: checkIn, mealPlan }),
-    [tariffs, categoryId, checkIn, mealPlan],
+    () =>
+      findPlanByNameAndMeal(tariffs, categoryId, planName, mealPlan, checkIn) ??
+      pickTariffPlan(tariffs, { categoryId, date: checkIn, mealPlan }),
+    [tariffs, categoryId, planName, checkIn, mealPlan],
   );
   const activePlan = useMemo(
     () => tariffs.find((x) => x.id === tariffId) ?? resolvedPlan,
@@ -329,8 +331,15 @@ function NewBookingPage() {
     (r) => (!categoryId || r.category_id === categoryId) && r.status === "vacant",
   );
   // Only offer plans that are actually applicable to this stay's check-in date.
-  const categoryTariffs = tariffs.filter(
-    (t) => (!categoryId || t.category_id === categoryId) && isPlanValidOn(t, checkIn),
+  // Phase 29.1 — distinct plan names only (no duplicate per-meal-plan entries).
+  const planNames = useMemo(
+    () => planNamesForCategory(tariffs, categoryId, checkIn),
+    [tariffs, categoryId, checkIn],
+  );
+  // Phase 29.2 — meal plans cascade from the selected plan name.
+  const mealPlanOptions = useMemo(
+    () => mealPlansForPlanName(tariffs, categoryId, planName, checkIn),
+    [tariffs, categoryId, planName, checkIn],
   );
 
   // === Additional guests: auto-sync row count to adult/child counts ===
