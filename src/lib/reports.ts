@@ -198,22 +198,23 @@ export async function fetchGstInvoiceSlabs(
   endD.setDate(endD.getDate() + 1);
   const end = endD.toISOString();
   const { data } = await supabase.from("folios")
-    .select("id,invoice_number,created_at,guest_gstin,guest_company,billing_company_id,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name,state)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
+    .select("id,invoice_number,created_at,guest_gstin,guest_company,billing_company_id,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name,state,state_code,gst_number)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
     .eq("property_id", propertyId)
     .eq("gst_mode", "gst")
     .neq("status", "void")
     .gte("created_at", start)
     .lt("created_at", end)
     .order("created_at", { ascending: false });
-  // Phase 57 — place of supply needs the property's own state and any
-  // linked billing company's state.
+  // Place of supply compares GST state codes (GSTIN → state_code → state name).
   const [{ data: propRow }, { data: coRows }] = await Promise.all([
-    supabase.from("properties").select("state").eq("id", propertyId).maybeSingle(),
-    supabase.from("billing_companies").select("id,state").eq("property_id", propertyId),
+    supabase.from("properties").select("state,state_code,gstin").eq("id", propertyId).maybeSingle(),
+    supabase.from("billing_companies").select("id,state,state_code,gstin").eq("property_id", propertyId),
   ]);
-  const propertyState = (propRow as { state?: string | null } | null)?.state ?? null;
-  const coState = new Map<string, string | null>(
-    ((coRows ?? []) as Array<{ id: string; state: string | null }>).map((c) => [c.id, c.state]),
+  const propParty = (propRow ?? null) as
+    { state?: string | null; state_code?: string | null; gstin?: string | null } | null;
+  type CoRow = { id: string; state: string | null; state_code: string | null; gstin: string | null };
+  const coParty = new Map<string, CoRow>(
+    ((coRows ?? []) as CoRow[]).map((c) => [c.id, c]),
   );
   const out: GstInvoiceSlabRow[] = [];
   for (const raw of data ?? []) {
@@ -222,7 +223,12 @@ export async function fetchGstInvoiceSlabs(
       guest_gstin: string | null; guest_company: string | null;
       billing_company_id: string | null;
       sub_total: number; gst_amount: number; total_amount: number;
-      bookings: { guests: { name: string; state: string | null } | null } | null;
+      bookings: {
+        guests: {
+          name: string; state: string | null;
+          state_code?: string | null; gst_number?: string | null;
+        } | null;
+      } | null;
       folio_charges: Array<{
         charge_type: string; amount: number | string;
         gst_rate: number | string | null;
@@ -230,11 +236,14 @@ export async function fetchGstInvoiceSlabs(
         discount_amount: number | string | null;
       }> | null;
     };
-    const billToState =
-      (f.billing_company_id ? coState.get(f.billing_company_id) ?? null : null) ||
-      f.bookings?.guests?.state ||
-      null;
-    const { taxType } = resolveTaxType(billToState, propertyState);
+    const co = f.billing_company_id ? coParty.get(f.billing_company_id) ?? null : null;
+    const g = f.bookings?.guests ?? null;
+    const billToParty = co
+      ? { gstin: co.gstin, stateCode: co.state_code, state: co.state }
+      : { gstin: f.guest_gstin ?? g?.gst_number ?? null, stateCode: g?.state_code ?? null, state: g?.state ?? null };
+    const { taxType } = resolveTaxType(billToParty, {
+      gstin: propParty?.gstin, stateCode: propParty?.state_code, state: propParty?.state,
+    });
     const igstBill = taxType === "igst";
     const bySlab = new Map<number, { taxable: number; gst: number }>();
     let lineGstSum = 0;
