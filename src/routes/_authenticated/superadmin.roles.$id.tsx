@@ -50,6 +50,7 @@ const SECTIONS: { title: string; modules: { key: string; label: string; singleAc
     { key: "tasks", label: "Tasks" },
   ]},
   { title: "Guest CRM", modules: [{ key: "guest_crm", label: "Guest CRM" }] },
+  { title: "Shift Handover", modules: [{ key: "shift_handover", label: "Shift Handover" }] },
   { title: "Inventory", modules: [{ key: "inventory", label: "Inventory" }] },
   { title: "Expenses", modules: [{ key: "expenses", label: "Expenses" }] },
   { title: "Staff HR", modules: [{ key: "staff_hr", label: "Staff HR" }] },
@@ -80,6 +81,7 @@ const DEFAULTS: Record<string, Partial<Record<string, Action[]>>> = {
     food_dashboard: ["view"], all_kots: ["view"], pending_bills: ["view"],
     pos: ["view","create","edit"], restaurant_billing: ["view"], invoices: ["view","create"],
     room_board: ["view"], tasks: ["view","edit"], guest_crm: ["view","create","edit"],
+    shift_handover: ["view","create"],
   },
 };
 
