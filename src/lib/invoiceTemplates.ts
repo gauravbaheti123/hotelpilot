@@ -2,7 +2,7 @@
 // All templates pull from property settings (logo, color, footer, toggles).
 
 import { supabase } from "@/integrations/supabase/client";
-import { inr } from "@/lib/billing";
+import { consolidateSegmentCharges, inr } from "@/lib/billing";
 
 export interface InvoiceProperty {
   name: string;
@@ -265,6 +265,8 @@ function metaBlock(ctx: InvoiceContext): string {
 
 function chargesTable(ctx: InvoiceContext): string {
   const { folio, charges, property } = ctx;
+  // Phase 1.5/52 — Food & Laundry segment charges show as ONE line per bill.
+  const rowsData = consolidateSegmentCharges(charges as any);
   const isGst = isGstBill(folio);
   const showHsn = isGst && (property.invoice_show_hsn ?? true);
   const showGstSplit = isGst && (property.invoice_show_gst_breakup ?? true);
@@ -287,13 +289,13 @@ function chargesTable(ctx: InvoiceContext): string {
     </tr>
   `;
 
-  const rows = charges.map((c, i) => {
+  const rows = rowsData.map((c, i) => {
     const lineTotal = Number(c.amount) + (isGst ? Number(c.gst_amount || 0) : 0);
     const gstHalf = Number(c.gst_amount || 0) / 2;
     return `
       <tr>
         <td ${tdStyle}>${i + 1}</td>
-        <td ${tdStyle}>${esc(c.description)}${c.segment_bill_ref ? ` <span class="small" style="color:#666">(Ref: ${esc(c.segment_bill_ref)})</span>` : ""}</td>
+        <td ${tdStyle}>${esc(c.description)}${c.segment_bill_ref && !c.is_consolidated ? ` <span class="small" style="color:#666">(Ref: ${esc(c.segment_bill_ref)})</span>` : ""}</td>
         ${showHsn ? `<td ${tdStyle}>${esc(c.hsn_code ?? defaultHsn(c.charge_type))}</td>` : ""}
         <td ${tdStyle} class="right">${Number(c.qty).toLocaleString("en-IN")}</td>
         <td ${tdStyle} class="right">${inr(c.rate)}</td>

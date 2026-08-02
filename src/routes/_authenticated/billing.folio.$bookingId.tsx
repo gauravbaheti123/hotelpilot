@@ -25,6 +25,8 @@ import {
   computeBillDiscountAmount,
   type BillDiscount,
  inrRound,
+  consolidateSegmentCharges,
+  type DisplayCharge,
 } from "@/lib/billing";
 import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil } from "lucide-react";
 import { AlertTriangle, ShieldAlert, ArrowRightLeft } from "lucide-react";
@@ -1190,6 +1192,11 @@ function FolioPage() {
   const subSundry = subtotalOf(groups.sundry);
   const subOther = subtotalOf(groups.extra) + subtotalOf(groups.discount);
 
+  // Phase 1.5 / 52 — the invoice Charges table shows Food/Laundry segment
+  // charges as ONE consolidated line per distinct bill reference. Totals,
+  // GST breakup and all persistence keep using the raw `charges` array.
+  const invoiceRows = consolidateSegmentCharges(charges as any);
+
   async function shareOnWhatsApp() {
     if (!folio || !booking) return;
     const phone = booking.guests?.mobile?.replace(/\D/g, "") ?? "";
@@ -1872,7 +1879,7 @@ function FolioPage() {
               <tbody className="zebra">
                 {charges.length === 0 ? (
                   <tr><td colSpan={isGst ? 7 : 6} style={{ textAlign: "center", color: "#666", padding: 16 }}>No charges yet.</td></tr>
-                ) : charges.map((c, i) => (
+                ) : invoiceRows.map((c: DisplayCharge, i: number) => (
                   <tr key={c.id}>
                     <td>{i + 1}</td>
                     <td>
@@ -1903,10 +1910,13 @@ function FolioPage() {
                     {canEditNow && (
                       <td className="print:hidden" style={{ textAlign: "right" }}>
                         <div className="flex items-center justify-end gap-1">
+                          {c.is_consolidated ? (
+                            <span className="text-[10px] text-muted-foreground">Bill</span>
+                          ) : (<>
                           {c.charge_type !== "discount" && c.charge_type !== "tax" && (
                             <button
                               type="button"
-                              onClick={() => openLineDiscount(c)}
+                              onClick={() => openLineDiscount(c as any)}
                               className="text-emerald-700"
                               title="Apply line-item discount"
                             >
@@ -1916,7 +1926,7 @@ function FolioPage() {
                           {c.charge_type !== "room" && c.charge_type !== "tax" && c.charge_type !== "discount" && (
                             <button
                               type="button"
-                              onClick={() => openEditCharge(c)}
+                              onClick={() => openEditCharge(c as any)}
                               className="text-sky-700"
                               title="Edit charge"
                             >
@@ -1926,13 +1936,14 @@ function FolioPage() {
                           {canVoid && (
                             <button
                               type="button"
-                              onClick={() => removeCharge(c.id)}
+                              onClick={() => removeCharge(String(c.id))}
                               className="text-destructive"
                               title="Delete charge (manager/owner)"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           )}
+                          </>)}
                         </div>
                       </td>
                     )}

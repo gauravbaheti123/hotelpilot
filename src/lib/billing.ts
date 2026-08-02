@@ -195,3 +195,98 @@ export function netSubtotalOf(charges: ChargeLike[]): number {
   }
   return round2(s);
 }
+
+/* ------------------------------------------------------------------ *
+ * Phase 1.5 / 52 — segment bill consolidation (DISPLAY ONLY)
+ * ------------------------------------------------------------------ */
+
+export interface DisplayCharge {
+  id?: string;
+  charge_type: string;
+  description: string;
+  qty: number | string;
+  rate: number | string;
+  amount: number | string;
+  gst_rate?: number | string | null;
+  gst_amount?: number | string | null;
+  discount_amount?: number | string | null;
+  discount_type?: string | null;
+  discount_value?: number | string | null;
+  hsn_code?: string | null;
+  segment_bill_ref?: string | null;
+  /** true when the row represents several folio_charges rolled into one */
+  is_consolidated?: boolean;
+  /** ids of the underlying folio_charges rows (consolidated rows only) */
+  source_charge_ids?: string[];
+}
+
+const SEGMENT_LABEL: Record<string, string> = {
+  food: "Food Bill",
+  laundry: "Laundry Bill",
+};
+
+/**
+ * Collapse Food / Laundry charges that came from a segment bill into ONE line
+ * per distinct segment_bill_ref — e.g. "Food Bill (Ref: BRIJ-F-0013)" with the
+ * summed amount — instead of one row per punched item.
+ *
+ * Room charges and any charge without a segment_bill_ref pass through
+ * untouched, and the original order is preserved (a consolidated line sits at
+ * the position of the bill's first item). Amounts/GST are summed, so folio
+ * totals and the GST breakup (which read the raw charges) are unaffected.
+ */
+export function consolidateSegmentCharges<T extends DisplayCharge>(
+  charges: T[],
+): DisplayCharge[] {
+  const out: DisplayCharge[] = [];
+  const index = new Map<string, number>();
+
+  for (const c of charges) {
+    const ref = (c.segment_bill_ref ?? "").trim();
+    const label = SEGMENT_LABEL[c.charge_type];
+    if (!ref || !label) {
+      out.push(c);
+      continue;
+    }
+    const key = `${c.charge_type}::${ref}`;
+    const amt = Number(c.amount ?? 0);
+    const gst = Number(c.gst_amount ?? 0);
+    const disc = Number(c.discount_amount ?? 0);
+    const at = index.get(key);
+    if (at === undefined) {
+      index.set(key, out.length);
+      out.push({
+        id: `seg:${key}`,
+        charge_type: c.charge_type,
+        description: `${label} (Ref: ${ref})`,
+        qty: 1,
+        rate: round2(amt),
+        amount: round2(amt),
+        gst_rate: Number(c.gst_rate ?? 0),
+        gst_amount: round2(gst),
+        discount_amount: round2(disc),
+        hsn_code: c.hsn_code ?? null,
+        segment_bill_ref: ref,
+        is_consolidated: true,
+        source_charge_ids: c.id ? [c.id] : [],
+      });
+      continue;
+    }
+    const row = out[at]!;
+    const nextAmount = round2(Number(row.amount) + amt);
+    row.amount = nextAmount;
+    row.rate = nextAmount;
+    row.gst_amount = round2(Number(row.gst_amount ?? 0) + gst);
+    row.discount_amount = round2(Number(row.discount_amount ?? 0) + disc);
+    // Mixed GST rates within one bill → show the effective blended rate.
+    const netForGst = nextAmount - Number(row.discount_amount ?? 0);
+    if (Number(row.gst_rate ?? 0) !== Number(c.gst_rate ?? 0)) {
+      row.gst_rate = netForGst > 0
+        ? round2((Number(row.gst_amount ?? 0) / netForGst) * 100)
+        : 0;
+    }
+    if (c.id) row.source_charge_ids?.push(c.id);
+  }
+
+  return out;
+}
