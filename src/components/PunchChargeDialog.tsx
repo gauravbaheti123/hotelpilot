@@ -558,7 +558,8 @@ export function PunchChargeDialog({
 
         <div className="space-y-2">
           {lines.map((l, idx) => (
-            <div key={l.key} className="grid gap-2 items-end" style={{ gridTemplateColumns: segment === "food" ? "1fr 80px 100px 80px 36px" : "1fr 80px 100px 80px 36px" }}>
+            <div key={l.key} className="space-y-1 rounded-md border p-2">
+            <div className="grid gap-2 items-end" style={{ gridTemplateColumns: "1fr 80px 100px 80px 36px" }}>
               <div>
                 {idx === 0 && <Label className="text-xs">Item</Label>}
                 <ItemPickerCombobox
@@ -588,27 +589,23 @@ export function PunchChargeDialog({
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
+            <Input
+              className="h-8 text-xs"
+              value={l.note ?? ""}
+              maxLength={200}
+              onChange={(e) => updateLine(l.key, { note: e.target.value })}
+              placeholder={segment === "food" ? "Instruction for this item (e.g. less spicy)" : "Instruction for this item (e.g. handle delicate)"}
+            />
+            </div>
           ))}
           <Button type="button" size="sm" variant="outline" onClick={addLine}>
             <Plus className="h-3.5 w-3.5 mr-1" /> Add line
           </Button>
         </div>
 
-        <div>
-          <Label className="text-xs">
-            {segment === "food" ? "Notes / kitchen instructions" : "Notes / service instructions"}
-          </Label>
-          <Textarea
-            rows={2}
-            value={note}
-            maxLength={300}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder={segment === "food" ? "e.g. less spicy, no onion, extra hot" : "e.g. handle delicate, urgent"}
-          />
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Prints on the {segment === "food" ? "KOT" : "service"} ticket only — not on the guest bill.
-          </p>
-        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Item notes print on the {segment === "food" ? "KOT" : "service"} ticket only — never on the guest bill.
+        </p>
 
         <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
           <div className="flex justify-between"><span>Subtotal</span><span>{inr(totals.sub)}</span></div>
