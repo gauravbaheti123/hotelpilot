@@ -290,12 +290,31 @@ export function PunchChargeDialog({
   }
 
   /** Append the currently punched lines to today's consolidated bill. */
-  async function appendToTodayBill(clean: Line[]) {
+  async function appendToTodayBill(clean: Line[], instructions?: string) {
     const bill = await getOrCreateTodayBill();
     const { error } = await supabase.from("segment_bill_items" as any).insert(itemRowsFor(bill.id, clean) as any);
     if (error) throw error;
+    await appendBillNote(bill.id, instructions);
     await recalcBillTotals(bill.id);
     return bill;
+  }
+
+  /**
+   * Preparation instructions are stored on the consolidated bill so they stay
+   * auditable after the punch. Each punch appends its own timestamped line.
+   */
+  async function appendBillNote(billId: string, instructions?: string) {
+    const text = (instructions ?? "").trim();
+    if (!text) return;
+    const { data } = await supabase
+      .from("segment_bills" as any)
+      .select("notes")
+      .eq("id", billId)
+      .maybeSingle();
+    const prev = ((data as any)?.notes ?? "") as string;
+    const stamp = new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
+    const next = [prev, `[${stamp}] ${text}`].filter(Boolean).join("\n");
+    await supabase.from("segment_bills" as any).update({ notes: next }).eq("id", billId);
   }
 
   async function findTodayBill() {
