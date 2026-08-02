@@ -446,6 +446,7 @@ export function PunchChargeDialog({
         payment_mode: walkin ? payMode : null,
         status: walkin ? "settled" : "open",
         settled_at: walkin ? new Date().toISOString() : null,
+        notes: note.trim() || null,
         created_by: user?.id ?? null,
       };
       const { data: bill, error: bErr } = await supabase
@@ -497,7 +498,7 @@ export function PunchChargeDialog({
 
       toast.success(`${segment === "food" ? "Food" : "Laundry"} bill ${billNumber} created`);
       try {
-        await printKitchenTicket(billNumber, clean);
+        await printKitchenTicket(billNumber, clean, note);
       } catch (pe: any) {
         toast.error(pe?.message ?? "Kitchen print failed");
       }
