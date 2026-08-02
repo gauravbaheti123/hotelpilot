@@ -48,6 +48,7 @@ const fields: FieldDef[] = [
 ];
 
 const columns: ColumnDef<Co>[] = [
+  // (see suspiciousName below)
   {
     header: "Name",
     render: (r) => (
