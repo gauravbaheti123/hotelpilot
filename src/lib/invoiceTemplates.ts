@@ -173,6 +173,13 @@ function commonStyles(color: string, draft: boolean): string {
     @media print {
       body { font-size: 11px; }
       .no-print { display: none !important; }
+      html, body { height: auto !important; overflow: visible !important; }
+      .invoice { overflow: visible !important; }
+      table { page-break-inside: auto; break-inside: auto; }
+      thead { display: table-header-group; }
+      tfoot { display: table-footer-group; }
+      tr { page-break-inside: avoid; break-inside: avoid; }
+      .avoid-break { page-break-inside: avoid; break-inside: avoid; }
       ${draft ? `.draft-watermark { opacity: 0.12; }` : ""}
     }
   `;
