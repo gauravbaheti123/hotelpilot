@@ -15,6 +15,23 @@ export const Route = createFileRoute("/_authenticated/billing/companies")({
   ),
 });
 
+/**
+ * Phase 66.2 — flags obviously bad company names created by the Phase 56
+ * guest.company backfill (rate codes, phone numbers, stray symbols).
+ * Advisory only: rows are highlighted for Owner review, never auto-deleted.
+ */
+function suspiciousName(name: string): string | null {
+  const n = (name ?? "").trim();
+  if (!n) return "Empty";
+  if (!/[A-Za-z]/.test(n)) return "No letters";
+  if (/^[^A-Za-z0-9]/.test(n)) return "Bad start";
+  if (/[{}@#$%^*<>\\|~`]/.test(n)) return "Odd symbols";
+  if (n.replace(/[^A-Za-z]/g, "").length < 3) return "Too short";
+  if (/\d{6,}/.test(n)) return "Looks like a number";
+  if (/[(\-]\s*\d{6,}/.test(n)) return "Phone in name";
+  return null;
+}
+
 interface Co {
   id: string;
   name: string;
