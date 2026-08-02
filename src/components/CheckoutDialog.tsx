@@ -29,6 +29,7 @@ import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 import { SplitBillDialog } from "@/components/SplitBillDialog";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 
 interface Props {
   bookingId: string | null;
@@ -102,6 +103,10 @@ function pickCheckoutFolio(rows: any[]) {
 }
 
 export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props) {
+  // Phase 64 — after a successful checkout, take staff straight to the finalized
+  // Lodge invoice instead of dropping them back on the Dashboard.
+  const navigate = useNavigate();
+  const currentPath = useRouterState({ select: (st) => st.location.pathname });
   const { user, roles } = useAuth();
   const { can } = usePermissions();
   const isOwnerRole = roles.includes("owner") || roles.includes("superadmin");
@@ -732,6 +737,15 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     toast.success("Checked out");
     onOpenChange(false);
     onDone?.();
+
+    // Phase 64 — jump to this booking's finalized invoice (Print / PDF / Email /
+    // WhatsApp all live there). Checkout has already committed at this point, so
+    // the folio reflects whatever the Phase 48b early-checkout choice repriced it
+    // to. Skip when we are already on that folio page — onDone() refreshes it.
+    const invoicePath = `/billing/folio/${booking.id}`;
+    if (currentPath !== invoicePath) {
+      navigate({ to: "/billing/folio/$bookingId", params: { bookingId: booking.id } });
+    }
   }
 
   const advance = Number(booking?.advance_amount ?? 0);
