@@ -24,6 +24,14 @@ import { resolveGstRate, resolveGstRateInclusive } from "@/lib/gst";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { addDaysIso, nightsBetween, SOURCES, todayIso } from "@/lib/front-desk";
+import {
+  extraBedRateFor,
+  fetchTariffPlans,
+  isPlanValidOn,
+  NO_TARIFF_PLAN_ERROR,
+  pickTariffPlan,
+  type TariffPlan,
+} from "@/lib/tariff";
 import { GuestIdUploadField, type SelectedIdFile } from "@/components/GuestIdUploadField";
 import { lookupExistingGuestId, type GuestIdLookupResult } from "@/lib/guestIdLookup";
 import { uploadFileToDrive, safeName } from "@/lib/driveUpload";
