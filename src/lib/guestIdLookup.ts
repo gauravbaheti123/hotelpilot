@@ -26,6 +26,52 @@ export function driveThumbnailUrl(fileId: string | null | undefined) {
   return fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w200` : null;
 }
 
+export interface GuestSearchHit {
+  id: string;
+  name: string;
+  mobile: string | null;
+  email: string | null;
+  company: string | null;
+}
+
+/**
+ * Debounce-friendly guest search by name or mobile (Phase 21 lookup pattern,
+ * widened to partial matches). Returns [] for queries under 2 characters.
+ */
+export async function searchGuests(
+  propertyId: string,
+  query: string,
+  limit = 8,
+): Promise<GuestSearchHit[]> {
+  const q = (query ?? "").trim();
+  if (q.length < 2) return [];
+  const safe = q.replace(/[%,()]/g, " ");
+  const { data, error } = await supabase
+    .from("guests")
+    .select("id,name,mobile,email,company")
+    .eq("property_id", propertyId)
+    .or(`name.ilike.%${safe}%,mobile.ilike.%${safe}%`)
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+  if (error) return [];
+  return (data ?? []) as GuestSearchHit[];
+}
+
+/** Create a guest inline from a name + mobile pair. */
+export async function createGuestQuick(
+  propertyId: string,
+  name: string,
+  mobile: string,
+): Promise<GuestSearchHit> {
+  const { data, error } = await supabase
+    .from("guests")
+    .insert({ property_id: propertyId, name: name.trim(), mobile: mobile.trim() || null } as never)
+    .select("id,name,mobile,email,company")
+    .single();
+  if (error) throw error;
+  return data as GuestSearchHit;
+}
+
 /**
  * Find an existing guest by mobile (checked first) or ID/Aadhaar number, and
  * return their most recent previously uploaded ID document, if any.
