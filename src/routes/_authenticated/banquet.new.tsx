@@ -133,14 +133,11 @@ function NewBanquetPage() {
   function removeExtra(i: number) { setExtras((p) => p.filter((_, idx) => idx !== i)); }
 
   const blockSummary = useMemo(() => {
-    // Standard rate for a category on a given stay date, from Tariff Plans.
-    const std = (categoryId: string | null | undefined, date: string) =>
-      Number(pickTariffPlan(tariffPlans, { categoryId: categoryId ?? null, date })?.rate ?? 0);
     let totalRooms = 0;
     let revenue = 0;
     blockRows.forEach((r) => {
       const q = Number(r.quantity) || 0;
-      const rate = Number(r.special_rate) || std(r.category_id, r.checkin_date || eventDate);
+      const rate = Number(r.special_rate) || stdRate(r.category_id, r.checkin_date || eventDate);
       const nights = r.checkin_date && r.checkout_date ? nightsBetween(r.checkin_date, r.checkout_date) : 1;
       totalRooms += q;
       revenue += q * rate * nights;
