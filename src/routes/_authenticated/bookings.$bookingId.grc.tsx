@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { RequirePermission } from "@/components/RequirePermission";
 import { toast } from "sonner";
 import { Printer, Save, ArrowLeft } from "lucide-react";
@@ -71,6 +72,7 @@ const empty: GrcState = {
 function GrcPage() {
   const { bookingId } = useParams({ from: "/_authenticated/bookings/$bookingId/grc" });
   const router = useRouter();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [booking, setBooking] = useState<any>(null);
@@ -103,6 +105,14 @@ function GrcPage() {
       const { data: g } = await supabase
         .from("grc_records")
         .select("*").eq("booking_id", bookingId).maybeSingle();
+      // Duty Manager defaults to the logged-in user; a saved value always wins.
+      let signedInName = "";
+      const uid = (await supabase.auth.getSession()).data.session?.user?.id ?? null;
+      if (uid) {
+        const { data: prof } = await supabase
+          .from("profiles").select("name,email").eq("id", uid).maybeSingle();
+        signedInName = (prof?.name || prof?.email || "").trim();
+      }
       if (g) {
         setGrc({
           id: g.id, grc_number: g.grc_number,
@@ -118,7 +128,7 @@ function GrcPage() {
           purpose_of_visit: g.purpose_of_visit ?? "",
           billing_instruction: g.billing_instruction ?? "",
           discount_note: g.discount_note ?? "",
-          duty_manager_name: g.duty_manager_name ?? "",
+          duty_manager_name: g.duty_manager_name || signedInName,
         });
       } else {
         setGrc((s) => ({
@@ -128,11 +138,12 @@ function GrcPage() {
           state: (b.guests as any)?.state ?? "",
           country: (b.guests as any)?.country ?? "India",
           company: (b.guests as any)?.company ?? "",
+          duty_manager_name: s.duty_manager_name || signedInName,
         }));
       }
       setLoading(false);
     })();
-  }, [bookingId]);
+  }, [bookingId, user?.id]);
 
   async function save(): Promise<string | null> {
     if (!booking) return null;
