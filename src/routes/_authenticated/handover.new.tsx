@@ -256,7 +256,7 @@ function StartHandoverPage() {
                               type="number" step="0.01"
                               value={l.manual_entry}
                               onChange={(e) => updateLine(i, { manual_entry: e.target.value })}
-                              className="w-32 text-right tabular-nums"
+                              className="ml-auto block w-32 text-right tabular-nums"
                               style={{ textAlign: "right" }}
                             />
                           </td>
