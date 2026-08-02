@@ -561,6 +561,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
 
   async function collectAndCheckout() {
     if (!folio || !booking) return;
+    if (early && !earlyChoice) {
+      return toast.error("Select an early-checkout billing option first");
+    }
     if (pendingKots.length > 0) {
       return toast.error("Add pending food orders to bill first");
     }
