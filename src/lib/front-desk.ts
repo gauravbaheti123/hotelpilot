@@ -5,6 +5,23 @@ export function nightsBetween(checkIn: string, checkOut: string): number {
   return Math.max(1, Math.round(ms / (1000 * 60 * 60 * 24)));
 }
 
+/**
+ * Phase 34.1 — compare a stay by full date+time, never by date alone, so a
+ * same-date day-use stay (in 08:00 → out 20:00) is valid.
+ * Returns true only when the check-out instant is strictly after check-in.
+ */
+export function isValidStayRange(
+  checkInDate: string,
+  checkOutDate: string,
+  checkInTime = "12:00",
+  checkOutTime = "11:00",
+): boolean {
+  if (!checkInDate || !checkOutDate) return false;
+  if (checkOutDate > checkInDate) return true;
+  if (checkOutDate < checkInDate) return false;
+  return (checkOutTime || "11:00") > (checkInTime || "12:00");
+}
+
 export function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
