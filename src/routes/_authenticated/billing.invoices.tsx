@@ -100,6 +100,13 @@ function InvoicesPage() {
   };
   useEffect(load, [propertyId, audit]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Deep-link support: /billing/invoices?seg=food&bill=FB-0007 lands on the
+  // right tab with the bill pre-filtered (used by the dashboard action menu).
+  useEffect(() => {
+    if (segParam) setSegTab(segParam);
+    if (billParam) setQ(billParam);
+  }, [segParam, billParam]);
+
   // Segment bills (Food / Laundry) — loaded when the corresponding tab is active.
   useEffect(() => {
     if (!propertyId || segTab === "lodge") { setSegRows([]); return; }
