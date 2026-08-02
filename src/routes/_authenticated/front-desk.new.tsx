@@ -366,16 +366,48 @@ function NewBookingPage() {
     setExtras((prev) => prev.map((g) => (g.key === key ? { ...g, ...patch } : g)));
   }
 
-  // Validity windows are date-sensitive: re-resolve the plan when the stay's
-  // check-in date moves (silently — no toast for a mere date change).
+  // Phase 29 — keep the plan name valid for the current category/date, and
+  // default it (Corporate guests → "Corporate", otherwise "Regular"/first).
   useEffect(() => {
     if (!categoryId || tariffs.length === 0) return;
-    const t = pickTariffPlan(tariffs, { categoryId, date: checkIn });
+    if (planNames.length === 0) {
+      setPlanName("");
+      setTariffId("");
+      if (!rateManuallySet) setRate(0);
+      return;
+    }
+    if (planName && planNames.includes(planName)) return;
+    setPlanName(preferredPlanName(planNames));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryId, tariffs, planNames.join("|")]);
+
+  // Phase 29.7 — Corporate guest type forces the Corporate plan when it exists.
+  useEffect(() => {
+    if (guestType !== "corporate") return;
+    const corp = planNames.find((n) => n.toLowerCase() === "corporate");
+    if (corp && planName !== corp) setPlanName(corp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guestType, planNames.join("|")]);
+
+  // Phase 29.2 — meal plan cascades from the plan name, defaulting to CP.
+  useEffect(() => {
+    if (!planName) return;
+    if (mealPlanOptions.length === 0) return;
+    if (mealPlanOptions.includes(mealPlan)) return;
+    setMealPlan(defaultMealPlanFor(mealPlanOptions));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planName, mealPlanOptions.join("|")]);
+
+  // Phase 29.3 — once Name + Meal Plan resolve to one row, auto-fill the rate.
+  useEffect(() => {
+    if (!categoryId || !planName || !mealPlan) return;
+    const t = findPlanByNameAndMeal(tariffs, categoryId, planName, mealPlan, checkIn);
     if (!t) { setTariffId(""); return; }
     setTariffId(t.id);
     if (!rateManuallySet) setRate(Number(t.rate) || 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkIn, categoryId, tariffs]);
+  }, [categoryId, planName, mealPlan, checkIn, tariffs]);
+
   function addManualExtra() {
     setExtras((prev) => [...prev, blankGuest("adult")]);
   }
@@ -383,37 +415,38 @@ function NewBookingPage() {
     setExtras((prev) => prev.filter((g) => g.key !== key));
   }
 
+  /** Corporate guests prefer the Corporate plan; otherwise Regular, else first. */
+  function preferredPlanName(names: string[]): string {
+    const byName = (want: string) => names.find((n) => n.toLowerCase() === want);
+    if (guestType === "corporate") {
+      const c = byName("corporate");
+      if (c) return c;
+    }
+    return byName("regular") ?? names[0] ?? "";
+  }
+
+  // Phase 29.4 — changing category invalidates the downstream Name/Meal Plan.
   function pickCategory(id: string) {
     setCategoryId(id);
     setRoomId("");
-    applyResolvedPlan(id, checkIn);
-  }
-
-  /**
-   * Phase 27b — resolve the applicable tariff plan for a category on the stay's
-   * check-in date. No room_categories.base_rate fallback: when nothing
-   * resolves, the user is told to fix the master data.
-   */
-  function applyResolvedPlan(id: string, date: string) {
-    const t = pickTariffPlan(tariffs, { categoryId: id, date });
-    if (t) {
-      setTariffId(t.id);
-      if (!rateManuallySet) setRate(Number(t.rate) || 0);
-      setMealPlan(t.meal_plan);
-    } else {
-      setTariffId("");
+    setPlanName("");
+    setTariffId("");
+    const names = planNamesForCategory(tariffs, id, checkIn);
+    if (names.length === 0) {
       if (!rateManuallySet) setRate(0);
       toast.error(NO_TARIFF_PLAN_ERROR);
+      return;
     }
+    const next = preferredPlanName(names);
+    setPlanName(next);
+    const meals = mealPlansForPlanName(tariffs, id, next, checkIn);
+    setMealPlan(defaultMealPlanFor(meals) || "CP");
   }
 
-  function pickTariff(id: string) {
-    setTariffId(id);
-    const t = tariffs.find((t) => t.id === id);
-    if (t) {
-      if (!rateManuallySet) setRate(t.rate);
-      setMealPlan(t.meal_plan);
-    }
+  function pickPlanName(nextName: string) {
+    setPlanName(nextName);
+    const meals = mealPlansForPlanName(tariffs, categoryId, nextName, checkIn);
+    setMealPlan(defaultMealPlanFor(meals) || mealPlan);
   }
 
   async function save(checkInNow: boolean) {
