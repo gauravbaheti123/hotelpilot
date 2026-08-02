@@ -241,9 +241,11 @@ export async function fetchGstInvoiceSlabs(
     const billToParty = co
       ? { gstin: co.gstin, stateCode: co.state_code, state: co.state }
       : { gstin: f.guest_gstin ?? g?.gst_number ?? null, stateCode: g?.state_code ?? null, state: g?.state ?? null };
-    const { taxType } = resolveTaxType(billToParty, {
+    const { taxType, billToStateCode } = resolveTaxType(billToParty, {
       gstin: propParty?.gstin, stateCode: propParty?.state_code, state: propParty?.state,
     });
+    // Display name for the report column; falls back to the resolved code.
+    const billToState = billToParty.state || stateNameFromCode(billToStateCode);
     const igstBill = taxType === "igst";
     const bySlab = new Map<number, { taxable: number; gst: number }>();
     let lineGstSum = 0;
