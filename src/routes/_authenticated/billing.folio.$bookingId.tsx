@@ -1190,6 +1190,11 @@ function FolioPage() {
   const subSundry = subtotalOf(groups.sundry);
   const subOther = subtotalOf(groups.extra) + subtotalOf(groups.discount);
 
+  // Phase 1.5 / 52 — the invoice Charges table shows Food/Laundry segment
+  // charges as ONE consolidated line per distinct bill reference. Totals,
+  // GST breakup and all persistence keep using the raw `charges` array.
+  const invoiceRows = consolidateSegmentCharges(charges as any);
+
   async function shareOnWhatsApp() {
     if (!folio || !booking) return;
     const phone = booking.guests?.mobile?.replace(/\D/g, "") ?? "";
