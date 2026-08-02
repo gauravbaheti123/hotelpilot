@@ -269,15 +269,6 @@ function NewBanquetPage() {
     }
     setSaving(true);
     try {
-      const { data: g, error: ge } = await supabase.from("guests").insert({
-        property_id: propertyId,
-        name: guestName,
-        mobile: guestMobile,
-        email: guestEmail || null,
-        created_by: user?.id ?? null,
-      } as any).select("id").single();
-      if (ge) throw ge;
-
       const advanceAmt = Number(advance) || 0;
 
       // Build assignments depending on roomMode
@@ -308,7 +299,11 @@ function NewBanquetPage() {
       const { data: bq, error: be } = await supabase.from("banquet_bookings").insert({
         property_id: propertyId,
         hall_id: hallId || null,
-        guest_id: g!.id,
+        // Read-only link only when a guest was explicitly selected from search.
+        guest_id: linkedGuestId,
+        host_name: guestName.trim(),
+        host_mobile: guestMobile.trim() || null,
+        host_email: guestEmail.trim() || null,
         event_name: roomMode !== "none" ? eventName : null,
         function_type: functionType,
         event_date: eventDate,
