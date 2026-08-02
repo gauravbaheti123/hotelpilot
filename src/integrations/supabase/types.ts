@@ -6038,6 +6038,10 @@ export type Database = {
         Args: { _booking_room_id: string }
         Returns: string
       }
+      settle_segment_bill: {
+        Args: { _actor?: string; _auto?: boolean; _bill_id: string }
+        Returns: Json
+      }
       shift_room: {
         Args: {
           _booking_room_id: string
