@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
+import { fetchTariffPlans, pickTariffPlan, type TariffPlan } from "@/lib/tariff";
 import { Loader2, BedDouble, Sparkles } from "lucide-react";
 
 interface RoomOption {
@@ -17,7 +18,8 @@ interface RoomOption {
   room_number: string;
   category_id: string | null;
   category_name: string;
-  base_rate: number;
+  /** Resolved tariff-plan rate for this room's category on the stay dates. */
+  standard_rate: number;
   status: string;
   housekeeping_status: string;
 }
@@ -41,7 +43,7 @@ interface Props {
  * Assigns a specific room to a booking_rooms row that was created with
  * room_id = NULL. Suggests vacant rooms of the same category first; allows
  * picking a different-category room with a rate-choice prompt (keep current
- * rate vs. apply the new category's base rate).
+ * rate vs. apply the new category's tariff-plan rate for these dates).
  */
 export function AssignRoomDialog({
   open, onOpenChange, bookingRoomId, propertyId, bookingId, bookingNumber,
@@ -62,10 +64,13 @@ export function AssignRoomDialog({
     setSearch("");
     (async () => {
       setLoading(true);
+      // Phase 27b — standard rates come from Tariff Plans, resolved against the
+      // booking's own check-in date (this is a stay being priced, not "today").
+      const plans: TariffPlan[] = await fetchTariffPlans(propertyId).catch(() => []);
       // Fetch all vacant rooms; RLS scopes to the property.
       const { data, error } = await supabase
         .from("rooms")
-        .select("id,room_number,category_id,status,housekeeping_status,room_categories(name,base_rate)")
+        .select("id,room_number,category_id,status,housekeeping_status,room_categories(name)")
         .eq("property_id", propertyId)
         .eq("is_active", true)
         .eq("status", "vacant")
@@ -99,7 +104,9 @@ export function AssignRoomDialog({
           room_number: r.room_number,
           category_id: r.category_id,
           category_name: r.room_categories?.name ?? "—",
-          base_rate: Number(r.room_categories?.base_rate ?? 0),
+          standard_rate: Number(
+            pickTariffPlan(plans, { categoryId: r.category_id, date: checkIn })?.rate ?? 0,
+          ),
           status: r.status,
           housekeeping_status: r.housekeeping_status,
         }));
@@ -123,7 +130,7 @@ export function AssignRoomDialog({
   const picked = rooms.find((r) => r.id === pickedId);
   const isDifferentCat = !!picked && picked.category_id !== categoryId;
   const newRate = isDifferentCat && rateChoice === "new_standard"
-    ? picked!.base_rate
+    ? picked!.standard_rate
     : currentRate;
 
   function filterMatch(r: RoomOption) {
@@ -148,8 +155,8 @@ export function AssignRoomDialog({
       };
       if (isDifferentCat) {
         update.category_id = picked.category_id;
-        if (rateChoice === "new_standard" && picked.base_rate > 0) {
-          update.rate = picked.base_rate;
+        if (rateChoice === "new_standard" && picked.standard_rate > 0) {
+          update.rate = picked.standard_rate;
         }
       }
       const { error } = await supabase
