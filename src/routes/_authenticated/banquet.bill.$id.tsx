@@ -488,8 +488,12 @@ function BanquetBillPage() {
       <table class="totals">
         <tr><td>Subtotal</td><td class="right">${inr(subtotal)}</td></tr>
         ${discount > 0 ? `<tr><td>Discount</td><td class="right">- ${inr(discount)}</td></tr>` : ""}
-        ${isGst ? `<tr><td>CGST 2.5%</td><td class="right">${inr(cgst)}</td></tr>
-                   <tr><td>SGST 2.5%</td><td class="right">${inr(sgst)}</td></tr>` : ""}
+        ${isGst
+          ? (isIgstBill
+            ? `<tr><td>IGST 5%</td><td class="right">${inr(igst)}</td></tr>`
+            : `<tr><td>CGST 2.5%</td><td class="right">${inr(cgst)}</td></tr>
+                   <tr><td>SGST 2.5%</td><td class="right">${inr(sgst)}</td></tr>`)
+          : ""}
         ${Math.abs(roundOff) >= 0.01 ? `<tr><td>Round Off</td><td class="right">${roundOff >= 0 ? "+ " : "- "}${inr(Math.abs(roundOff))}</td></tr>` : ""}
         <tr class="grand"><td>Total</td><td class="right">${inrRound(total)}</td></tr>
         <tr><td>Advance</td><td class="right">- ${inr(advance)}</td></tr>
@@ -771,8 +775,12 @@ function BanquetBillPage() {
                   </Button>
                 </div>
                 {isGst && (<>
-                  <SummaryRow label="CGST 2.5%" value={inr(cgst)} />
-                  <SummaryRow label="SGST 2.5%" value={inr(sgst)} />
+                  {isIgstBill ? (
+                    <SummaryRow label="IGST 5%" value={inr(igst)} />
+                  ) : (<>
+                    <SummaryRow label="CGST 2.5%" value={inr(cgst)} />
+                    <SummaryRow label="SGST 2.5%" value={inr(sgst)} />
+                  </>)}
                 </>)}
                 {Math.abs(roundOff) >= 0.01 && (
                   <SummaryRow
