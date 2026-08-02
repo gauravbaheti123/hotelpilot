@@ -212,6 +212,8 @@ function BookingDetailPage() {
           .order("is_primary", { ascending: false }),
       ]);
       setRooms((rs ?? []) as Room[]);
+      // Phase 27b — tariff plans drive every rate decision in the shift flow.
+      setTariffPlans(await fetchTariffPlans(detail.property_id).catch(() => []));
       const shiftRows = (sh ?? []) as unknown as ShiftRow[];
       // Resolve shifted_by user names from profiles (no FK on shifted_by so we look up manually)
       const userIds = Array.from(new Set(shiftRows.map((s) => s.shifted_by).filter(Boolean) as string[]));
