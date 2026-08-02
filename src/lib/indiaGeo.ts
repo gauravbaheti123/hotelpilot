@@ -1,5 +1,14 @@
 // Structured address helpers — Indian states/UTs + common city suggestions.
 
+/** Phase 67 — Title Case: "NEW DELHI" / "mumbai" → "New Delhi" / "Mumbai". */
+export function titleCase(input: string): string {
+  return (input ?? "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/(^|[\s\-'/().])([a-z])/g, (_m, p, c) => p + c.toUpperCase());
+}
+
 export const INDIAN_STATES = [
   "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa",
   "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala",
