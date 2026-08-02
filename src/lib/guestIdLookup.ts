@@ -14,6 +14,8 @@ export interface GuestIdLookupResult {
     name: string | null;
     mobile: string | null;
     idProofNumber: string | null;
+    /** Phase 29.6 — last saved guest type, for auto-fill on returning guests. */
+    guestType: "regular" | "corporate" | null;
   };
   matchedOn: "mobile" | "id";
   doc: ExistingIdDoc | null;
@@ -44,7 +46,7 @@ export async function lookupExistingGuestId(
   for (const a of attempts) {
     const { data } = await supabase
       .from("guests")
-      .select("id,name,mobile,id_proof_number,id_document_url,id_document_name,id_document_uploaded_at")
+      .select("id,name,mobile,id_proof_number,tags,id_document_url,id_document_name,id_document_uploaded_at")
       .eq("property_id", propertyId)
       .eq(a.col, a.val)
       .order("updated_at", { ascending: false })
@@ -80,7 +82,15 @@ export async function lookupExistingGuestId(
     }
 
     return {
-      guest: { id: g.id, name: g.name ?? null, mobile: g.mobile ?? null, idProofNumber: g.id_proof_number ?? null },
+      guest: {
+        id: g.id,
+        name: g.name ?? null,
+        mobile: g.mobile ?? null,
+        idProofNumber: g.id_proof_number ?? null,
+        guestType: ((g.tags ?? []) as string[]).includes("corporate")
+          ? "corporate"
+          : "regular",
+      },
       matchedOn: a.matchedOn,
       doc,
     };

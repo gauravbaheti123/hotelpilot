@@ -126,3 +126,73 @@ export async function resolveTariffForCategory(
 export function extraBedRateFor(plan: TariffPlan | null | undefined): number {
   return Number(plan?.extra_adult_rate ?? 0) || 0;
 }
+
+/**
+ * Phase 29 — the Tariff Plan selector is driven by distinct plan *names*
+ * (e.g. "Regular", "Corporate"), not by individual Category × Meal Plan rows.
+ */
+function activeForCategory(
+  plans: TariffPlan[],
+  categoryId: string | null | undefined,
+  date: string,
+): TariffPlan[] {
+  if (!categoryId) return [];
+  return plans.filter(
+    (p) =>
+      p.category_id === categoryId &&
+      p.is_active !== false &&
+      isPlanValidOn(p, date),
+  );
+}
+
+/** Distinct plan names available for a category on a date, alphabetical. */
+export function planNamesForCategory(
+  plans: TariffPlan[],
+  categoryId: string | null | undefined,
+  date: string,
+): string[] {
+  const names = new Set(activeForCategory(plans, categoryId, date).map((p) => p.name));
+  return [...names].sort((a, b) => a.localeCompare(b));
+}
+
+export const MEAL_PLAN_ORDER = ["EP", "CP", "MAP", "AP"];
+
+/** Meal plans that actually exist for a Name + Category combination. */
+export function mealPlansForPlanName(
+  plans: TariffPlan[],
+  categoryId: string | null | undefined,
+  planName: string,
+  date: string,
+): string[] {
+  if (!planName) return [];
+  const meals = new Set(
+    activeForCategory(plans, categoryId, date)
+      .filter((p) => p.name === planName)
+      .map((p) => p.meal_plan),
+  );
+  return [...meals].sort(
+    (a, b) => MEAL_PLAN_ORDER.indexOf(a) - MEAL_PLAN_ORDER.indexOf(b),
+  );
+}
+
+/** CP when available for the combo, else the first available meal plan. */
+export function defaultMealPlanFor(meals: string[]): string {
+  if (meals.includes("CP")) return "CP";
+  return meals[0] ?? "";
+}
+
+/** Resolve the single row for Category + Name + Meal Plan on a date. */
+export function findPlanByNameAndMeal(
+  plans: TariffPlan[],
+  categoryId: string | null | undefined,
+  planName: string,
+  mealPlan: string,
+  date: string,
+): TariffPlan | null {
+  if (!planName || !mealPlan) return null;
+  const matches = activeForCategory(plans, categoryId, date).filter(
+    (p) => p.name === planName && p.meal_plan === mealPlan,
+  );
+  if (matches.length === 0) return null;
+  return pickTariffPlan(matches, { categoryId, date, mealPlan });
+}
