@@ -715,10 +715,13 @@ function renderSegmentBill(opts: {
   * { box-sizing: border-box; max-width: 100%; }
   h1 { font-size: 14px; margin: 0 0 2px; text-align: center; }
   .prop { text-align: center; font-weight: bold; font-size: 12px; }
-  .brandhead { display: flex; gap: 4mm; align-items: flex-start; border-bottom: 1px solid #000; padding-bottom: 3px; }
-  .brandhead img { max-height: 12mm; max-width: 18mm; object-fit: contain; }
-  .brandinfo { flex: 1; text-align: center; }
-  .brandinfo .nm { font-weight: bold; font-size: 13px; }
+  /* Phase 60 — stacked, centered brand block: large logo on top, large bold
+     property name directly below, small meta lines under it. Widths stay
+     inside the 72mm printable area. */
+  .brandhead { text-align: center; border-bottom: 1px solid #000; padding-bottom: 3px; }
+  .brandhead img { display: block; margin: 0 auto 2px; max-height: 22mm; max-width: 55mm; width: auto; object-fit: contain; }
+  .brandinfo { text-align: center; }
+  .brandinfo .nm { font-family: 'Arial Black', Arial, sans-serif; font-weight: 900; font-size: 22px; line-height: 1.1; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 2px; word-break: break-word; }
   .brandinfo .ln { font-size: 10px; line-height: 1.25; }
   .sign { margin-top: 10mm; text-align: right; font-size: 11px; }
   .sign .line { border-top: 1px solid #000; width: 40mm; margin-left: auto; padding-top: 2px; }
