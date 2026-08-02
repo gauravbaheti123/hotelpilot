@@ -493,12 +493,18 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <QZStatusIndicator />
-            {(isOwner || permSuper || can("shift_handover") || can("shift_handover", "create")) && (
+            {(isOwner ||
+              permSuper ||
+              permsLoading ||
+              can("shift_handover") ||
+              can("shift_handover", "create") ||
+              can("shift_handover", "edit")) && (
               <Button
                 asChild
                 variant="ghost"
                 size="icon"
                 className="h-9 w-9 shrink-0"
+                data-testid="handover-icon"
                 aria-label="Shift Handover"
                 title="Shift Handover"
               >
