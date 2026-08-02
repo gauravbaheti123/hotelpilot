@@ -81,6 +81,10 @@ export interface CrudPageProps<T extends { id: string }> {
   initialNew?: Record<string, any>;
   filterEq?: Record<string, any>;
   headerActions?: ReactNode;
+  /** Row fields searched by the toolbar search box (defaults to all string values). */
+  searchFields?: string[];
+  /** Optional data-quality flag: return a reason string to mark a row as suspicious. */
+  flagRow?: (row: T) => string | null;
   /**
    * Optional pre-save hook. Return a string to abort with an error toast,
    * or null/undefined to proceed. `editing` includes an `id` when updating.
@@ -98,6 +102,8 @@ export function CrudPage<T extends { id: string }>({
   initialNew,
   filterEq,
   headerActions,
+  searchFields,
+  flagRow,
   validate,
 }: CrudPageProps<T>) {
   const { roles } = useAuth();
@@ -113,11 +119,25 @@ export function CrudPage<T extends { id: string }>({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [query, setQuery] = useState("");
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
 
-  const allSelected = rows.length > 0 && selected.size === rows.length;
+  const flaggedCount = flagRow ? rows.filter((r) => flagRow(r)).length : 0;
+
+  const visibleRows = rows.filter((r) => {
+    if (flaggedOnly && flagRow && !flagRow(r)) return false;
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    const src = searchFields
+      ? searchFields.map((k) => (r as any)[k])
+      : Object.values(r as any);
+    return src.some((v) => typeof v === "string" && v.toLowerCase().includes(q));
+  });
+
+  const allSelected = visibleRows.length > 0 && visibleRows.every((r) => selected.has(r.id));
 
   function toggleAll(v: boolean) {
-    setSelected(v ? new Set(rows.map((r) => r.id)) : new Set());
+    setSelected(v ? new Set(visibleRows.map((r) => r.id)) : new Set());
   }
 
   function toggleOne(id: string, v: boolean) {
@@ -322,9 +342,30 @@ export function CrudPage<T extends { id: string }>({
 
         <Card>
           <CardContent className="pt-6">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search…"
+                className="max-w-xs"
+              />
+              {flagRow && flaggedCount > 0 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={flaggedOnly ? "default" : "outline"}
+                  onClick={() => setFlaggedOnly((v) => !v)}
+                >
+                  Needs review ({flaggedCount})
+                </Button>
+              )}
+              <span className="text-xs text-muted-foreground">
+                {visibleRows.length} of {rows.length}
+              </span>
+            </div>
             {loading ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : rows.length === 0 ? (
+            ) : visibleRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">No records yet.</p>
             ) : (
               <Table>
@@ -348,8 +389,10 @@ export function CrudPage<T extends { id: string }>({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((r) => (
-                    <TableRow key={r.id}>
+                  {visibleRows.map((r) => {
+                    const flag = flagRow ? flagRow(r) : null;
+                    return (
+                    <TableRow key={r.id} className={flag ? "bg-destructive/5" : undefined}>
                       {canManage && (
                         <TableCell className="w-10">
                           <Checkbox
@@ -385,7 +428,8 @@ export function CrudPage<T extends { id: string }>({
                         </TableCell>
                       )}
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             )}
