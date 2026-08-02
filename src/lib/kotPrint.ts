@@ -90,7 +90,8 @@ ${safetyCss}
 .item{display:flex;justify-content:space-between;align-items:flex-start;font-size:17px;font-weight:800;margin:5px 0;gap:8px}
 .item .n{flex:1;word-break:break-word}
 .item .p{white-space:nowrap}
-.itemnote{font-size:12px;font-weight:600;padding-left:10px;margin-top:-2px;margin-bottom:4px}
+.itemnote{font-size:13px;font-weight:800;border:2px solid #000;padding:2px 5px;margin:0 0 6px 10px;text-transform:uppercase;word-break:break-word}
+.itemnote .lbl{font-size:11px;letter-spacing:1px;margin-right:4px}
 .total{display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin-top:4px}
 .ordernote{font-size:15px;font-weight:800;margin-top:8px;border:2px solid #000;padding:4px 6px;text-transform:uppercase;word-break:break-word}
 .ordernote .lbl{display:block;font-size:12px;letter-spacing:1px}
@@ -110,7 +111,7 @@ ${items
     (i) =>
       `<div class="item"><span class="n">${i.qty} x ${esc(i.item_name)}</span>${
         showPrice ? `<span class="p">₹${(i.qty * i.rate).toFixed(0)}</span>` : ""
-      }</div>${i.notes ? `<div class="itemnote">- ${esc(i.notes)}</div>` : ""}`,
+      }</div>${i.notes ? `<div class="itemnote"><span class="lbl">**</span>${esc(i.notes)}</div>` : ""}`,
   )
   .join("")}
 ${showPrice ? `<hr class="divider"/><div class="total"><span>TOTAL</span><span>₹${total.toFixed(2)}</span></div>` : ""}
