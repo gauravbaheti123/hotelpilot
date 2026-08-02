@@ -951,7 +951,7 @@ function NewBookingPage() {
                     </SelectContent>
                   </Select>
                   <p className="text-[11px] text-muted-foreground">
-                    Manage companies in Master Data → Billing Companies. If unset, bill goes to the guest.
+                    Manage companies in Billing → Billing Companies. If unset, bill goes to the guest.
                   </p>
                 </div>
               )}

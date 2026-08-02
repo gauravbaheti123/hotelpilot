@@ -32,7 +32,6 @@ const GROUPS: Array<{
       { to: "/masters/menu", label: "Menu", icon: UtensilsCrossed },
       { to: "/masters/sundry-items", label: "Sundry Items & POS Categories", icon: ShoppingCart },
       { to: "/masters/payment-methods", label: "Payment Methods", icon: Wallet },
-      { to: "/masters/billing-companies", label: "Billing Companies", icon: Building2 },
     ],
   },
   {
