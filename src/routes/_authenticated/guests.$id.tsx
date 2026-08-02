@@ -321,6 +321,54 @@ function GuestDetail() {
             ))}
           </CardContent>
         </Card>
+
+        <Card className="lg:col-span-3">
+          <CardHeader><CardTitle className="text-base">Ledger — all invoices</CardTitle></CardHeader>
+          <CardContent className="p-0 divide-y">
+            {!ledger && <p className="p-4 text-sm text-muted-foreground">Loading ledger…</p>}
+            {ledger && ledger.rows.length === 0 && (
+              <p className="p-4 text-sm text-muted-foreground">No bills raised for this guest yet.</p>
+            )}
+            {ledger && ledger.rows.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Date</th>
+                      <th className="px-4 py-2 text-left">Bill no.</th>
+                      <th className="px-4 py-2 text-left">Type</th>
+                      <th className="px-4 py-2 text-left">Status</th>
+                      <th className="px-4 py-2 text-right">Total</th>
+                      <th className="px-4 py-2 text-right">Paid</th>
+                      <th className="px-4 py-2 text-right">Due</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {ledger.rows.map((r) => (
+                      <tr key={`${r.type}-${r.id}`}>
+                        <td className="px-4 py-2 whitespace-nowrap">{r.date || "—"}</td>
+                        <td className="px-4 py-2 font-medium whitespace-nowrap">{r.number}</td>
+                        <td className="px-4 py-2"><Badge variant="secondary" className="text-[10px]">{r.type}</Badge></td>
+                        <td className="px-4 py-2 text-xs text-muted-foreground">{r.status}</td>
+                        <td className="px-4 py-2 text-right tabular-nums">{inr(r.total)}</td>
+                        <td className="px-4 py-2 text-right tabular-nums">{inr(r.paid)}</td>
+                        <td className="px-4 py-2 text-right tabular-nums">{inr(r.due)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="border-t bg-muted/30 font-medium">
+                    <tr>
+                      <td className="px-4 py-2" colSpan={4}>Total</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{inr(ledger.totalBilled)}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{inr(ledger.totalPaid)}</td>
+                      <td className="px-4 py-2 text-right tabular-nums">{inr(ledger.totalDue)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </AppShell>
   );
