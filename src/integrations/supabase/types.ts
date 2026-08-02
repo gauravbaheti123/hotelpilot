@@ -5052,6 +5052,7 @@ export type Database = {
           gst_amount: number
           gst_rate: number
           id: string
+          note: string | null
           qty: number
           rate: number
           segment_bill_id: string
@@ -5063,6 +5064,7 @@ export type Database = {
           gst_amount?: number
           gst_rate?: number
           id?: string
+          note?: string | null
           qty?: number
           rate?: number
           segment_bill_id: string
@@ -5074,6 +5076,7 @@ export type Database = {
           gst_amount?: number
           gst_rate?: number
           id?: string
+          note?: string | null
           qty?: number
           rate?: number
           segment_bill_id?: string

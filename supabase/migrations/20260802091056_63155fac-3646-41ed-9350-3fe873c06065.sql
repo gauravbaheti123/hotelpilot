@@ -1,0 +1,1 @@
+ALTER TABLE public.segment_bill_items ADD COLUMN IF NOT EXISTS note text;
