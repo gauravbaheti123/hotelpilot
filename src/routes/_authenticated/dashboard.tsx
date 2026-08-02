@@ -16,6 +16,10 @@ import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrosse
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { AddExtraBedDialog } from "@/components/AddExtraBedDialog";
 import { PunchChargeDialog } from "@/components/PunchChargeDialog";
+import { KotHistoryDialog } from "@/components/KotHistoryDialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 // Bell moved to global header (AppShell). Reminders section removed here.
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { Input } from "@/components/ui/input";
@@ -220,6 +224,13 @@ function OwnerDashboard({
   >(new Map());
   const [segmentReloadTick, setSegmentReloadTick] = useState(0);
   const [punchTarget, setPunchTarget] = useState<{
+    segment: "food" | "laundry";
+    bookingId: string | null;
+    roomId: string | null;
+    roomNumber: string | null;
+    guestName: string | null;
+  } | null>(null);
+  const [kotHistoryTarget, setKotHistoryTarget] = useState<{
     segment: "food" | "laundry";
     bookingId: string | null;
     roomId: string | null;
@@ -715,6 +726,26 @@ function OwnerDashboard({
                   }
                   setModalRoom(r);
                 }}
+                onSegmentAction={async (r, action) => {
+                  if (segment === "rooms") return;
+                  const seg = segment as "food" | "laundry";
+                  const bid = bookingByRoom.get(r.id) ?? null;
+                  const occ = occInfoByRoom.get(r.id) ?? null;
+                  if (action === "view_kot") {
+                    setKotHistoryTarget({
+                      segment: seg,
+                      bookingId: bid,
+                      roomId: r.id,
+                      roomNumber: r.room_number,
+                      guestName: occ?.guestName ?? null,
+                    });
+                    return;
+                  }
+                  // View Invoice — jump to the Invoices screen, pre-filtered to
+                  // this room's latest bill for the active segment.
+                  const latest = segmentPendingByRoom.get(r.id)?.bills?.[0]?.bill_number ?? null;
+                  navigate({ to: "/billing/invoices", search: { seg, bill: latest ?? undefined } });
+                }}
                 onPickFood={(r) => {
                   const pf = pendingFoodByRoom.get(r.id);
                   if (pf?.bookingId) navigate({ to: "/front-desk/booking/$id", params: { id: pf.bookingId } });
@@ -1076,6 +1107,19 @@ function OwnerDashboard({
           onSaved={() => { setPunchTarget(null); reload(); }}
         />
       )}
+      {kotHistoryTarget && propertyId && (
+        <KotHistoryDialog
+          open={!!kotHistoryTarget}
+          onClose={() => setKotHistoryTarget(null)}
+          segment={kotHistoryTarget.segment}
+          propertyId={propertyId}
+          roomId={kotHistoryTarget.roomId}
+          roomNumber={kotHistoryTarget.roomNumber}
+          guestName={kotHistoryTarget.guestName}
+          bookingId={kotHistoryTarget.bookingId}
+          onChanged={() => { setSegmentReloadTick((t) => t + 1); reload(); }}
+        />
+      )}
     </AppShell>
   );
 }
@@ -1083,7 +1127,7 @@ function OwnerDashboard({
 function RoomGroups({
   rooms, categories, grouping, occupiedRoomIds, pendingFoodByRoom, occInfoByRoom, eventBlockByRoom,
   segmentMode, segmentPendingByRoom,
-  onPick, onPickFood, onCheckout, onAssignEvent, onEventCheckIn,
+  onPick, onPickFood, onCheckout, onAssignEvent, onEventCheckIn, onSegmentAction,
 }: {
   rooms: Room[];
   categories: RoomCategory[];
@@ -1099,6 +1143,7 @@ function RoomGroups({
   onCheckout: (bookingId: string) => void;
   onAssignEvent: (blk: EventBlockRecord) => void;
   onEventCheckIn: (blk: EventBlockRecord) => void;
+  onSegmentAction: (r: Room, action: "view_kot" | "view_invoice") => void;
 }) {
   // Memoize the group derivation so unrelated state changes on the dashboard
   // (modal toggles, form inputs, etc.) don't rebuild these arrays on every
@@ -1174,6 +1219,8 @@ function RoomGroups({
                   occ={occInfoByRoom.get(r.id) ?? null}
                   pending={segmentPendingByRoom.get(r.id) ?? null}
                   onPick={() => onPick(r)}
+                  onViewKot={() => onSegmentAction(r, "view_kot")}
+                  onViewInvoice={() => onSegmentAction(r, "view_invoice")}
                 />
               ) : (
               <RoomCard
@@ -1203,7 +1250,7 @@ function RoomGroups({
 // name and this segment's pending bill amount (₹0 = clean). Tapping opens
 // the Punch Food/Laundry Charge dialog via the parent's onPick.
 function SegmentRoomCard({
-  room, category, segment, occ, pending, onPick,
+  room, category, segment, occ, pending, onPick, onViewKot, onViewInvoice,
 }: {
   room: Room;
   category: string;
@@ -1211,20 +1258,22 @@ function SegmentRoomCard({
   occ: OccInfo | null;
   pending: { amount: number; count: number; bills: Array<{ id: string; bill_number: string; amount: number }> } | null;
   onPick: () => void;
+  onViewKot: () => void;
+  onViewInvoice: () => void;
 }) {
   const amount = pending?.amount ?? 0;
   const hasPending = amount > 0.01;
   const bg = hasPending ? "#f59e0b" : "#0ea5e9"; // amber = pending, sky = clean
   const label = segment === "food" ? "Food" : "Laundry";
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onPick}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPick(); }}
-      className="relative transition cursor-pointer overflow-hidden flex flex-col"
-      style={{ backgroundColor: bg, color: "#ffffff", minHeight: 118, borderRadius: 10 }}
-    >
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <div
+          role="button"
+          tabIndex={0}
+          className="relative transition cursor-pointer overflow-hidden flex flex-col text-left"
+          style={{ backgroundColor: bg, color: "#ffffff", minHeight: 118, borderRadius: 10 }}
+        >
       <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
         <div className="flex items-start justify-between gap-2">
           <span style={{ color: "#ffffff", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
@@ -1252,12 +1301,25 @@ function SegmentRoomCard({
           ) : (
             <>
               <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.95)" }}>No pending</div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>Tap to punch {label.toLowerCase()} charge</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>Tap for {label.toLowerCase()} actions</div>
             </>
           )}
         </div>
       </div>
-    </div>
+        </div>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-48">
+        <DropdownMenuItem onSelect={() => onViewKot()}>
+          View {segment === "food" ? "KOT" : "Tickets"}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => onPick()}>
+          New {segment === "food" ? "KOT" : "Ticket"}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => onViewInvoice()}>
+          View Invoice
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

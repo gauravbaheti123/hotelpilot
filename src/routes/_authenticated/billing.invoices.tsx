@@ -25,6 +25,10 @@ import { printSegmentBill } from "@/components/PunchChargeDialog";
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/invoices")({
   head: () => ({ meta: [{ title: "Invoices — HotelPilot" }] }),
+  validateSearch: (search: Record<string, unknown>): { seg?: "lodge" | "food" | "laundry"; bill?: string } => ({
+    seg: search.seg === "food" || search.seg === "laundry" || search.seg === "lodge" ? search.seg : undefined,
+    bill: typeof search.bill === "string" && search.bill ? search.bill : undefined,
+  }),
   component: () => (<RequirePermission module="invoices"><InvoicesPage /></RequirePermission>),
 });
 
@@ -41,6 +45,7 @@ interface Row {
 
 function InvoicesPage() {
   const { currentId: propertyId, current: currentProperty } = useCurrentProperty();
+  const { seg: segParam, bill: billParam } = Route.useSearch();
   const { user, roles } = useAuth();
   const { can } = usePermissions();
   const navigate = useNavigate();
@@ -94,6 +99,13 @@ function InvoicesPage() {
     })();
   };
   useEffect(load, [propertyId, audit]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Deep-link support: /billing/invoices?seg=food&bill=FB-0007 lands on the
+  // right tab with the bill pre-filtered (used by the dashboard action menu).
+  useEffect(() => {
+    if (segParam) setSegTab(segParam);
+    if (billParam) setQ(billParam);
+  }, [segParam, billParam]);
 
   // Segment bills (Food / Laundry) — loaded when the corresponding tab is active.
   useEffect(() => {
