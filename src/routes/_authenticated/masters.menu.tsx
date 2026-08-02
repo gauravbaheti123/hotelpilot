@@ -36,6 +36,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
+import {
+  useBulkSelect,
+  BulkSelectHead,
+  BulkSelectCell,
+  BulkDeleteButton,
+  BulkDeleteDialog,
+} from "@/components/master/useBulkSelect";
 import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
 
 import { RequirePermission } from "@/components/RequirePermission";
@@ -87,6 +94,7 @@ function MenuPage() {
   const [editingCat, setEditingCat] = useState<Partial<MenuCategory> | null>(null);
   const [itemOpen, setItemOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Partial<MenuItem> | null>(null);
+  const itemBulk = useBulkSelect(items, "menu_items", () => load());
 
   async function load() {
     if (!current) return;
@@ -460,6 +468,11 @@ function MenuPage() {
               </div>
             )}
           </CardHeader>
+          {canManage && itemBulk.selected.size > 0 && (
+            <div className="px-6 pb-2">
+              <BulkDeleteButton bulk={itemBulk as never} />
+            </div>
+          )}
           <CardContent>
             {loading ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
@@ -471,6 +484,7 @@ function MenuPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {canManage && <BulkSelectHead bulk={itemBulk as never} />}
                     <TableHead></TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Short Code</TableHead>
@@ -485,6 +499,7 @@ function MenuPage() {
                 <TableBody>
                   {items.map((i) => (
                     <TableRow key={i.id}>
+                      {canManage && <BulkSelectCell bulk={itemBulk as never} id={i.id} />}
                       <TableCell>
                         <span className={`inline-block h-3 w-3 rounded-sm border ${
                           i.is_veg ? "border-emerald-600 bg-emerald-500/30" : "border-rose-600 bg-rose-500/30"
@@ -539,6 +554,7 @@ function MenuPage() {
           </CardContent>
         </Card>
       </div>
+      <BulkDeleteDialog bulk={itemBulk as never} />
     </AppShell>
   );
 }
