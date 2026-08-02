@@ -65,7 +65,7 @@ function RestaurantPage() {
   type DirectChargeRow = {
     id: string; booking_id: string | null; guest_id: string | null;
     amount: number; description: string | null; charge_date: string;
-    is_settled: boolean; created_at: string;
+    is_settled: boolean; created_at: string; outlet_id?: string | null;
   };
   type PayableRow = {
     id: string; charge_id: string | null; amount: number;
