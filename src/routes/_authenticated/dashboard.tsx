@@ -1094,7 +1094,7 @@ function OwnerDashboard({
 function RoomGroups({
   rooms, categories, grouping, occupiedRoomIds, pendingFoodByRoom, occInfoByRoom, eventBlockByRoom,
   segmentMode, segmentPendingByRoom,
-  onPick, onPickFood, onCheckout, onAssignEvent, onEventCheckIn,
+  onPick, onPickFood, onCheckout, onAssignEvent, onEventCheckIn, onSegmentAction,
 }: {
   rooms: Room[];
   categories: RoomCategory[];
@@ -1110,6 +1110,7 @@ function RoomGroups({
   onCheckout: (bookingId: string) => void;
   onAssignEvent: (blk: EventBlockRecord) => void;
   onEventCheckIn: (blk: EventBlockRecord) => void;
+  onSegmentAction: (r: Room, action: "view_kot" | "view_invoice") => void;
 }) {
   // Memoize the group derivation so unrelated state changes on the dashboard
   // (modal toggles, form inputs, etc.) don't rebuild these arrays on every
@@ -1185,6 +1186,8 @@ function RoomGroups({
                   occ={occInfoByRoom.get(r.id) ?? null}
                   pending={segmentPendingByRoom.get(r.id) ?? null}
                   onPick={() => onPick(r)}
+                  onViewKot={() => onSegmentAction(r, "view_kot")}
+                  onViewInvoice={() => onSegmentAction(r, "view_invoice")}
                 />
               ) : (
               <RoomCard
