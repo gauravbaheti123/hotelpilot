@@ -1872,7 +1872,7 @@ function FolioPage() {
               <tbody className="zebra">
                 {charges.length === 0 ? (
                   <tr><td colSpan={isGst ? 7 : 6} style={{ textAlign: "center", color: "#666", padding: 16 }}>No charges yet.</td></tr>
-                ) : charges.map((c, i) => (
+                ) : invoiceRows.map((c, i) => (
                   <tr key={c.id}>
                     <td>{i + 1}</td>
                     <td>
@@ -1903,10 +1903,13 @@ function FolioPage() {
                     {canEditNow && (
                       <td className="print:hidden" style={{ textAlign: "right" }}>
                         <div className="flex items-center justify-end gap-1">
+                          {c.is_consolidated ? (
+                            <span className="text-[10px] text-muted-foreground">Bill</span>
+                          ) : (<>
                           {c.charge_type !== "discount" && c.charge_type !== "tax" && (
                             <button
                               type="button"
-                              onClick={() => openLineDiscount(c)}
+                              onClick={() => openLineDiscount(c as any)}
                               className="text-emerald-700"
                               title="Apply line-item discount"
                             >
@@ -1916,7 +1919,7 @@ function FolioPage() {
                           {c.charge_type !== "room" && c.charge_type !== "tax" && c.charge_type !== "discount" && (
                             <button
                               type="button"
-                              onClick={() => openEditCharge(c)}
+                              onClick={() => openEditCharge(c as any)}
                               className="text-sky-700"
                               title="Edit charge"
                             >
@@ -1926,13 +1929,14 @@ function FolioPage() {
                           {canVoid && (
                             <button
                               type="button"
-                              onClick={() => removeCharge(c.id)}
+                              onClick={() => removeCharge(String(c.id))}
                               className="text-destructive"
                               title="Delete charge (manager/owner)"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           )}
+                          </>)}
                         </div>
                       </td>
                     )}
