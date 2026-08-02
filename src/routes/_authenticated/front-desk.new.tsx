@@ -24,6 +24,14 @@ import { resolveGstRate, resolveGstRateInclusive } from "@/lib/gst";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { addDaysIso, nightsBetween, SOURCES, todayIso } from "@/lib/front-desk";
+import {
+  extraBedRateFor,
+  fetchTariffPlans,
+  isPlanValidOn,
+  NO_TARIFF_PLAN_ERROR,
+  pickTariffPlan,
+  type TariffPlan,
+} from "@/lib/tariff";
 import { GuestIdUploadField, type SelectedIdFile } from "@/components/GuestIdUploadField";
 import { lookupExistingGuestId, type GuestIdLookupResult } from "@/lib/guestIdLookup";
 import { uploadFileToDrive, safeName } from "@/lib/driveUpload";
@@ -48,9 +56,8 @@ export const Route = createFileRoute("/_authenticated/front-desk/new")({
   component: () => (<RequirePermission module="bookings"><NewBookingPage /></RequirePermission>),
 });
 
-interface Category { id: string; name: string; base_rate: number; max_occupancy: number; extra_bed_rate: number; }
+interface Category { id: string; name: string; max_occupancy: number; }
 interface RoomRow { id: string; room_number: string; category_id: string | null; status: string; }
-interface Tariff { id: string; name: string; category_id: string | null; rate: number; meal_plan: string; }
 interface AdditionalGuest {
   key: string;
   kind: "adult" | "child";
@@ -88,7 +95,7 @@ function NewBookingPage() {
 
   const [cats, setCats] = useState<Category[]>([]);
   const [rooms, setRooms] = useState<RoomRow[]>([]);
-  const [tariffs, setTariffs] = useState<Tariff[]>([]);
+  const [tariffs, setTariffs] = useState<TariffPlan[]>([]);
 
   // Guest lookup
   const [searchOpen, setSearchOpen] = useState(true);
@@ -132,14 +139,21 @@ function NewBookingPage() {
   const [rateManuallySet, setRateManuallySet] = useState(false);
   const [rateType, setRateType] = useState<"exclusive" | "inclusive">("exclusive");
   const { limit: discountLimit } = useDiscountLimit();
+  const [mealPlan, setMealPlan] = useState("EP");
 
-  // Standard rate = the picked tariff's rate, or the category base rate as fallback.
-  const standardRate = useMemo(() => {
-    const t = tariffs.find((x) => x.id === tariffId);
-    if (t?.rate) return Number(t.rate) || 0;
-    const cat = cats.find((c) => c.id === categoryId);
-    return Number(cat?.base_rate) || 0;
-  }, [tariffs, tariffId, cats, categoryId]);
+  // Phase 27b — pricing resolves exclusively through Tariff Plans. There is no
+  // room_categories.base_rate fallback: if nothing resolves, that is a data
+  // problem and the booking is blocked.
+  const resolvedPlan = useMemo(
+    () => pickTariffPlan(tariffs, { categoryId, date: checkIn, mealPlan }),
+    [tariffs, categoryId, checkIn, mealPlan],
+  );
+  const activePlan = useMemo(
+    () => tariffs.find((x) => x.id === tariffId) ?? resolvedPlan,
+    [tariffs, tariffId, resolvedPlan],
+  );
+  // Standard rate = the applicable tariff plan's rate. Nothing else.
+  const standardRate = useMemo(() => Number(activePlan?.rate) || 0, [activePlan]);
 
   const rateOverrideCheck = useMemo(() => {
     if (!standardRate || rate <= 0 || rate >= standardRate) {
@@ -150,7 +164,6 @@ function NewBookingPage() {
       base: standardRate,
     });
   }, [standardRate, rate, discountLimit]);
-  const [mealPlan, setMealPlan] = useState("EP");
   // Future reservations often don't have a specific room picked yet — only the
   // category. When true, room selection is bypassed and booking_rooms.room_id
   // is stored as NULL. See feature: "Room-less Future Reservations".
@@ -175,14 +188,14 @@ function NewBookingPage() {
     if (!current) return;
     (async () => {
       const [c, r, t, bc] = await Promise.all([
-        supabase.from("room_categories").select("id,name,base_rate,max_occupancy,extra_bed_rate").eq("property_id", current.id).order("name"),
+        supabase.from("room_categories").select("id,name,max_occupancy").eq("property_id", current.id).order("name"),
         supabase.from("rooms").select("id,room_number,category_id,status").eq("property_id", current.id).order("room_number"),
-        supabase.from("tariff_plans").select("id,name,category_id,rate,meal_plan").eq("property_id", current.id).eq("is_active", true).order("name"),
+        fetchTariffPlans(current.id).catch(() => [] as TariffPlan[]),
         supabase.from("billing_companies").select("id,name,gstin").eq("property_id", current.id).eq("is_active", true).order("name"),
       ]);
       setCats((c.data ?? []) as Category[]);
       setRooms((r.data ?? []) as RoomRow[]);
-      setTariffs((t.data ?? []) as Tariff[]);
+      setTariffs(t);
       setBillingCompanies(((bc.data ?? []) as any[]).map((x) => ({ id: x.id, name: x.name, gstin: x.gstin ?? null })));
     })();
   }, [current?.id]);
@@ -303,17 +316,19 @@ function NewBookingPage() {
   }, [mobile, idNumber, current?.id]);
 
   const nights = nightsBetween(checkIn, checkOut);
-  const extraBedRate = useMemo(() => {
-    const cat = cats.find((c) => c.id === categoryId);
-    return Number(cat?.extra_bed_rate) || 0;
-  }, [cats, categoryId]);
+  // Extra bed price comes from the resolved tariff plan (Phase 27b). The form
+  // has a single generic bed quantity, so the adult rate is the per-bed rate.
+  const extraBedRate = useMemo(() => extraBedRateFor(activePlan), [activePlan]);
   const extraBedTotal = extraBed ? nights * extraBedRate * extraBedQty : 0;
   const total = nights * rate + extraBedTotal;
   const balance = Math.max(0, total - advance);
   const availableRooms = rooms.filter(
     (r) => (!categoryId || r.category_id === categoryId) && r.status === "vacant",
   );
-  const categoryTariffs = tariffs.filter((t) => !categoryId || t.category_id === categoryId);
+  // Only offer plans that are actually applicable to this stay's check-in date.
+  const categoryTariffs = tariffs.filter(
+    (t) => (!categoryId || t.category_id === categoryId) && isPlanValidOn(t, checkIn),
+  );
 
   // === Additional guests: auto-sync row count to adult/child counts ===
   useEffect(() => {
@@ -335,6 +350,17 @@ function NewBookingPage() {
   function updateExtra(key: string, patch: Partial<AdditionalGuest>) {
     setExtras((prev) => prev.map((g) => (g.key === key ? { ...g, ...patch } : g)));
   }
+
+  // Validity windows are date-sensitive: re-resolve the plan when the stay's
+  // check-in date moves (silently — no toast for a mere date change).
+  useEffect(() => {
+    if (!categoryId || tariffs.length === 0) return;
+    const t = pickTariffPlan(tariffs, { categoryId, date: checkIn });
+    if (!t) { setTariffId(""); return; }
+    setTariffId(t.id);
+    if (!rateManuallySet) setRate(Number(t.rate) || 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkIn, categoryId, tariffs]);
   function addManualExtra() {
     setExtras((prev) => [...prev, blankGuest("adult")]);
   }
@@ -345,23 +371,24 @@ function NewBookingPage() {
   function pickCategory(id: string) {
     setCategoryId(id);
     setRoomId("");
-    // Always refresh rate from category/tariff on category change unless the
-    // user explicitly edited it (rateManuallySet).
-    const cat = cats.find((c) => c.id === id);
-    // Prefer "Rack Rate" tariff (case-insensitive name match), else first matching tariff.
-    const catTariffs = tariffs.filter((t) => t.category_id === id);
-    const t =
-      catTariffs.find((t) => /rack/i.test(t.name)) ??
-      catTariffs[0] ??
-      tariffs.find((t) => /rack/i.test(t.name)) ??
-      tariffs[0];
+    applyResolvedPlan(id, checkIn);
+  }
+
+  /**
+   * Phase 27b — resolve the applicable tariff plan for a category on the stay's
+   * check-in date. No room_categories.base_rate fallback: when nothing
+   * resolves, the user is told to fix the master data.
+   */
+  function applyResolvedPlan(id: string, date: string) {
+    const t = pickTariffPlan(tariffs, { categoryId: id, date });
     if (t) {
       setTariffId(t.id);
-      if (!rateManuallySet) setRate(t.rate);
+      if (!rateManuallySet) setRate(Number(t.rate) || 0);
       setMealPlan(t.meal_plan);
     } else {
       setTariffId("");
-      if (!rateManuallySet && cat) setRate(cat.base_rate);
+      if (!rateManuallySet) setRate(0);
+      toast.error(NO_TARIFF_PLAN_ERROR);
     }
   }
 
@@ -379,6 +406,8 @@ function NewBookingPage() {
     if (!name.trim()) return toast.error("Guest name required");
     if (!isValidMobile(mobile)) return toast.error(MOBILE_ERROR);
     if (!categoryId) return toast.error("Pick a category");
+    // Phase 27b — a booking must always carry a resolved tariff plan.
+    if (!tariffId) return toast.error(NO_TARIFF_PLAN_ERROR);
     if (!assignLater && !roomId) return toast.error("Pick a room (or tick 'Assign room later')");
     if (assignLater && checkInNow)
       return toast.error("Assign a room before checking in — a room is required to check in a guest");
@@ -1141,7 +1170,7 @@ function NewBookingPage() {
                 )}
                 {categoryId && extraBedRate <= 0 && (
                   <div className="text-[11px] text-muted-foreground">
-                    No extra bed rate configured for this category.
+                    No extra bed rate on this tariff plan — set “Extra adult rate” in Master Data → Tariff Plans.
                   </div>
                 )}
               </div>

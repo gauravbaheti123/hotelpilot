@@ -35,6 +35,7 @@ import { fireTrigger } from "@/lib/whatsapp";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { recomputeFolio } from "@/lib/billing";
 import { resolveGstRate } from "@/lib/gst";
+import { fetchTariffPlans, pickTariffPlan, type TariffPlan } from "@/lib/tariff";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { RequirePermission } from "@/components/RequirePermission";
 import { AssignRoomDialog } from "@/components/AssignRoomDialog";
@@ -63,7 +64,7 @@ interface Room {
   room_number: string;
   category_id: string | null;
   status: string;
-  room_categories?: { name: string; base_rate: number } | null;
+  room_categories?: { name: string } | null;
 }
 interface BookingRoomRow {
   id: string;
@@ -138,6 +139,7 @@ function BookingDetailPage() {
   );
   const [b, setB] = useState<BookingDetail | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [tariffPlans, setTariffPlans] = useState<TariffPlan[]>([]);
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [kots, setKots] = useState<KotSummaryRow[]>([]);
   const [extraGuests, setExtraGuests] = useState<AdditionalGuestRow[]>([]);
@@ -189,7 +191,7 @@ function BookingDetailPage() {
       const [{ data: rs }, { data: sh }, { data: kt }, { data: bg }] = await Promise.all([
         supabase
         .from("rooms")
-        .select("id,room_number,category_id,status,room_categories(name,base_rate)")
+        .select("id,room_number,category_id,status,room_categories(name)")
         .eq("property_id", detail.property_id)
         .order("room_number"),
         supabase
@@ -210,6 +212,8 @@ function BookingDetailPage() {
           .order("is_primary", { ascending: false }),
       ]);
       setRooms((rs ?? []) as Room[]);
+      // Phase 27b — tariff plans drive every rate decision in the shift flow.
+      setTariffPlans(await fetchTariffPlans(detail.property_id).catch(() => []));
       const shiftRows = (sh ?? []) as unknown as ShiftRow[];
       // Resolve shifted_by user names from profiles (no FK on shifted_by so we look up manually)
       const userIds = Array.from(new Set(shiftRows.map((s) => s.shifted_by).filter(Boolean) as string[]));
@@ -310,9 +314,25 @@ function BookingDetailPage() {
     toast.success("Custom rate authorised");
   }
 
+  /**
+   * Phase 27b — the "standard rate" for a shift target comes from the target
+   * category's tariff plan, resolved against this stay's own check-in date
+   * (the guest is already in-house; the stay keeps its original pricing date).
+   */
+  function standardRateFor(br: BookingRoomRow, target: Room | undefined): number {
+    const plan = pickTariffPlan(tariffPlans, {
+      categoryId: target?.category_id ?? null,
+      date: br.check_in ?? b?.check_in ?? new Date().toISOString().slice(0, 10),
+    });
+    return Number(plan?.rate ?? 0) || 0;
+  }
+
   function resolveNewRate(br: BookingRoomRow, target: Room | undefined): number {
     if (tariffChoice === "custom") return Number(customRate) || Number(br.rate);
-    if (tariffChoice === "new_standard") return Number(target?.room_categories?.base_rate ?? br.rate);
+    if (tariffChoice === "new_standard") {
+      const std = standardRateFor(br, target);
+      return std > 0 ? std : Number(br.rate);
+    }
     return Number(br.rate);
   }
 
@@ -756,7 +776,7 @@ function BookingDetailPage() {
               const br = b.booking_rooms.find((x) => x.id === shiftBrId);
               const target = rooms.find((r) => r.id === shiftToRoom);
               const fromRate = Number(br?.rate ?? 0);
-              const newStdRate = Number(target?.room_categories?.base_rate ?? 0);
+              const newStdRate = br ? standardRateFor(br, target) : 0;
               const newRate = br ? resolveNewRate(br, target) : 0;
               return (
                 <div className="space-y-4">
@@ -798,7 +818,7 @@ function BookingDetailPage() {
                       <TariffOption
                         active={tariffChoice === "new_standard"} onClick={() => setTariffChoice("new_standard")}
                         title="Apply new room's standard rate"
-                        line1={newStdRate > 0 ? `₹${newStdRate}/night` : "No base rate set on category"}
+                        line1={newStdRate > 0 ? `₹${newStdRate}/night` : "No active tariff plan for this category"}
                         line2={`Based on ${target.room_categories?.name ?? "new"} category tariff`}
                         disabled={newStdRate <= 0} />
                       <div

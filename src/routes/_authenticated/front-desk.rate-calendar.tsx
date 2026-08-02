@@ -9,6 +9,7 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { addDaysIso, todayIso } from "@/lib/front-desk";
 import { pickSeason, effectiveRate, type RateSeason } from "@/lib/yield";
+import { TARIFF_PLAN_SELECT, pickTariffPlan, type TariffPlan } from "@/lib/tariff";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
@@ -20,7 +21,6 @@ export const Route = createFileRoute("/_authenticated/front-desk/rate-calendar")
 const DAYS = 14;
 
 interface Cat { id: string; name: string }
-interface Tariff { id: string; category_id: string | null; rate: number; is_default: boolean; is_active: boolean }
 
 function fmtDay(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
@@ -33,7 +33,7 @@ function RateCalendarPage() {
   const { current, loading: propLoading } = useCurrentProperty();
   const [start, setStart] = useState<string>(todayIso());
   const [cats, setCats] = useState<Cat[]>([]);
-  const [tariffs, setTariffs] = useState<Tariff[]>([]);
+  const [tariffs, setTariffs] = useState<TariffPlan[]>([]);
   const [seasons, setSeasons] = useState<RateSeason[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,14 +48,14 @@ function RateCalendarPage() {
     setLoading(true);
     const [c, t, s] = await Promise.all([
       supabase.from("room_categories").select("id,name").eq("property_id", current.id).order("name"),
-      supabase.from("tariff_plans").select("id,category_id,rate,is_default,is_active").eq("property_id", current.id).eq("is_active", true),
+      supabase.from("tariff_plans").select(TARIFF_PLAN_SELECT).eq("property_id", current.id).eq("is_active", true),
       supabase.from("rate_seasons").select("id,name,season_type,start_date,end_date,multiplier,priority,color,is_active,applies_to_category_id").eq("property_id", current.id).lte("start_date", rangeEnd).gte("end_date", start),
     ]);
     if (c.error) toast.error(c.error.message);
     if (t.error) toast.error(t.error.message);
     if (s.error) toast.error(s.error.message);
     setCats((c.data ?? []) as Cat[]);
-    setTariffs((t.data ?? []) as Tariff[]);
+    setTariffs((t.data ?? []) as unknown as TariffPlan[]);
     setSeasons((s.data ?? []) as RateSeason[]);
     setLoading(false);
   }
@@ -65,11 +65,12 @@ function RateCalendarPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, start]);
 
-  // base rate per category = default plan, else first active
-  function baseRate(catId: string): number {
-    const list = tariffs.filter((t) => t.category_id === catId);
-    const def = list.find((t) => t.is_default) ?? list[0];
-    return def ? Number(def.rate) : 0;
+  /**
+   * Phase 27b — the base rate is the tariff plan that is valid on that very
+   * day, so seasonal plans with validity windows show up across the calendar.
+   */
+  function baseRate(catId: string, date: string): number {
+    return Number(pickTariffPlan(tariffs, { categoryId: catId, date })?.rate ?? 0) || 0;
   }
 
   if (propLoading) return <AppShell title="Rate Calendar"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
@@ -119,7 +120,7 @@ function RateCalendarPage() {
                   ))}
                 </div>
                 {cats.map((c) => {
-                  const base = baseRate(c.id);
+                  const baseToday = baseRate(c.id, start);
                   return (
                     <div
                       key={c.id}
@@ -128,9 +129,12 @@ function RateCalendarPage() {
                     >
                       <div className="p-2 text-sm">
                         <div className="font-medium">{c.name}</div>
-                        <div className="text-[11px] text-muted-foreground">Base ₹{base.toLocaleString("en-IN")}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {baseToday > 0 ? `Base ₹${baseToday.toLocaleString("en-IN")}` : "No tariff plan"}
+                        </div>
                       </div>
                       {days.map((d) => {
+                        const base = baseRate(c.id, d);
                         const season = pickSeason(seasons, d, c.id);
                         const rate = effectiveRate(base, season);
                         const delta = base > 0 ? Math.round(((rate - base) / base) * 100) : 0;

@@ -26,7 +26,7 @@ type RoomRow = {
   status: "vacant" | "occupied" | "blocked" | "maintenance";
   housekeeping_status: "clean" | "dirty" | "inspected" | "out_of_order";
   notes: string | null;
-  category: { id: string; name: string; base_rate: number } | null;
+  category: { id: string; name: string } | null;
 };
 
 type CurrentBooking = {
@@ -83,7 +83,7 @@ function RoomDetailPage() {
 
     const { data: r, error: rErr } = await supabase
       .from("rooms")
-      .select("id, property_id, room_number, floor, status, housekeeping_status, notes, category:room_categories(id, name, base_rate)")
+      .select("id, property_id, room_number, floor, status, housekeeping_status, notes, category:room_categories(id, name)")
       .eq("property_id", currentId)
       .eq("room_number", roomNumber)
       .maybeSingle();
