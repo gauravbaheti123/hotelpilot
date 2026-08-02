@@ -612,19 +612,19 @@ export function PunchChargeDialog({
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
           {walkin ? (
-            <Button onClick={save} disabled={saving}>
+            <Button type="button" onClick={save} disabled={saving}>
               <Printer className="h-4 w-4 mr-1.5" />
-              {saving ? "Saving..." : "Save & Print"}
+              {busy === "save" ? "Saving..." : "Save & Print"}
             </Button>
           ) : (
             <>
-              <Button variant="secondary" onClick={printKot} disabled={saving}>
+              <Button type="button" variant="secondary" onClick={printKot} disabled={saving}>
                 <Printer className="h-4 w-4 mr-1.5" />
-                {saving ? "Working..." : segment === "food" ? "Print KOT" : "Print Ticket"}
+                {busy === "kot" ? "Working..." : segment === "food" ? "Print KOT" : "Print Ticket"}
               </Button>
-              <Button onClick={printBill} disabled={saving}>
+              <Button type="button" onClick={printBill} disabled={saving}>
                 <Printer className="h-4 w-4 mr-1.5" />
-                {saving ? "Working..." : "Print Bill"}
+                {busy === "bill" ? "Working..." : "Print Bill"}
               </Button>
             </>
           )}
