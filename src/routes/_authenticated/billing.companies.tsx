@@ -48,7 +48,19 @@ const fields: FieldDef[] = [
 ];
 
 const columns: ColumnDef<Co>[] = [
-  { header: "Name", render: (r) => <span className="font-medium">{r.name}</span> },
+  {
+    header: "Name",
+    render: (r) => (
+      <span className="font-medium">
+        {r.name}
+        {suspiciousName(r.name) && (
+          <Badge variant="destructive" className="ml-2 align-middle text-[10px]">
+            {suspiciousName(r.name)}
+          </Badge>
+        )}
+      </span>
+    ),
+  },
   { header: "GSTIN", render: (r) => r.gstin ?? "—" },
   { header: "Contact", render: (r) => [r.contact_person, r.phone].filter(Boolean).join(" · ") || "—" },
   { header: "City / State", render: (r) => [r.city, r.state].filter(Boolean).join(", ") || "—" },
