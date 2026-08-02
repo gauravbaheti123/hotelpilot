@@ -12,6 +12,7 @@
 import qz from "qz-tray";
 import { supabase } from "@/integrations/supabase/client";
 import { QZ_PUBLIC_CERTIFICATE } from "./qzCertificate";
+import { rasterizeHtmlToPng } from "./htmlRaster";
 
 export type QZPaperSize = "58mm" | "80mm" | "A4" | string;
 
@@ -181,6 +182,14 @@ function printableWidthInches(paperSize: QZPaperSize): number {
   return Math.round((printableWidthMm(paperSize) / 25.4) * 10000) / 10000;
 }
 
+/**
+ * Exact dot width of the print head for this roll: printable mm → dots at the
+ * head's native 203 DPI. 72mm → 576 dots (EPSON TM-m30), 48mm → 384 dots.
+ */
+export function thermalDotWidth(paperSize: QZPaperSize): number {
+  return Math.round((printableWidthMm(paperSize) / 25.4) * THERMAL_DPI);
+}
+
 // Everything below is expressed in INCHES on purpose.
 //
 // QZ interprets `size`, `margins`, `density` AND `options.pageWidth` in the
@@ -271,6 +280,32 @@ export async function printToPrinter(
     densityDpi: density,
     expectedRasterWidthPx: expectedRasterPx,
   });
+  // Phase 59 — thermal rolls: pre-rasterize in the browser at the head's exact
+  // dot width and hand QZ a finished bitmap. QZ's own HTML renderer stays out
+  // of the sizing path (three config-level fixes failed on real hardware).
+  if (paperSize !== "A4") {
+    const dots = thermalDotWidth(paperSize);
+    try {
+      const png = await rasterizeHtmlToPng(htmlContent, dots);
+      console.info("[qz/print-job] image path", {
+        printer: printerName,
+        dotWidth: dots,
+        pngWidthPx: png.widthPx,
+        pngHeightPx: png.heightPx,
+      });
+      await qz.print(cfg, [
+        {
+          type: "pixel",
+          format: "image",
+          flavor: "base64",
+          data: png.base64,
+        },
+      ]);
+      return;
+    } catch (err) {
+      console.error("[qz/print-job] raster path failed, falling back to HTML", err);
+    }
+  }
   await qz.print(cfg, [
     {
       type: "pixel",
