@@ -707,9 +707,16 @@ function BanquetEventPage() {
             <DialogHeader><DialogTitle>Assign guest to room {assignBlock?.room_number}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1.5"><Label className="text-xs">Guest name *</Label>
-                <Input value={assignName} onChange={(e) => setAssignName(e.target.value)} /></div>
+                <GuestSearchInput
+                  propertyId={b.property_id}
+                  value={assignName}
+                  mobile={assignMobile}
+                  onChange={setAssignName}
+                  onSelect={(g) => { setAssignName(g.name); if (g.mobile) setAssignMobile(g.mobile); }}
+                /></div>
               <div className="space-y-1.5"><Label className="text-xs">Mobile *</Label>
-                <Input type="tel" value={assignMobile} onChange={(e) => setAssignMobile(e.target.value.replace(/[^\d+\-\s]/g, ""))} /></div>
+                <Input type="tel" inputMode="numeric" maxLength={10} value={assignMobile}
+                  onChange={(e) => setAssignMobile(sanitizeMobile(e.target.value))} /></div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setAssignOpen(false)}>Cancel</Button>
