@@ -1,6 +1,7 @@
 import {
   getPrintStyles,
   getPrintContainerStyle,
+  getPrintContainerWidth,
   getPrintSafetyCss,
   getThermalFeedCss,
   THERMAL_FEED_HTML,
@@ -50,7 +51,7 @@ function esc(s: unknown) {
     .replace(/'/g, "&#39;");
 }
 
-function renderKotHtml(
+export function renderKotHtml(
   header: KotHeader,
   items: KotItemForPrint[],
   paperSize: string,
@@ -60,6 +61,7 @@ function renderKotHtml(
   const total = items.reduce((s, i) => s + i.qty * i.rate, 0);
   const pageCss = getPrintStyles(paperSize);
   const containerCss = getPrintContainerStyle(paperSize);
+  const printableWidth = getPrintContainerWidth(paperSize);
   const safetyCss = getPrintSafetyCss(".print-container");
   const isCounter = badge === "COUNTER COPY";
   const showPrice = isCounter;
@@ -76,9 +78,9 @@ function renderKotHtml(
 <style>
 ${pageCss}
 @media print {
-  html, body { width: ${paperSize}; min-height: 0 !important; height: auto !important; }
+  html, body { width: ${printableWidth}; min-height: 0 !important; height: auto !important; }
 }
-html,body{margin:0;padding:0;height:auto;min-height:0;width:${paperSize};color:#000}
+html,body{margin:0;padding:0;height:auto;min-height:0;width:${printableWidth};color:#000}
 body{font-family: 'Arial Black', Arial, Helvetica, sans-serif; font-size:15px; font-weight:700; padding:0; box-sizing:border-box; line-height:1.35}
 .print-container{${containerCss}padding:2mm 0;}
 ${safetyCss}

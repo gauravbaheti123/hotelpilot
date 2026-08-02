@@ -160,8 +160,11 @@ export async function disconnectQZ(): Promise<void> {
 }
 
 function paperSizeToConfig(paperSize: QZPaperSize) {
-  // Pixel/HTML print type: units are mm; QZ scales HTML content into the
-  // printable area. Height 0 lets thermal drivers cut after content.
+  // Pixel/HTML print type: units are mm.
+  // A4 is scaled to fit the sheet. Thermal rolls MUST print 1:1
+  // (scaleContent: false): with an auto height (height 0) QZ has no fixed
+  // page box to scale against, so scaleContent shrinks the raster to a tiny
+  // unreadable fragment. Height 0 lets the driver cut after content.
   if (paperSize === "A4") {
     return {
       units: "mm" as const,
@@ -178,7 +181,7 @@ function paperSizeToConfig(paperSize: QZPaperSize) {
       size: { width: 58, height: 0 },
       margins: 2,
       density: 203,
-      scaleContent: true,
+      scaleContent: false,
       rasterize: true,
     };
   }
@@ -188,7 +191,7 @@ function paperSizeToConfig(paperSize: QZPaperSize) {
     size: { width: 80, height: 0 },
     margins: 2,
     density: 203,
-    scaleContent: true,
+    scaleContent: false,
     rasterize: true,
   };
 }
@@ -197,6 +200,10 @@ function paperWidthMm(paperSize: QZPaperSize): number {
   if (paperSize === "A4") return 210;
   if (paperSize === "58mm") return 58;
   return 80;
+}
+
+function isThermalPaper(paperSize: QZPaperSize): boolean {
+  return paperSize !== "A4";
 }
 
 /**
@@ -230,16 +237,19 @@ export async function printToPrinter(
   }
   const cfg = qz.configs.create(found, paperSizeToConfig(paperSize));
   const widthMm = paperWidthMm(paperSize);
+  // Only A4 needs an explicit layout width (it is scaled to fit the sheet).
+  // For thermal, the document's own CSS already lays out at the roll width
+  // and prints 1:1; forcing pageWidth here combined with scaling was what
+  // produced tiny fragments.
   await qz.print(cfg, [
     {
       type: "pixel",
       format: "html",
       flavor: "plain",
       data: htmlContent,
-      // Tell QZ the CSS layout width in mm so the HTML renders at the
-      // paper's physical width (with scaleContent above bringing it down
-      // to fit exactly), instead of laying out at browser-default 816px.
-      options: { pageWidth: widthMm, pageHeight: 0 },
+      ...(isThermalPaper(paperSize)
+        ? {}
+        : { options: { pageWidth: widthMm, pageHeight: 0 } }),
     },
   ]);
 }
