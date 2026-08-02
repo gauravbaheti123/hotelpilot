@@ -350,6 +350,17 @@ function NewBookingPage() {
   function updateExtra(key: string, patch: Partial<AdditionalGuest>) {
     setExtras((prev) => prev.map((g) => (g.key === key ? { ...g, ...patch } : g)));
   }
+
+  // Validity windows are date-sensitive: re-resolve the plan when the stay's
+  // check-in date moves (silently — no toast for a mere date change).
+  useEffect(() => {
+    if (!categoryId || tariffs.length === 0) return;
+    const t = pickTariffPlan(tariffs, { categoryId, date: checkIn });
+    if (!t) { setTariffId(""); return; }
+    setTariffId(t.id);
+    if (!rateManuallySet) setRate(Number(t.rate) || 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkIn, categoryId, tariffs]);
   function addManualExtra() {
     setExtras((prev) => [...prev, blankGuest("adult")]);
   }
