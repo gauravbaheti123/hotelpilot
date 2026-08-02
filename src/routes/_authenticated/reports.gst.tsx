@@ -107,17 +107,18 @@ function GstReportPage() {
     // Tally: one voucher per invoice (aggregated across slabs).
     const byInvoice = new Map<string, {
       date: string; voucher_number: string; guest_name: string;
-      taxable_amount: number; cgst_amount: number; sgst_amount: number; total_amount: number;
+      taxable_amount: number; cgst_amount: number; sgst_amount: number; igst_amount: number; total_amount: number;
     }>();
     for (const r of display) {
       const v = byInvoice.get(r.invoice_number) ?? {
         date: r.created_at, voucher_number: r.invoice_number,
         guest_name: r.guest_name ?? "Walk-In Guest",
-        taxable_amount: 0, cgst_amount: 0, sgst_amount: 0, total_amount: 0,
+        taxable_amount: 0, cgst_amount: 0, sgst_amount: 0, igst_amount: 0, total_amount: 0,
       };
       v.taxable_amount += Number(r.taxable);
       v.cgst_amount += r.cgst;
       v.sgst_amount += r.sgst;
+      v.igst_amount += r.igst;
       v.total_amount += Number(r.invoice_total ?? 0);
       byInvoice.set(r.invoice_number, v);
     }
