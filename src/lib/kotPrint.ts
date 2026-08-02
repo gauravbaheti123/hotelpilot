@@ -1,4 +1,10 @@
-import { getPrintStyles, getPrintContainerStyle, getPrintSafetyCss } from "./printStyles";
+import {
+  getPrintStyles,
+  getPrintContainerStyle,
+  getPrintSafetyCss,
+  getThermalFeedCss,
+  THERMAL_FEED_HTML,
+} from "./printStyles";
 import { isQZConnected, connectQZ, printToPrinter } from "./qzPrint";
 import { toast } from "sonner";
 
@@ -87,6 +93,7 @@ ${safetyCss}
 .itemnote{font-size:12px;font-weight:600;padding-left:10px;margin-top:-2px;margin-bottom:4px}
 .total{display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin-top:4px}
 .ordernote{font-size:12px;font-weight:600;margin-top:6px}
+${getThermalFeedCss()}
 </style></head><body>
 <div class="print-container">
 ${isCounter ? `<div class="badge">COUNTER COPY</div>` : ""}
@@ -107,6 +114,7 @@ ${items
   .join("")}
 ${showPrice ? `<hr class="divider"/><div class="total"><span>TOTAL</span><span>₹${total.toFixed(2)}</span></div>` : ""}
 ${header.notes ? `<div class="ordernote">Note: ${esc(header.notes)}</div>` : ""}
+${THERMAL_FEED_HTML}
 </div>
 </body></html>`;
 }
