@@ -14,6 +14,7 @@ import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment
 import { useAuth } from "@/hooks/use-auth";
 import { ItemPickerCombobox, type PickerItem } from "@/components/ItemPickerCombobox";
 import { buildKotPrintPlan, runKotPrintJobs, type PrinterInfo, type KotItemForPrint } from "@/lib/kotPrint";
+import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 
 export type SegmentKind = "food" | "laundry";
 
@@ -371,7 +372,7 @@ export function PunchChargeDialog({
       }
 
       printSegmentBill({
-        billNumber: bill.bill_number, segment, propertyName: propertyName ?? "",
+        billNumber: bill.bill_number, segment, propertyName: propertyName ?? "", propertyId,
         guestName: guestName ?? "Guest",
         roomNumber: roomNumber ?? null,
         items: rowsAll.map((l) => ({
@@ -471,7 +472,7 @@ export function PunchChargeDialog({
         toast.error(pe?.message ?? "Kitchen print failed");
       }
       printSegmentBill({
-        billNumber, segment, propertyName: propertyName ?? "",
+        billNumber, segment, propertyName: propertyName ?? "", propertyId,
         guestName: walkin ? walkinGuest.trim() : (guestName ?? "Guest"),
         roomNumber: walkin ? null : (roomNumber ?? null),
         items: clean.map((l) => ({
@@ -617,6 +618,7 @@ export function printSegmentBill(opts: {
   billNumber: string;
   segment: SegmentKind;
   propertyName: string;
+  propertyId?: string | null;
   guestName: string;
   roomNumber: string | null;
   items: { description: string; qty: number; rate: number; amount: number; gst_rate: number }[];
@@ -624,6 +626,44 @@ export function printSegmentBill(opts: {
   isWalkin: boolean;
   paymentMode: string | null;
 }) {
+  void (async () => {
+    let head = { name: opts.propertyName, address: "", phone: "", gstin: "", fssai: "", logo: "" };
+    if (opts.propertyId) {
+      try {
+        const { data } = await supabase
+          .from("properties")
+          .select("name,address_line1,address_line2,city,state,pin_code,phone,gstin,fssai,logo_url")
+          .eq("id", opts.propertyId).maybeSingle();
+        if (data) {
+          const p = data as any;
+          head = {
+            name: p.name || opts.propertyName,
+            address: [p.address_line1, p.address_line2, [p.city, p.pin_code].filter(Boolean).join(" "), p.state]
+              .filter(Boolean).join(", "),
+            phone: p.phone || "",
+            gstin: p.gstin || "",
+            fssai: p.fssai || "",
+            logo: (await resolveLogoUrl(p.logo_url)) || "",
+          };
+        }
+      } catch { /* branding is best-effort */ }
+    }
+    renderSegmentBill(opts, head);
+  })();
+}
+
+interface SegBillHead { name: string; address: string; phone: string; gstin: string; fssai: string; logo: string }
+
+function renderSegmentBill(opts: {
+  billNumber: string;
+  segment: SegmentKind;
+  guestName: string;
+  roomNumber: string | null;
+  items: { description: string; qty: number; rate: number; amount: number; gst_rate: number }[];
+  sub: number; gst: number; total: number;
+  isWalkin: boolean;
+  paymentMode: string | null;
+}, head: SegBillHead) {
   const rowsHtml = opts.items.map((it) => `
     <tr>
       <td>${escape(it.description)}</td>
@@ -642,6 +682,13 @@ export function printSegmentBill(opts: {
   body { width: 76mm; font-size: 11px; }
   h1 { font-size: 13px; margin: 0 0 2px; text-align: center; }
   .prop { text-align: center; font-weight: bold; font-size: 12px; }
+  .brandhead { display: flex; gap: 4mm; align-items: flex-start; border-bottom: 1px solid #000; padding-bottom: 3px; }
+  .brandhead img { max-height: 12mm; max-width: 18mm; object-fit: contain; }
+  .brandinfo { flex: 1; text-align: center; }
+  .brandinfo .nm { font-weight: bold; font-size: 13px; }
+  .brandinfo .ln { font-size: 9px; line-height: 1.25; }
+  .sign { margin-top: 10mm; text-align: right; font-size: 10px; }
+  .sign .line { border-top: 1px solid #000; width: 40mm; margin-left: auto; padding-top: 2px; }
   .meta { display: flex; justify-content: space-between; font-size: 10px; margin: 4px 0; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 2px 0; }
   table { width: 100%; border-collapse: collapse; }
   th, td { padding: 2px 0; text-align: left; font-size: 10px; }
@@ -652,7 +699,16 @@ export function printSegmentBill(opts: {
   .foot { text-align: center; margin-top: 6px; font-size: 10px; }
 </style></head>
 <body>
-  <div class="prop">${escape(opts.propertyName)}</div>
+  <div class="brandhead">
+    ${head.logo ? `<img src="${escape(head.logo)}" alt="logo"/>` : ""}
+    <div class="brandinfo">
+      <div class="nm">${escape(head.name)}</div>
+      ${head.address ? `<div class="ln">${escape(head.address)}</div>` : ""}
+      ${head.phone ? `<div class="ln">Ph: ${escape(head.phone)}</div>` : ""}
+      ${head.gstin ? `<div class="ln">GSTIN: ${escape(head.gstin)}</div>` : ""}
+      ${head.fssai ? `<div class="ln">FSSAI: ${escape(head.fssai)}</div>` : ""}
+    </div>
+  </div>
   <h1>${heading}</h1>
   <div class="meta">
     <span>${escape(opts.billNumber)}</span>
@@ -667,6 +723,7 @@ export function printSegmentBill(opts: {
   <div style="display:flex; justify-content:space-between; font-size:10px;"><span>GST</span><span>${opts.gst.toFixed(2)}</span></div>
   <div class="total"><span>Total</span><span>₹${opts.total.toFixed(2)}</span></div>
   ${opts.isWalkin && opts.paymentMode ? `<div style="margin-top:3px; font-size:10px;">Paid via ${escape(opts.paymentMode.toUpperCase())}</div>` : ""}
+  <div class="sign"><div class="line">Customer Signature</div></div>
   <div class="foot">Thank you!</div>
 </body></html>`;
   const iframe = document.createElement("iframe");
@@ -683,7 +740,7 @@ export function printSegmentBill(opts: {
   setTimeout(() => {
     try { win.focus(); win.print(); } catch { /* ignore */ }
     setTimeout(() => { document.body.removeChild(iframe); }, 1000);
-  }, 200);
+  }, 400);
 }
 
 function escape(s: string) {

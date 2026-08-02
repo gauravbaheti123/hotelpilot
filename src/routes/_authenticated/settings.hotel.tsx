@@ -225,6 +225,7 @@ function HotelSettingsForm({
         website: form.website || null,
         gstin: form.gstin?.toUpperCase() || null,
         pan_number: form.pan_number?.toUpperCase() || null,
+        fssai: form.fssai || null,
         state_code: form.state_code || null,
         legal_entity_name: form.legal_entity_name || null,
         invoice_prefix: form.invoice_prefix?.toUpperCase() || "INV",
@@ -387,6 +388,9 @@ function HotelSettingsForm({
           </Field>
           <Field label="PAN Number">
             <Input disabled={dis} maxLength={10} value={form.pan_number ?? ""} onChange={(e) => set("pan_number", e.target.value.toUpperCase())} placeholder="AAAAA9999A" />
+          </Field>
+          <Field label="FSSAI License Number" hint="Printed on Food / Laundry bills and invoices.">
+            <Input disabled={dis} maxLength={14} value={form.fssai ?? ""} onChange={(e) => set("fssai", e.target.value.replace(/\D/g, ""))} placeholder="14-digit FSSAI number" />
           </Field>
           <Field label="State Code" hint="Auto-derived from GSTIN; editable for corrections or unregistered dealers.">
             <Input disabled={dis} maxLength={2} value={form.state_code ?? ""} onChange={(e) => set("state_code", e.target.value.replace(/\D/g, ""))} placeholder="27" />
