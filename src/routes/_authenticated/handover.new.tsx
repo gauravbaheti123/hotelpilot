@@ -64,15 +64,33 @@ function StartHandoverPage() {
     })();
   }, [propertyId]);
 
-  // Load staff for "incoming manager" dropdown
+  // Load staff for "incoming manager" dropdown.
+  // Uses a security-definer RPC: profiles RLS only exposes your own row to
+  // non-owner roles, so a direct profiles query returns an empty list.
   useEffect(() => {
-    supabase.from("profiles").select("user_id,full_name,email").limit(500).then(({ data }) => {
-      const list = ((data ?? []) as any[])
-        .map((p) => ({ id: p.user_id, name: p.full_name ?? p.email ?? p.user_id.slice(0, 6) }))
-        .filter((s) => s.id !== user?.id);
-      setStaffList(list);
-    });
-  }, [user?.id]);
+    if (!propertyId) { setStaffList([]); return; }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.rpc("list_property_staff" as any, {
+        _property_id: propertyId,
+      } as any);
+      if (cancelled) return;
+      if (error) { toast.error(error.message); return; }
+      const SELECTABLE = new Set(["manager", "receptionist", "owner", "superadmin"]);
+      const byId = new Map<string, string>();
+      for (const r of ((data ?? []) as any[])) {
+        if (!SELECTABLE.has(String(r.role))) continue;
+        if (r.user_id === user?.id) continue;
+        if (!byId.has(r.user_id)) {
+          byId.set(r.user_id, r.display_name ?? r.email ?? String(r.user_id).slice(0, 8));
+        }
+      }
+      setStaffList(Array.from(byId.entries())
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name)));
+    })();
+    return () => { cancelled = true; };
+  }, [propertyId, user?.id]);
 
   // Compute per-mode system totals since window_start
   useEffect(() => {

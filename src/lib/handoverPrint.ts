@@ -156,10 +156,10 @@ export async function printHandover(h: HandoverForPrint): Promise<void> {
       </div>`;
   }).join("");
 
-  const parentStyles = Array.from(
-    document.querySelectorAll('link[rel="stylesheet"], style'),
-  ).map((n) => n.outerHTML).join("\n");
-
+  // NOTE: parent app stylesheets are deliberately NOT inlined here.
+  // src/styles.css ships `@media print { body * { visibility: hidden } }`
+  // (scoped to #invoice-print-area), which blanked this print entirely.
+  // The CSS below is fully self-contained.
   const css = `
     @page { size: A4 portrait; margin: 12mm; }
     html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; color: #000 !important; font-family: Arial, sans-serif; }
