@@ -333,6 +333,9 @@ function RoomsMasterPage() {
               </Dialog>
             )}
           </CardHeader>
+          {canManage && catBulk.selected.size > 0 && (
+            <div className="px-6 pb-2"><BulkDeleteButton bulk={catBulk as never} /></div>
+          )}
           <CardContent>
             {loading ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
@@ -551,6 +554,9 @@ function RoomsMasterPage() {
               </div>
             )}
           </CardHeader>
+          {canManage && roomBulk.selected.size > 0 && (
+            <div className="px-6 pb-2"><BulkDeleteButton bulk={roomBulk as never} /></div>
+          )}
           <CardContent>
             {loading ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
@@ -625,6 +631,8 @@ function RoomsMasterPage() {
           </CardContent>
         </Card>
       </div>
+      <BulkDeleteDialog bulk={catBulk as never} />
+      <BulkDeleteDialog bulk={roomBulk as never} />
     </AppShell>
   );
 }
