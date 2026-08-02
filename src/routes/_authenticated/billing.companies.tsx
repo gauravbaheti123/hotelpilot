@@ -98,6 +98,8 @@ function BillingCompaniesPage() {
       fields={fields}
       columns={columns}
       orderBy={{ column: "name", ascending: true }}
+      searchFields={["name", "gstin", "city", "state", "contact_person", "phone", "email"]}
+      flagRow={(r) => suspiciousName(r.name)}
       headerActions={
         current ? (
           <BulkCsvButtons
