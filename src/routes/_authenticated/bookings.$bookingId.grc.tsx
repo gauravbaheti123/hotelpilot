@@ -163,6 +163,17 @@ function GrcPage() {
       number = data.grc_number;
       setGrc((s) => ({ ...s, id: data.id, grc_number: data.grc_number }));
     }
+    // Keep the guest master in sync — guest-billed invoices resolve
+    // IGST vs CGST+SGST from guests.state (Phase 57).
+    const gid = (booking as any)?.guest_id ?? null;
+    if (gid && (grc.city || grc.state)) {
+      await supabase.from("guests").update({
+        city: grc.city || null,
+        state: grc.state || null,
+        country: grc.country || "India",
+        address: grc.address || null,
+      }).eq("id", gid);
+    }
     toast.success("GRC saved");
     setSaving(false);
     return number ?? null;
@@ -314,6 +325,18 @@ function GrcPage() {
               <Label className="text-xs">Address (as declared on GRC)</Label>
               <Textarea rows={2} value={grc.address} onChange={(e) => setGrc({ ...grc, address: e.target.value })} />
             </div>
+            <div>
+              <Label className="text-xs">City</Label>
+              <CityInput value={grc.city} onChange={(v) => setGrc({ ...grc, city: v })} />
+            </div>
+            <div>
+              <Label className="text-xs">State / UT</Label>
+              <StateSelect value={grc.state} onChange={(v) => setGrc({ ...grc, state: v })} />
+            </div>
+            <div>
+              <Label className="text-xs">Nation</Label>
+              <NationInput value={grc.country} onChange={(v) => setGrc({ ...grc, country: v })} />
+            </div>
           </CardContent>
         </Card>
 
@@ -372,7 +395,7 @@ function GrcPage() {
             <PrintRow k="Discount / Concession" v={grc.discount_note || "—"} />
           </div>
           <div className="mb-4">
-            <div className="text-[12px]"><span className="font-semibold">Address:</span> {grc.address || "—"}</div>
+            <div className="text-[12px]"><span className="font-semibold">Address:</span> {[grc.address, grc.city, grc.state, grc.country].filter(Boolean).join(", ") || "—"}</div>
           </div>
 
           <div className="grc-section-label border-t border-black pt-2 mt-2 mb-2 font-semibold text-[12px] uppercase tracking-wide">Terms &amp; Conditions</div>
