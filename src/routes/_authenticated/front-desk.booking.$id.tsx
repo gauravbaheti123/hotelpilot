@@ -312,9 +312,25 @@ function BookingDetailPage() {
     toast.success("Custom rate authorised");
   }
 
+  /**
+   * Phase 27b — the "standard rate" for a shift target comes from the target
+   * category's tariff plan, resolved against this stay's own check-in date
+   * (the guest is already in-house; the stay keeps its original pricing date).
+   */
+  function standardRateFor(br: BookingRoomRow, target: Room | undefined): number {
+    const plan = pickTariffPlan(tariffPlans, {
+      categoryId: target?.category_id ?? null,
+      date: br.check_in ?? b?.check_in ?? new Date().toISOString().slice(0, 10),
+    });
+    return Number(plan?.rate ?? 0) || 0;
+  }
+
   function resolveNewRate(br: BookingRoomRow, target: Room | undefined): number {
     if (tariffChoice === "custom") return Number(customRate) || Number(br.rate);
-    if (tariffChoice === "new_standard") return Number(target?.room_categories?.base_rate ?? br.rate);
+    if (tariffChoice === "new_standard") {
+      const std = standardRateFor(br, target);
+      return std > 0 ? std : Number(br.rate);
+    }
     return Number(br.rate);
   }
 
