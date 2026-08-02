@@ -1879,7 +1879,7 @@ function FolioPage() {
               <tbody className="zebra">
                 {charges.length === 0 ? (
                   <tr><td colSpan={isGst ? 7 : 6} style={{ textAlign: "center", color: "#666", padding: 16 }}>No charges yet.</td></tr>
-                ) : invoiceRows.map((c, i) => (
+                ) : invoiceRows.map((c: DisplayCharge, i: number) => (
                   <tr key={c.id}>
                     <td>{i + 1}</td>
                     <td>
