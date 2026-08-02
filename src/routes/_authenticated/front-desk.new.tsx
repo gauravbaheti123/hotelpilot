@@ -953,7 +953,6 @@ function NewBookingPage() {
                 <SelectContent>
                   <SelectItem value="regular">Regular</SelectItem>
                   <SelectItem value="corporate">Corporate</SelectItem>
-                  <SelectItem value="vip">VIP</SelectItem>
                 </SelectContent>
               </Select>
             </F>
@@ -1102,26 +1101,24 @@ function NewBookingPage() {
             </F>
             <F label="Tariff plan">
               <SearchableSelect
-                value={tariffId}
-                onChange={pickTariff}
+                value={planName}
+                onChange={pickPlanName}
                 disabled={!categoryId}
-                placeholder="Custom / none"
+                placeholder={categoryId ? "Select tariff plan" : "Pick category first"}
                 searchPlaceholder="Search tariff plans…"
-                options={categoryTariffs.map((t) => ({
-                  value: t.id,
-                  label: `${t.name} (${t.meal_plan})`,
-                  hint: `₹${t.rate}`,
+                options={planNames.map((n) => ({
+                  value: n,
+                  label: n,
                 })) as SearchableOption[]}
               />
             </F>
             <F label="Meal plan">
-              <Select value={mealPlan} onValueChange={setMealPlan}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={mealPlan} onValueChange={setMealPlan} disabled={!planName}>
+                <SelectTrigger><SelectValue placeholder={planName ? "Select meal plan" : "Pick tariff plan first"} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="EP">EP — Room only</SelectItem>
-                  <SelectItem value="CP">CP — Breakfast</SelectItem>
-                  <SelectItem value="MAP">MAP — Breakfast + 1 meal</SelectItem>
-                  <SelectItem value="AP">AP — All meals</SelectItem>
+                  {mealPlanOptions.map((m) => (
+                    <SelectItem key={m} value={m}>{MEAL_PLAN_LABELS[m] ?? m}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </F>
