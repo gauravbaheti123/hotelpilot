@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { resolveTaxType } from "@/lib/gst";
+import { stateNameFromCode } from "@/lib/indiaGeo";
 
 export interface DailySummary {
   date: string;
