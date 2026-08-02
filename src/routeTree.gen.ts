@@ -78,7 +78,6 @@ import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenti
 import { Route as AuthenticatedMastersHallsRouteImport } from './routes/_authenticated/masters.halls'
 import { Route as AuthenticatedMastersExpenseCategoriesRouteImport } from './routes/_authenticated/masters.expense-categories'
 import { Route as AuthenticatedMastersChannelsRouteImport } from './routes/_authenticated/masters.channels'
-import { Route as AuthenticatedMastersBillingCompaniesRouteImport } from './routes/_authenticated/masters.billing-companies'
 import { Route as AuthenticatedInventoryVendorsRouteImport } from './routes/_authenticated/inventory.vendors'
 import { Route as AuthenticatedInventoryStockRouteImport } from './routes/_authenticated/inventory.stock'
 import { Route as AuthenticatedInventoryMovementsRouteImport } from './routes/_authenticated/inventory.movements'
@@ -99,6 +98,7 @@ import { Route as AuthenticatedExpensesNewRouteImport } from './routes/_authenti
 import { Route as AuthenticatedCommsNewRouteImport } from './routes/_authenticated/comms.new'
 import { Route as AuthenticatedBillingMisRouteImport } from './routes/_authenticated/billing.mis'
 import { Route as AuthenticatedBillingInvoicesRouteImport } from './routes/_authenticated/billing.invoices'
+import { Route as AuthenticatedBillingCompaniesRouteImport } from './routes/_authenticated/billing.companies'
 import { Route as AuthenticatedBanquetNewRouteImport } from './routes/_authenticated/banquet.new'
 import { Route as AuthenticatedBanquetBookingsRouteImport } from './routes/_authenticated/banquet.bookings'
 import { Route as AuthenticatedSuperadminRolesIndexRouteImport } from './routes/_authenticated/superadmin.roles.index'
@@ -504,12 +504,6 @@ const AuthenticatedMastersChannelsRoute =
     path: '/masters/channels',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedMastersBillingCompaniesRoute =
-  AuthenticatedMastersBillingCompaniesRouteImport.update({
-    id: '/masters/billing-companies',
-    path: '/masters/billing-companies',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedInventoryVendorsRoute =
   AuthenticatedInventoryVendorsRouteImport.update({
     id: '/inventory/vendors',
@@ -626,6 +620,12 @@ const AuthenticatedBillingInvoicesRoute =
     path: '/billing/invoices',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedBillingCompaniesRoute =
+  AuthenticatedBillingCompaniesRouteImport.update({
+    id: '/billing/companies',
+    path: '/billing/companies',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedBanquetNewRoute = AuthenticatedBanquetNewRouteImport.update({
   id: '/banquet/new',
   path: '/banquet/new',
@@ -709,6 +709,7 @@ export interface FileRoutesByFullPath {
   '/superadmin': typeof AuthenticatedSuperadminRouteWithChildren
   '/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
   '/banquet/new': typeof AuthenticatedBanquetNewRoute
+  '/billing/companies': typeof AuthenticatedBillingCompaniesRoute
   '/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
   '/billing/mis': typeof AuthenticatedBillingMisRoute
   '/comms/new': typeof AuthenticatedCommsNewRoute
@@ -729,7 +730,6 @@ export interface FileRoutesByFullPath {
   '/inventory/movements': typeof AuthenticatedInventoryMovementsRoute
   '/inventory/stock': typeof AuthenticatedInventoryStockRoute
   '/inventory/vendors': typeof AuthenticatedInventoryVendorsRoute
-  '/masters/billing-companies': typeof AuthenticatedMastersBillingCompaniesRoute
   '/masters/channels': typeof AuthenticatedMastersChannelsRoute
   '/masters/expense-categories': typeof AuthenticatedMastersExpenseCategoriesRoute
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
@@ -811,6 +811,7 @@ export interface FileRoutesByTo {
   '/superadmin': typeof AuthenticatedSuperadminRouteWithChildren
   '/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
   '/banquet/new': typeof AuthenticatedBanquetNewRoute
+  '/billing/companies': typeof AuthenticatedBillingCompaniesRoute
   '/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
   '/billing/mis': typeof AuthenticatedBillingMisRoute
   '/comms/new': typeof AuthenticatedCommsNewRoute
@@ -831,7 +832,6 @@ export interface FileRoutesByTo {
   '/inventory/movements': typeof AuthenticatedInventoryMovementsRoute
   '/inventory/stock': typeof AuthenticatedInventoryStockRoute
   '/inventory/vendors': typeof AuthenticatedInventoryVendorsRoute
-  '/masters/billing-companies': typeof AuthenticatedMastersBillingCompaniesRoute
   '/masters/channels': typeof AuthenticatedMastersChannelsRoute
   '/masters/expense-categories': typeof AuthenticatedMastersExpenseCategoriesRoute
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
@@ -915,6 +915,7 @@ export interface FileRoutesById {
   '/_authenticated/superadmin': typeof AuthenticatedSuperadminRouteWithChildren
   '/_authenticated/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
   '/_authenticated/banquet/new': typeof AuthenticatedBanquetNewRoute
+  '/_authenticated/billing/companies': typeof AuthenticatedBillingCompaniesRoute
   '/_authenticated/billing/invoices': typeof AuthenticatedBillingInvoicesRoute
   '/_authenticated/billing/mis': typeof AuthenticatedBillingMisRoute
   '/_authenticated/comms/new': typeof AuthenticatedCommsNewRoute
@@ -935,7 +936,6 @@ export interface FileRoutesById {
   '/_authenticated/inventory/movements': typeof AuthenticatedInventoryMovementsRoute
   '/_authenticated/inventory/stock': typeof AuthenticatedInventoryStockRoute
   '/_authenticated/inventory/vendors': typeof AuthenticatedInventoryVendorsRoute
-  '/_authenticated/masters/billing-companies': typeof AuthenticatedMastersBillingCompaniesRoute
   '/_authenticated/masters/channels': typeof AuthenticatedMastersChannelsRoute
   '/_authenticated/masters/expense-categories': typeof AuthenticatedMastersExpenseCategoriesRoute
   '/_authenticated/masters/halls': typeof AuthenticatedMastersHallsRoute
@@ -1019,6 +1019,7 @@ export interface FileRouteTypes {
     | '/superadmin'
     | '/banquet/bookings'
     | '/banquet/new'
+    | '/billing/companies'
     | '/billing/invoices'
     | '/billing/mis'
     | '/comms/new'
@@ -1039,7 +1040,6 @@ export interface FileRouteTypes {
     | '/inventory/movements'
     | '/inventory/stock'
     | '/inventory/vendors'
-    | '/masters/billing-companies'
     | '/masters/channels'
     | '/masters/expense-categories'
     | '/masters/halls'
@@ -1121,6 +1121,7 @@ export interface FileRouteTypes {
     | '/superadmin'
     | '/banquet/bookings'
     | '/banquet/new'
+    | '/billing/companies'
     | '/billing/invoices'
     | '/billing/mis'
     | '/comms/new'
@@ -1141,7 +1142,6 @@ export interface FileRouteTypes {
     | '/inventory/movements'
     | '/inventory/stock'
     | '/inventory/vendors'
-    | '/masters/billing-companies'
     | '/masters/channels'
     | '/masters/expense-categories'
     | '/masters/halls'
@@ -1224,6 +1224,7 @@ export interface FileRouteTypes {
     | '/_authenticated/superadmin'
     | '/_authenticated/banquet/bookings'
     | '/_authenticated/banquet/new'
+    | '/_authenticated/billing/companies'
     | '/_authenticated/billing/invoices'
     | '/_authenticated/billing/mis'
     | '/_authenticated/comms/new'
@@ -1244,7 +1245,6 @@ export interface FileRouteTypes {
     | '/_authenticated/inventory/movements'
     | '/_authenticated/inventory/stock'
     | '/_authenticated/inventory/vendors'
-    | '/_authenticated/masters/billing-companies'
     | '/_authenticated/masters/channels'
     | '/_authenticated/masters/expense-categories'
     | '/_authenticated/masters/halls'
@@ -1810,13 +1810,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMastersChannelsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/masters/billing-companies': {
-      id: '/_authenticated/masters/billing-companies'
-      path: '/masters/billing-companies'
-      fullPath: '/masters/billing-companies'
-      preLoaderRoute: typeof AuthenticatedMastersBillingCompaniesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/inventory/vendors': {
       id: '/_authenticated/inventory/vendors'
       path: '/inventory/vendors'
@@ -1957,6 +1950,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBillingInvoicesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/billing/companies': {
+      id: '/_authenticated/billing/companies'
+      path: '/billing/companies'
+      fullPath: '/billing/companies'
+      preLoaderRoute: typeof AuthenticatedBillingCompaniesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/banquet/new': {
       id: '/_authenticated/banquet/new'
       path: '/banquet/new'
@@ -2065,6 +2065,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSuperadminRoute: typeof AuthenticatedSuperadminRouteWithChildren
   AuthenticatedBanquetBookingsRoute: typeof AuthenticatedBanquetBookingsRoute
   AuthenticatedBanquetNewRoute: typeof AuthenticatedBanquetNewRoute
+  AuthenticatedBillingCompaniesRoute: typeof AuthenticatedBillingCompaniesRoute
   AuthenticatedBillingInvoicesRoute: typeof AuthenticatedBillingInvoicesRoute
   AuthenticatedBillingMisRoute: typeof AuthenticatedBillingMisRoute
   AuthenticatedCommsNewRoute: typeof AuthenticatedCommsNewRoute
@@ -2085,7 +2086,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInventoryMovementsRoute: typeof AuthenticatedInventoryMovementsRoute
   AuthenticatedInventoryStockRoute: typeof AuthenticatedInventoryStockRoute
   AuthenticatedInventoryVendorsRoute: typeof AuthenticatedInventoryVendorsRoute
-  AuthenticatedMastersBillingCompaniesRoute: typeof AuthenticatedMastersBillingCompaniesRoute
   AuthenticatedMastersChannelsRoute: typeof AuthenticatedMastersChannelsRoute
   AuthenticatedMastersExpenseCategoriesRoute: typeof AuthenticatedMastersExpenseCategoriesRoute
   AuthenticatedMastersHallsRoute: typeof AuthenticatedMastersHallsRoute
@@ -2152,6 +2152,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSuperadminRoute: AuthenticatedSuperadminRouteWithChildren,
   AuthenticatedBanquetBookingsRoute: AuthenticatedBanquetBookingsRoute,
   AuthenticatedBanquetNewRoute: AuthenticatedBanquetNewRoute,
+  AuthenticatedBillingCompaniesRoute: AuthenticatedBillingCompaniesRoute,
   AuthenticatedBillingInvoicesRoute: AuthenticatedBillingInvoicesRoute,
   AuthenticatedBillingMisRoute: AuthenticatedBillingMisRoute,
   AuthenticatedCommsNewRoute: AuthenticatedCommsNewRoute,
@@ -2173,8 +2174,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInventoryMovementsRoute: AuthenticatedInventoryMovementsRoute,
   AuthenticatedInventoryStockRoute: AuthenticatedInventoryStockRoute,
   AuthenticatedInventoryVendorsRoute: AuthenticatedInventoryVendorsRoute,
-  AuthenticatedMastersBillingCompaniesRoute:
-    AuthenticatedMastersBillingCompaniesRoute,
   AuthenticatedMastersChannelsRoute: AuthenticatedMastersChannelsRoute,
   AuthenticatedMastersExpenseCategoriesRoute:
     AuthenticatedMastersExpenseCategoriesRoute,
@@ -2265,3 +2264,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
