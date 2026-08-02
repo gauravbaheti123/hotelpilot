@@ -42,7 +42,7 @@ import {
   resolveLogoUrl,
   type InvoiceProperty,
 } from "@/lib/invoiceTemplates";
-import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
+import { fetchPrinterPaperSize, printIsolated, withPrintStyles } from "@/lib/printStyles";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
@@ -1343,8 +1343,18 @@ function FolioPage() {
     const paperSize = await fetchPrinterPaperSize(booking.property_id, "bill");
     // Invoice/Bill uses the browser's native print dialog — QZ Tray's
     // HTML-to-pixel pipeline caused persistent A4 table cutoff issues.
-    withPrintStyles(paperSize, () => window.print());
-    setTimeout(() => { document.title = prevTitle; }, 500);
+    // printIsolated() clones the invoice into an in-flow print root so long
+    // bills paginate across multiple A4 pages instead of being clipped to one.
+    const area = document.getElementById("invoice-print-area");
+    if (area) {
+      printIsolated(area as HTMLElement, {
+        paperSize: isThermal(paperSize) ? paperSize : "A4",
+        onAfter: () => { document.title = prevTitle; },
+      });
+    } else {
+      withPrintStyles(paperSize, () => window.print());
+      setTimeout(() => { document.title = prevTitle; }, 500);
+    }
   }
 
   function openEmail() {
