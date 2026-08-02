@@ -334,6 +334,47 @@ function UsersPage() {
             </Table>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Role Templates &amp; Permissions</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              These are the templates shown in the <strong>Template</strong> column above. Editing a template&apos;s
+              permission grid applies immediately to every user assigned to it.
+            </p>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Template</TableHead>
+                  <TableHead>Users assigned</TableHead>
+                  <TableHead className="text-right">Permissions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allRoles.length === 0 && (
+                  <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-6">No role templates yet.</TableCell></TableRow>
+                )}
+                {allRoles.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">{r.name}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {rows.filter((u) => u.role_id === r.id).length}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild size="sm" variant="outline">
+                        <Link to="/superadmin/roles/$id" params={{ id: r.id }}>
+                          <SlidersHorizontal className="h-3.5 w-3.5 mr-1" /> Edit permission grid
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       </div>
 
       <Dialog open={showNew} onOpenChange={setShowNew}>
