@@ -285,8 +285,11 @@ export async function printToPrinter(
   // of the sizing path (three config-level fixes failed on real hardware).
   if (paperSize !== "A4") {
     const dots = thermalDotWidth(paperSize);
+    // Templates lay out in mm; convert the printable width to CSS px so the
+    // content fills the sheet, then scale up to the head's dot width.
+    const cssWidth = (printableWidthMm(paperSize) * 96) / 25.4;
     try {
-      const png = await rasterizeHtmlToPng(htmlContent, dots);
+      const png = await rasterizeHtmlToPng(htmlContent, cssWidth, dots);
       console.info("[qz/print-job] image path", {
         printer: printerName,
         dotWidth: dots,
