@@ -55,7 +55,10 @@ export function PunchChargeDialog({
   const [walkin, setWalkin] = useState(!bookingId);
   const [walkinGuest, setWalkinGuest] = useState("");
   const [payMode, setPayMode] = useState<string>("cash");
-  const [saving, setSaving] = useState(false);
+  // Per-action busy state so one button's click never renders/locks the other's label.
+  const [busy, setBusy] = useState<null | "kot" | "bill" | "save">(null);
+  const inFlight = useRef(false);
+  const saving = busy !== null;
   const [defaultGst, setDefaultGst] = useState<number>(segment === "food" ? 5 : 5);
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [printerByItem, setPrinterByItem] = useState<Map<string, string | null>>(new Map());
