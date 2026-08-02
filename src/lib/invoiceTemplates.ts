@@ -320,7 +320,7 @@ function paymentsBlock(ctx: InvoiceContext): string {
     p.reference_no?.trim() || (p.id ? `RCP-${String(p.id).slice(0, 6).toUpperCase()}` : `RCP-${i + 1}`);
   const total = payments.reduce((s, p) => s + Number(p.amount || 0), 0);
   return `
-    <div style="margin-top:14px;page-break-inside:auto">
+    <div class="payments-block" style="margin-top:14px;page-break-inside:auto">
       <div class="small" style="text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Payment Received</div>
       <table>
         <thead><tr>
@@ -356,7 +356,7 @@ function totalsBlock(ctx: InvoiceContext): string {
   const showGstSplit = isGst && (property.invoice_show_gst_breakup ?? true);
 
   return `
-    <div style="display:flex;gap:18px;margin-top:14px">
+    <div class="totals-box avoid-break" style="display:flex;gap:18px;margin-top:14px">
       <div style="flex:1">
       </div>
       <div style="width:46%">
