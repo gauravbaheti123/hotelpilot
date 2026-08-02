@@ -122,6 +122,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
   }>>([]);
   const [overrideOpen, setOverrideOpen] = useState(false);
   const [overrideReason, setOverrideReason] = useState("");
+  // Phase 48b — early checkout choice (actual stay vs full booked stay).
+  const [earlyChoice, setEarlyChoice] = useState<"actual_stay" | "full_booked" | null>(null);
+  const [earlyBusy, setEarlyBusy] = useState(false);
   const [property, setProperty] = useState<{ checkout_grace_time: string | null } | null>(null);
   const { methods: payMethods } = usePaymentMethods(booking?.property_id ?? null);
   // Bill-To confirmation gate (Phase 13.3).
