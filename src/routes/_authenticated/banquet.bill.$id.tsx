@@ -114,7 +114,7 @@ function BanquetBillPage() {
       package_rate,hall_charge,fb_charge,extra_charge,discount_amount,total_amount,bill_type,
       discount_type,discount_value,line_discounts,
       advance_amount,balance_amount,status,notes,
-      halls(name),guests(name,mobile,email,gst_number,company)
+      halls(name),guests(name,mobile,email,gst_number,company,state)
     `).eq("id", id).single();
     if (error) { toast.error(error.message); setLoading(false); return; }
     const bq = data as unknown as Bq;
@@ -234,9 +234,16 @@ function BanquetBillPage() {
   const discount = Math.round((totalLineDisc + billDiscAmt) * 100) / 100;
   const taxable = Math.max(0, netSubtotal - billDiscAmt);
   const gstRate = 0.05;
-  const cgst = isGst ? Math.round((taxable * gstRate / 2) * 100) / 100 : 0;
+  const gstTotal = isGst ? Math.round(taxable * gstRate * 100) / 100 : 0;
+  const { taxType: banquetTaxType } = resolveTaxType(
+    (b.guests as { state?: string | null } | null)?.state ?? null,
+    (property as { state?: string | null } | null)?.state ?? null,
+  );
+  const isIgstBill = banquetTaxType === "igst";
+  const igst = isIgstBill ? gstTotal : 0;
+  const cgst = isIgstBill ? 0 : Math.round((gstTotal / 2) * 100) / 100;
   const sgst = cgst;
-  const totalRaw = Math.round((taxable + (isGst ? cgst + sgst : 0)) * 100) / 100;
+  const totalRaw = Math.round((taxable + gstTotal) * 100) / 100;
   const total = roundHalfUp(totalRaw);
   const roundOff = Math.round((total - totalRaw) * 100) / 100;
   const advance = Number(b.advance_amount || 0);
