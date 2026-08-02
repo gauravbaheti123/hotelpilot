@@ -395,6 +395,8 @@ function NewBookingPage() {
     if (!name.trim()) return toast.error("Guest name required");
     if (!isValidMobile(mobile)) return toast.error(MOBILE_ERROR);
     if (!categoryId) return toast.error("Pick a category");
+    // Phase 27b — a booking must always carry a resolved tariff plan.
+    if (!tariffId) return toast.error(NO_TARIFF_PLAN_ERROR);
     if (!assignLater && !roomId) return toast.error("Pick a room (or tick 'Assign room later')");
     if (assignLater && checkInNow)
       return toast.error("Assign a room before checking in — a room is required to check in a guest");
@@ -1157,7 +1159,7 @@ function NewBookingPage() {
                 )}
                 {categoryId && extraBedRate <= 0 && (
                   <div className="text-[11px] text-muted-foreground">
-                    No extra bed rate configured for this category.
+                    No extra bed rate on this tariff plan — set “Extra adult rate” in Master Data → Tariff Plans.
                   </div>
                 )}
               </div>
