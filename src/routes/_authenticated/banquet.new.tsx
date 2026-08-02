@@ -132,6 +132,14 @@ function NewBanquetPage() {
   }
   function removeExtra(i: number) { setExtras((p) => p.filter((_, idx) => idx !== i)); }
 
+  /**
+   * Phase 27b — single source of truth for room pricing: the tariff plan that
+   * is valid for this category on the given stay date.
+   */
+  function stdRate(categoryId: string | null | undefined, date: string): number {
+    return Number(pickTariffPlan(tariffPlans, { categoryId: categoryId ?? null, date })?.rate ?? 0) || 0;
+  }
+
   const blockSummary = useMemo(() => {
     let totalRooms = 0;
     let revenue = 0;
@@ -181,7 +189,9 @@ function NewBanquetPage() {
         if (q <= 0) continue;
         const cat = cats.find((c) => c.id === row.category_id);
         const rooms = await pickAvailableRooms(propertyId, row.category_id, q);
-        const rate = row.special_rate ? Number(row.special_rate) : Number(cat?.base_rate ?? 0);
+        const rate = row.special_rate
+          ? Number(row.special_rate)
+          : stdRate(row.category_id, row.checkin_date || eventDate);
         rooms.forEach((r) => out.push({
           room_id: r.id, room_number: r.room_number,
           room_category: r.category_name || cat?.name || "",
@@ -214,8 +224,7 @@ function NewBanquetPage() {
     // Enforce per-role discount limits on any overridden room rate (single + bulk).
     if (roomMode === "single" && singleRoomId) {
       const r = allRooms.find((x) => x.id === singleRoomId);
-      const cat = cats.find((c) => c.id === r?.category_id);
-      const base = Number(cat?.base_rate ?? 0);
+      const base = stdRate(r?.category_id, singleCheckIn || eventDate);
       const proposed = Number(singleRate) || 0;
       if (base > 0 && proposed > 0 && proposed < base) {
         const chk = canApplyDiscount(discountLimit, { discountRupees: base - proposed, base });
@@ -226,7 +235,7 @@ function NewBanquetPage() {
       for (const row of blockRows) {
         if (!row.category_id || !row.special_rate) continue;
         const cat = cats.find((c) => c.id === row.category_id);
-        const base = Number(cat?.base_rate ?? 0);
+        const base = stdRate(row.category_id, row.checkin_date || eventDate);
         const proposed = Number(row.special_rate) || 0;
         if (base > 0 && proposed > 0 && proposed < base) {
           const chk = canApplyDiscount(discountLimit, { discountRupees: base - proposed, base });
@@ -272,7 +281,9 @@ function NewBanquetPage() {
           if (q <= 0) continue;
           const cat = cats.find((c) => c.id === row.category_id);
           const rooms = await pickAvailableRooms(propertyId, row.category_id, q);
-          const rate = row.special_rate ? Number(row.special_rate) : Number(cat?.base_rate ?? 0);
+          const rate = row.special_rate
+            ? Number(row.special_rate)
+            : stdRate(row.category_id, row.checkin_date || eventDate);
           rooms.forEach((r) => out.push({
             room_id: r.id, room_number: r.room_number,
             room_category: r.category_name || cat?.name || "",
@@ -526,7 +537,7 @@ function NewBanquetPage() {
                         <Field label={i === 0 ? "Check-out" : ""}>
                           <Input type="date" value={r.checkout_date} onChange={(e) => updateBlockRow(i, { checkout_date: e.target.value })} />
                         </Field>
-                        <Field label={i === 0 ? `Rate (def ₹${cat?.base_rate ?? 0})` : ""}>
+                        <Field label={i === 0 ? `Rate (def ₹${stdRate(r.category_id, r.checkin_date || eventDate)})` : ""}>
                           <Input type="number" placeholder="default" value={r.special_rate} onChange={(e) => updateBlockRow(i, { special_rate: e.target.value })} />
                         </Field>
                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeBlockRow(i)}>
