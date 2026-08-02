@@ -42,7 +42,7 @@ import {
   resolveLogoUrl,
   type InvoiceProperty,
 } from "@/lib/invoiceTemplates";
-import { fetchPrinterPaperSize, printIsolated, withPrintStyles } from "@/lib/printStyles";
+import { fetchPrinterPaperSize, isThermal, printIsolated, withPrintStyles } from "@/lib/printStyles";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
