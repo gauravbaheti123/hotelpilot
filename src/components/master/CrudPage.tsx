@@ -102,6 +102,8 @@ export function CrudPage<T extends { id: string }>({
   initialNew,
   filterEq,
   headerActions,
+  searchFields,
+  flagRow,
   validate,
 }: CrudPageProps<T>) {
   const { roles } = useAuth();
@@ -117,11 +119,25 @@ export function CrudPage<T extends { id: string }>({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [query, setQuery] = useState("");
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
 
-  const allSelected = rows.length > 0 && selected.size === rows.length;
+  const flaggedCount = flagRow ? rows.filter((r) => flagRow(r)).length : 0;
+
+  const visibleRows = rows.filter((r) => {
+    if (flaggedOnly && flagRow && !flagRow(r)) return false;
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    const src = searchFields
+      ? searchFields.map((k) => (r as any)[k])
+      : Object.values(r as any);
+    return src.some((v) => typeof v === "string" && v.toLowerCase().includes(q));
+  });
+
+  const allSelected = visibleRows.length > 0 && visibleRows.every((r) => selected.has(r.id));
 
   function toggleAll(v: boolean) {
-    setSelected(v ? new Set(rows.map((r) => r.id)) : new Set());
+    setSelected(v ? new Set(visibleRows.map((r) => r.id)) : new Set());
   }
 
   function toggleOne(id: string, v: boolean) {
