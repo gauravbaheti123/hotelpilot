@@ -1004,12 +1004,6 @@ function OwnerDashboard({
           } as any);
         }}
         onCheckout={(bid: string) => { setModalRoom(null); setCheckoutBookingId(bid); }}
-        onOtherCharges={(bid: string) => {
-          const roomNo = modalRoom?.room_number;
-          setModalRoom(null);
-          navigate({ to: "/billing/folio/$bookingId", params: { bookingId: bid } });
-          if (roomNo) toast.success(`Opening Other Charges for Room ${roomNo}`);
-        }}
         onAddExtraBed={(bid: string) => { setModalRoom(null); setExtraBedBookingId(bid); }}
         onCollectAdvance={(bid: string) => {
           setModalRoom(null);
@@ -1529,7 +1523,7 @@ function roomTileStyle(r: Room, isOccupied: boolean): { bg: string; label: strin
 }
 
 function RoomStatusModal({
-  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onOtherCharges, onAddExtraBed, onCollectAdvance,
+  room, kind, bookingId, staff, onClose, onChanged, onOpenBooking, onNewBooking, onCheckout, onAddExtraBed, onCollectAdvance,
 }: {
   room: Room | null;
   kind: TileKind | null;
@@ -1540,7 +1534,6 @@ function RoomStatusModal({
   onOpenBooking: (bookingId: string) => void;
   onNewBooking: () => void;
   onCheckout: (bookingId: string) => void;
-  onOtherCharges: (bookingId: string) => void;
   onAddExtraBed: (bookingId: string) => void;
   onCollectAdvance: (bookingId: string) => void;
 }) {
@@ -1548,8 +1541,6 @@ function RoomStatusModal({
   const [notes, setNotes] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const { can } = usePermissions();
-  const canCreatePos = can("pos", "create");
-  const showOtherCharges = !!bookingId && canCreatePos;
   const canEditBooking = can("bookings", "edit") || can("bookings", "create");
   const showExtraBed = !!bookingId && canEditBooking;
 
@@ -1642,11 +1633,6 @@ function RoomStatusModal({
               onClick={() => bookingId && onCollectAdvance(bookingId)}>
               <Receipt className="h-4 w-4 mr-2" /> Collect Advance Payment
             </Button>
-            {showOtherCharges && (
-              <Button variant="outline" onClick={() => bookingId && onOtherCharges(bookingId)}>
-                <Receipt className="h-4 w-4 mr-2" /> Add Other Charges
-              </Button>
-            )}
             {showExtraBed && (
               <Button variant="outline" onClick={() => bookingId && onAddExtraBed(bookingId)}>
                 <BedDouble className="h-4 w-4 mr-2" /> Add Extra Bed
@@ -1657,11 +1643,6 @@ function RoomStatusModal({
 
         {(kind === "dirty" || kind === "maintenance") && (
           <div className="grid gap-3">
-            {showOtherCharges && (
-              <Button variant="outline" onClick={() => bookingId && onOtherCharges(bookingId)}>
-                <Receipt className="h-4 w-4 mr-2" /> Add Other Charges
-              </Button>
-            )}
             <div className="grid gap-1.5">
               <Label>{kind === "dirty" ? "Cleaned by" : "Maintenance resolved by"}</Label>
               <SearchableSelect
