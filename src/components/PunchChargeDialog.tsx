@@ -346,9 +346,9 @@ export function PunchChargeDialog({
     inFlight.current = true;
     setBusy("kot");
     try {
-      const bill = await appendToTodayBill(clean);
+      const bill = await appendToTodayBill(clean, note);
       try {
-        await printKitchenTicket(bill.bill_number, clean);
+        await printKitchenTicket(bill.bill_number, clean, note);
       } catch (pe: any) {
         toast.error(pe?.message ?? "Kitchen print failed");
       }
