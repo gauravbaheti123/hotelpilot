@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -34,6 +33,8 @@ interface Line {
   menu_item_id?: string | null;
   master_id?: string | null;
   printer_id?: string | null;
+  /** Per-item preparation instruction — prints on the KOT/service ticket only. */
+  note?: string;
 }
 
 
@@ -63,8 +64,6 @@ export function PunchChargeDialog({
   const [walkin, setWalkin] = useState(!bookingId);
   const [walkinGuest, setWalkinGuest] = useState("");
   const [payMode, setPayMode] = useState<string>("cash");
-  /** Free-text preparation instructions for this punch — prints on the KOT only. */
-  const [note, setNote] = useState("");
   // Per-action busy state so one button's click never renders/locks the other's label.
   const [busy, setBusy] = useState<null | "kot" | "bill" | "save">(null);
   const inFlight = useRef(false);
@@ -75,10 +74,9 @@ export function PunchChargeDialog({
 
   useEffect(() => {
     if (!open) return;
-    setLines([{ key: uid(), description: "", qty: 1, rate: 0, gst_rate: segment === "food" ? 5 : 5 }]);
+    setLines([{ key: uid(), description: "", qty: 1, rate: 0, gst_rate: segment === "food" ? 5 : 5, note: "" }]);
     setWalkin(!bookingId);
     setWalkinGuest("");
-    setNote("");
   }, [open, segment, bookingId]);
 
   useEffect(() => {
@@ -150,7 +148,7 @@ export function PunchChargeDialog({
   }, [lines]);
 
   function addLine() {
-    setLines((prev) => [...prev, { key: uid(), description: "", qty: 1, rate: 0, gst_rate: defaultGst }]);
+    setLines((prev) => [...prev, { key: uid(), description: "", qty: 1, rate: 0, gst_rate: defaultGst, note: "" }]);
   }
   function removeLine(k: string) {
     setLines((prev) => prev.length === 1 ? prev : prev.filter((l) => l.key !== k));
@@ -170,13 +168,14 @@ export function PunchChargeDialog({
   }
 
   /** Kitchen ticket + counter copy, matching the removed legacy New KOT flow. */
-  async function printKitchenTicket(billNumber: string, clean: Line[], instructions?: string) {
+  async function printKitchenTicket(billNumber: string, clean: Line[]) {
     if (segment !== "food") return;
     const items: KotItemForPrint[] = clean.map((l) => ({
       item_name: l.description.trim(),
       qty: Number(l.qty),
       rate: Number(l.rate),
       printer_id: l.printer_id ?? null,
+      notes: (l.note ?? "").trim() || null,
     }));
     const counter = printers.find((p) => (p.printer_role ?? "").toLowerCase() === "counter copy") ?? null;
     const { jobs, warnings } = buildKotPrintPlan(items, printers, counter, "kitchen+counter");
@@ -187,7 +186,7 @@ export function PunchChargeDialog({
       kot_type: roomNumber && !walkin ? "room" : "table",
       room_number: walkin ? null : (roomNumber ?? null),
       guest_name: walkin ? walkinGuest.trim() : (guestName ?? null),
-      notes: (instructions ?? "").trim() || null,
+      notes: null,
       created_at: new Date().toISOString(),
     }, jobs);
   }
@@ -226,6 +225,7 @@ export function PunchChargeDialog({
         amount: Math.round(amt * 100) / 100,
         gst_rate: l.gst_rate,
         gst_amount: Math.round(gAmt * 100) / 100,
+        note: (l.note ?? "").trim() || null,
       };
     });
   }
@@ -290,31 +290,12 @@ export function PunchChargeDialog({
   }
 
   /** Append the currently punched lines to today's consolidated bill. */
-  async function appendToTodayBill(clean: Line[], instructions?: string) {
+  async function appendToTodayBill(clean: Line[]) {
     const bill = await getOrCreateTodayBill();
     const { error } = await supabase.from("segment_bill_items" as any).insert(itemRowsFor(bill.id, clean) as any);
     if (error) throw error;
-    await appendBillNote(bill.id, instructions);
     await recalcBillTotals(bill.id);
     return bill;
-  }
-
-  /**
-   * Preparation instructions are stored on the consolidated bill so they stay
-   * auditable after the punch. Each punch appends its own timestamped line.
-   */
-  async function appendBillNote(billId: string, instructions?: string) {
-    const text = (instructions ?? "").trim();
-    if (!text) return;
-    const { data } = await supabase
-      .from("segment_bills" as any)
-      .select("notes")
-      .eq("id", billId)
-      .maybeSingle();
-    const prev = ((data as any)?.notes ?? "") as string;
-    const stamp = new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false });
-    const next = [prev, `[${stamp}] ${text}`].filter(Boolean).join("\n");
-    await supabase.from("segment_bills" as any).update({ notes: next }).eq("id", billId);
   }
 
   async function findTodayBill() {
@@ -346,9 +327,9 @@ export function PunchChargeDialog({
     inFlight.current = true;
     setBusy("kot");
     try {
-      const bill = await appendToTodayBill(clean, note);
+      const bill = await appendToTodayBill(clean);
       try {
-        await printKitchenTicket(bill.bill_number, clean, note);
+        await printKitchenTicket(bill.bill_number, clean);
       } catch (pe: any) {
         toast.error(pe?.message ?? "Kitchen print failed");
       }
@@ -372,7 +353,7 @@ export function PunchChargeDialog({
       const clean = cleanLines();
       let bill: { id: string; bill_number: string; folio_id: string | null };
       if (clean.length > 0) {
-        bill = await appendToTodayBill(clean, note);
+        bill = await appendToTodayBill(clean);
       } else {
         const existing = await findTodayBill();
         if (!existing) { toast.error("Nothing to bill yet"); return; }
@@ -446,7 +427,6 @@ export function PunchChargeDialog({
         payment_mode: walkin ? payMode : null,
         status: walkin ? "settled" : "open",
         settled_at: walkin ? new Date().toISOString() : null,
-        notes: note.trim() || null,
         created_by: user?.id ?? null,
       };
       const { data: bill, error: bErr } = await supabase
@@ -466,6 +446,7 @@ export function PunchChargeDialog({
           amount: Math.round(amt * 100) / 100,
           gst_rate: l.gst_rate,
           gst_amount: Math.round(gAmt * 100) / 100,
+          note: (l.note ?? "").trim() || null,
         };
       });
       const { error: iErr } = await supabase.from("segment_bill_items").insert(items as any);
@@ -498,7 +479,7 @@ export function PunchChargeDialog({
 
       toast.success(`${segment === "food" ? "Food" : "Laundry"} bill ${billNumber} created`);
       try {
-        await printKitchenTicket(billNumber, clean, note);
+        await printKitchenTicket(billNumber, clean);
       } catch (pe: any) {
         toast.error(pe?.message ?? "Kitchen print failed");
       }
