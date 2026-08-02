@@ -37,6 +37,13 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
+import {
+  useBulkSelect,
+  BulkSelectHead,
+  BulkSelectCell,
+  BulkDeleteButton,
+  BulkDeleteDialog,
+} from "@/components/master/useBulkSelect";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/masters/rooms")({
@@ -76,6 +83,8 @@ function RoomsMasterPage() {
   const { current, loading: propLoading } = useCurrentProperty();
   const [cats, setCats] = useState<Category[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const catBulk = useBulkSelect(cats, "room_categories", () => load());
+  const roomBulk = useBulkSelect(rooms, "rooms", () => load());
   const [loading, setLoading] = useState(true);
 
   const [catOpen, setCatOpen] = useState(false);
@@ -324,6 +333,9 @@ function RoomsMasterPage() {
               </Dialog>
             )}
           </CardHeader>
+          {canManage && catBulk.selected.size > 0 && (
+            <div className="px-6 pb-2"><BulkDeleteButton bulk={catBulk as never} /></div>
+          )}
           <CardContent>
             {loading ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
@@ -333,6 +345,7 @@ function RoomsMasterPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {canManage && <BulkSelectHead bulk={catBulk as never} />}
                     <TableHead>Name</TableHead>
                     <TableHead>Code</TableHead>
                     <TableHead>Max occ.</TableHead>
@@ -342,6 +355,7 @@ function RoomsMasterPage() {
                 <TableBody>
                   {cats.map((c) => (
                     <TableRow key={c.id}>
+                      {canManage && <BulkSelectCell bulk={catBulk as never} id={c.id} />}
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell>{c.code ?? "—"}</TableCell>
                       <TableCell>{c.max_occupancy}</TableCell>
@@ -540,6 +554,9 @@ function RoomsMasterPage() {
               </div>
             )}
           </CardHeader>
+          {canManage && roomBulk.selected.size > 0 && (
+            <div className="px-6 pb-2"><BulkDeleteButton bulk={roomBulk as never} /></div>
+          )}
           <CardContent>
             {loading ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
@@ -553,6 +570,7 @@ function RoomsMasterPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {canManage && <BulkSelectHead bulk={roomBulk as never} />}
                     <TableHead>Room #</TableHead>
                     <TableHead>Floor</TableHead>
                     <TableHead>Category</TableHead>
@@ -566,6 +584,7 @@ function RoomsMasterPage() {
                     const cat = cats.find((c) => c.id === r.category_id);
                     return (
                       <TableRow key={r.id}>
+                        {canManage && <BulkSelectCell bulk={roomBulk as never} id={r.id} />}
                         <TableCell className="font-medium">{r.room_number}</TableCell>
                         <TableCell>{r.floor ?? "—"}</TableCell>
                         <TableCell>{cat?.name ?? "—"}</TableCell>
@@ -612,6 +631,8 @@ function RoomsMasterPage() {
           </CardContent>
         </Card>
       </div>
+      <BulkDeleteDialog bulk={catBulk as never} />
+      <BulkDeleteDialog bulk={roomBulk as never} />
     </AppShell>
   );
 }
