@@ -25,11 +25,14 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { addDaysIso, nightsBetween, SOURCES, todayIso } from "@/lib/front-desk";
 import {
+  defaultMealPlanFor,
   extraBedRateFor,
   fetchTariffPlans,
-  isPlanValidOn,
+  findPlanByNameAndMeal,
+  mealPlansForPlanName,
   NO_TARIFF_PLAN_ERROR,
   pickTariffPlan,
+  planNamesForCategory,
   type TariffPlan,
 } from "@/lib/tariff";
 import { GuestIdUploadField, type SelectedIdFile } from "@/components/GuestIdUploadField";
@@ -57,6 +60,12 @@ export const Route = createFileRoute("/_authenticated/front-desk/new")({
 });
 
 interface Category { id: string; name: string; max_occupancy: number; }
+const MEAL_PLAN_LABELS: Record<string, string> = {
+  EP: "EP — Room only",
+  CP: "CP — Breakfast",
+  MAP: "MAP — Breakfast + 1 meal",
+  AP: "AP — All meals",
+};
 interface RoomRow { id: string; room_number: string; category_id: string | null; status: string; }
 interface AdditionalGuest {
   key: string;
@@ -115,7 +124,7 @@ function NewBookingPage() {
   const [address, setAddress] = useState("");
   const [gstNumber, setGstNumber] = useState("");
   const [company, setCompany] = useState("");
-  const [guestType, setGuestType] = useState<"regular" | "corporate" | "vip">("regular");
+  const [guestType, setGuestType] = useState<"regular" | "corporate">("regular");
   const [guestNotes, setGuestNotes] = useState("");
   const [idFile, setIdFile] = useState<SelectedIdFile | null>(null);
   // Phase 21 — existing ID document reuse for returning guests
@@ -135,18 +144,23 @@ function NewBookingPage() {
   const [categoryId, setCategoryId] = useState<string>("");
   const [roomId, setRoomId] = useState<string>("");
   const [tariffId, setTariffId] = useState<string>("");
+  // Phase 29 — the selector holds a distinct plan *name*; the concrete
+  // tariff_plans row is resolved from Name + Meal Plan + Category.
+  const [planName, setPlanName] = useState<string>("");
   const [rate, setRate] = useState(0);
   const [rateManuallySet, setRateManuallySet] = useState(false);
   const [rateType, setRateType] = useState<"exclusive" | "inclusive">("exclusive");
   const { limit: discountLimit } = useDiscountLimit();
-  const [mealPlan, setMealPlan] = useState("EP");
+  const [mealPlan, setMealPlan] = useState("CP");
 
   // Phase 27b — pricing resolves exclusively through Tariff Plans. There is no
   // room_categories.base_rate fallback: if nothing resolves, that is a data
   // problem and the booking is blocked.
   const resolvedPlan = useMemo(
-    () => pickTariffPlan(tariffs, { categoryId, date: checkIn, mealPlan }),
-    [tariffs, categoryId, checkIn, mealPlan],
+    () =>
+      findPlanByNameAndMeal(tariffs, categoryId, planName, mealPlan, checkIn) ??
+      pickTariffPlan(tariffs, { categoryId, date: checkIn, mealPlan }),
+    [tariffs, categoryId, planName, checkIn, mealPlan],
   );
   const activePlan = useMemo(
     () => tariffs.find((x) => x.id === tariffId) ?? resolvedPlan,
@@ -264,8 +278,9 @@ function NewBookingPage() {
     setGstNumber(g.gst_number ?? "");
     setCompany((g as any).company ?? "");
     setGuestNotes(g.notes ?? "");
-    const tag = (g.tags ?? []).find((t) => ["corporate", "vip"].includes(t));
-    setGuestType((tag as any) ?? "regular");
+    // Phase 29.5 — only Regular/Corporate are offered now; legacy tags (VIP)
+    // stay on the historical record but read back as Regular here.
+    setGuestType((g.tags ?? []).includes("corporate") ? "corporate" : "regular");
     setReturningInfo({ visits: g.visit_count, last: g.last_stay });
     setDropdownOpen(false);
     setSearchOpen(false);
@@ -301,6 +316,8 @@ function NewBookingPage() {
       const res = await lookupExistingGuestId(current.id, m, n);
       setIdLookup(res);
       if (!res) { setReuseExistingId(false); dupWarnedRef.current = null; return; }
+      // 29.6 — auto-fill guest type from the matched guest's last saved value.
+      if (res.guest.guestType) setGuestType(res.guest.guestType);
       // 21.4 — non-blocking duplicate heads-up (once per matched guest)
       const key = `${res.guest.id}:${res.matchedOn}`;
       if (dupWarnedRef.current !== key) {
@@ -326,8 +343,15 @@ function NewBookingPage() {
     (r) => (!categoryId || r.category_id === categoryId) && r.status === "vacant",
   );
   // Only offer plans that are actually applicable to this stay's check-in date.
-  const categoryTariffs = tariffs.filter(
-    (t) => (!categoryId || t.category_id === categoryId) && isPlanValidOn(t, checkIn),
+  // Phase 29.1 — distinct plan names only (no duplicate per-meal-plan entries).
+  const planNames = useMemo(
+    () => planNamesForCategory(tariffs, categoryId, checkIn),
+    [tariffs, categoryId, checkIn],
+  );
+  // Phase 29.2 — meal plans cascade from the selected plan name.
+  const mealPlanOptions = useMemo(
+    () => mealPlansForPlanName(tariffs, categoryId, planName, checkIn),
+    [tariffs, categoryId, planName, checkIn],
   );
 
   // === Additional guests: auto-sync row count to adult/child counts ===
@@ -351,16 +375,48 @@ function NewBookingPage() {
     setExtras((prev) => prev.map((g) => (g.key === key ? { ...g, ...patch } : g)));
   }
 
-  // Validity windows are date-sensitive: re-resolve the plan when the stay's
-  // check-in date moves (silently — no toast for a mere date change).
+  // Phase 29 — keep the plan name valid for the current category/date, and
+  // default it (Corporate guests → "Corporate", otherwise "Regular"/first).
   useEffect(() => {
     if (!categoryId || tariffs.length === 0) return;
-    const t = pickTariffPlan(tariffs, { categoryId, date: checkIn });
+    if (planNames.length === 0) {
+      setPlanName("");
+      setTariffId("");
+      if (!rateManuallySet) setRate(0);
+      return;
+    }
+    if (planName && planNames.includes(planName)) return;
+    setPlanName(preferredPlanName(planNames));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryId, tariffs, planNames.join("|")]);
+
+  // Phase 29.7 — Corporate guest type forces the Corporate plan when it exists.
+  useEffect(() => {
+    if (guestType !== "corporate") return;
+    const corp = planNames.find((n) => n.toLowerCase() === "corporate");
+    if (corp && planName !== corp) setPlanName(corp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guestType, planNames.join("|")]);
+
+  // Phase 29.2 — meal plan cascades from the plan name, defaulting to CP.
+  useEffect(() => {
+    if (!planName) return;
+    if (mealPlanOptions.length === 0) return;
+    if (mealPlanOptions.includes(mealPlan)) return;
+    setMealPlan(defaultMealPlanFor(mealPlanOptions));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planName, mealPlanOptions.join("|")]);
+
+  // Phase 29.3 — once Name + Meal Plan resolve to one row, auto-fill the rate.
+  useEffect(() => {
+    if (!categoryId || !planName || !mealPlan) return;
+    const t = findPlanByNameAndMeal(tariffs, categoryId, planName, mealPlan, checkIn);
     if (!t) { setTariffId(""); return; }
     setTariffId(t.id);
     if (!rateManuallySet) setRate(Number(t.rate) || 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkIn, categoryId, tariffs]);
+  }, [categoryId, planName, mealPlan, checkIn, tariffs]);
+
   function addManualExtra() {
     setExtras((prev) => [...prev, blankGuest("adult")]);
   }
@@ -368,37 +424,38 @@ function NewBookingPage() {
     setExtras((prev) => prev.filter((g) => g.key !== key));
   }
 
+  /** Corporate guests prefer the Corporate plan; otherwise Regular, else first. */
+  function preferredPlanName(names: string[]): string {
+    const byName = (want: string) => names.find((n) => n.toLowerCase() === want);
+    if (guestType === "corporate") {
+      const c = byName("corporate");
+      if (c) return c;
+    }
+    return byName("regular") ?? names[0] ?? "";
+  }
+
+  // Phase 29.4 — changing category invalidates the downstream Name/Meal Plan.
   function pickCategory(id: string) {
     setCategoryId(id);
     setRoomId("");
-    applyResolvedPlan(id, checkIn);
-  }
-
-  /**
-   * Phase 27b — resolve the applicable tariff plan for a category on the stay's
-   * check-in date. No room_categories.base_rate fallback: when nothing
-   * resolves, the user is told to fix the master data.
-   */
-  function applyResolvedPlan(id: string, date: string) {
-    const t = pickTariffPlan(tariffs, { categoryId: id, date });
-    if (t) {
-      setTariffId(t.id);
-      if (!rateManuallySet) setRate(Number(t.rate) || 0);
-      setMealPlan(t.meal_plan);
-    } else {
-      setTariffId("");
+    setPlanName("");
+    setTariffId("");
+    const names = planNamesForCategory(tariffs, id, checkIn);
+    if (names.length === 0) {
       if (!rateManuallySet) setRate(0);
       toast.error(NO_TARIFF_PLAN_ERROR);
+      return;
     }
+    const next = preferredPlanName(names);
+    setPlanName(next);
+    const meals = mealPlansForPlanName(tariffs, id, next, checkIn);
+    setMealPlan(defaultMealPlanFor(meals) || "CP");
   }
 
-  function pickTariff(id: string) {
-    setTariffId(id);
-    const t = tariffs.find((t) => t.id === id);
-    if (t) {
-      if (!rateManuallySet) setRate(t.rate);
-      setMealPlan(t.meal_plan);
-    }
+  function pickPlanName(nextName: string) {
+    setPlanName(nextName);
+    const meals = mealPlansForPlanName(tariffs, categoryId, nextName, checkIn);
+    setMealPlan(defaultMealPlanFor(meals) || mealPlan);
   }
 
   async function save(checkInNow: boolean) {
@@ -905,7 +962,6 @@ function NewBookingPage() {
                 <SelectContent>
                   <SelectItem value="regular">Regular</SelectItem>
                   <SelectItem value="corporate">Corporate</SelectItem>
-                  <SelectItem value="vip">VIP</SelectItem>
                 </SelectContent>
               </Select>
             </F>
@@ -1054,26 +1110,24 @@ function NewBookingPage() {
             </F>
             <F label="Tariff plan">
               <SearchableSelect
-                value={tariffId}
-                onChange={pickTariff}
+                value={planName}
+                onChange={pickPlanName}
                 disabled={!categoryId}
-                placeholder="Custom / none"
+                placeholder={categoryId ? "Select tariff plan" : "Pick category first"}
                 searchPlaceholder="Search tariff plans…"
-                options={categoryTariffs.map((t) => ({
-                  value: t.id,
-                  label: `${t.name} (${t.meal_plan})`,
-                  hint: `₹${t.rate}`,
+                options={planNames.map((n) => ({
+                  value: n,
+                  label: n,
                 })) as SearchableOption[]}
               />
             </F>
             <F label="Meal plan">
-              <Select value={mealPlan} onValueChange={setMealPlan}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={mealPlan} onValueChange={setMealPlan} disabled={!planName}>
+                <SelectTrigger><SelectValue placeholder={planName ? "Select meal plan" : "Pick tariff plan first"} /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="EP">EP — Room only</SelectItem>
-                  <SelectItem value="CP">CP — Breakfast</SelectItem>
-                  <SelectItem value="MAP">MAP — Breakfast + 1 meal</SelectItem>
-                  <SelectItem value="AP">AP — All meals</SelectItem>
+                  {mealPlanOptions.map((m) => (
+                    <SelectItem key={m} value={m}>{MEAL_PLAN_LABELS[m] ?? m}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </F>

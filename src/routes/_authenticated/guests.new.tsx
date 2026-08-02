@@ -34,7 +34,7 @@ function NewGuestPage() {
   const [address, setAddress] = useState("");
   const [company, setCompany] = useState("");
   const [gstNumber, setGstNumber] = useState("");
-  const [guestType, setGuestType] = useState<"regular" | "corporate" | "vip">("regular");
+  const [guestType, setGuestType] = useState<"regular" | "corporate">("regular");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -106,7 +106,6 @@ function NewGuestPage() {
                 <SelectContent>
                   <SelectItem value="regular">Regular</SelectItem>
                   <SelectItem value="corporate">Corporate</SelectItem>
-                  <SelectItem value="vip">VIP</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
