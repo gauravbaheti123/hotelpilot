@@ -180,14 +180,14 @@ function NewBookingPage() {
     if (!current) return;
     (async () => {
       const [c, r, t, bc] = await Promise.all([
-        supabase.from("room_categories").select("id,name,base_rate,max_occupancy,extra_bed_rate").eq("property_id", current.id).order("name"),
+        supabase.from("room_categories").select("id,name,max_occupancy").eq("property_id", current.id).order("name"),
         supabase.from("rooms").select("id,room_number,category_id,status").eq("property_id", current.id).order("room_number"),
-        supabase.from("tariff_plans").select("id,name,category_id,rate,meal_plan").eq("property_id", current.id).eq("is_active", true).order("name"),
+        fetchTariffPlans(current.id).catch(() => [] as TariffPlan[]),
         supabase.from("billing_companies").select("id,name,gstin").eq("property_id", current.id).eq("is_active", true).order("name"),
       ]);
       setCats((c.data ?? []) as Category[]);
       setRooms((r.data ?? []) as RoomRow[]);
-      setTariffs((t.data ?? []) as Tariff[]);
+      setTariffs(t);
       setBillingCompanies(((bc.data ?? []) as any[]).map((x) => ({ id: x.id, name: x.name, gstin: x.gstin ?? null })));
     })();
   }, [current?.id]);
