@@ -104,7 +104,7 @@ export function StateSelect({ value, onChange, className }: Ctl) {
   return (
     <SearchableSelect
       value={value || ""}
-      onChange={(v) => onChange(titleCase(v) === v ? v : v)}
+      onChange={(v) => onChange(titleCase(v))}
       options={options}
       placeholder="Search state / UT"
       searchPlaceholder="Type to filter states…"
