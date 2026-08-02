@@ -978,6 +978,56 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
               <span>{inrRound(totals.grand)}</span>
             </div>
 
+            {early && (
+              <div className="rounded-md border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/40 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+                  <AlertTriangle className="h-4 w-4" /> Early checkout — choose billing
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  Booked till {early.bookedCheckout} ({early.bookedNights} night
+                  {early.bookedNights > 1 ? "s" : ""}); checking out today ({istToday}). Rate stays as
+                  originally booked.
+                </div>
+                <label className="flex items-start gap-2 cursor-pointer text-sm">
+                  <input
+                    type="radio"
+                    name="early-checkout-choice"
+                    className="mt-1"
+                    disabled={earlyBusy}
+                    checked={earlyChoice === "actual_stay"}
+                    onChange={() => applyEarlyChoice("actual_stay")}
+                  />
+                  <span>
+                    Charge for actual stay ({early.actualNights} night{early.actualNights > 1 ? "s" : ""})
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 cursor-pointer text-sm">
+                  <input
+                    type="radio"
+                    name="early-checkout-choice"
+                    className="mt-1"
+                    disabled={earlyBusy}
+                    checked={earlyChoice === "full_booked"}
+                    onChange={() => applyEarlyChoice("full_booked")}
+                  />
+                  <span>
+                    Charge for full booked stay ({early.bookedNights} night
+                    {early.bookedNights > 1 ? "s" : ""})
+                  </span>
+                </label>
+                {earlyBusy && (
+                  <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Re-pricing folio…
+                  </div>
+                )}
+                {!earlyChoice && !earlyBusy && (
+                  <div className="text-[11px] font-medium text-amber-800 dark:text-amber-300">
+                    Select an option to enable Collect &amp; Checkout.
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="rounded border p-3 space-y-1">
               <div className="text-xs font-medium text-muted-foreground uppercase">Payment Received</div>
               {/* Advance is already inserted into `payments` at check-in, so it shows in the
@@ -1136,7 +1186,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
                   <SplitSquareHorizontal className="h-4 w-4 mr-1" /> Split Bill
                 </Button>
               )}
-              <Button onClick={collectAndCheckout} disabled={busy || !billToConfirmed}>
+              <Button
+                onClick={collectAndCheckout}
+                disabled={busy || !billToConfirmed || earlyBusy || (!!early && !earlyChoice)}
+              >
                 {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
                 Collect &amp; Checkout
               </Button>
