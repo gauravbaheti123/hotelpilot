@@ -158,6 +158,8 @@ export function CrudPage<T extends { id: string }>({
       if (f.type === "number") v = v === "" || v === null ? null : Number(v);
       if (f.type === "text" || f.type === "textarea") v = v === "" ? null : v;
       if (f.type === "date") v = v === "" ? null : v;
+      // "All / None" dropdown option sends "" — nullable FK columns need NULL, not ""
+      if (f.type === "select" && v === "") v = null;
       payload[f.name] = v;
     });
     // preserve required text fields (e.g., name) — coerce null back
