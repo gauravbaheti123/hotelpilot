@@ -27,15 +27,19 @@ export function getPrintStyles(paperSize: string | null | undefined): string {
  * intentionally smaller than the physical page so nothing sits on the
  * printable edge regardless of driver / QZ Tray scaling.
  *
+ * These MUST match the raster width QZ renders at (printableWidthMm in
+ * qzPrint.ts) — a CSS body wider than the rasterized page makes the renderer
+ * or driver shrink-to-fit, which is what produced the tiny thermal prints.
+ *
  *   A4     210mm page → 190mm container (10mm margin each side)
- *   80mm   thermal    → 76mm container (2mm margin each side)
- *   58mm   thermal    → 54mm container (2mm margin each side)
+ *   80mm   roll       → 72mm printable (EPSON TM-m30: 576 dots @ 203 DPI)
+ *   58mm   roll       → 48mm printable
  */
 export function getPrintContainerWidth(paperSize: string | null | undefined): string {
   const size = String(paperSize ?? "80mm").toUpperCase();
   if (size === "A4") return "190mm";
-  if (size === "58MM") return "54mm";
-  return "76mm";
+  if (size === "58MM") return "48mm";
+  return "72mm";
 }
 
 export function getPrintContainerStyle(paperSize: string | null | undefined): string {
