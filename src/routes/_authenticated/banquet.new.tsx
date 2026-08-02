@@ -37,10 +37,13 @@ interface Cat { id: string; name: string }
 interface RoomOpt { id: string; room_number: string; category_id: string | null; status: string; category_name: string | null }
 interface ExtraRow { point_name: string; amount: string }
 interface BlockRow {
-  category_id: string;
-  quantity: string;
+  room_id: string;
+  guest_name: string;
+  guest_mobile: string;
   checkin_date: string;
+  checkin_time: string;
   checkout_date: string;
+  checkout_time: string;
   special_rate: string;
 }
 
@@ -87,10 +90,8 @@ function NewBanquetPage() {
   const [singleCheckIn, setSingleCheckIn] = useState(today);
   const [singleCheckOut, setSingleCheckOut] = useState(today);
   const [singleRate, setSingleRate] = useState("0");
-  // Bulk state
+  // Bulk state — one row per physical room
   const [blockRows, setBlockRows] = useState<BlockRow[]>([]);
-  const [assignments, setAssignments] = useState<AssignedBlock[]>([]);
-  const [showAssignments, setShowAssignments] = useState(false);
 
   useEffect(() => {
     if (!propertyId) return;
