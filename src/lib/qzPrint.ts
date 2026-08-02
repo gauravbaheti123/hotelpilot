@@ -203,10 +203,6 @@ function paperWidthMm(paperSize: QZPaperSize): number {
   return 80;
 }
 
-function isThermalPaper(paperSize: QZPaperSize): boolean {
-  return paperSize !== "A4";
-}
-
 /**
  * Silently prints HTML content to a named Windows printer via QZ Tray.
  * Rejects with a descriptive error (including the requested printer name)
