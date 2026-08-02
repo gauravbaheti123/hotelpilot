@@ -1,5 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { CityInput, StateSelect, NationInput } from "@/components/AddressFields";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
 import { toast } from "sonner";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
+import { lookupExistingGuestId } from "@/lib/guestIdLookup";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/guests/new")({
@@ -41,6 +42,19 @@ function NewGuestPage() {
   const [guestType, setGuestType] = useState<"regular" | "corporate">("regular");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
+  const [dupGuest, setDupGuest] = useState<{ id: string; name: string | null } | null>(null);
+
+  // Phase 68b.3 — non-blocking duplicate heads-up when the mobile already
+  // belongs to another guest. Shared mobiles (family/driver) stay allowed.
+  useEffect(() => {
+    if (!propertyId || !isValidMobile(mobile)) { setDupGuest(null); return; }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const res = await lookupExistingGuestId(propertyId, mobile, "");
+      if (!cancelled) setDupGuest(res ? { id: res.guest.id, name: res.guest.name } : null);
+    }, 400);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [propertyId, mobile]);
 
   if (!propertyId) return <AppShell title="New Guest"><EmptyPropertyState /></AppShell>;
 
@@ -103,6 +117,19 @@ function NewGuestPage() {
               />
               {mobile && !isValidMobile(mobile) && (
                 <p className="mt-1 text-[11px] text-red-600">{MOBILE_ERROR}</p>
+              )}
+              {dupGuest && (
+                <p className="mt-1 text-[11px] text-amber-600">
+                  A guest with this mobile already exists: “{dupGuest.name ?? "Unnamed"}”.{" "}
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => router.navigate({ to: "/guests/$id", params: { id: dupGuest.id } })}
+                  >
+                    Open existing profile
+                  </button>{" "}
+                  — or continue to create a separate record.
+                </p>
               )}
             </Field>
             <Field label="Date of Birth (optional)"><Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} /></Field>
