@@ -726,6 +726,26 @@ function OwnerDashboard({
                   }
                   setModalRoom(r);
                 }}
+                onSegmentAction={async (r, action) => {
+                  if (segment === "rooms") return;
+                  const seg = segment as "food" | "laundry";
+                  const bid = bookingByRoom.get(r.id) ?? null;
+                  const occ = occInfoByRoom.get(r.id) ?? null;
+                  if (action === "view_kot") {
+                    setKotHistoryTarget({
+                      segment: seg,
+                      bookingId: bid,
+                      roomId: r.id,
+                      roomNumber: r.room_number,
+                      guestName: occ?.guestName ?? null,
+                    });
+                    return;
+                  }
+                  // View Invoice — jump to the Invoices screen, pre-filtered to
+                  // this room's latest bill for the active segment.
+                  const latest = segmentPendingByRoom.get(r.id)?.bills?.[0]?.bill_number ?? null;
+                  navigate({ to: "/billing/invoices", search: { seg, bill: latest ?? undefined } });
+                }}
                 onPickFood={(r) => {
                   const pf = pendingFoodByRoom.get(r.id);
                   if (pf?.bookingId) navigate({ to: "/front-desk/booking/$id", params: { id: pf.bookingId } });
