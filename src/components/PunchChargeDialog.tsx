@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -55,7 +55,10 @@ export function PunchChargeDialog({
   const [walkin, setWalkin] = useState(!bookingId);
   const [walkinGuest, setWalkinGuest] = useState("");
   const [payMode, setPayMode] = useState<string>("cash");
-  const [saving, setSaving] = useState(false);
+  // Per-action busy state so one button's click never renders/locks the other's label.
+  const [busy, setBusy] = useState<null | "kot" | "bill" | "save">(null);
+  const inFlight = useRef(false);
+  const saving = busy !== null;
   const [defaultGst, setDefaultGst] = useState<number>(segment === "food" ? 5 : 5);
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [printerByItem, setPrinterByItem] = useState<Map<string, string | null>>(new Map());
@@ -300,10 +303,17 @@ export function PunchChargeDialog({
   }
 
   /** KOT punch: append items + print the kitchen/service ticket only. No folio posting. */
+  /**
+   * KOT punch — strictly kitchen-side. Appends to today's single open bill and
+   * prints the station ticket. Never touches folio_charges, never settles the
+   * bill, never prints the customer bill.
+   */
   async function printKot() {
+    if (inFlight.current) return;
     const clean = cleanLines();
     if (clean.length === 0) { toast.error("Add at least one item"); return; }
-    setSaving(true);
+    inFlight.current = true;
+    setBusy("kot");
     try {
       const bill = await appendToTodayBill(clean);
       try {
@@ -317,13 +327,16 @@ export function PunchChargeDialog({
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to punch order");
     } finally {
-      setSaving(false);
+      setBusy(null);
+      inFlight.current = false;
     }
   }
 
   /** Consolidated bill: append any pending lines, print everything for today, post to folio once. */
   async function printBill() {
-    setSaving(true);
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy("bill");
     try {
       const clean = cleanLines();
       let bill: { id: string; bill_number: string; folio_id: string | null };
@@ -396,7 +409,8 @@ export function PunchChargeDialog({
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to print bill");
     } finally {
-      setSaving(false);
+      setBusy(null);
+      inFlight.current = false;
     }
   }
 
@@ -404,7 +418,9 @@ export function PunchChargeDialog({
     const clean = lines.filter((l) => l.description.trim() && Number(l.qty) > 0 && Number(l.rate) >= 0);
     if (clean.length === 0) { toast.error("Add at least one item"); return; }
     if (walkin && !walkinGuest.trim()) { toast.error("Enter walk-in customer name"); return; }
-    setSaving(true);
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy("save");
     try {
       const folioId = walkin ? null : await ensureFolio();
       const insertBill = {
@@ -492,7 +508,8 @@ export function PunchChargeDialog({
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to save");
     } finally {
-      setSaving(false);
+      setBusy(null);
+      inFlight.current = false;
     }
   }
 
@@ -595,19 +612,19 @@ export function PunchChargeDialog({
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
           {walkin ? (
-            <Button onClick={save} disabled={saving}>
+            <Button type="button" onClick={save} disabled={saving}>
               <Printer className="h-4 w-4 mr-1.5" />
-              {saving ? "Saving..." : "Save & Print"}
+              {busy === "save" ? "Saving..." : "Save & Print"}
             </Button>
           ) : (
             <>
-              <Button variant="secondary" onClick={printKot} disabled={saving}>
+              <Button type="button" variant="secondary" onClick={printKot} disabled={saving}>
                 <Printer className="h-4 w-4 mr-1.5" />
-                {saving ? "Working..." : segment === "food" ? "Print KOT" : "Print Ticket"}
+                {busy === "kot" ? "Working..." : segment === "food" ? "Print KOT" : "Print Ticket"}
               </Button>
-              <Button onClick={printBill} disabled={saving}>
+              <Button type="button" onClick={printBill} disabled={saving}>
                 <Printer className="h-4 w-4 mr-1.5" />
-                {saving ? "Working..." : "Print Bill"}
+                {busy === "bill" ? "Working..." : "Print Bill"}
               </Button>
             </>
           )}
