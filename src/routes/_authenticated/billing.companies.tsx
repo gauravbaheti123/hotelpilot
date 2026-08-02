@@ -3,6 +3,7 @@ import { CrudPage, FieldDef, ColumnDef } from "@/components/master/CrudPage";
 import { Badge } from "@/components/ui/badge";
 import { RequirePermission } from "@/components/RequirePermission";
 import { isValidOrEmptyGSTIN } from "@/lib/gstin";
+import { INDIAN_STATES } from "@/lib/indiaGeo";
 import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { toast } from "sonner";
@@ -19,6 +20,9 @@ interface Co {
   name: string;
   gstin: string | null;
   address: string | null;
+  city: string | null;
+  state: string | null;
+  nation: string | null;
   contact_person: string | null;
   phone: string | null;
   email: string | null;
@@ -31,7 +35,15 @@ const fields: FieldDef[] = [
   { name: "contact_person", label: "Contact person", type: "text" },
   { name: "phone", label: "Phone", type: "text" },
   { name: "email", label: "Email", type: "text" },
-  { name: "address", label: "Address", type: "textarea", colSpan: 2 },
+  { name: "address", label: "Address Line", type: "textarea", colSpan: 2 },
+  { name: "city", label: "City", type: "text" },
+  {
+    name: "state",
+    label: "State (decides CGST+SGST vs IGST)",
+    type: "select",
+    options: INDIAN_STATES.map((s) => ({ value: s, label: s })),
+  },
+  { name: "nation", label: "Nation", type: "text", defaultValue: "India" },
   { name: "is_active", label: "Active", type: "switch", defaultValue: true },
 ];
 
@@ -39,6 +51,7 @@ const columns: ColumnDef<Co>[] = [
   { header: "Name", render: (r) => <span className="font-medium">{r.name}</span> },
   { header: "GSTIN", render: (r) => r.gstin ?? "—" },
   { header: "Contact", render: (r) => [r.contact_person, r.phone].filter(Boolean).join(" · ") || "—" },
+  { header: "City / State", render: (r) => [r.city, r.state].filter(Boolean).join(", ") || "—" },
   {
     header: "Status",
     render: (r) => <Badge variant={r.is_active ? "default" : "secondary"}>{r.is_active ? "Active" : "Inactive"}</Badge>,
@@ -67,6 +80,9 @@ function BillingCompaniesPage() {
               { header: "name", field: "name", required: true },
               { header: "gstin", field: "gstin", parse: (v) => (v.trim() ? v.trim().toUpperCase() : null) },
               { header: "address", field: "address" },
+              { header: "city", field: "city" },
+              { header: "state", field: "state" },
+              { header: "nation", field: "nation", parse: (v) => (v.trim() ? v.trim() : "India") },
               { header: "contact_person", field: "contact_person" },
               { header: "phone", field: "phone" },
               { header: "email", field: "email" },
