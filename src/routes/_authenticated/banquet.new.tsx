@@ -378,7 +378,31 @@ function NewBanquetPage() {
           <Card>
             <CardHeader><CardTitle className="text-base">Guest / Host</CardTitle></CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-3">
-              <Field label="Name *"><Input value={guestName} onChange={(e) => setGuestName(e.target.value)} /></Field>
+              <Field label="Name *">
+                <GuestSearchInput
+                  propertyId={propertyId}
+                  value={guestName}
+                  mobile={guestMobile}
+                  allowCreate={false}
+                  placeholder="Search existing or type new"
+                  onChange={(v) => { setGuestName(v); if (linkedGuestId && v.trim() !== (linkedGuestName ?? "")) { /* keep link, form values stay local */ } }}
+                  onSelect={(g) => {
+                    setLinkedGuestId(g.id);
+                    setLinkedGuestName(g.name);
+                    setGuestName(g.name);
+                    setGuestMobile(sanitizeMobile(g.mobile ?? ""));
+                    setGuestEmail(g.email ?? "");
+                  }}
+                />
+                {linkedGuestId ? (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Linked to existing guest (reference only — their CRM record is never changed).
+                    <button type="button" className="ml-1 underline" onClick={() => { setLinkedGuestId(null); setLinkedGuestName(null); }}>Unlink</button>
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[11px] text-muted-foreground">Manual entry is saved on this event only.</p>
+                )}
+              </Field>
               <Field label="Mobile *">
                 <Input
                   value={guestMobile}
