@@ -21,6 +21,7 @@ import { RequirePermission } from "@/components/RequirePermission";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
+import { fetchTariffPlans, pickTariffPlan, type TariffPlan } from "@/lib/tariff";
 import {
   pickAvailableRooms, commitRoomBlocks, nightsBetween,
   type AssignedBlock,
@@ -32,7 +33,7 @@ export const Route = createFileRoute("/_authenticated/banquet/new")({
 });
 
 interface Hall { id: string; name: string; capacity: number }
-interface Cat { id: string; name: string; base_rate?: number }
+interface Cat { id: string; name: string }
 interface RoomOpt { id: string; room_number: string; category_id: string | null; status: string; category_name: string | null }
 interface ExtraRow { point_name: string; amount: string }
 interface BlockRow {
@@ -49,6 +50,7 @@ function NewBanquetPage() {
   const { currentId: propertyId } = useCurrentProperty();
   const [halls, setHalls] = useState<Hall[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
+  const [tariffPlans, setTariffPlans] = useState<TariffPlan[]>([]);
   const [allRooms, setAllRooms] = useState<RoomOpt[]>([]);
   const [saving, setSaving] = useState(false);
   const { limit: discountLimit } = useDiscountLimit();
@@ -98,9 +100,11 @@ function NewBanquetPage() {
         .eq("property_id", propertyId).eq("is_active", true).order("name");
       setHalls((data ?? []) as Hall[]);
       const { data: cs } = await supabase.from("room_categories")
-        .select("id, name, base_rate")
+        .select("id, name")
         .eq("property_id", propertyId).order("name");
       setCats((cs ?? []) as Cat[]);
+      // Phase 27b — room pricing for banquet blocks comes from Tariff Plans.
+      setTariffPlans(await fetchTariffPlans(propertyId).catch(() => []));
       const { data: rs } = await supabase.from("rooms")
         .select("id,room_number,category_id,status,room_categories(name)")
         .eq("property_id", propertyId).eq("is_active", true)
