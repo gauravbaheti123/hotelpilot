@@ -140,6 +140,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/expenses", label: "Expenses", icon: Wallet, module: "expenses" },
       { to: "/staff", label: "Staff HR", icon: Users, module: "staff_hr" },
       { to: "/banquet/bookings", label: "Banquet", icon: PartyPopper, module: "banquet" },
+      { to: "/handover/new", label: "Shift Handover", icon: ClipboardCheck, module: "shift_handover" },
       { to: "/label-printing", label: "Label Printing", icon: Tag, module: "label_printing" },
       { to: "/masters", label: "Master Data", icon: LayoutGrid, module: "master_data" },
       { to: "/settings", label: "Settings", icon: Settings,
@@ -492,12 +493,18 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <QZStatusIndicator />
-            {(isOwner || permSuper || can("shift_handover") || can("shift_handover", "create")) && (
+            {(isOwner ||
+              permSuper ||
+              permsLoading ||
+              can("shift_handover") ||
+              can("shift_handover", "create") ||
+              can("shift_handover", "edit")) && (
               <Button
                 asChild
                 variant="ghost"
                 size="icon"
                 className="h-9 w-9 shrink-0"
+                data-testid="handover-icon"
                 aria-label="Shift Handover"
                 title="Shift Handover"
               >
