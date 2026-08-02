@@ -46,6 +46,9 @@ interface GrcState {
   grc_number: string | null;
   designation: string;
   address: string;
+  city: string;
+  state: string;
+  country: string;
   company: string;
   arrival_from: string;
   preceding_to: string;
@@ -58,7 +61,7 @@ interface GrcState {
 
 const empty: GrcState = {
   id: null, grc_number: null,
-  designation: "", address: "", company: "",
+  designation: "", address: "", city: "", state: "", country: "India", company: "",
   arrival_from: "", preceding_to: "",
   mode_of_payment: "", purpose_of_visit: "",
   billing_instruction: "", discount_note: "", duty_manager_name: "",
@@ -104,6 +107,9 @@ function GrcPage() {
           id: g.id, grc_number: g.grc_number,
           designation: g.designation ?? "",
           address: g.address ?? (b.guests as any)?.address ?? "",
+          city: (g as any).city ?? (b.guests as any)?.city ?? "",
+          state: (g as any).state ?? (b.guests as any)?.state ?? "",
+          country: (g as any).country ?? (b.guests as any)?.country ?? "India",
           company: g.company ?? (b.guests as any)?.company ?? "",
           arrival_from: g.arrival_from ?? "",
           preceding_to: g.preceding_to ?? "",
@@ -117,6 +123,9 @@ function GrcPage() {
         setGrc((s) => ({
           ...s,
           address: (b.guests as any)?.address ?? "",
+          city: (b.guests as any)?.city ?? "",
+          state: (b.guests as any)?.state ?? "",
+          country: (b.guests as any)?.country ?? "India",
           company: (b.guests as any)?.company ?? "",
         }));
       }
@@ -132,6 +141,9 @@ function GrcPage() {
       booking_id: booking.id,
       designation: grc.designation || null,
       address: grc.address || null,
+      city: grc.city || null,
+      state: grc.state || null,
+      country: grc.country || "India",
       company: grc.company || null,
       arrival_from: grc.arrival_from || null,
       preceding_to: grc.preceding_to || null,
