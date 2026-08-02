@@ -31,6 +31,7 @@ const GROUPS: Array<{
     items: [
       { to: "/masters/menu", label: "Menu", icon: UtensilsCrossed },
       { to: "/masters/sundry-items", label: "Sundry Items & POS Categories", icon: ShoppingCart },
+      { to: "/masters/restaurant-outlets", label: "Restaurant Outlets", icon: UtensilsCrossed },
       { to: "/masters/payment-methods", label: "Payment Methods", icon: Wallet },
     ],
   },
