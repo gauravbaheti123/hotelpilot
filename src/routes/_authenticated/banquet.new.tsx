@@ -27,6 +27,7 @@ import {
   type AssignedBlock,
 } from "@/lib/eventRoomBlocks";
 import { isValidStayRange } from "@/lib/front-desk";
+import { GuestSearchInput } from "@/components/GuestSearchInput";
 
 export const Route = createFileRoute("/_authenticated/banquet/new")({
   head: () => ({ meta: [{ title: "New Banquet — HotelPilot" }] }),
@@ -65,6 +66,10 @@ function NewBanquetPage() {
   const [guestName, setGuestName] = useState("");
   const [guestMobile, setGuestMobile] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
+  // Read-only reference to an existing guest, if one was explicitly picked.
+  // Banquet never creates or edits `guests` rows from this form.
+  const [linkedGuestId, setLinkedGuestId] = useState<string | null>(null);
+  const [linkedGuestName, setLinkedGuestName] = useState<string | null>(null);
 
   // event
   const [hallId, setHallId] = useState("");
