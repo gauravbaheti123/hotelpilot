@@ -506,27 +506,45 @@ function NewBanquetPage() {
                 <TabsContent value="bulk" className="space-y-3 pt-3">
                   <div className="space-y-2">
                   {blockRows.map((r, i) => {
-                    const cat = cats.find((c) => c.id === r.category_id);
+                    const room = allRooms.find((x) => x.id === r.room_id);
                     return (
-                      <div key={i} className="grid gap-2 sm:grid-cols-[1.5fr_70px_1fr_1fr_120px_30px] items-end p-2 border rounded">
-                        <Field label={i === 0 ? "Category" : ""}>
-                          <Select value={r.category_id} onValueChange={(v) => updateBlockRow(i, { category_id: v })}>
-                            <SelectTrigger><SelectValue placeholder="Pick category" /></SelectTrigger>
+                      <div key={i} className="grid gap-2 sm:grid-cols-[1fr_1.2fr_1fr_1fr_1fr_120px_30px] items-end p-2 border rounded">
+                        <Field label={i === 0 ? "Room *" : ""}>
+                          <Select value={r.room_id} onValueChange={(v) => updateBlockRow(i, { room_id: v })}>
+                            <SelectTrigger><SelectValue placeholder="Pick room" /></SelectTrigger>
                             <SelectContent>
-                              {cats.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                              {allRooms.length === 0 && <div className="px-2 py-1 text-xs text-muted-foreground">No vacant rooms.</div>}
+                              {allRooms.map((x) => (
+                                <SelectItem key={x.id} value={x.id}>
+                                  {x.room_number}{x.category_name ? ` · ${x.category_name}` : ""}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </Field>
-                        <Field label={i === 0 ? "Qty" : ""}>
-                          <Input type="number" min={1} value={r.quantity} onChange={(e) => updateBlockRow(i, { quantity: e.target.value })} />
+                        <Field label={i === 0 ? "Guest name *" : ""}>
+                          <Input value={r.guest_name} onChange={(e) => updateBlockRow(i, { guest_name: e.target.value })} />
+                        </Field>
+                        <Field label={i === 0 ? "Mobile *" : ""}>
+                          <Input
+                            value={r.guest_mobile}
+                            inputMode="numeric"
+                            pattern="\d{10}"
+                            maxLength={10}
+                            placeholder="10-digit mobile"
+                            onChange={(e) => updateBlockRow(i, { guest_mobile: sanitizeMobile(e.target.value) })}
+                            className={r.guest_mobile && !isValidMobile(r.guest_mobile) ? "border-red-500 focus-visible:ring-red-500" : ""}
+                          />
                         </Field>
                         <Field label={i === 0 ? "Check-in" : ""}>
                           <Input type="date" value={r.checkin_date} onChange={(e) => updateBlockRow(i, { checkin_date: e.target.value })} />
+                          <Input type="time" className="mt-1" value={r.checkin_time} onChange={(e) => updateBlockRow(i, { checkin_time: e.target.value })} />
                         </Field>
                         <Field label={i === 0 ? "Check-out" : ""}>
                           <Input type="date" value={r.checkout_date} onChange={(e) => updateBlockRow(i, { checkout_date: e.target.value })} />
+                          <Input type="time" className="mt-1" value={r.checkout_time} onChange={(e) => updateBlockRow(i, { checkout_time: e.target.value })} />
                         </Field>
-                        <Field label={i === 0 ? `Rate (def ₹${stdRate(r.category_id, r.checkin_date || eventDate)})` : ""}>
+                        <Field label={i === 0 ? `Rate (def ₹${stdRate(room?.category_id, r.checkin_date || eventDate)})` : ""}>
                           <Input type="number" placeholder="default" value={r.special_rate} onChange={(e) => updateBlockRow(i, { special_rate: e.target.value })} />
                         </Field>
                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeBlockRow(i)}>
@@ -536,7 +554,7 @@ function NewBanquetPage() {
                     );
                   })}
                   <Button type="button" variant="outline" size="sm" onClick={addBlockRow}>
-                    <Plus className="h-4 w-4 mr-1" /> Add Another Room Category
+                    <Plus className="h-4 w-4 mr-1" /> Add Room
                   </Button>
                 </div>
 
@@ -544,35 +562,6 @@ function NewBanquetPage() {
                   <div className="text-xs text-muted-foreground">
                     Rooms to block: <b>{blockSummary.totalRooms}</b> across <b>{blockSummary.categories}</b> categories ·
                     Estimated room revenue: <b>₹{blockSummary.revenue.toLocaleString("en-IN")}</b>
-                  </div>
-                )}
-
-                {blockRows.length > 0 && !showAssignments && (
-                  <Button type="button" variant="outline" size="sm" onClick={prepareAssignments}>
-                    Assign Guests to Rooms (Optional)
-                  </Button>
-                )}
-
-                {showAssignments && assignments.length > 0 && (
-                  <div className="space-y-2 border-t pt-3">
-                    <div className="text-xs font-medium uppercase text-muted-foreground">Assign Guests to Rooms</div>
-                    {assignments.map((a, i) => (
-                      <div key={i} className="grid gap-2 sm:grid-cols-[100px_1fr_1fr] items-center text-sm">
-                        <div><b>Room {a.room_number}</b><div className="text-xs text-muted-foreground">{a.room_category}</div></div>
-                        <Input placeholder="Guest name" value={a.guest_name ?? ""}
-                          onChange={(e) => setAssignments((prev) => prev.map((x, idx) => idx === i ? { ...x, guest_name: e.target.value } : x))} />
-                        <Input
-                          placeholder="10-digit mobile"
-                          value={a.guest_mobile ?? ""}
-                          inputMode="numeric"
-                          pattern="\d{10}"
-                          maxLength={10}
-                          onChange={(e) => setAssignments((prev) => prev.map((x, idx) => idx === i ? { ...x, guest_mobile: sanitizeMobile(e.target.value) } : x))}
-                          className={a.guest_mobile && !isValidMobile(a.guest_mobile) ? "border-red-500 focus-visible:ring-red-500" : ""}
-                        />
-                      </div>
-                    ))}
-                    <p className="text-xs text-muted-foreground">Leave blank to mark as "Unassigned" — can be filled later from event page or dashboard.</p>
                   </div>
                 )}
                 </TabsContent>
