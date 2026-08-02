@@ -113,6 +113,7 @@ export async function rasterizeHtmlToPng(
     const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
     console.info("[raster] html→png", {
       cssWidthPx: widthPx,
+      measuredHeightCssPx: heightPx,
       targetWidthPx,
       scale: Math.round(scale * 1000) / 1000,
       canvasWidthPx: canvas.width,
