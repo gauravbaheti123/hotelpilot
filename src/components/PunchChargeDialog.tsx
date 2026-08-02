@@ -84,7 +84,7 @@ export function PunchChargeDialog({
     let cancelled = false;
     if (segment === "food") {
       supabase.from("menu_items")
-        .select("id,name,price,gst_rate,short_code,is_available,kitchen_printer_id")
+        .select("id,name,price,gst_rate,short_code,is_available,kitchen_printer_id,menu_categories(kot_printer_id)")
         .eq("property_id", propertyId)
         .eq("is_available", true)
         .order("name")
@@ -94,7 +94,10 @@ export function PunchChargeDialog({
             id: m.id, name: m.name, rate: Number(m.price ?? 0),
             gst_rate: m.gst_rate, short_code: m.short_code, category: null,
           })));
-          setPrinterByItem(new Map((data ?? []).map((m: any) => [m.id, m.kitchen_printer_id ?? null])));
+          setPrinterByItem(new Map((data ?? []).map((m: any) => [
+            m.id,
+            m.kitchen_printer_id ?? m.menu_categories?.kot_printer_id ?? null,
+          ])));
         });
     } else {
       supabase.from("sundry_items")

@@ -160,7 +160,11 @@ export async function disconnectQZ(): Promise<void> {
 }
 
 function paperSizeToConfig(paperSize: QZPaperSize) {
-  // Pixel/HTML print type: units are mm.
+  // Pixel/HTML print type: dimensions are millimetres, but QZ's `density`
+  // uses the same unit. Supplying density: 203 together with units: "mm"
+  // means 203 dots/mm (~5156 DPI), not the intended 203 DPI, and causes the
+  // Windows raster to be reduced to a tiny fragment. Let the printer driver
+  // use its native DPI instead.
   // A4 is scaled to fit the sheet. Thermal rolls MUST print 1:1
   // (scaleContent: false): with an auto height (height 0) QZ has no fixed
   // page box to scale against, so scaleContent shrinks the raster to a tiny
@@ -170,7 +174,6 @@ function paperSizeToConfig(paperSize: QZPaperSize) {
       units: "mm" as const,
       size: { width: 210, height: 297 },
       margins: 10,
-      density: 203,
       scaleContent: true,
       rasterize: true,
     };
@@ -180,7 +183,6 @@ function paperSizeToConfig(paperSize: QZPaperSize) {
       units: "mm" as const,
       size: { width: 58, height: 0 },
       margins: 2,
-      density: 203,
       scaleContent: false,
       rasterize: true,
     };
@@ -190,7 +192,6 @@ function paperSizeToConfig(paperSize: QZPaperSize) {
     units: "mm" as const,
     size: { width: 80, height: 0 },
     margins: 2,
-    density: 203,
     scaleContent: false,
     rasterize: true,
   };
@@ -200,10 +201,6 @@ function paperWidthMm(paperSize: QZPaperSize): number {
   if (paperSize === "A4") return 210;
   if (paperSize === "58mm") return 58;
   return 80;
-}
-
-function isThermalPaper(paperSize: QZPaperSize): boolean {
-  return paperSize !== "A4";
 }
 
 /**
@@ -235,21 +232,33 @@ export async function printToPrinter(
   if (!found) {
     throw new Error(`Printer "${printerName}" not found via QZ Tray.`);
   }
-  const cfg = qz.configs.create(found, paperSizeToConfig(paperSize));
+  const printConfig = paperSizeToConfig(paperSize);
+  const cfg = qz.configs.create(found, printConfig);
   const widthMm = paperWidthMm(paperSize);
-  // Only A4 needs an explicit layout width (it is scaled to fit the sheet).
-  // For thermal, the document's own CSS already lays out at the roll width
-  // and prints 1:1; forcing pageWidth here combined with scaling was what
-  // produced tiny fragments.
+  // QZ's embedded webkit renders HTML at its own default viewport width
+  // (nowhere close to 58/80mm) unless options.pageWidth is supplied, then
+  // rasterizes that render onto the page. With scaleContent:false (required
+  // for thermal so content isn't shrunk), an unset pageWidth produces a
+  // render many times wider than the roll — the actual ticket content ends
+  // up as a tiny fragment in a corner of an otherwise blank page. Always
+  // pass pageWidth (mm, same units as the config) so the render width
+  // matches the physical/printable width for every paper size.
+  const itemRows = (htmlContent.match(/class=["']item["']/g) ?? []).length;
+  console.info("[qz/print-job]", {
+    printer: printerName,
+    paperSize,
+    htmlBytes: new Blob([htmlContent]).size,
+    itemRows,
+    hasDocument: /<body[\s>]/i.test(htmlContent) && /<\/html>/i.test(htmlContent),
+    config: printConfig,
+  });
   await qz.print(cfg, [
     {
       type: "pixel",
       format: "html",
       flavor: "plain",
       data: htmlContent,
-      ...(isThermalPaper(paperSize)
-        ? {}
-        : { options: { pageWidth: widthMm, pageHeight: 0 } }),
+      options: { pageWidth: widthMm, pageHeight: 0 },
     },
   ]);
 }
