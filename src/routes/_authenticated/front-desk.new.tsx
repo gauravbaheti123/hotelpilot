@@ -868,7 +868,15 @@ function NewBookingPage() {
             </div>
 
             <div className="pt-2 border-t">
-              <GuestIdUploadField value={idFile} onChange={setIdFile} disabled={saving} />
+              <GuestIdUploadField
+                value={idFile}
+                onChange={setIdFile}
+                disabled={saving}
+                existingDoc={idLookup?.doc ?? null}
+                existingGuestName={idLookup?.guest.name ?? null}
+                reuseExisting={reuseExistingId}
+                onReuseChange={(v) => { setReuseExistingId(v); if (v) setIdFile(null); }}
+              />
             </div>
           </CardContent>
         </Card>
