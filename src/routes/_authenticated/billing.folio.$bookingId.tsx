@@ -1459,6 +1459,16 @@ function FolioPage() {
           #invoice-print-area .totals-box table td:first-child { width: 55% !important; }
           #invoice-print-area .totals-box table td:last-child { width: 45% !important; text-align: right !important; }
           #invoice-print-area .grand-total-row { width: 100% !important; box-sizing: border-box !important; }
+          /* Phase 65 — hold the header's two-column split in print / PDF too. */
+          #invoice-print-area .invoice-header-bg {
+            display: flex !important; flex-wrap: nowrap !important;
+            align-items: center !important; justify-content: space-between !important;
+          }
+          #invoice-print-area .invoice-header-left { flex: 1 1 auto !important; min-width: 0 !important; }
+          #invoice-print-area .invoice-header-right {
+            flex: 0 0 auto !important; min-width: 205px !important;
+            white-space: nowrap !important; text-align: right !important;
+          }
           .no-print, [data-no-print], .sidebar, nav, header {
             display: none !important; visibility: hidden !important;
           }
@@ -1734,15 +1744,20 @@ function FolioPage() {
           {/* Header */}
           {isPremium ? (
             <>
-              <div className="invoice-header-bg flex items-center justify-between gap-6 px-10 py-7"
+              {/* Phase 65 — the two columns need explicit flex sizing. Phase 57 made
+                  propAddrLine much longer (address + city + state + pincode), and with
+                  both columns sized by content the left one collapsed and the right
+                  "TAX INVOICE" block wrapped into it. Left grows/shrinks, right never
+                  shrinks. */}
+              <div className="invoice-header-bg flex flex-nowrap items-center justify-between gap-6 px-10 py-7"
                    style={{ background: TEAL, color: "#ffffff", borderRadius: 0 }}>
-                <div className="flex items-center gap-4 min-w-0">
+                <div className="invoice-header-left flex items-center gap-4 min-w-0 flex-1">
                   {property?.logo_url ? (
-                    <div style={{ background: "#ffffff", padding: 8, borderRadius: 0 }}>
+                    <div className="shrink-0" style={{ background: "#ffffff", padding: 8, borderRadius: 0, flex: "0 0 auto" }}>
                       <img src={property.logo_url} alt="" style={{ height: 96, width: 96, objectFit: "contain", display: "block" }} />
                     </div>
                   ) : (
-                    <div style={{ background: "#ffffff", color: TEAL_DARK, height: 112, width: 112, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 34, letterSpacing: 2 }}>
+                    <div className="shrink-0" style={{ background: "#ffffff", color: TEAL_DARK, height: 112, width: 112, flex: "0 0 auto", display: "grid", placeItems: "center", fontWeight: 900, fontSize: 34, letterSpacing: 2 }}>
                       {(property?.name ?? "HP").split(/\s+/).slice(0, 2).map(s => s[0]).join("").toUpperCase()}
                     </div>
                   )}
@@ -1750,7 +1765,7 @@ function FolioPage() {
                     <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: 0.3, color: "#ffffff", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {property?.name ?? "Hotel"}
                     </div>
-                    <div style={{ fontSize: 11, color: "#ffffff", opacity: 0.95, marginTop: 6, lineHeight: 1.6 }}>
+                    <div style={{ fontSize: 11, color: "#ffffff", opacity: 0.95, marginTop: 6, lineHeight: 1.6, overflowWrap: "break-word" }}>
                       {propAddrLine && <div>{propAddrLine}</div>}
                       {(property?.phone || property?.email) && (
                         <div style={{ marginTop: 2 }}>
@@ -1763,8 +1778,8 @@ function FolioPage() {
                     </div>
                   </div>
                 </div>
-                <div style={{ textAlign: "right", color: "#ffffff" }}>
-                  <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 2, lineHeight: 1 }}>
+                <div className="invoice-header-right shrink-0" style={{ textAlign: "right", color: "#ffffff", flex: "0 0 auto", minWidth: 205, whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 2, lineHeight: 1, whiteSpace: "nowrap" }}>
                     {draftMode ? "DRAFT BILL" : (isGst ? "TAX INVOICE" : "CASH BILL")}
                   </div>
                   <div style={{ fontSize: 13, marginTop: 8, fontWeight: 700 }}>Bill No: <span style={{ fontWeight: 700 }}>{draftMode ? "—" : folio.invoice_number}</span></div>
@@ -1776,7 +1791,7 @@ function FolioPage() {
           ) : (
             <div style={{ background: TEAL, color: "#fff" }} className="flex items-center gap-5 px-8 py-6">
               {property?.logo_url ? (
-                <img src={property.logo_url} alt="" className="h-20 w-20 rounded-md object-cover ring-2 ring-white/40" />
+                <img src={property.logo_url} alt="" className="h-20 w-20 shrink-0 rounded-md object-cover ring-2 ring-white/40" />
               ) : (
                 <div className="grid h-20 w-20 shrink-0 place-items-center rounded-md bg-white/15 ring-2 ring-white/40">
                   <span className="text-2xl font-extrabold tracking-wider">
