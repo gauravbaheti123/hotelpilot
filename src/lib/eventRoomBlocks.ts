@@ -16,6 +16,8 @@ export interface AssignedBlock {
   category_id: string;
   checkin_date: string;
   checkout_date: string;
+  checkin_time?: string;
+  checkout_time?: string;
   special_rate: number | null;
   guest_name?: string;
   guest_mobile?: string;
@@ -77,6 +79,8 @@ export async function commitRoomBlocks(args: {
     guest_mobile: r.guest_mobile?.trim() || null,
     checkin_date: r.checkin_date,
     checkout_date: r.checkout_date,
+    checkin_time: r.checkin_time || "12:00",
+    checkout_time: r.checkout_time || "11:00",
     special_rate: r.special_rate,
     status: "blocked",
   }));
@@ -112,6 +116,8 @@ export interface EventBlockRecord {
   guest_mobile: string | null;
   checkin_date: string;
   checkout_date: string;
+  checkin_time?: string | null;
+  checkout_time?: string | null;
   special_rate: number | null;
   status: "blocked" | "checked_in" | "checked_out" | "cancelled";
   booking_id: string | null;
@@ -120,7 +126,7 @@ export interface EventBlockRecord {
 export async function loadEventSummaries(propertyId: string): Promise<EventBlockSummary[]> {
   const { data, error } = await supabase
     .from("event_room_blocks")
-    .select("id, banquet_booking_id, event_name, room_id, room_number, room_category, guest_name, guest_mobile, checkin_date, checkout_date, special_rate, status, booking_id, banquet_bookings(function_type, event_date)")
+    .select("id, banquet_booking_id, event_name, room_id, room_number, room_category, guest_name, guest_mobile, checkin_date, checkout_date, checkin_time, checkout_time, special_rate, status, booking_id, banquet_bookings(function_type, event_date)")
     .eq("property_id", propertyId)
     .in("status", ["blocked", "checked_in"])
     .order("checkin_date");
