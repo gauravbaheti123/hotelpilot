@@ -653,7 +653,31 @@ function NewBookingPage() {
       }
 
       // ID Document upload (best-effort, deferred to after booking save)
-      if (idFile && guestId) {
+      if (!idFile && reuseExistingId && idLookup?.doc && guestId) {
+        // Phase 21.3 — reuse the already-stored Drive file: link the same
+        // file to this booking's document record, no re-upload.
+        try {
+          const doc = idLookup.doc;
+          await supabase.from("guests").update({
+            id_document_url: doc.driveViewUrl,
+            id_document_name: doc.documentName,
+            id_document_uploaded_at: doc.uploadedAt ?? new Date().toISOString(),
+          } as any).eq("id", guestId);
+          await supabase.from("guest_documents").insert({
+            property_id: current.id,
+            guest_id: guestId,
+            booking_id: booking!.id,
+            document_name: doc.documentName,
+            drive_file_id: doc.driveFileId,
+            drive_view_url: doc.driveViewUrl,
+            drive_folder_path: doc.driveFolderPath,
+          } as any);
+          toast.success("✓ Existing ID document reused");
+        } catch (e: any) {
+          console.warn("ID reuse failed", e);
+          toast.error("Could not attach existing ID document");
+        }
+      } else if (idFile && guestId) {
         try {
           const ts = Date.now();
           const fileName = `${safeName(name || "Guest")}_${safeName(booking!.booking_number || booking!.id.slice(0, 8))}_${ts}.jpg`;
