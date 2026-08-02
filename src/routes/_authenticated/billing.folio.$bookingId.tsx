@@ -2038,11 +2038,6 @@ function FolioPage() {
                     </tr>
                   </tbody>
                 </table>
-                {billToStateUnknown && (
-                  <p className="mt-1 text-[10px] italic text-amber-700">
-                    Bill-To state not recorded — taxed as intra-state (CGST+SGST). Update the guest/company address for accurate place of supply.
-                  </p>
-                )}
               </div>
             )}
 
