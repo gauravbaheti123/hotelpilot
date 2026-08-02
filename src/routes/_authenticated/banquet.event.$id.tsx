@@ -524,23 +524,59 @@ function BanquetEventPage() {
               <p className="text-sm text-muted-foreground">No rooms linked to this event.</p>
             ) : (
               <div className="space-y-2">
-                <div className="grid grid-cols-[70px_110px_1fr_1fr_1fr_110px_220px] gap-2 text-xs uppercase text-muted-foreground border-b pb-1">
-                  <div>Room</div><div>Category</div><div>Stay</div><div>Guest name</div><div>Mobile</div><div>Status</div><div>Actions</div>
+                <div className="grid grid-cols-[70px_100px_minmax(230px,1.2fr)_1fr_130px_110px_220px] gap-2 text-xs uppercase text-muted-foreground border-b pb-1">
+                  <div>Room</div><div>Category</div><div>Stay (date · time)</div><div>Guest name</div><div>Mobile</div><div>Status</div><div>Actions</div>
                 </div>
                 {blocks.map((blk, i) => {
                   const isBlocked = blk.status === "blocked";
                   const hasGuest = !!(blk.guest_name && blk.guest_mobile);
                   return (
-                  <div key={blk.id} className="grid grid-cols-[70px_110px_1fr_1fr_1fr_110px_220px] gap-2 items-center text-sm">
+                  <div key={blk.id} className="grid grid-cols-[70px_100px_minmax(230px,1.2fr)_1fr_130px_110px_220px] gap-2 items-center text-sm">
                     <div className="font-semibold">{blk.room_number}</div>
                     <div className="text-xs text-muted-foreground">{blk.room_category ?? "—"}</div>
-                    <div className="text-xs text-muted-foreground">{blk.checkin_date}<br/>→ {blk.checkout_date}</div>
-                    <Input value={blk.guest_name ?? ""} disabled={!isBlocked}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        <span className="w-6 shrink-0 text-[10px] uppercase text-muted-foreground">In</span>
+                        <Input type="date" className="h-8 w-[130px] px-1 text-xs" disabled={!isBlocked}
+                          value={blk.checkin_date ?? ""}
+                          onChange={(e) => patchBlockLocal(i, { checkin_date: e.target.value })}
+                          onBlur={() => isBlocked && saveBlockStay(blocks[i])} />
+                        <Input type="time" className="h-8 w-[92px] px-1 text-xs" disabled={!isBlocked}
+                          value={(blk.checkin_time ?? "12:00").slice(0, 5)}
+                          onChange={(e) => patchBlockLocal(i, { checkin_time: e.target.value })}
+                          onBlur={() => isBlocked && saveBlockStay(blocks[i])} />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="w-6 shrink-0 text-[10px] uppercase text-muted-foreground">Out</span>
+                        <Input type="date" className="h-8 w-[130px] px-1 text-xs" disabled={!isBlocked}
+                          min={blk.checkin_date ?? undefined}
+                          value={blk.checkout_date ?? ""}
+                          onChange={(e) => patchBlockLocal(i, { checkout_date: e.target.value })}
+                          onBlur={() => isBlocked && saveBlockStay(blocks[i])} />
+                        <Input type="time" className="h-8 w-[92px] px-1 text-xs" disabled={!isBlocked}
+                          value={(blk.checkout_time ?? "11:00").slice(0, 5)}
+                          onChange={(e) => patchBlockLocal(i, { checkout_time: e.target.value })}
+                          onBlur={() => isBlocked && saveBlockStay(blocks[i])} />
+                      </div>
+                    </div>
+                    <GuestSearchInput
+                      propertyId={b.property_id}
+                      value={blk.guest_name ?? ""}
+                      mobile={blk.guest_mobile ?? ""}
+                      disabled={!isBlocked}
                       placeholder="Unassigned"
-                      onChange={(e) => setBlocks((prev) => prev.map((x, idx) => idx === i ? { ...x, guest_name: e.target.value } : x))}
-                      onBlur={() => isBlocked && saveBlockGuest(blocks[i])} />
+                      className="h-8 text-xs"
+                      onChange={(name) => patchBlockLocal(i, { guest_name: name })}
+                      onSelect={(g) => {
+                        const next = { ...blocks[i], guest_name: g.name, guest_mobile: g.mobile ?? blocks[i].guest_mobile };
+                        patchBlockLocal(i, { guest_name: next.guest_name, guest_mobile: next.guest_mobile });
+                        saveBlockGuest(next);
+                      }}
+                      onCommit={() => isBlocked && saveBlockGuest(blocks[i])}
+                    />
                     <Input value={blk.guest_mobile ?? ""} disabled={!isBlocked}
-                      onChange={(e) => setBlocks((prev) => prev.map((x, idx) => idx === i ? { ...x, guest_mobile: e.target.value } : x))}
+                      className="h-8 text-xs" inputMode="numeric" maxLength={10} placeholder="10-digit"
+                      onChange={(e) => patchBlockLocal(i, { guest_mobile: sanitizeMobile(e.target.value) })}
                       onBlur={() => isBlocked && saveBlockGuest(blocks[i])} />
                     <Badge variant="outline" className={
                       blk.status === "checked_in" ? "bg-blue-100 text-blue-800" :
