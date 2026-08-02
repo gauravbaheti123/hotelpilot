@@ -249,17 +249,14 @@ export async function printToPrinter(
   }
   const printConfig = paperSizeToConfig(paperSize);
   const cfg = qz.configs.create(found, printConfig);
-  const widthInches = paperWidthInches(paperSize);
-  // QZ's embedded webkit renders HTML at its own default viewport width
-  // (nowhere close to 58/80mm) unless options.pageWidth is supplied, then
-  // rasterizes that render onto the page. With scaleContent:false (required
-  // for thermal so content isn't shrunk), an unset pageWidth produces a
-  // render many times wider than the roll — the actual ticket content ends
-  // up as a tiny fragment in a corner of an otherwise blank page. Always
-  // QZ's HTML renderer treats data.options.pageWidth as inches regardless of
-  // the config's `units`. Passing 80 here creates an 80-inch HTML canvas which
-  // the Windows driver shrinks onto an 80mm roll. Convert the roll width to
-  // inches and omit pageHeight so the ticket grows naturally with its content.
+  // QZ's embedded webkit renders the HTML at its own default viewport width
+  // unless options.pageWidth is supplied, then rasterizes that render onto
+  // the page. pageWidth is in the CONFIG'S UNITS — inches here — and must be
+  // the printable width, matching the CSS container width used by the
+  // templates (see getPrintContainerWidth in printStyles.ts).
+  const widthInches = printableWidthInches(paperSize);
+  const density = (printConfig as { density?: number }).density ?? THERMAL_DPI;
+  const expectedRasterPx = Math.round(widthInches * density);
   const itemRows = (htmlContent.match(/class=["']item["']/g) ?? []).length;
   console.info("[qz/print-job]", {
     printer: printerName,
@@ -268,7 +265,11 @@ export async function printToPrinter(
     itemRows,
     hasDocument: /<body[\s>]/i.test(htmlContent) && /<\/html>/i.test(htmlContent),
     config: printConfig,
-    renderPageWidthInches: widthInches,
+    options: { pageWidth: widthInches },
+    units: "in",
+    printableWidthMm: printableWidthMm(paperSize),
+    densityDpi: density,
+    expectedRasterWidthPx: expectedRasterPx,
   });
   await qz.print(cfg, [
     {
