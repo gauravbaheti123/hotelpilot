@@ -71,6 +71,8 @@ function NewBanquetPage() {
   const [eventDate, setEventDate] = useState(today);
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("23:00");
+  // Phase 34.3 — events can run past midnight, so check-out has its own date.
+  const [eventEndDate, setEventEndDate] = useState(today);
   const [pax, setPax] = useState("100");
 
   // charges
@@ -215,7 +217,10 @@ function NewBanquetPage() {
     if (!propertyId) return;
     if (!guestName.trim()) return toast.error("Guest name required");
     if (!isValidMobile(guestMobile)) return toast.error(MOBILE_ERROR);
-    if (!eventDate || !startTime || !endTime) return toast.error("Event date/time required");
+    if (!eventDate || !startTime || !eventEndDate || !endTime)
+      return toast.error("Event check-in / check-out date & time required");
+    if (!isValidStayRange(eventDate, eventEndDate, startTime, endTime))
+      return toast.error("Event check-out must be after check-in");
     if ((roomMode === "single" || roomMode === "bulk") && !eventName.trim()) {
       return toast.error("Event name required when assigning rooms");
     }
@@ -228,6 +233,8 @@ function NewBanquetPage() {
         if (!row.guest_name.trim()) return toast.error(`${label}: guest name required`);
         if (!isValidMobile(row.guest_mobile)) return toast.error(`${label}: ${MOBILE_ERROR.toLowerCase()}`);
         if (!row.checkin_date || !row.checkout_date) return toast.error(`${label}: check-in / check-out dates required`);
+        if (!isValidStayRange(row.checkin_date, row.checkout_date, row.checkin_time || "12:00", row.checkout_time || "11:00"))
+          return toast.error(`${label}: check-out must be after check-in`);
       }
       const dupe = blockRows.map((r) => r.room_id).find((id, i, arr) => arr.indexOf(id) !== i);
       if (dupe) return toast.error("Same room selected in more than one row");
@@ -299,6 +306,7 @@ function NewBanquetPage() {
         event_name: roomMode !== "none" ? eventName : null,
         function_type: functionType,
         event_date: eventDate,
+        event_end_date: eventEndDate,
         start_time: startTime,
         end_time: endTime,
         pax: Number(pax) || 0,
@@ -407,9 +415,20 @@ function NewBanquetPage() {
                 </Select>
               </Field>
               <Field label="Pax"><Input type="number" value={pax} onChange={(e) => setPax(e.target.value)} /></Field>
-              <Field label="Date *"><Input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} /></Field>
-              <Field label="Start *"><Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></Field>
-              <Field label="End *"><Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></Field>
+              <Field label="Check-in Date *">
+                <Input
+                  type="date"
+                  value={eventDate}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setEventDate(v);
+                    if (!eventEndDate || eventEndDate < v) setEventEndDate(v);
+                  }}
+                />
+              </Field>
+              <Field label="Check-in Time *"><Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} /></Field>
+              <Field label="Check-out Date *"><Input type="date" value={eventEndDate} min={eventDate} onChange={(e) => setEventEndDate(e.target.value)} /></Field>
+              <Field label="Check-out Time *"><Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} /></Field>
             </CardContent>
           </Card>
 
