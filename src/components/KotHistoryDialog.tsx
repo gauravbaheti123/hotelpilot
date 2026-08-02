@@ -12,7 +12,14 @@ import { Printer, Pencil, Trash2, Plus, Minus } from "lucide-react";
 import { inr } from "@/lib/billing";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
-import { renderKotHtml, printThermalHtml, type KotItemForPrint } from "@/lib/kotPrint";
+import {
+  buildKotPrintPlan,
+  renderKotHtml,
+  runKotPrintJobs,
+  printThermalHtml,
+  type KotItemForPrint,
+  type PrinterInfo,
+} from "@/lib/kotPrint";
 
 export type SegmentKind = "food" | "laundry";
 
@@ -146,23 +153,59 @@ export function KotHistoryDialog({
 
   async function reprint(p: Punch) {
     try {
-      const printer = await fetchKotPrinter(propertyId);
+      const itemNames = [...new Set(p.items.map((i) => i.description.trim()).filter(Boolean))];
+      const [printerResult, menuResult] = await Promise.all([
+        supabase
+          .from("printers")
+          .select("id,name,paper_size,printer_role")
+          .eq("property_id", propertyId)
+          .eq("is_active", true),
+        segment === "food" && itemNames.length > 0
+          ? supabase
+              .from("menu_items")
+              .select("name,kitchen_printer_id,menu_categories(kot_printer_id)")
+              .eq("property_id", propertyId)
+              .in("name", itemNames)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (printerResult.error) throw printerResult.error;
+      if (menuResult.error) throw menuResult.error;
+
+      const printers = (printerResult.data ?? []) as PrinterInfo[];
+      const printerByName = new Map(
+        (menuResult.data ?? []).map((m: any) => [
+          String(m.name),
+          (m.kitchen_printer_id ?? m.menu_categories?.kot_printer_id ?? null) as string | null,
+        ]),
+      );
       const items: KotItemForPrint[] = p.items.map((i) => ({
         item_name: i.description,
         qty: Number(i.qty),
         rate: Number(i.rate),
-        printer_id: null,
+        printer_id: printerByName.get(i.description.trim()) ?? null,
         notes: i.note,
       }));
+      const header = {
+        kot_number: p.bill.bill_number,
+        kot_type: roomNumber ? "room" : "table",
+        room_number: roomNumber,
+        guest_name: guestName,
+        notes: null,
+        created_at: p.at,
+      };
+
+      if (segment === "food") {
+        const { jobs, warnings } = buildKotPrintPlan(items, printers, null, "kitchen");
+        warnings.forEach((warning) => toast.warning(warning));
+        if (jobs.length === 0) throw new Error("No assigned station printer found for this KOT");
+        await runKotPrintJobs(header, jobs);
+        toast.success(`${ticketWord} reprint sent to ${jobs.map((job) => job.printer.name).join(", ")}`);
+        return;
+      }
+
+      const printer = await fetchKotPrinter(propertyId);
       const html = renderKotHtml(
-        {
-          kot_number: p.bill.bill_number,
-          kot_type: roomNumber ? "room" : "table",
-          room_number: roomNumber,
-          guest_name: guestName,
-          notes: null,
-          created_at: p.at,
-        } as any,
+        header,
         items,
         printer?.paper_size ?? "80mm",
         "KITCHEN COPY",
@@ -174,6 +217,7 @@ export function KotHistoryDialog({
         paperSize: printer?.paper_size ?? "80mm",
         label: `${ticketWord} reprint`,
       });
+      toast.success(`${ticketWord} reprint sent${printer?.name ? ` to ${printer.name}` : ""}`);
     } catch (e: any) {
       toast.error(e?.message ?? "Reprint failed");
     }
