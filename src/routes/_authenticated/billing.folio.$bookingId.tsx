@@ -1971,8 +1971,9 @@ function FolioPage() {
                     <tr style={{ background: TEAL, color: "#fff" }}>
                       <th style={{ textAlign: "left" }}>Category</th>
                       <th style={{ textAlign: "right" }}>Taxable</th>
-                      <th style={{ textAlign: "right" }}>CGST</th>
-                      <th style={{ textAlign: "right" }}>SGST</th>
+                      {isIgst
+                        ? <th style={{ textAlign: "right" }}>IGST</th>
+                        : <><th style={{ textAlign: "right" }}>CGST</th><th style={{ textAlign: "right" }}>SGST</th></>}
                       <th style={{ textAlign: "right" }}>Total</th>
                     </tr>
                   </thead>
@@ -1987,18 +1988,27 @@ function FolioPage() {
                         <tr key={key}>
                           <td>{label}</td>
                           <td style={{ textAlign: "right" }}>{inr(taxable)}</td>
-                          <td style={{ textAlign: "right" }}>{inr(gst / 2)}</td>
-                          <td style={{ textAlign: "right" }}>{inr(gst / 2)}</td>
+                          {isIgst
+                            ? <td style={{ textAlign: "right" }}>{inr(gst)}</td>
+                            : <>
+                                <td style={{ textAlign: "right" }}>{inr(splitGst(gst, taxType).cgst)}</td>
+                                <td style={{ textAlign: "right" }}>{inr(splitGst(gst, taxType).sgst)}</td>
+                              </>}
                           <td style={{ textAlign: "right", fontWeight: 600 }}>{inr(gst)}</td>
                         </tr>
                       );
                     })}
                     <tr style={{ borderTop: `2px solid ${TEAL}` }}>
-                      <td colSpan={4} style={{ textAlign: "right", fontWeight: 700 }}>Total GST</td>
+                      <td colSpan={isIgst ? 3 : 4} style={{ textAlign: "right", fontWeight: 700 }}>Total GST</td>
                       <td style={{ textAlign: "right", fontWeight: 700, color: TEAL_DARK }}>{inr(folio.gst_amount)}</td>
                     </tr>
                   </tbody>
                 </table>
+                {billToStateUnknown && (
+                  <p className="mt-1 text-[10px] italic text-amber-700">
+                    Bill-To state not recorded — taxed as intra-state (CGST+SGST). Update the guest/company address for accurate place of supply.
+                  </p>
+                )}
               </div>
             )}
 
