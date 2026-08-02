@@ -137,6 +137,10 @@ export interface GstInvoiceSlabRow {
   taxable: number;
   cgst: number;
   sgst: number;
+  igst: number;
+  /** Phase 57 — place of supply of this invoice. */
+  tax_type: "cgst_sgst" | "igst";
+  bill_to_state: string | null;
   gst_total: number;
   invoice_total: number;     // filled only on the first slab row of each invoice
   is_first_of_invoice: boolean;
