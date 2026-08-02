@@ -128,9 +128,10 @@ export function buildKotPrintPlan(
   printers: PrinterInfo[],
   counterPrinter: PrinterInfo | null,
   mode: PrintMode = "kitchen+counter",
-): { jobs: PrintJob[]; warnings: string[] } {
+): { jobs: PrintJob[]; warnings: string[]; unroutedItems: string[] } {
   const jobs: PrintJob[] = [];
   const warnings: string[] = [];
+  let unroutedItems: string[] = [];
 
   if (mode !== "counter") {
     const byPrinter = new Map<string, KotItemForPrint[]>();
@@ -145,8 +146,9 @@ export function buildKotPrintPlan(
       byPrinter.set(it.printer_id, arr);
     }
     if (unresolvedNames.length > 0) {
+      unroutedItems = unresolvedNames;
       warnings.push(
-        `No kitchen printer configured for: ${unresolvedNames.join(", ")}. Assign in Master Data → Food Menu.`,
+        `${unresolvedNames.length} item(s) have no kitchen printer configured and will not print a KOT: ${unresolvedNames.join(", ")}. Assign a printer in Master Data → Food Menu.`,
       );
     }
     for (const [pid, its] of byPrinter) {
@@ -167,7 +169,7 @@ export function buildKotPrintPlan(
     }
   }
 
-  return { jobs, warnings };
+  return { jobs, warnings, unroutedItems };
 }
 
 /**
