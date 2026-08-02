@@ -86,6 +86,8 @@ export interface InvoiceBooking {
     address?: string | null;
     city?: string | null;
     state?: string | null;
+    state_code?: string | null;
+    gst_number?: string | null;
     country?: string | null;
     nationality?: string | null;
     id_proof_type?: string | null;
@@ -108,6 +110,9 @@ export interface InvoiceContext {
   /** Phase 57 — Bill-To party's state (company's state when Bill To = Company,
    *  else the guest's state). Drives CGST+SGST vs IGST. */
   billToState?: string | null;
+  /** Bill-To party's GST state code / GSTIN — take precedence over the state name. */
+  billToStateCode?: string | null;
+  billToGstin?: string | null;
 }
 
 const esc = (s: unknown) =>
@@ -134,8 +139,18 @@ function isGstBill(folio: InvoiceFolio): boolean {
 
 /** Place-of-supply decision for this invoice. */
 function taxContext(ctx: InvoiceContext) {
-  const billToState = ctx.billToState ?? ctx.booking.guests?.state ?? null;
-  return resolveTaxType(billToState, ctx.property.state);
+  return resolveTaxType(
+    {
+      gstin: ctx.billToGstin ?? ctx.booking.guests?.gst_number ?? null,
+      stateCode: ctx.billToStateCode ?? ctx.booking.guests?.state_code ?? null,
+      state: ctx.billToState ?? ctx.booking.guests?.state ?? null,
+    },
+    {
+      gstin: ctx.property.gstin,
+      stateCode: ctx.property.state_code,
+      state: ctx.property.state,
+    },
+  );
 }
 
 function defaultHsn(t: string): string {
@@ -374,7 +389,7 @@ function totalsBlock(ctx: InvoiceContext): string {
   const isGst = isGstBill(folio);
   const color = property.invoice_primary_color || "#1D9E75";
   const showGstSplit = isGst && (property.invoice_show_gst_breakup ?? true);
-  const { taxType, unknownState } = taxContext(ctx);
+  const { taxType } = taxContext(ctx);
   const split = splitGst(Number(folio.gst_amount), taxType);
 
   return `
@@ -399,7 +414,6 @@ function totalsBlock(ctx: InvoiceContext): string {
       </div>
     </div>
     ${!isGst ? `<p class="small" style="margin-top:6px"><em>Amount is inclusive of all applicable taxes.</em></p>` : ""}
-    ${isGst && unknownState ? `<p class="small" style="margin-top:4px;color:#92400e"><em>Note: Bill-To state not recorded — taxed as intra-state (CGST+SGST). Please update the address for accurate place of supply.</em></p>` : ""}
   `;
 }
 
