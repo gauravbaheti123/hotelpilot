@@ -224,6 +224,40 @@ export async function checkInBlock(args: {
   return bookingId;
 }
 
+/**
+ * Bulk check-in: checks in every "blocked" room whose check-in date is today
+ * or earlier and that already has guest name + mobile. Uses the same
+ * `checkInBlock` path as an individual check-in.
+ */
+export async function bulkCheckInBlocks(args: {
+  propertyId: string;
+  blocks: EventBlockRecord[];
+  userId: string;
+}): Promise<{ done: number; failed: { room: string | null; message: string }[] }> {
+  const failed: { room: string | null; message: string }[] = [];
+  let done = 0;
+  for (const block of args.blocks) {
+    try {
+      await checkInBlock({ propertyId: args.propertyId, block, userId: args.userId });
+      done += 1;
+    } catch (e) {
+      failed.push({ room: block.room_number, message: (e as Error)?.message ?? "Check-in failed" });
+    }
+  }
+  return { done, failed };
+}
+
+/** Rooms eligible for bulk check-in: blocked, guest assigned, arriving today or earlier. */
+export function dueForCheckIn(blocks: EventBlockRecord[], today: string): EventBlockRecord[] {
+  return blocks.filter(
+    (b) =>
+      b.status === "blocked" &&
+      !!b.guest_name?.trim() &&
+      !!b.guest_mobile?.trim() &&
+      b.checkin_date <= today,
+  );
+}
+
 export async function checkOutBlock(args: {
   block: EventBlockRecord;
   userId: string;
