@@ -139,3 +139,96 @@ export function withPrintStyles(paperSize: string | null | undefined, fn: () => 
     }, 1000);
   }
 }
+
+/**
+ * Multi-page safe print isolation.
+ *
+ * The old pattern (`body * { visibility: hidden }` + `position: fixed` on the
+ * print area) can only ever produce ONE page: a fixed/absolutely positioned
+ * element is taken out of flow, so the browser clips it to the first page and
+ * silently drops everything below the page boundary. Long invoices therefore
+ * printed page 1 only.
+ *
+ * This helper clones the target element into a plain, in-flow wrapper appended
+ * to <body>, hides every other body child with `display:none` (so no phantom
+ * whitespace remains), prints, then restores the DOM. Content flows naturally
+ * across as many @page instances as needed.
+ */
+export function printIsolated(
+  el: HTMLElement,
+  opts?: { paperSize?: string | null; extraCss?: string; onAfter?: () => void },
+): void {
+  const ROOT_ID = "hp-print-root";
+  const STYLE_ID = "hp-print-isolate";
+  document.getElementById(ROOT_ID)?.remove();
+  document.getElementById(STYLE_ID)?.remove();
+
+  const clone = el.cloneNode(true) as HTMLElement;
+  // Drop interactive / screen-only bits from the clone.
+  clone.querySelectorAll(".no-print,[data-no-print],button,input,select,textarea")
+    .forEach((n) => n.remove());
+
+  const origId = el.id;
+  if (origId) el.removeAttribute("id"); // keep id-scoped CSS pointing at the clone
+
+  const wrapper = document.createElement("div");
+  wrapper.id = ROOT_ID;
+  wrapper.appendChild(clone);
+  document.body.appendChild(wrapper);
+
+  const style = document.createElement("style");
+  style.id = STYLE_ID;
+  style.media = "print";
+  style.appendChild(document.createTextNode(`
+    ${opts?.paperSize ? getPrintStyles(opts.paperSize) : "@page { size: A4 portrait; margin: 10mm; }"}
+    html, body {
+      height: auto !important; min-height: 0 !important;
+      max-height: none !important; overflow: visible !important;
+      margin: 0 !important; padding: 0 !important; background: #fff !important;
+    }
+    body > *:not(#${ROOT_ID}) { display: none !important; }
+    #${ROOT_ID} {
+      display: block !important; position: static !important;
+      width: 100% !important; max-width: none !important;
+      margin: 0 !important; padding: 0 !important;
+      overflow: visible !important;
+    }
+    #${ROOT_ID} > * {
+      position: static !important; width: 100% !important; max-width: none !important;
+      margin: 0 !important; box-shadow: none !important; border: none !important;
+      overflow: visible !important;
+    }
+    /* Natural multi-page flow with clean breaks */
+    #${ROOT_ID} table { page-break-inside: auto; break-inside: auto; }
+    #${ROOT_ID} thead { display: table-header-group; }
+    #${ROOT_ID} tfoot { display: table-footer-group; }
+    #${ROOT_ID} tr, #${ROOT_ID} td, #${ROOT_ID} th {
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    #${ROOT_ID} .avoid-break, #${ROOT_ID} .totals-box,
+    #${ROOT_ID} .payments-block, #${ROOT_ID} .signature-block {
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    #${ROOT_ID} * {
+      -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+    }
+    ${opts?.extraCss ?? ""}
+  `));
+  document.head.appendChild(style);
+
+  const cleanup = () => {
+    window.removeEventListener("afterprint", cleanup);
+    document.getElementById(ROOT_ID)?.remove();
+    document.getElementById(STYLE_ID)?.remove();
+    if (origId) el.id = origId;
+    opts?.onAfter?.();
+  };
+  window.addEventListener("afterprint", cleanup);
+
+  try {
+    window.print();
+  } finally {
+    // Safari/Firefox may not fire afterprint reliably.
+    setTimeout(cleanup, 2000);
+  }
+}
