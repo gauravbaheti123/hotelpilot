@@ -1203,7 +1203,7 @@ function RoomGroups({
 // name and this segment's pending bill amount (₹0 = clean). Tapping opens
 // the Punch Food/Laundry Charge dialog via the parent's onPick.
 function SegmentRoomCard({
-  room, category, segment, occ, pending, onPick,
+  room, category, segment, occ, pending, onPick, onViewKot, onViewInvoice,
 }: {
   room: Room;
   category: string;
@@ -1211,20 +1211,22 @@ function SegmentRoomCard({
   occ: OccInfo | null;
   pending: { amount: number; count: number; bills: Array<{ id: string; bill_number: string; amount: number }> } | null;
   onPick: () => void;
+  onViewKot: () => void;
+  onViewInvoice: () => void;
 }) {
   const amount = pending?.amount ?? 0;
   const hasPending = amount > 0.01;
   const bg = hasPending ? "#f59e0b" : "#0ea5e9"; // amber = pending, sky = clean
   const label = segment === "food" ? "Food" : "Laundry";
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onPick}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPick(); }}
-      className="relative transition cursor-pointer overflow-hidden flex flex-col"
-      style={{ backgroundColor: bg, color: "#ffffff", minHeight: 118, borderRadius: 10 }}
-    >
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <div
+          role="button"
+          tabIndex={0}
+          className="relative transition cursor-pointer overflow-hidden flex flex-col text-left"
+          style={{ backgroundColor: bg, color: "#ffffff", minHeight: 118, borderRadius: 10 }}
+        >
       <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
         <div className="flex items-start justify-between gap-2">
           <span style={{ color: "#ffffff", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
@@ -1252,12 +1254,25 @@ function SegmentRoomCard({
           ) : (
             <>
               <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.95)" }}>No pending</div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>Tap to punch {label.toLowerCase()} charge</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>Tap for {label.toLowerCase()} actions</div>
             </>
           )}
         </div>
       </div>
-    </div>
+        </div>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-48">
+        <DropdownMenuItem onSelect={() => onViewKot()}>
+          View {segment === "food" ? "KOT" : "Tickets"}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => onPick()}>
+          New {segment === "food" ? "KOT" : "Ticket"}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => onViewInvoice()}>
+          View Invoice
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
