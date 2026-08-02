@@ -20,6 +20,8 @@ import { isValidStayRange } from "@/lib/front-desk";
 import { BANQUET_STATUS_TONE, computeBanquetTotal, FUNCTION_TYPES } from "@/lib/banquet";
 import { ArrowLeft, BedDouble, Trash2, CheckCircle2, Ban, Plus, FileText, Pencil, Save, LogIn, LogOut, UserPlus, Eye } from "lucide-react";
 import { checkInBlock, checkOutBlock, bulkCheckInBlocks, dueForCheckIn, type EventBlockRecord } from "@/lib/eventRoomBlocks";
+import { GuestSearchInput } from "@/components/GuestSearchInput";
+import { sanitizeMobile } from "@/lib/mobile";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
@@ -190,6 +192,26 @@ function BanquetEventPage() {
     if (error) return toast.error(error.message);
     toast.success("Guest info saved");
     load();
+  }
+
+  /** Patch a single block row locally (no reload — keeps inline editing smooth). */
+  function patchBlockLocal(index: number, patch: Partial<EventBlockRecord>) {
+    setBlocks((prev) => prev.map((x, idx) => (idx === index ? { ...x, ...patch } : x)));
+  }
+
+  /** Persist inline stay date/time edits for a row. */
+  async function saveBlockStay(block: EventBlockRecord) {
+    const ci = block.checkin_date;
+    const co = block.checkout_date;
+    const cit = (block.checkin_time ?? "12:00").slice(0, 5);
+    const cot = (block.checkout_time ?? "11:00").slice(0, 5);
+    if (!ci || !co) return toast.error("Check-in and check-out dates are required");
+    if (!isValidStayRange(ci, co, cit, cot)) return toast.error("Check-out must be after check-in");
+    const { error } = await supabase.from("event_room_blocks").update({
+      checkin_date: ci, checkout_date: co, checkin_time: cit, checkout_time: cot,
+    } as any).eq("id", block.id);
+    if (error) return toast.error(error.message);
+    toast.success(`Room ${block.room_number} stay updated`);
   }
 
   function openAssign(block: EventBlockRecord) {
