@@ -92,7 +92,8 @@ ${safetyCss}
 .item .p{white-space:nowrap}
 .itemnote{font-size:12px;font-weight:600;padding-left:10px;margin-top:-2px;margin-bottom:4px}
 .total{display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin-top:4px}
-.ordernote{font-size:12px;font-weight:600;margin-top:6px}
+.ordernote{font-size:15px;font-weight:800;margin-top:8px;border:2px solid #000;padding:4px 6px;text-transform:uppercase;word-break:break-word}
+.ordernote .lbl{display:block;font-size:12px;letter-spacing:1px}
 ${getThermalFeedCss()}
 </style></head><body>
 <div class="print-container">
@@ -113,7 +114,7 @@ ${items
   )
   .join("")}
 ${showPrice ? `<hr class="divider"/><div class="total"><span>TOTAL</span><span>₹${total.toFixed(2)}</span></div>` : ""}
-${header.notes ? `<div class="ordernote">Note: ${esc(header.notes)}</div>` : ""}
+${header.notes ? `<div class="ordernote"><span class="lbl">** INSTRUCTIONS **</span>${esc(header.notes)}</div>` : ""}
 ${THERMAL_FEED_HTML}
 </div>
 </body></html>`;
