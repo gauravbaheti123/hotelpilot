@@ -181,8 +181,12 @@ export function PunchChargeDialog({
       notes: (l.note ?? "").trim() || null,
     }));
     const counter = printers.find((p) => (p.printer_role ?? "").toLowerCase() === "counter copy") ?? null;
-    const { jobs, warnings } = buildKotPrintPlan(items, printers, counter, "kitchen+counter");
-    warnings.forEach((w) => toast.warning(w));
+    const { jobs, warnings, unroutedItems } = buildKotPrintPlan(items, printers, counter, "kitchen+counter");
+    warnings.forEach((w) =>
+      unroutedItems.length > 0 && w.includes("no kitchen printer")
+        ? toast.error(w, { duration: 15000 })
+        : toast.warning(w),
+    );
     if (jobs.length === 0) return;
     await runKotPrintJobs({
       kot_number: billNumber,
