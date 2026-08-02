@@ -110,6 +110,10 @@ function NewBookingPage() {
   const [guestType, setGuestType] = useState<"regular" | "corporate" | "vip">("regular");
   const [guestNotes, setGuestNotes] = useState("");
   const [idFile, setIdFile] = useState<SelectedIdFile | null>(null);
+  // Phase 21 — existing ID document reuse for returning guests
+  const [idLookup, setIdLookup] = useState<GuestIdLookupResult | null>(null);
+  const [reuseExistingId, setReuseExistingId] = useState(false);
+  const dupWarnedRef = useRef<string | null>(null);
   const [customRemark, setCustomRemark] = useState("");
 
   // Extra bed
@@ -256,6 +260,8 @@ function NewBookingPage() {
   function startNewGuest() {
     setSelectedGuestId(null);
     setReturningInfo(null);
+    setIdLookup(null);
+    setReuseExistingId(false);
     setName(""); setMobile(""); setEmail(""); setDob(""); setIdNumber(""); setAddress("");
     setGstNumber(""); setCompany("");
     setGuestType("regular"); setGuestNotes(""); setIdType("aadhaar");
