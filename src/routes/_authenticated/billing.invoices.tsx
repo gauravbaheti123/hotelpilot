@@ -21,6 +21,9 @@ import { Pencil, Trash2, FileSpreadsheet, Hash, AlertTriangle, Wallet } from "lu
 import { ChangePaymentModeDialog, type ChangePaymentModeFolio } from "@/components/ChangePaymentModeDialog";
 import { Printer } from "lucide-react";
 import { printSegmentBill } from "@/components/PunchChargeDialog";
+import {
+  SegmentBillEditDialog, SegmentBillDeleteDialog, type SegmentBillTarget,
+} from "@/components/SegmentBillActionsDialog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/invoices")({
@@ -63,6 +66,7 @@ function InvoicesPage() {
     id: string; bill_number: string; segment: string; status: string;
     total_amount: number; paid_amount: number;
     is_walkin: boolean; guest_name: string | null; room_id: string | null;
+    folio_id: string | null; booking_id: string | null;
     created_at: string;
   }>>([]);
   const [audit, setAudit] = useState(false);
@@ -79,6 +83,9 @@ function InvoicesPage() {
   const [numReason, setNumReason] = useState("");
   // Change Payment Mode dialog (list-view quick action)
   const [payModeTarget, setPayModeTarget] = useState<ChangePaymentModeFolio | null>(null);
+  // Phase 62 — owner Edit / Delete on Food & Laundry bills
+  const [segEditTarget, setSegEditTarget] = useState<SegmentBillTarget | null>(null);
+  const [segDelTarget, setSegDelTarget] = useState<SegmentBillTarget | null>(null);
   // Audit rows for BILL_DELETED / BILL_NUMBER_EDITED
   const [auditRows, setAuditRows] = useState<Array<{
     id: string; created_at: string; user_name: string | null;
@@ -114,7 +121,7 @@ function InvoicesPage() {
     (async () => {
       const { data, error } = await supabase
         .from("segment_bills" as any)
-        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,created_at")
+        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,folio_id,booking_id,created_at")
         .eq("property_id", propertyId)
         .eq("segment", segTab)
         .order("created_at", { ascending: false })
@@ -124,7 +131,7 @@ function InvoicesPage() {
       setSegRows((data ?? []) as any);
     })();
     return () => { cancelled = true; };
-  }, [propertyId, segTab]);
+  }, [propertyId, segTab, busy]);
 
   useEffect(() => {
     if (!propertyId || !audit) { setAuditRows([]); return; }
@@ -504,12 +511,50 @@ function InvoicesPage() {
                     <Button size="sm" variant="ghost" title="Print bill" onClick={() => printSegBill(r)}>
                       <Printer className="h-4 w-4" />
                     </Button>
+                    {isOwner && (
+                      <>
+                        <Button size="sm" variant="ghost" title="Edit bill"
+                          onClick={() => setSegEditTarget({
+                            id: r.id, bill_number: r.bill_number, segment: r.segment,
+                            status: r.status, total_amount: Number(r.total_amount),
+                            paid_amount: Number(r.paid_amount), folio_id: r.folio_id,
+                            booking_id: r.booking_id,
+                          })}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="ghost" title="Delete bill"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setSegDelTarget({
+                            id: r.id, bill_number: r.bill_number, segment: r.segment,
+                            status: r.status, total_amount: Number(r.total_amount),
+                            paid_amount: Number(r.paid_amount), folio_id: r.folio_id,
+                            booking_id: r.booking_id,
+                          })}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 );
               })}
           </CardContent>
         </Card>
       )}
+
+      <SegmentBillEditDialog
+        bill={segEditTarget}
+        propertyId={propertyId}
+        open={!!segEditTarget}
+        onClose={() => setSegEditTarget(null)}
+        onSaved={() => setBusy((b) => !b)}
+      />
+      <SegmentBillDeleteDialog
+        bill={segDelTarget}
+        propertyId={propertyId}
+        open={!!segDelTarget}
+        onClose={() => setSegDelTarget(null)}
+        onDeleted={() => setBusy((b) => !b)}
+      />
 
       <ChangePaymentModeDialog
         folio={payModeTarget}
