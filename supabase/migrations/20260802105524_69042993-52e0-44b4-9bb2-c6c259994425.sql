@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.recompute_folio_totals(uuid) TO authenticated;
