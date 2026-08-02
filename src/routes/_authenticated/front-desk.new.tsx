@@ -84,6 +84,9 @@ interface GuestMatch {
   id_proof_type: string | null;
   id_proof_number: string | null;
   address: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
   gst_number: string | null;
   company: string | null;
   tags: string[] | null;
@@ -122,6 +125,9 @@ function NewBookingPage() {
   const [idType, setIdType] = useState("aadhaar");
   const [idNumber, setIdNumber] = useState("");
   const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [guestState, setGuestState] = useState("");
+  const [nation, setNation] = useState("India");
   const [gstNumber, setGstNumber] = useState("");
   const [company, setCompany] = useState("");
   const [guestType, setGuestType] = useState<"regular" | "corporate">("regular");
@@ -244,7 +250,7 @@ function NewBookingPage() {
       const like = `%${term}%`;
       const { data } = await supabase
         .from("guests")
-        .select("id,name,mobile,email,dob,id_proof_type,id_proof_number,address,gst_number,company,tags,notes")
+        .select("id,name,mobile,email,dob,id_proof_type,id_proof_number,address,city,state,country,gst_number,company,tags,notes")
         .eq("property_id", current.id)
         .or(`name.ilike.${like},mobile.ilike.${like},email.ilike.${like}`)
         .limit(8);
@@ -275,6 +281,9 @@ function NewBookingPage() {
     setIdType(g.id_proof_type ?? "aadhaar");
     setIdNumber(g.id_proof_number ?? "");
     setAddress(g.address ?? "");
+    setCity((g as any).city ?? "");
+    setGuestState((g as any).state ?? "");
+    setNation((g as any).country ?? "India");
     setGstNumber(g.gst_number ?? "");
     setCompany((g as any).company ?? "");
     setGuestNotes(g.notes ?? "");
@@ -522,6 +531,9 @@ function NewBookingPage() {
             id_proof_type: idType || null,
             id_proof_number: idNumber || null,
             address: address || null,
+            city: city.trim() || null,
+            state: guestState.trim() || null,
+            country: nation.trim() || "India",
             gst_number: gstNumber.trim() || null,
             company: company.trim() || null,
             nationality: nationality || null,
@@ -543,6 +555,9 @@ function NewBookingPage() {
             id_proof_type: idType || null,
             id_proof_number: idNumber || null,
             address: address || null,
+            city: city.trim() || null,
+            state: guestState.trim() || null,
+            country: nation.trim() || "India",
             gst_number: gstNumber.trim() || null,
             company: company.trim() || null,
             nationality: nationality || null,
@@ -971,6 +986,9 @@ function NewBookingPage() {
             <div className="col-span-2">
               <F label="Address"><Textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} /></F>
             </div>
+            <F label="City"><CityInput value={city} onChange={setCity} /></F>
+            <F label="State / UT"><StateSelect value={guestState} onChange={setGuestState} /></F>
+            <F label="Nation"><NationInput value={nation} onChange={setNation} /></F>
             <div className="col-span-2">
               <F label="Guest notes"><Textarea rows={2} value={guestNotes} onChange={(e) => setGuestNotes(e.target.value)} /></F>
             </div>
