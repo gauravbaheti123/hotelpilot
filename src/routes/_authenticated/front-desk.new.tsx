@@ -25,6 +25,7 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { addDaysIso, nightsBetween, SOURCES, todayIso } from "@/lib/front-desk";
 import { GuestIdUploadField, type SelectedIdFile } from "@/components/GuestIdUploadField";
+import { lookupExistingGuestId, type GuestIdLookupResult } from "@/lib/guestIdLookup";
 import { uploadFileToDrive, safeName } from "@/lib/driveUpload";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
@@ -110,6 +111,10 @@ function NewBookingPage() {
   const [guestType, setGuestType] = useState<"regular" | "corporate" | "vip">("regular");
   const [guestNotes, setGuestNotes] = useState("");
   const [idFile, setIdFile] = useState<SelectedIdFile | null>(null);
+  // Phase 21 — existing ID document reuse for returning guests
+  const [idLookup, setIdLookup] = useState<GuestIdLookupResult | null>(null);
+  const [reuseExistingId, setReuseExistingId] = useState(false);
+  const dupWarnedRef = useRef<string | null>(null);
   const [customRemark, setCustomRemark] = useState("");
 
   // Extra bed
@@ -256,12 +261,46 @@ function NewBookingPage() {
   function startNewGuest() {
     setSelectedGuestId(null);
     setReturningInfo(null);
+    setIdLookup(null);
+    setReuseExistingId(false);
     setName(""); setMobile(""); setEmail(""); setDob(""); setIdNumber(""); setAddress("");
     setGstNumber(""); setCompany("");
     setGuestType("regular"); setGuestNotes(""); setIdType("aadhaar");
     setDropdownOpen(false);
     setSearchOpen(false);
   }
+
+  // Phase 21 — debounced lookup of an existing guest by mobile (first) or ID
+  // number, to surface their previously uploaded ID doc + a duplicate warning.
+  const idLookupTimer = useRef<number | null>(null);
+  useEffect(() => {
+    if (!current) return;
+    const m = mobile.trim();
+    const n = idNumber.trim();
+    if (m.length !== 10 && n.length < 6) {
+      setIdLookup(null);
+      setReuseExistingId(false);
+      dupWarnedRef.current = null;
+      return;
+    }
+    if (idLookupTimer.current) window.clearTimeout(idLookupTimer.current);
+    idLookupTimer.current = window.setTimeout(async () => {
+      const res = await lookupExistingGuestId(current.id, m, n);
+      setIdLookup(res);
+      if (!res) { setReuseExistingId(false); dupWarnedRef.current = null; return; }
+      // 21.4 — non-blocking duplicate heads-up (once per matched guest)
+      const key = `${res.guest.id}:${res.matchedOn}`;
+      if (dupWarnedRef.current !== key) {
+        dupWarnedRef.current = key;
+        toast.info(
+          `A guest with this ${res.matchedOn === "mobile" ? "mobile" : "ID"} already exists — ` +
+          `${res.guest.name ?? "Unnamed"}${res.guest.idProofNumber ? `, ${res.guest.idProofNumber}` : ""}`,
+        );
+      }
+    }, 500);
+    return () => { if (idLookupTimer.current) window.clearTimeout(idLookupTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mobile, idNumber, current?.id]);
 
   const nights = nightsBetween(checkIn, checkOut);
   const extraBedRate = useMemo(() => {
@@ -614,7 +653,31 @@ function NewBookingPage() {
       }
 
       // ID Document upload (best-effort, deferred to after booking save)
-      if (idFile && guestId) {
+      if (!idFile && reuseExistingId && idLookup?.doc && guestId) {
+        // Phase 21.3 — reuse the already-stored Drive file: link the same
+        // file to this booking's document record, no re-upload.
+        try {
+          const doc = idLookup.doc;
+          await supabase.from("guests").update({
+            id_document_url: doc.driveViewUrl,
+            id_document_name: doc.documentName,
+            id_document_uploaded_at: doc.uploadedAt ?? new Date().toISOString(),
+          } as any).eq("id", guestId);
+          await supabase.from("guest_documents").insert({
+            property_id: current.id,
+            guest_id: guestId,
+            booking_id: booking!.id,
+            document_name: doc.documentName,
+            drive_file_id: doc.driveFileId,
+            drive_view_url: doc.driveViewUrl,
+            drive_folder_path: doc.driveFolderPath,
+          } as any);
+          toast.success("✓ Existing ID document reused");
+        } catch (e: any) {
+          console.warn("ID reuse failed", e);
+          toast.error("Could not attach existing ID document");
+        }
+      } else if (idFile && guestId) {
         try {
           const ts = Date.now();
           const fileName = `${safeName(name || "Guest")}_${safeName(booking!.booking_number || booking!.id.slice(0, 8))}_${ts}.jpg`;
@@ -829,7 +892,15 @@ function NewBookingPage() {
             </div>
 
             <div className="pt-2 border-t">
-              <GuestIdUploadField value={idFile} onChange={setIdFile} disabled={saving} />
+              <GuestIdUploadField
+                value={idFile}
+                onChange={setIdFile}
+                disabled={saving}
+                existingDoc={idLookup?.doc ?? null}
+                existingGuestName={idLookup?.guest.name ?? null}
+                reuseExisting={reuseExistingId}
+                onReuseChange={(v) => { setReuseExistingId(v); if (v) setIdFile(null); }}
+              />
             </div>
           </CardContent>
         </Card>
