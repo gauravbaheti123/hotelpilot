@@ -348,7 +348,7 @@ export function AssignRoomDialog({
         <div>
           <div className="font-medium">Room {r.room_number}</div>
           <div className="text-[10px] text-muted-foreground">
-            {r.category_name} · ₹{r.base_rate}/night ·{" "}
+            {r.category_name} · ₹{r.standard_rate}/night ·{" "}
             <span className="uppercase">{r.housekeeping_status}</span>
           </div>
         </div>
