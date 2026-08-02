@@ -391,7 +391,7 @@ function NewBanquetPage() {
           <Card>
             <CardHeader><CardTitle className="text-base">Event</CardTitle></CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-3">
-              <Field label="Hall *">
+              <Field label="Hall (optional)">
                 <Select value={hallId} onValueChange={setHallId}>
                   <SelectTrigger><SelectValue placeholder="Pick hall" /></SelectTrigger>
                   <SelectContent>
