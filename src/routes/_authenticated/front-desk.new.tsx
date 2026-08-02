@@ -308,10 +308,9 @@ function NewBookingPage() {
   }, [mobile, idNumber, current?.id]);
 
   const nights = nightsBetween(checkIn, checkOut);
-  const extraBedRate = useMemo(() => {
-    const cat = cats.find((c) => c.id === categoryId);
-    return Number(cat?.extra_bed_rate) || 0;
-  }, [cats, categoryId]);
+  // Extra bed price comes from the resolved tariff plan (Phase 27b). The form
+  // has a single generic bed quantity, so the adult rate is the per-bed rate.
+  const extraBedRate = useMemo(() => extraBedRateFor(activePlan), [activePlan]);
   const extraBedTotal = extraBed ? nights * extraBedRate * extraBedQty : 0;
   const total = nights * rate + extraBedTotal;
   const balance = Math.max(0, total - advance);
