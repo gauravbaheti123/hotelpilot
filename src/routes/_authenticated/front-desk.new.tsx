@@ -25,6 +25,7 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { addDaysIso, nightsBetween, SOURCES, todayIso } from "@/lib/front-desk";
 import { GuestIdUploadField, type SelectedIdFile } from "@/components/GuestIdUploadField";
+import { lookupExistingGuestId, type GuestIdLookupResult } from "@/lib/guestIdLookup";
 import { uploadFileToDrive, safeName } from "@/lib/driveUpload";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
