@@ -263,6 +263,8 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       setSingleRef("");
       setSingleMode("cash");
       setBillToConfirmed(false);
+      setEarlyChoice(null);
+      setEarlyBusy(false);
       didSeedRoomCharges.current = false;
       didLateChargeCheck.current = false;
       load();
