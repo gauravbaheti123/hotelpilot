@@ -284,6 +284,7 @@ function chargesTable(ctx: InvoiceContext): string {
   const showHsn = isGst && (property.invoice_show_hsn ?? true);
   const showGstSplit = isGst && (property.invoice_show_gst_breakup ?? true);
   const color = property.invoice_primary_color || "#1D9E75";
+  const igst = taxContext(ctx).taxType === "igst";
 
   const thStyle = `style="background:${color};color:#fff;padding:8px 10px;text-align:left;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px"`;
   const tdStyle = `style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:11px"`;
@@ -296,7 +297,7 @@ function chargesTable(ctx: InvoiceContext): string {
       <th ${thStyle} class="right">Qty</th>
       <th ${thStyle} class="right">Rate</th>
       <th ${thStyle} class="right">Amount</th>
-      ${showGstSplit ? `<th ${thStyle} class="right">CGST</th><th ${thStyle} class="right">SGST</th>` : ""}
+      ${showGstSplit ? (igst ? `<th ${thStyle} class="right">IGST</th>` : `<th ${thStyle} class="right">CGST</th><th ${thStyle} class="right">SGST</th>`) : ""}
       ${isGst && !showGstSplit ? `<th ${thStyle} class="right">GST</th>` : ""}
       <th ${thStyle} class="right">Total</th>
     </tr>
@@ -313,8 +314,12 @@ function chargesTable(ctx: InvoiceContext): string {
         <td ${tdStyle} class="right">${Number(c.qty).toLocaleString("en-IN")}</td>
         <td ${tdStyle} class="right">${inr(c.rate)}</td>
         <td ${tdStyle} class="right">${inr(c.amount)}</td>
-        ${showGstSplit ? `<td ${tdStyle} class="right">${(Number(c.gst_rate) / 2).toFixed(1)}%<br/><span class="small">${inr(gstHalf)}</span></td>
-          <td ${tdStyle} class="right">${(Number(c.gst_rate) / 2).toFixed(1)}%<br/><span class="small">${inr(gstHalf)}</span></td>` : ""}
+        ${showGstSplit
+          ? (igst
+            ? `<td ${tdStyle} class="right">${Number(c.gst_rate).toFixed(1)}%<br/><span class="small">${inr(c.gst_amount)}</span></td>`
+            : `<td ${tdStyle} class="right">${(Number(c.gst_rate) / 2).toFixed(1)}%<br/><span class="small">${inr(gstHalf)}</span></td>
+          <td ${tdStyle} class="right">${(Number(c.gst_rate) / 2).toFixed(1)}%<br/><span class="small">${inr(gstHalf)}</span></td>`)
+          : ""}
         ${isGst && !showGstSplit ? `<td ${tdStyle} class="right">${Number(c.gst_rate).toFixed(1)}%<br/><span class="small">${inr(c.gst_amount)}</span></td>` : ""}
         <td ${tdStyle} class="right"><strong>${inr(lineTotal)}</strong></td>
       </tr>
