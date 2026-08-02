@@ -25,6 +25,10 @@ import { printSegmentBill } from "@/components/PunchChargeDialog";
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/invoices")({
   head: () => ({ meta: [{ title: "Invoices — HotelPilot" }] }),
+  validateSearch: (search: Record<string, unknown>): { seg?: "lodge" | "food" | "laundry"; bill?: string } => ({
+    seg: search.seg === "food" || search.seg === "laundry" || search.seg === "lodge" ? search.seg : undefined,
+    bill: typeof search.bill === "string" && search.bill ? search.bill : undefined,
+  }),
   component: () => (<RequirePermission module="invoices"><InvoicesPage /></RequirePermission>),
 });
 
@@ -41,6 +45,7 @@ interface Row {
 
 function InvoicesPage() {
   const { currentId: propertyId, current: currentProperty } = useCurrentProperty();
+  const { seg: segParam, bill: billParam } = Route.useSearch();
   const { user, roles } = useAuth();
   const { can } = usePermissions();
   const navigate = useNavigate();
