@@ -774,7 +774,7 @@ function BookingDetailPage() {
               const br = b.booking_rooms.find((x) => x.id === shiftBrId);
               const target = rooms.find((r) => r.id === shiftToRoom);
               const fromRate = Number(br?.rate ?? 0);
-              const newStdRate = Number(target?.room_categories?.base_rate ?? 0);
+              const newStdRate = br ? standardRateFor(br, target) : 0;
               const newRate = br ? resolveNewRate(br, target) : 0;
               return (
                 <div className="space-y-4">
@@ -816,7 +816,7 @@ function BookingDetailPage() {
                       <TariffOption
                         active={tariffChoice === "new_standard"} onClick={() => setTariffChoice("new_standard")}
                         title="Apply new room's standard rate"
-                        line1={newStdRate > 0 ? `₹${newStdRate}/night` : "No base rate set on category"}
+                        line1={newStdRate > 0 ? `₹${newStdRate}/night` : "No active tariff plan for this category"}
                         line2={`Based on ${target.room_categories?.name ?? "new"} category tariff`}
                         disabled={newStdRate <= 0} />
                       <div
