@@ -85,18 +85,19 @@ export async function rasterizeHtmlToPng(
     await waitForAssets(doc);
     // Let layout settle before measuring.
     await new Promise((r) => requestAnimationFrame(() => r(null)));
-    // scrollHeight never drops below the iframe viewport, which would pad the
-    // ticket with blank roll. Measure the real content extent instead.
-    const bodyTop = doc.body.getBoundingClientRect().top;
-    let contentBottom = 0;
-    for (const el of Array.from(doc.body.children)) {
-      const r = el.getBoundingClientRect();
-      if (r.bottom - bodyTop > contentBottom) contentBottom = r.bottom - bodyTop;
-    }
-    const heightPx = Math.max(
-      1,
-      Math.ceil(contentBottom || doc.body.scrollHeight),
-    );
+    // scrollHeight never drops below the iframe viewport, so collapse the frame
+    // first — otherwise short tickets get padded with blank roll. The few extra
+    // px guard against font-metric differences during rasterization clipping
+    // the final line.
+    iframe.style.height = "1px";
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    const heightPx =
+      Math.max(
+        1,
+        Math.ceil(
+          Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight),
+        ),
+      ) + 4;
     iframe.style.height = `${heightPx}px`;
     const html2canvas = (await import("html2canvas")).default;
     const canvas = await html2canvas(doc.body, {
