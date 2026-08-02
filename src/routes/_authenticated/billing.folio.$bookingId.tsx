@@ -2098,7 +2098,7 @@ function FolioPage() {
             <div className="mt-8 border-t pt-4 text-center text-sm text-gray-700">
               Thank you for staying with us! We hope to see you again.
             </div>
-            <div className="mt-10 flex justify-between gap-12 text-xs text-gray-600">
+            <div className="signature-block mt-10 flex justify-between gap-12 text-xs text-gray-600">
               <div className="flex-1 border-t border-gray-400 pt-1">Received by</div>
               <div className="flex-1 border-t border-gray-400 pt-1 text-right">Guest Signature</div>
             </div>
