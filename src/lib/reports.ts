@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { resolveTaxType } from "@/lib/gst";
 
 export interface DailySummary {
   date: string;
