@@ -13,7 +13,13 @@ import { inr } from "@/lib/billing";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useAuth } from "@/hooks/use-auth";
 import { ItemPickerCombobox, type PickerItem } from "@/components/ItemPickerCombobox";
-import { buildKotPrintPlan, runKotPrintJobs, type PrinterInfo, type KotItemForPrint } from "@/lib/kotPrint";
+import { buildKotPrintPlan, runKotPrintJobs, printThermalHtml, type PrinterInfo, type KotItemForPrint } from "@/lib/kotPrint";
+import {
+  fetchBillPrinter,
+  getPrintContainerWidth,
+  getThermalFeedCss,
+  THERMAL_FEED_HTML,
+} from "@/lib/printStyles";
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 
 export type SegmentKind = "food" | "laundry";
@@ -648,7 +654,8 @@ export function printSegmentBill(opts: {
         }
       } catch { /* branding is best-effort */ }
     }
-    renderSegmentBill(opts, head);
+    const printer = await fetchBillPrinter(opts.propertyId);
+    renderSegmentBill(opts, head, printer);
   })();
 }
 
@@ -663,7 +670,9 @@ function renderSegmentBill(opts: {
   sub: number; gst: number; total: number;
   isWalkin: boolean;
   paymentMode: string | null;
-}, head: SegBillHead) {
+}, head: SegBillHead, printer: { name: string; paper_size: string } | null) {
+  const paperSize = printer?.paper_size ?? "80mm";
+  const contentWidth = getPrintContainerWidth(paperSize);
   const rowsHtml = opts.items.map((it) => `
     <tr>
       <td>${escape(it.description)}</td>
@@ -677,26 +686,31 @@ function renderSegmentBill(opts: {
   const heading = opts.segment === "food" ? "Food Bill" : "Laundry Bill";
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${opts.billNumber}</title>
 <style>
-  @page { size: 80mm auto; margin: 3mm; }
-  html, body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #000; }
-  body { width: 76mm; font-size: 11px; }
-  h1 { font-size: 13px; margin: 0 0 2px; text-align: center; }
+  @page { size: ${paperSize} auto; margin: 2mm; }
+  html, body { margin: 0; padding: 0; font-family: Arial, sans-serif; color: #000;
+    width: ${contentWidth}; height: auto !important; min-height: 0 !important; }
+  body { width: ${contentWidth}; max-width: ${contentWidth}; font-size: 12px; box-sizing: border-box; }
+  * { box-sizing: border-box; max-width: 100%; }
+  h1 { font-size: 14px; margin: 0 0 2px; text-align: center; }
   .prop { text-align: center; font-weight: bold; font-size: 12px; }
   .brandhead { display: flex; gap: 4mm; align-items: flex-start; border-bottom: 1px solid #000; padding-bottom: 3px; }
   .brandhead img { max-height: 12mm; max-width: 18mm; object-fit: contain; }
   .brandinfo { flex: 1; text-align: center; }
   .brandinfo .nm { font-weight: bold; font-size: 13px; }
-  .brandinfo .ln { font-size: 9px; line-height: 1.25; }
-  .sign { margin-top: 10mm; text-align: right; font-size: 10px; }
+  .brandinfo .ln { font-size: 10px; line-height: 1.25; }
+  .sign { margin-top: 10mm; text-align: right; font-size: 11px; }
   .sign .line { border-top: 1px solid #000; width: 40mm; margin-left: auto; padding-top: 2px; }
-  .meta { display: flex; justify-content: space-between; font-size: 10px; margin: 4px 0; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 2px 0; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { padding: 2px 0; text-align: left; font-size: 10px; }
+  .meta { display: flex; justify-content: space-between; font-size: 11px; margin: 4px 0; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 2px 0; }
+  table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+  col.c-item { width: 40%; } col.c-qty { width: 11%; } col.c-rate { width: 17%; }
+  col.c-gst { width: 14%; } col.c-amt { width: 18%; }
+  th, td { padding: 2px 0; text-align: left; font-size: 11px; word-break: break-word; overflow-wrap: anywhere; }
   th { border-bottom: 1px solid #000; }
   td.r, th.r { text-align: right; }
   tfoot td { border-top: 1px dashed #000; }
-  .total { font-weight: bold; font-size: 12px; border-top: 1px solid #000; padding-top: 3px; margin-top: 3px; display: flex; justify-content: space-between; }
-  .foot { text-align: center; margin-top: 6px; font-size: 10px; }
+  .total { font-weight: bold; font-size: 13px; border-top: 1px solid #000; padding-top: 3px; margin-top: 3px; display: flex; justify-content: space-between; }
+  .foot { text-align: center; margin-top: 6px; font-size: 11px; }
+  ${getThermalFeedCss()}
 </style></head>
 <body>
   <div class="brandhead">
@@ -714,33 +728,28 @@ function renderSegmentBill(opts: {
     <span>${escape(opts.billNumber)}</span>
     <span>${escape(dt)}</span>
   </div>
-  <div style="font-size:10px;">Guest: <b>${escape(opts.guestName)}</b>${opts.roomNumber ? ` · Room ${escape(opts.roomNumber)}` : ""}${opts.isWalkin ? " · Walk-in" : ""}</div>
+  <div style="font-size:11px;">Guest: <b>${escape(opts.guestName)}</b>${opts.roomNumber ? ` · Room ${escape(opts.roomNumber)}` : ""}${opts.isWalkin ? " · Walk-in" : ""}</div>
   <table>
+    <colgroup><col class="c-item"/><col class="c-qty"/><col class="c-rate"/><col class="c-gst"/><col class="c-amt"/></colgroup>
     <thead><tr><th>Item</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">GST</th><th class="r">Amt</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table>
-  <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:10px;"><span>Subtotal</span><span>${opts.sub.toFixed(2)}</span></div>
-  <div style="display:flex; justify-content:space-between; font-size:10px;"><span>GST</span><span>${opts.gst.toFixed(2)}</span></div>
+  <div style="display:flex; justify-content:space-between; margin-top:4px; font-size:11px;"><span>Subtotal</span><span>${opts.sub.toFixed(2)}</span></div>
+  <div style="display:flex; justify-content:space-between; font-size:11px;"><span>GST</span><span>${opts.gst.toFixed(2)}</span></div>
   <div class="total"><span>Total</span><span>₹${opts.total.toFixed(2)}</span></div>
-  ${opts.isWalkin && opts.paymentMode ? `<div style="margin-top:3px; font-size:10px;">Paid via ${escape(opts.paymentMode.toUpperCase())}</div>` : ""}
+  ${opts.isWalkin && opts.paymentMode ? `<div style="margin-top:3px; font-size:11px;">Paid via ${escape(opts.paymentMode.toUpperCase())}</div>` : ""}
   <div class="sign"><div class="line">Customer Signature</div></div>
   <div class="foot">Thank you!</div>
+  ${THERMAL_FEED_HTML}
 </body></html>`;
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.right = "0";
-  iframe.style.bottom = "0";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
-  iframe.style.border = "0";
-  document.body.appendChild(iframe);
-  const doc = iframe.contentDocument!;
-  doc.open(); doc.write(html); doc.close();
-  const win = iframe.contentWindow!;
-  setTimeout(() => {
-    try { win.focus(); win.print(); } catch { /* ignore */ }
-    setTimeout(() => { document.body.removeChild(iframe); }, 1000);
-  }, 400);
+  // Silent auto-print to the assigned bill printer (QZ Tray); falls back to
+  // the browser dialog only when QZ or the printer is unreachable.
+  void printThermalHtml({
+    printerName: printer?.name ?? null,
+    html,
+    paperSize,
+    label: opts.segment === "food" ? "Food bill" : "Laundry bill",
+  });
 }
 
 function escape(s: string) {
