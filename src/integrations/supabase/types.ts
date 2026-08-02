@@ -642,6 +642,7 @@ export type Database = {
           phone: string | null
           property_id: string
           state: string | null
+          state_code: string | null
           updated_at: string
         }
         Insert: {
@@ -658,6 +659,7 @@ export type Database = {
           phone?: string | null
           property_id: string
           state?: string | null
+          state_code?: string | null
           updated_at?: string
         }
         Update: {
@@ -674,6 +676,7 @@ export type Database = {
           phone?: string | null
           property_id?: string
           state?: string | null
+          state_code?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2339,6 +2342,7 @@ export type Database = {
           pincode: string | null
           property_id: string
           state: string | null
+          state_code: string | null
           tags: string[]
           updated_at: string
           visit_count: number
@@ -2372,6 +2376,7 @@ export type Database = {
           pincode?: string | null
           property_id: string
           state?: string | null
+          state_code?: string | null
           tags?: string[]
           updated_at?: string
           visit_count?: number
@@ -2405,6 +2410,7 @@ export type Database = {
           pincode?: string | null
           property_id?: string
           state?: string | null
+          state_code?: string | null
           tags?: string[]
           updated_at?: string
           visit_count?: number
@@ -6051,6 +6057,8 @@ export type Database = {
           wifi_password: string
         }[]
       }
+      gst_state_code_from_gstin: { Args: { _gstin: string }; Returns: string }
+      gst_state_code_from_name: { Args: { _name: string }; Returns: string }
       has_open_kot: { Args: { _booking_id: string }; Returns: boolean }
       has_pending_segment_bills: {
         Args: { _booking_id: string }
