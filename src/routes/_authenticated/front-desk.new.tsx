@@ -60,6 +60,12 @@ export const Route = createFileRoute("/_authenticated/front-desk/new")({
 });
 
 interface Category { id: string; name: string; max_occupancy: number; }
+const MEAL_PLAN_LABELS: Record<string, string> = {
+  EP: "EP — Room only",
+  CP: "CP — Breakfast",
+  MAP: "MAP — Breakfast + 1 meal",
+  AP: "AP — All meals",
+};
 interface RoomRow { id: string; room_number: string; category_id: string | null; status: string; }
 interface AdditionalGuest {
   key: string;
