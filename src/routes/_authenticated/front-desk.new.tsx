@@ -955,17 +955,20 @@ function NewBookingPage() {
               {billToOther && (
                 <div className="pl-6 space-y-1">
                   <Label className="text-xs">Billing Company</Label>
-                  <Select value={billingCompanyId || "__none__"} onValueChange={(v) => setBillingCompanyId(v === "__none__" ? "" : v)}>
-                    <SelectTrigger className="max-w-md"><SelectValue placeholder="Select company…" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">— Select —</SelectItem>
-                      {billingCompanies.map((co) => (
-                        <SelectItem key={co.id} value={co.id}>
-                          {co.name}{co.gstin ? ` · ${co.gstin}` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    className="max-w-md"
+                    value={billingCompanyId}
+                    onChange={setBillingCompanyId}
+                    placeholder="Select company…"
+                    searchPlaceholder="Type to search companies…"
+                    emptyText="No company matches"
+                    options={billingCompanies.map((co) => ({
+                      value: co.id,
+                      label: co.name,
+                      hint: co.gstin ?? undefined,
+                      keywords: co.gstin ?? "",
+                    }))}
+                  />
                   <p className="text-[11px] text-muted-foreground">
                     Manage companies in Billing → Billing Companies. If unset, bill goes to the guest.
                   </p>
