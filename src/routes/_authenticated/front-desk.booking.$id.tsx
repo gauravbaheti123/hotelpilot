@@ -35,6 +35,7 @@ import { fireTrigger } from "@/lib/whatsapp";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { recomputeFolio } from "@/lib/billing";
 import { resolveGstRate } from "@/lib/gst";
+import { fetchTariffPlans, pickTariffPlan, type TariffPlan } from "@/lib/tariff";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { RequirePermission } from "@/components/RequirePermission";
 import { AssignRoomDialog } from "@/components/AssignRoomDialog";
@@ -63,7 +64,7 @@ interface Room {
   room_number: string;
   category_id: string | null;
   status: string;
-  room_categories?: { name: string; base_rate: number } | null;
+  room_categories?: { name: string } | null;
 }
 interface BookingRoomRow {
   id: string;
@@ -138,6 +139,7 @@ function BookingDetailPage() {
   );
   const [b, setB] = useState<BookingDetail | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [tariffPlans, setTariffPlans] = useState<TariffPlan[]>([]);
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
   const [kots, setKots] = useState<KotSummaryRow[]>([]);
   const [extraGuests, setExtraGuests] = useState<AdditionalGuestRow[]>([]);
@@ -189,7 +191,7 @@ function BookingDetailPage() {
       const [{ data: rs }, { data: sh }, { data: kt }, { data: bg }] = await Promise.all([
         supabase
         .from("rooms")
-        .select("id,room_number,category_id,status,room_categories(name,base_rate)")
+        .select("id,room_number,category_id,status,room_categories(name)")
         .eq("property_id", detail.property_id)
         .order("room_number"),
         supabase
