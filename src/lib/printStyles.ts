@@ -41,6 +41,44 @@ export function getPrintContainerStyle(paperSize: string | null | undefined): st
 }
 
 /**
+ * Thermal prints must never end flush with the last line of content — the
+ * tear-off / auto-cutter sits a few millimetres past the print head, so the
+ * final rows get sliced. Every thermal document (KOT tickets, counter copies,
+ * Food/Laundry bills) ends with this blank feed block: ~3 blank lines.
+ */
+export const THERMAL_FEED_HTML = `<div class="print-feed">&nbsp;<br/>&nbsp;<br/>&nbsp;</div>`;
+
+export function getThermalFeedCss(): string {
+  return `.print-feed{height:14mm;min-height:14mm;line-height:4.5mm;font-size:10px;visibility:hidden;}`;
+}
+
+export function isThermal(paperSize: string | null | undefined): boolean {
+  const s = String(paperSize ?? "80mm").toUpperCase();
+  return s === "80MM" || s === "58MM";
+}
+
+/**
+ * The active bill printer for a property (type 'bill' or 'both'), used to
+ * silently route Food/Laundry bills without a print dialog.
+ */
+export async function fetchBillPrinter(
+  propertyId: string | null | undefined,
+): Promise<{ name: string; paper_size: string } | null> {
+  if (!propertyId) return null;
+  const { data } = await supabase
+    .from("printers")
+    .select("name,paper_size,type,is_default")
+    .eq("property_id", propertyId)
+    .eq("is_active", true)
+    .in("type", ["bill", "both"])
+    .order("is_default", { ascending: false })
+    .limit(1);
+  const row = data?.[0] as { name?: string; paper_size?: string | null } | undefined;
+  if (!row?.name) return null;
+  return { name: row.name, paper_size: (row.paper_size as string) ?? "80mm" };
+}
+
+/**
  * CSS rules that harden a print document against right-edge cutoff:
  * scoped to a container class so it can't leak into the app UI.
  */

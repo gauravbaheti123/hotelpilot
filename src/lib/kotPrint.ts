@@ -1,4 +1,10 @@
-import { getPrintStyles, getPrintContainerStyle, getPrintSafetyCss } from "./printStyles";
+import {
+  getPrintStyles,
+  getPrintContainerStyle,
+  getPrintSafetyCss,
+  getThermalFeedCss,
+  THERMAL_FEED_HTML,
+} from "./printStyles";
 import { isQZConnected, connectQZ, printToPrinter } from "./qzPrint";
 import { toast } from "sonner";
 
@@ -87,6 +93,7 @@ ${safetyCss}
 .itemnote{font-size:12px;font-weight:600;padding-left:10px;margin-top:-2px;margin-bottom:4px}
 .total{display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin-top:4px}
 .ordernote{font-size:12px;font-weight:600;margin-top:6px}
+${getThermalFeedCss()}
 </style></head><body>
 <div class="print-container">
 ${isCounter ? `<div class="badge">COUNTER COPY</div>` : ""}
@@ -107,6 +114,7 @@ ${items
   .join("")}
 ${showPrice ? `<hr class="divider"/><div class="total"><span>TOTAL</span><span>₹${total.toFixed(2)}</span></div>` : ""}
 ${header.notes ? `<div class="ordernote">Note: ${esc(header.notes)}</div>` : ""}
+${THERMAL_FEED_HTML}
 </div>
 </body></html>`;
 }
@@ -158,6 +166,105 @@ export function buildKotPrintPlan(
   return { jobs, warnings };
 }
 
+/**
+ * Fallback path: render HTML in an isolated hidden iframe and call print().
+ * Used only when QZ Tray isn't reachable — QZ is the default for thermal.
+ */
+export async function printHtmlViaIframe(html: string): Promise<void> {
+  // Remove any leftover parent-doc print stylesheet (e.g. hp-dynamic-print
+  // from A4 flows) so it can't cascade onto the print dialog.
+  document.getElementById("hp-dynamic-print")?.remove();
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  // Give iframe a real (but off-screen) size — a 0×0 iframe can make some
+  // browsers skip layout entirely and fall back to the parent's page size.
+  iframe.style.width = "80mm";
+  iframe.style.height = "200mm";
+  iframe.style.border = "0";
+  iframe.style.opacity = "0";
+  iframe.style.pointerEvents = "none";
+  // srcdoc gives the iframe its own isolated document with our @page rules.
+  iframe.srcdoc = html;
+  document.body.appendChild(iframe);
+  await new Promise<void>((resolve) => {
+    const done = () => resolve();
+    iframe.addEventListener("load", done, { once: true });
+    setTimeout(done, 800);
+  });
+  await new Promise((r) => setTimeout(r, 100));
+  const win = iframe.contentWindow;
+  if (!win) {
+    iframe.remove();
+    return;
+  }
+  try {
+    await new Promise<void>((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        resolve();
+      };
+      try {
+        win.addEventListener("afterprint", finish, { once: true });
+      } catch {
+        /* ignore */
+      }
+      setTimeout(finish, 1500);
+      try {
+        win.focus();
+        win.print();
+      } catch (err) {
+        console.error("[print] print() failed", err);
+        finish();
+      }
+    });
+  } finally {
+    setTimeout(() => iframe.remove(), 200);
+  }
+  await new Promise((r) => setTimeout(r, 300));
+}
+
+/**
+ * Silently send a thermal document to a named printer via QZ Tray.
+ * Surfaces a clear error toast (and falls back to the browser dialog) when
+ * QZ isn't connected or the printer name can't be resolved.
+ */
+export async function printThermalHtml(args: {
+  printerName: string | null;
+  html: string;
+  paperSize?: string | null;
+  label?: string;
+}): Promise<void> {
+  const paperSize = args.paperSize ?? "80mm";
+  const what = args.label ?? "Print";
+  if (!args.printerName) {
+    toast.warning(`${what}: no printer assigned. Set one in Master Data → Printers.`);
+    await printHtmlViaIframe(args.html);
+    return;
+  }
+  let qzOk = isQZConnected();
+  if (!qzOk) {
+    const st = await connectQZ();
+    qzOk = st.connected;
+  }
+  if (qzOk) {
+    try {
+      await printToPrinter(args.printerName, args.html, paperSize);
+      return;
+    } catch (err: any) {
+      console.error("[print/qz] failed", err);
+      toast.error(`Printer "${args.printerName}" unreachable: ${err?.message ?? err}`);
+    }
+  } else {
+    toast.warning("Printer service (QZ Tray) not connected — using browser print dialog.");
+  }
+  await printHtmlViaIframe(args.html);
+}
+
 export async function runKotPrintJobs(header: KotHeader, jobs: PrintJob[]): Promise<void> {
   // Preferred path: silent print via QZ Tray. Falls back to hidden-iframe
   // window.print() if the agent isn't running or a job fails.
@@ -206,66 +313,6 @@ export async function runKotPrintJobs(header: KotHeader, jobs: PrintJob[]): Prom
       job.badge,
       job.printer.name,
     );
-    // Remove any leftover parent-doc print stylesheet (e.g. hp-dynamic-print
-    // from A4 flows) so it can't cascade onto the print dialog if the browser
-    // falls back to the top-level document's page rules.
-    document.getElementById("hp-dynamic-print")?.remove();
-    const iframe = document.createElement("iframe");
-    iframe.setAttribute("aria-hidden", "true");
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    // Give iframe a real (but off-screen) size — a 0×0 iframe can make some
-    // browsers skip layout entirely and fall back to the parent's page size.
-    iframe.style.width = "80mm";
-    iframe.style.height = "200mm";
-    iframe.style.border = "0";
-    iframe.style.opacity = "0";
-    iframe.style.pointerEvents = "none";
-    // Use srcdoc so the iframe has its own isolated document with our @page
-    // rules — document.write() into an about:blank iframe can inherit quirks
-    // and, in some browsers, the parent's print page settings.
-    iframe.srcdoc = html;
-    document.body.appendChild(iframe);
-    await new Promise<void>((resolve) => {
-      const done = () => resolve();
-      iframe.addEventListener("load", done, { once: true });
-      setTimeout(done, 800);
-    });
-    // Extra beat for layout after load.
-    await new Promise((r) => setTimeout(r, 100));
-    const win = iframe.contentWindow;
-    if (!win) {
-      iframe.remove();
-      continue;
-    }
-    try {
-      await new Promise<void>((resolve) => {
-        let done = false;
-        const finish = () => {
-          if (done) return;
-          done = true;
-          resolve();
-        };
-        try {
-          win.addEventListener("afterprint", finish, { once: true });
-        } catch {
-          /* ignore */
-        }
-        // Fallback timeout in case afterprint never fires (some drivers/browsers).
-        setTimeout(finish, 1500);
-        try {
-          win.focus();
-          win.print();
-        } catch (err) {
-          console.error("[kotPrint] print() failed", err);
-          finish();
-        }
-      });
-    } finally {
-      setTimeout(() => iframe.remove(), 200);
-    }
-    // Small gap between successive dialogs.
-    await new Promise((r) => setTimeout(r, 300));
+    await printHtmlViaIframe(html);
   }
 }
