@@ -200,8 +200,12 @@ export function KotHistoryDialog({
       };
 
       if (segment === "food") {
-        const { jobs, warnings } = buildKotPrintPlan(items, printers, null, "kitchen");
-        warnings.forEach((warning) => toast.warning(warning));
+        const { jobs, warnings, unroutedItems } = buildKotPrintPlan(items, printers, null, "kitchen");
+        warnings.forEach((warning) =>
+          unroutedItems.length > 0 && warning.includes("no kitchen printer")
+            ? toast.error(warning, { duration: 15000 })
+            : toast.warning(warning),
+        );
         if (jobs.length === 0) throw new Error("No assigned station printer found for this KOT");
         await runKotPrintJobs(header, jobs);
         toast.success(`${ticketWord} reprint sent to ${jobs.map((job) => job.printer.name).join(", ")}`);

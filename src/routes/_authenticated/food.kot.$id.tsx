@@ -164,8 +164,11 @@ function KotDetailPage() {
           i.menu_items?.menu_categories?.kot_printer_id ??
           null,
       }));
-    const { jobs, warnings } = buildKotPrintPlan(planItems, printers, counterPrinter, mode);
-    for (const w of warnings) toast.warning(w);
+    const { jobs, warnings, unroutedItems } = buildKotPrintPlan(planItems, printers, counterPrinter, mode);
+    for (const w of warnings) {
+      if (unroutedItems.length > 0 && w.includes("no kitchen printer")) toast.error(w, { duration: 15000 });
+      else toast.warning(w);
+    }
     if (jobs.length === 0) {
       toast.error("Nothing to print.");
       return;

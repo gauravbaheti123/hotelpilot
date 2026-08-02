@@ -295,9 +295,14 @@ function MenuPage() {
                     <TableRow key={c.id}>
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">
-                          {printers.find((p) => p.id === c.kot_printer_id)?.name ?? "—"}
-                        </Badge>
+                        {(() => {
+                          const pr = printers.find((p) => p.id === c.kot_printer_id);
+                          return pr ? (
+                            <Badge variant="outline">{pr.name}</Badge>
+                          ) : (
+                            <Badge variant="destructive">Not assigned</Badge>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>{c.sort_order}</TableCell>
                       {canManage && (
@@ -520,14 +525,25 @@ function MenuPage() {
                       <TableCell>{cats.find((c) => c.id === i.category_id)?.name ?? "—"}</TableCell>
                       <TableCell>₹{i.price}</TableCell>
                       <TableCell>{i.gst_rate}%</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {(() => {
-                            const pid = i.kitchen_printer_id ?? cats.find((c) => c.id === i.category_id)?.kot_printer_id;
-                            const pr = printers.find((p) => p.id === pid);
-                            return pr?.name ?? "—";
-                          })()}
-                        </Badge>
+                       <TableCell>
+                        {(() => {
+                          const override = i.kitchen_printer_id ?? null;
+                          const pid = override ?? cats.find((c) => c.id === i.category_id)?.kot_printer_id;
+                          const pr = printers.find((p) => p.id === pid);
+                          if (!pr) {
+                            return (
+                              <Badge variant="destructive">No printer — won't print</Badge>
+                            );
+                          }
+                          return (
+                            <div className="flex flex-col gap-0.5">
+                              <Badge variant="outline">{pr.name}</Badge>
+                              <span className="text-[10px] text-muted-foreground">
+                                {override ? "item override" : "from category"}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         <Badge variant={i.is_available ? "default" : "secondary"}>
