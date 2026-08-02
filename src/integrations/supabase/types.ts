@@ -1974,7 +1974,9 @@ export type Database = {
           arrival_from: string | null
           billing_instruction: string | null
           booking_id: string
+          city: string | null
           company: string | null
+          country: string | null
           created_at: string
           created_by: string | null
           designation: string | null
@@ -1986,6 +1988,7 @@ export type Database = {
           preceding_to: string | null
           property_id: string
           purpose_of_visit: string | null
+          state: string | null
           updated_at: string
         }
         Insert: {
@@ -1993,7 +1996,9 @@ export type Database = {
           arrival_from?: string | null
           billing_instruction?: string | null
           booking_id: string
+          city?: string | null
           company?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           designation?: string | null
@@ -2005,6 +2010,7 @@ export type Database = {
           preceding_to?: string | null
           property_id: string
           purpose_of_visit?: string | null
+          state?: string | null
           updated_at?: string
         }
         Update: {
@@ -2012,7 +2018,9 @@ export type Database = {
           arrival_from?: string | null
           billing_instruction?: string | null
           booking_id?: string
+          city?: string | null
           company?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           designation?: string | null
@@ -2024,6 +2032,7 @@ export type Database = {
           preceding_to?: string | null
           property_id?: string
           purpose_of_visit?: string | null
+          state?: string | null
           updated_at?: string
         }
         Relationships: [

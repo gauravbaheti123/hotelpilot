@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CityInput, StateSelect, NationInput } from "@/components/AddressFields";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,6 +47,9 @@ interface GrcState {
   grc_number: string | null;
   designation: string;
   address: string;
+  city: string;
+  state: string;
+  country: string;
   company: string;
   arrival_from: string;
   preceding_to: string;
@@ -58,7 +62,7 @@ interface GrcState {
 
 const empty: GrcState = {
   id: null, grc_number: null,
-  designation: "", address: "", company: "",
+  designation: "", address: "", city: "", state: "", country: "India", company: "",
   arrival_from: "", preceding_to: "",
   mode_of_payment: "", purpose_of_visit: "",
   billing_instruction: "", discount_note: "", duty_manager_name: "",
@@ -78,7 +82,7 @@ function GrcPage() {
       setLoading(true);
       const { data: b, error } = await supabase
         .from("bookings")
-        .select(`id, booking_number, property_id, check_in, check_out, adults, children, source, total_amount, advance_amount,
+        .select(`id, booking_number, property_id, guest_id, check_in, check_out, adults, children, source, total_amount, advance_amount,
                  guests(name, mobile, email, address, city, state, country, pincode, company, id_proof_type, id_proof_number, gender, dob, nationality, gst_number),
                  booking_rooms(rate, meal_plan, actual_check_in, actual_check_out, rooms!booking_rooms_room_id_fkey(room_number), room_categories(name))`)
         .eq("id", bookingId)
@@ -104,6 +108,9 @@ function GrcPage() {
           id: g.id, grc_number: g.grc_number,
           designation: g.designation ?? "",
           address: g.address ?? (b.guests as any)?.address ?? "",
+          city: (g as any).city ?? (b.guests as any)?.city ?? "",
+          state: (g as any).state ?? (b.guests as any)?.state ?? "",
+          country: (g as any).country ?? (b.guests as any)?.country ?? "India",
           company: g.company ?? (b.guests as any)?.company ?? "",
           arrival_from: g.arrival_from ?? "",
           preceding_to: g.preceding_to ?? "",
@@ -117,6 +124,9 @@ function GrcPage() {
         setGrc((s) => ({
           ...s,
           address: (b.guests as any)?.address ?? "",
+          city: (b.guests as any)?.city ?? "",
+          state: (b.guests as any)?.state ?? "",
+          country: (b.guests as any)?.country ?? "India",
           company: (b.guests as any)?.company ?? "",
         }));
       }
@@ -132,6 +142,9 @@ function GrcPage() {
       booking_id: booking.id,
       designation: grc.designation || null,
       address: grc.address || null,
+      city: grc.city || null,
+      state: grc.state || null,
+      country: grc.country || "India",
       company: grc.company || null,
       arrival_from: grc.arrival_from || null,
       preceding_to: grc.preceding_to || null,
@@ -150,6 +163,17 @@ function GrcPage() {
       if (error) { toast.error(error.message); setSaving(false); return null; }
       number = data.grc_number;
       setGrc((s) => ({ ...s, id: data.id, grc_number: data.grc_number }));
+    }
+    // Keep the guest master in sync — guest-billed invoices resolve
+    // IGST vs CGST+SGST from guests.state (Phase 57).
+    const gid = (booking as any)?.guest_id ?? null;
+    if (gid && (grc.city || grc.state)) {
+      await supabase.from("guests").update({
+        city: grc.city || null,
+        state: grc.state || null,
+        country: grc.country || "India",
+        address: grc.address || null,
+      }).eq("id", gid);
     }
     toast.success("GRC saved");
     setSaving(false);
@@ -302,6 +326,18 @@ function GrcPage() {
               <Label className="text-xs">Address (as declared on GRC)</Label>
               <Textarea rows={2} value={grc.address} onChange={(e) => setGrc({ ...grc, address: e.target.value })} />
             </div>
+            <div>
+              <Label className="text-xs">City</Label>
+              <CityInput value={grc.city} onChange={(v) => setGrc({ ...grc, city: v })} />
+            </div>
+            <div>
+              <Label className="text-xs">State / UT</Label>
+              <StateSelect value={grc.state} onChange={(v) => setGrc({ ...grc, state: v })} />
+            </div>
+            <div>
+              <Label className="text-xs">Nation</Label>
+              <NationInput value={grc.country} onChange={(v) => setGrc({ ...grc, country: v })} />
+            </div>
           </CardContent>
         </Card>
 
@@ -360,7 +396,7 @@ function GrcPage() {
             <PrintRow k="Discount / Concession" v={grc.discount_note || "—"} />
           </div>
           <div className="mb-4">
-            <div className="text-[12px]"><span className="font-semibold">Address:</span> {grc.address || "—"}</div>
+            <div className="text-[12px]"><span className="font-semibold">Address:</span> {[grc.address, grc.city, grc.state, grc.country].filter(Boolean).join(", ") || "—"}</div>
           </div>
 
           <div className="grc-section-label border-t border-black pt-2 mt-2 mb-2 font-semibold text-[12px] uppercase tracking-wide">Terms &amp; Conditions</div>
