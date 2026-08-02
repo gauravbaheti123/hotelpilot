@@ -294,7 +294,7 @@ function NewBanquetPage() {
 
       const { data: bq, error: be } = await supabase.from("banquet_bookings").insert({
         property_id: propertyId,
-        hall_id: hallId,
+        hall_id: hallId || null,
         guest_id: g!.id,
         event_name: roomMode !== "none" ? eventName : null,
         function_type: functionType,
