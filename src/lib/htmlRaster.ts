@@ -85,15 +85,17 @@ export async function rasterizeHtmlToPng(
     await waitForAssets(doc);
     // Let layout settle before measuring.
     await new Promise((r) => requestAnimationFrame(() => r(null)));
+    // scrollHeight never drops below the iframe viewport, which would pad the
+    // ticket with blank roll. Measure the real content extent instead.
+    const bodyTop = doc.body.getBoundingClientRect().top;
+    let contentBottom = 0;
+    for (const el of Array.from(doc.body.children)) {
+      const r = el.getBoundingClientRect();
+      if (r.bottom - bodyTop > contentBottom) contentBottom = r.bottom - bodyTop;
+    }
     const heightPx = Math.max(
       1,
-      Math.ceil(
-        Math.max(
-          doc.body.scrollHeight,
-          doc.documentElement.scrollHeight,
-          doc.body.getBoundingClientRect().height,
-        ),
-      ),
+      Math.ceil(contentBottom || doc.body.scrollHeight),
     );
     iframe.style.height = `${heightPx}px`;
     const html2canvas = (await import("html2canvas")).default;
