@@ -19,6 +19,8 @@ interface Props {
   onSelect: (guest: GuestSearchHit) => void;
   /** Called on blur when nothing was picked, so the caller can persist. */
   onCommit?: () => void;
+  /** Set false to hide the inline "create new guest" action (Banquet: no auto-create). */
+  allowCreate?: boolean;
 }
 
 /**
@@ -27,6 +29,7 @@ interface Props {
  */
 export function GuestSearchInput({
   propertyId, value, mobile, disabled, placeholder, className, onChange, onSelect, onCommit,
+  allowCreate = true,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [hits, setHits] = useState<GuestSearchHit[]>([]);
@@ -113,6 +116,7 @@ export function GuestSearchInput({
               {g.company ? <div className="text-[11px] text-muted-foreground">{g.company}</div> : null}
             </button>
           ))}
+          {allowCreate && (
           <div className="mt-1 border-t pt-1">
             <Button
               type="button"
@@ -126,6 +130,7 @@ export function GuestSearchInput({
               {creating ? "Creating…" : `+ New guest${value.trim() ? ` “${value.trim()}”` : ""}`}
             </Button>
           </div>
+          )}
         </div>
       )}
     </div>
