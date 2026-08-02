@@ -69,6 +69,7 @@ import { Route as AuthenticatedMastersTariffRouteImport } from './routes/_authen
 import { Route as AuthenticatedMastersSundryItemsRouteImport } from './routes/_authenticated/masters.sundry-items'
 import { Route as AuthenticatedMastersStaffRouteImport } from './routes/_authenticated/masters.staff'
 import { Route as AuthenticatedMastersRoomsRouteImport } from './routes/_authenticated/masters.rooms'
+import { Route as AuthenticatedMastersRestaurantOutletsRouteImport } from './routes/_authenticated/masters.restaurant-outlets'
 import { Route as AuthenticatedMastersRateSeasonsRouteImport } from './routes/_authenticated/masters.rate-seasons'
 import { Route as AuthenticatedMastersPrintersRouteImport } from './routes/_authenticated/masters.printers'
 import { Route as AuthenticatedMastersPosCategoriesRouteImport } from './routes/_authenticated/masters.pos-categories'
@@ -450,6 +451,12 @@ const AuthenticatedMastersRoomsRoute =
     path: '/masters/rooms',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMastersRestaurantOutletsRoute =
+  AuthenticatedMastersRestaurantOutletsRouteImport.update({
+    id: '/masters/restaurant-outlets',
+    path: '/masters/restaurant-outlets',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMastersRateSeasonsRoute =
   AuthenticatedMastersRateSeasonsRouteImport.update({
     id: '/masters/rate-seasons',
@@ -739,6 +746,7 @@ export interface FileRoutesByFullPath {
   '/masters/pos-categories': typeof AuthenticatedMastersPosCategoriesRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
+  '/masters/restaurant-outlets': typeof AuthenticatedMastersRestaurantOutletsRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/sundry-items': typeof AuthenticatedMastersSundryItemsRoute
@@ -841,6 +849,7 @@ export interface FileRoutesByTo {
   '/masters/pos-categories': typeof AuthenticatedMastersPosCategoriesRoute
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
+  '/masters/restaurant-outlets': typeof AuthenticatedMastersRestaurantOutletsRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/sundry-items': typeof AuthenticatedMastersSundryItemsRoute
@@ -945,6 +954,7 @@ export interface FileRoutesById {
   '/_authenticated/masters/pos-categories': typeof AuthenticatedMastersPosCategoriesRoute
   '/_authenticated/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/_authenticated/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
+  '/_authenticated/masters/restaurant-outlets': typeof AuthenticatedMastersRestaurantOutletsRoute
   '/_authenticated/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/_authenticated/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/_authenticated/masters/sundry-items': typeof AuthenticatedMastersSundryItemsRoute
@@ -1049,6 +1059,7 @@ export interface FileRouteTypes {
     | '/masters/pos-categories'
     | '/masters/printers'
     | '/masters/rate-seasons'
+    | '/masters/restaurant-outlets'
     | '/masters/rooms'
     | '/masters/staff'
     | '/masters/sundry-items'
@@ -1151,6 +1162,7 @@ export interface FileRouteTypes {
     | '/masters/pos-categories'
     | '/masters/printers'
     | '/masters/rate-seasons'
+    | '/masters/restaurant-outlets'
     | '/masters/rooms'
     | '/masters/staff'
     | '/masters/sundry-items'
@@ -1254,6 +1266,7 @@ export interface FileRouteTypes {
     | '/_authenticated/masters/pos-categories'
     | '/_authenticated/masters/printers'
     | '/_authenticated/masters/rate-seasons'
+    | '/_authenticated/masters/restaurant-outlets'
     | '/_authenticated/masters/rooms'
     | '/_authenticated/masters/staff'
     | '/_authenticated/masters/sundry-items'
@@ -1747,6 +1760,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMastersRoomsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/masters/restaurant-outlets': {
+      id: '/_authenticated/masters/restaurant-outlets'
+      path: '/masters/restaurant-outlets'
+      fullPath: '/masters/restaurant-outlets'
+      preLoaderRoute: typeof AuthenticatedMastersRestaurantOutletsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/masters/rate-seasons': {
       id: '/_authenticated/masters/rate-seasons'
       path: '/masters/rate-seasons'
@@ -2095,6 +2115,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMastersPosCategoriesRoute: typeof AuthenticatedMastersPosCategoriesRoute
   AuthenticatedMastersPrintersRoute: typeof AuthenticatedMastersPrintersRoute
   AuthenticatedMastersRateSeasonsRoute: typeof AuthenticatedMastersRateSeasonsRoute
+  AuthenticatedMastersRestaurantOutletsRoute: typeof AuthenticatedMastersRestaurantOutletsRoute
   AuthenticatedMastersRoomsRoute: typeof AuthenticatedMastersRoomsRoute
   AuthenticatedMastersStaffRoute: typeof AuthenticatedMastersStaffRoute
   AuthenticatedMastersSundryItemsRoute: typeof AuthenticatedMastersSundryItemsRoute
@@ -2187,6 +2208,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedMastersPosCategoriesRoute,
   AuthenticatedMastersPrintersRoute: AuthenticatedMastersPrintersRoute,
   AuthenticatedMastersRateSeasonsRoute: AuthenticatedMastersRateSeasonsRoute,
+  AuthenticatedMastersRestaurantOutletsRoute:
+    AuthenticatedMastersRestaurantOutletsRoute,
   AuthenticatedMastersRoomsRoute: AuthenticatedMastersRoomsRoute,
   AuthenticatedMastersStaffRoute: AuthenticatedMastersStaffRoute,
   AuthenticatedMastersSundryItemsRoute: AuthenticatedMastersSundryItemsRoute,

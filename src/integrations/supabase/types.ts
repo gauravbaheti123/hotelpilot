@@ -4652,6 +4652,7 @@ export type Database = {
           guest_id: string | null
           id: string
           is_settled: boolean
+          outlet_id: string | null
           posted_by: string | null
           property_id: string
           settled_at: string | null
@@ -4667,6 +4668,7 @@ export type Database = {
           guest_id?: string | null
           id?: string
           is_settled?: boolean
+          outlet_id?: string | null
           posted_by?: string | null
           property_id: string
           settled_at?: string | null
@@ -4682,6 +4684,7 @@ export type Database = {
           guest_id?: string | null
           id?: string
           is_settled?: boolean
+          outlet_id?: string | null
           posted_by?: string | null
           property_id?: string
           settled_at?: string | null
@@ -4710,6 +4713,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "restaurant_direct_charges_outlet_id_fkey"
+            columns: ["outlet_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_outlets"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "restaurant_direct_charges_posted_by_fkey"
             columns: ["posted_by"]
             isOneToOne: false
@@ -4728,6 +4738,44 @@ export type Database = {
             columns: ["settled_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurant_outlets: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          property_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          property_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          property_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_outlets_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
             referencedColumns: ["id"]
           },
         ]

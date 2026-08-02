@@ -65,7 +65,7 @@ function RestaurantPage() {
   type DirectChargeRow = {
     id: string; booking_id: string | null; guest_id: string | null;
     amount: number; description: string | null; charge_date: string;
-    is_settled: boolean; created_at: string;
+    is_settled: boolean; created_at: string; outlet_id?: string | null;
   };
   type PayableRow = {
     id: string; charge_id: string | null; amount: number;
@@ -78,6 +78,8 @@ function RestaurantPage() {
   const [activeBookings, setActiveBookings] = useState<{ value: string; label: string; guest_id?: string | null }[]>([]);
   const [postOpen, setPostOpen] = useState(false);
   const [pcBooking, setPcBooking] = useState("");
+  const [pcOutlet, setPcOutlet] = useState("");
+  const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]);
   const [pcAmount, setPcAmount] = useState<string>("");
   const [pcDesc, setPcDesc] = useState("Restaurant Charge");
   const [pcDate, setPcDate] = useState(new Date().toISOString().slice(0, 10));
@@ -90,10 +92,10 @@ function RestaurantPage() {
 
   async function loadDirect() {
     if (!current) return;
-    const [dc, py, bk] = await Promise.all([
+    const [dc, py, bk, ol] = await Promise.all([
       supabase
         .from("restaurant_direct_charges" as any)
-        .select("id,booking_id,guest_id,amount,description,charge_date,is_settled,created_at")
+        .select("id,booking_id,guest_id,amount,description,charge_date,is_settled,created_at,outlet_id")
         .eq("property_id", current.id)
         .order("charge_date", { ascending: false }),
       supabase
@@ -106,10 +108,17 @@ function RestaurantPage() {
         .select("id,booking_number,guest_id,guests(name),booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))")
         .eq("property_id", current.id)
         .eq("status", "checked_in"),
+      (supabase as any)
+        .from("restaurant_outlets")
+        .select("id,name")
+        .eq("property_id", current.id)
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true }),
     ]);
     const rows = (dc.data ?? []) as unknown as DirectChargeRow[];
     setDirectCharges(rows);
     setPayables((py.data ?? []) as unknown as PayableRow[]);
+    setOutlets(((ol as any).data ?? []) as { id: string; name: string }[]);
 
     const bks = (bk.data ?? []) as any[];
     setActiveBookings(bks.map((b) => {
@@ -143,6 +152,7 @@ function RestaurantPage() {
   async function postDirectCharge() {
     if (!current) return;
     if (!pcBooking) return toast.error("Select a booking");
+    if (!pcOutlet) return toast.error("Select an outlet");
     const amt = Number(pcAmount);
     if (!amt || amt <= 0) return toast.error("Enter a valid amount");
     setPosting(true);
@@ -155,6 +165,7 @@ function RestaurantPage() {
           property_id: current.id,
           booking_id: pcBooking,
           guest_id: booking?.guest_id ?? null,
+          outlet_id: pcOutlet,
           amount: amt,
           description: pcDesc || "Restaurant Charge",
           charge_date: pcDate,
@@ -196,7 +207,7 @@ function RestaurantPage() {
 
       toast.success(`Charge posted to ${booking?.label ?? "guest"}`);
       setPostOpen(false);
-      setPcAmount(""); setPcDesc("Restaurant Charge"); setPcBooking("");
+      setPcAmount(""); setPcDesc("Restaurant Charge"); setPcBooking(""); setPcOutlet("");
       await loadDirect();
     } catch (e: any) {
       toast.error(e.message ?? "Failed to post charge");
@@ -653,13 +664,14 @@ function RestaurantPage() {
                 <Table>
                   <TableHeader><TableRow>
                     <TableHead>Date</TableHead><TableHead>Room</TableHead>
-                    <TableHead>Guest</TableHead><TableHead>Description</TableHead>
+                    <TableHead>Guest</TableHead><TableHead>Outlet</TableHead>
+                    <TableHead>Description</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {directCharges.length === 0 && (
-                      <TableRow><TableCell colSpan={6} className="text-center py-6 text-sm text-muted-foreground">
+                      <TableRow><TableCell colSpan={7} className="text-center py-6 text-sm text-muted-foreground">
                         No direct charges posted yet
                       </TableCell></TableRow>
                     )}
@@ -670,6 +682,9 @@ function RestaurantPage() {
                           <TableCell className="text-xs">{c.charge_date}</TableCell>
                           <TableCell>{e.room ?? "—"}</TableCell>
                           <TableCell>{e.guest ?? "—"}</TableCell>
+                          <TableCell className="text-xs">
+                            {outlets.find((o) => o.id === c.outlet_id)?.name ?? "Unassigned"}
+                          </TableCell>
                           <TableCell className="text-xs">{c.description}</TableCell>
                           <TableCell className="text-right font-medium">₹{Number(c.amount).toFixed(2)}</TableCell>
                           <TableCell>
@@ -771,6 +786,17 @@ function RestaurantPage() {
                   placeholder="Search booking…"
                   emptyText="No active bookings"
                 />
+              </div>
+              <div>
+                <Label>Outlet *</Label>
+                <Select value={pcOutlet} onValueChange={setPcOutlet}>
+                  <SelectTrigger><SelectValue placeholder="Select outlet…" /></SelectTrigger>
+                  <SelectContent>
+                    {outlets.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
