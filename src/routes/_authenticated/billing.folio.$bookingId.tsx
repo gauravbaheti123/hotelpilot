@@ -157,7 +157,7 @@ function FolioPage() {
   const [foodBillNumber, setFoodBillNumber] = useState<string | null>(null);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
   const [billingCompanies, setBillingCompanies] = useState<
-    Array<{ id: string; name: string; gstin: string | null; address: string | null; phone: string | null; email: string | null }>
+    Array<{ id: string; name: string; gstin: string | null; address: string | null; phone: string | null; email: string | null; city?: string | null; state?: string | null; nation?: string | null }>
   >([]);
   const { methods: payMethods } = usePaymentMethods(folio?.property_id ?? booking?.property_id ?? null);
 
@@ -248,7 +248,7 @@ function FolioPage() {
     const { data: b, error: be } = await supabase
       .from("bookings")
       .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,checked_out_at,source,ota_partner_name,
-        guests(name,mobile,gst_number,company,address,id_proof_type,id_proof_number,nationality),
+        guests(name,mobile,gst_number,company,address,city,state,country,id_proof_type,id_proof_number,nationality),
         booking_rooms(id,rate,check_in,check_out,actual_check_in,actual_check_out,rooms!booking_rooms_room_id_fkey(room_number),room_categories(name,gst_rate))`)
       .eq("id", bookingId).single();
     if (be) { toast.error(be.message); setLoading(false); return; }
@@ -275,7 +275,7 @@ function FolioPage() {
     // Load active billing companies for this property (used by Bill To picker).
     const { data: bcs } = await supabase
       .from("billing_companies" as any)
-      .select("id,name,gstin,address,phone,email")
+      .select("id,name,gstin,address,phone,email,city,state,nation")
       .eq("property_id", bk.property_id)
       .eq("is_active", true)
       .order("name", { ascending: true });
@@ -1090,6 +1090,7 @@ function FolioPage() {
     const html = renderInvoiceHtml({
       property: { ...property, logo_url: logoDataUrl },
       folio, booking, charges, payments, draft: false, logoDataUrl,
+      billToState,
     });
     openInvoiceWindow(html);
   }
