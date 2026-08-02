@@ -372,7 +372,7 @@ export function PunchChargeDialog({
       const clean = cleanLines();
       let bill: { id: string; bill_number: string; folio_id: string | null };
       if (clean.length > 0) {
-        bill = await appendToTodayBill(clean);
+        bill = await appendToTodayBill(clean, note);
       } else {
         const existing = await findTodayBill();
         if (!existing) { toast.error("Nothing to bill yet"); return; }
