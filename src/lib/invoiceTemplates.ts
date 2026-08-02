@@ -3,6 +3,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { consolidateSegmentCharges, inr } from "@/lib/billing";
+import { resolveTaxType, splitGst } from "@/lib/gst";
 
 export interface InvoiceProperty {
   name: string;
@@ -83,6 +84,9 @@ export interface InvoiceBooking {
     name: string;
     mobile?: string | null;
     address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    country?: string | null;
     nationality?: string | null;
     id_proof_type?: string | null;
     id_proof_number?: string | null;
@@ -101,6 +105,9 @@ export interface InvoiceContext {
   payments: InvoicePayment[];
   draft?: boolean;
   logoDataUrl?: string | null;
+  /** Phase 57 — Bill-To party's state (company's state when Bill To = Company,
+   *  else the guest's state). Drives CGST+SGST vs IGST. */
+  billToState?: string | null;
 }
 
 const esc = (s: unknown) =>
@@ -123,6 +130,12 @@ export async function resolveLogoUrl(logoPath: string | null | undefined): Promi
 
 function isGstBill(folio: InvoiceFolio): boolean {
   return (folio.bill_type ?? folio.gst_mode) === "gst_invoice" || folio.gst_mode === "gst";
+}
+
+/** Place-of-supply decision for this invoice. */
+function taxContext(ctx: InvoiceContext) {
+  const billToState = ctx.billToState ?? ctx.booking.guests?.state ?? null;
+  return resolveTaxType(billToState, ctx.property.state);
 }
 
 function defaultHsn(t: string): string {
