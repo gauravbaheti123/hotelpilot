@@ -30,6 +30,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
@@ -99,6 +110,36 @@ export function CrudPage<T extends { id: string }>({
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Record<string, any> | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  const allSelected = rows.length > 0 && selected.size === rows.length;
+
+  function toggleAll(v: boolean) {
+    setSelected(v ? new Set(rows.map((r) => r.id)) : new Set());
+  }
+
+  function toggleOne(id: string, v: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (v) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  async function confirmBulkDelete() {
+    setBulkBusy(true);
+    const ids = Array.from(selected);
+    const { error } = await supabase.from(table as any).delete().in("id", ids);
+    setBulkBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success(`Deleted ${ids.length} record${ids.length === 1 ? "" : "s"}`);
+    setSelected(new Set());
+    setBulkOpen(false);
+    load();
+  }
 
   async function load() {
     if (!current) return;
@@ -115,6 +156,7 @@ export function CrudPage<T extends { id: string }>({
     });
     if (error) toast.error(error.message);
     setRows(((data ?? []) as unknown) as T[]);
+    setSelected(new Set());
     setLoading(false);
   }
 
@@ -230,6 +272,11 @@ export function CrudPage<T extends { id: string }>({
           )}
           <div className="flex items-center gap-2">
             {headerActions}
+            {canManage && selected.size > 0 && (
+              <Button variant="destructive" onClick={() => setBulkOpen(true)}>
+                <Trash2 className="h-4 w-4 mr-1" /> Delete Selected ({selected.size})
+              </Button>
+            )}
             {canManage && (
               <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
@@ -283,6 +330,15 @@ export function CrudPage<T extends { id: string }>({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {canManage && (
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={allSelected}
+                          onCheckedChange={(v) => toggleAll(!!v)}
+                          aria-label="Select all"
+                        />
+                      </TableHead>
+                    )}
                     {columns.map((c) => (
                       <TableHead key={c.header} className={c.className}>
                         {c.header}
@@ -294,6 +350,15 @@ export function CrudPage<T extends { id: string }>({
                 <TableBody>
                   {rows.map((r) => (
                     <TableRow key={r.id}>
+                      {canManage && (
+                        <TableCell className="w-10">
+                          <Checkbox
+                            checked={selected.has(r.id)}
+                            onCheckedChange={(v) => toggleOne(r.id, !!v)}
+                            aria-label="Select row"
+                          />
+                        </TableCell>
+                      )}
                       {columns.map((c) => (
                         <TableCell key={c.header} className={c.className}>
                           {c.render(r)}
@@ -327,6 +392,23 @@ export function CrudPage<T extends { id: string }>({
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selected.size} selected record(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone. Records still linked to other data may fail to delete.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkBusy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmBulkDelete} disabled={bulkBusy}>
+              {bulkBusy ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }
