@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ShieldAlert, UserPlus, KeyRound, Trash2, ShieldCheck } from "lucide-react";
+import { ShieldAlert, UserPlus, KeyRound, Trash2, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import {
   createStaffUser,
@@ -74,6 +74,7 @@ function UsersPage() {
 
   const [properties, setProperties] = useState<Property[]>([]);
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
+  const [allRoles, setAllRoles] = useState<RoleOption[]>([]);
   const [rows, setRows] = useState<AssignRow[]>([]);
 
   const [showNew, setShowNew] = useState(false);
@@ -112,6 +113,10 @@ function UsersPage() {
       urQuery,
     ]);
     setProperties((props ?? []) as Property[]);
+    // Every role template visible to this admin (system + custom).
+    setAllRoles(((rs ?? []) as RoleOption[]).filter(
+      (r) => isSuperadmin || !/^superadmin$/i.test(r.name),
+    ));
     // Exclude Owner/Superadmin templates from assignable list
     setRoleOptions(((rs ?? []) as RoleOption[]).filter(
       (r) => !/^(owner|superadmin)$/i.test(r.name)
