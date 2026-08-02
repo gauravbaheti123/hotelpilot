@@ -209,7 +209,7 @@ export function KotHistoryDialog({
         items,
         printer?.paper_size ?? "80mm",
         "KITCHEN COPY",
-        printer?.name ?? (segment === "food" ? "KITCHEN" : "LAUNDRY"),
+        printer?.name ?? "LAUNDRY",
       );
       await printThermalHtml({
         printerName: printer?.name ?? null,
