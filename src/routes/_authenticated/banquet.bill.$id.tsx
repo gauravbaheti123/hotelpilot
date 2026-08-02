@@ -117,7 +117,7 @@ function BanquetBillPage() {
       discount_type,discount_value,line_discounts,
       advance_amount,balance_amount,status,notes,
       host_name,host_mobile,host_email,
-      halls(name),guests(name,mobile,email,gst_number,company,state)
+      halls(name),guests(name,mobile,email,gst_number,company,state,state_code)
     `).eq("id", id).single();
     if (error) { toast.error(error.message); setLoading(false); return; }
     const bq = data as unknown as Bq;
@@ -129,7 +129,7 @@ function BanquetBillPage() {
         .select("id,rate,nights,check_in,check_out,discount_type,discount_value,discount_amount,rooms(room_number),room_categories(name)")
         .eq("banquet_id", id),
       supabase.from("properties")
-        .select("name,gstin,address,city,state,pincode,phone,email,wa_number,logo_url")
+        .select("name,gstin,state_code,address,city,state,pincode,phone,email,wa_number,logo_url")
         .eq("id", bq.property_id).single(),
     ]);
     setBulk(((br ?? []) as unknown) as Bulk[]);
@@ -239,8 +239,16 @@ function BanquetBillPage() {
   const gstRate = 0.05;
   const gstTotal = isGst ? Math.round(taxable * gstRate * 100) / 100 : 0;
   const { taxType: banquetTaxType } = resolveTaxType(
-    (b.guests as { state?: string | null } | null)?.state ?? null,
-    (property as { state?: string | null } | null)?.state ?? null,
+    {
+      gstin: (b.guests as { gst_number?: string | null } | null)?.gst_number ?? null,
+      stateCode: (b.guests as { state_code?: string | null } | null)?.state_code ?? null,
+      state: (b.guests as { state?: string | null } | null)?.state ?? null,
+    },
+    {
+      gstin: (property as { gstin?: string | null } | null)?.gstin ?? null,
+      stateCode: (property as { state_code?: string | null } | null)?.state_code ?? null,
+      state: (property as { state?: string | null } | null)?.state ?? null,
+    },
   );
   const isIgstBill = banquetTaxType === "igst";
   const igst = isIgstBill ? gstTotal : 0;
