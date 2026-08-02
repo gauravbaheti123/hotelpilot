@@ -783,6 +783,17 @@ function RestaurantPage() {
                   emptyText="No active bookings"
                 />
               </div>
+              <div>
+                <Label>Outlet *</Label>
+                <Select value={pcOutlet} onValueChange={setPcOutlet}>
+                  <SelectTrigger><SelectValue placeholder="Select outlet…" /></SelectTrigger>
+                  <SelectContent>
+                    {outlets.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Amount (₹)</Label>
