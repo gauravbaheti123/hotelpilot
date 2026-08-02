@@ -278,8 +278,9 @@ function NewBookingPage() {
     setGstNumber(g.gst_number ?? "");
     setCompany((g as any).company ?? "");
     setGuestNotes(g.notes ?? "");
-    const tag = (g.tags ?? []).find((t) => ["corporate", "vip"].includes(t));
-    setGuestType((tag as any) ?? "regular");
+    // Phase 29.5 — only Regular/Corporate are offered now; legacy tags (VIP)
+    // stay on the historical record but read back as Regular here.
+    setGuestType((g.tags ?? []).includes("corporate") ? "corporate" : "regular");
     setReturningInfo({ visits: g.visit_count, last: g.last_stay });
     setDropdownOpen(false);
     setSearchOpen(false);
@@ -315,6 +316,8 @@ function NewBookingPage() {
       const res = await lookupExistingGuestId(current.id, m, n);
       setIdLookup(res);
       if (!res) { setReuseExistingId(false); dupWarnedRef.current = null; return; }
+      // 29.6 — auto-fill guest type from the matched guest's last saved value.
+      if (res.guest.guestType) setGuestType(res.guest.guestType);
       // 21.4 — non-blocking duplicate heads-up (once per matched guest)
       const key = `${res.guest.id}:${res.matchedOn}`;
       if (dupWarnedRef.current !== key) {
