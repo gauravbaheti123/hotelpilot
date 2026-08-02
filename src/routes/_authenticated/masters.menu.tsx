@@ -295,9 +295,14 @@ function MenuPage() {
                     <TableRow key={c.id}>
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">
-                          {printers.find((p) => p.id === c.kot_printer_id)?.name ?? "—"}
-                        </Badge>
+                        {(() => {
+                          const pr = printers.find((p) => p.id === c.kot_printer_id);
+                          return pr ? (
+                            <Badge variant="outline">{pr.name}</Badge>
+                          ) : (
+                            <Badge variant="destructive">Not assigned</Badge>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>{c.sort_order}</TableCell>
                       {canManage && (
