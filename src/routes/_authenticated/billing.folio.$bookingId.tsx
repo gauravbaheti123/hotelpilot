@@ -32,7 +32,7 @@ import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, M
 import { AlertTriangle, ShieldAlert, ArrowRightLeft } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
-import { resolveGstRate } from "@/lib/gst";
+import { resolveGstRate, resolveTaxType, splitGst } from "@/lib/gst";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
@@ -87,6 +87,7 @@ interface BookingCtx {
   ota_channels?: { name: string | null } | null;
   guests: {
     name: string; mobile: string | null; gst_number: string | null; company: string | null; address: string | null;
+    city?: string | null; state?: string | null; country?: string | null;
     id_proof_type: string | null; id_proof_number: string | null; nationality: string | null;
   } | null;
   booking_rooms: {
@@ -157,9 +158,17 @@ function FolioPage() {
   const [foodBillNumber, setFoodBillNumber] = useState<string | null>(null);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
   const [billingCompanies, setBillingCompanies] = useState<
-    Array<{ id: string; name: string; gstin: string | null; address: string | null; phone: string | null; email: string | null }>
+    Array<{ id: string; name: string; gstin: string | null; address: string | null; phone: string | null; email: string | null; city?: string | null; state?: string | null; nation?: string | null }>
   >([]);
   const { methods: payMethods } = usePaymentMethods(folio?.property_id ?? booking?.property_id ?? null);
+
+  // Phase 57 — place of supply: Bill-To company's state, else the guest's state.
+  const billToCompany = folio?.billing_company_id
+    ? billingCompanies.find((c) => c.id === folio.billing_company_id) ?? null
+    : null;
+  const billToState = billToCompany?.state || booking?.guests?.state || null;
+  const { taxType, unknownState: billToStateUnknown } = resolveTaxType(billToState, property?.state);
+  const isIgst = taxType === "igst";
 
   // Guards so auto-seed effects run at most once per folio load.
   // Without these, a silent unique-constraint (409) failure on insert
@@ -248,7 +257,7 @@ function FolioPage() {
     const { data: b, error: be } = await supabase
       .from("bookings")
       .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,checked_out_at,source,ota_partner_name,
-        guests(name,mobile,gst_number,company,address,id_proof_type,id_proof_number,nationality),
+        guests(name,mobile,gst_number,company,address,city,state,country,id_proof_type,id_proof_number,nationality),
         booking_rooms(id,rate,check_in,check_out,actual_check_in,actual_check_out,rooms!booking_rooms_room_id_fkey(room_number),room_categories(name,gst_rate))`)
       .eq("id", bookingId).single();
     if (be) { toast.error(be.message); setLoading(false); return; }
@@ -275,7 +284,7 @@ function FolioPage() {
     // Load active billing companies for this property (used by Bill To picker).
     const { data: bcs } = await supabase
       .from("billing_companies" as any)
-      .select("id,name,gstin,address,phone,email")
+      .select("id,name,gstin,address,phone,email,city,state,nation")
       .eq("property_id", bk.property_id)
       .eq("is_active", true)
       .order("name", { ascending: true });
@@ -1090,6 +1099,7 @@ function FolioPage() {
     const html = renderInvoiceHtml({
       property: { ...property, logo_url: logoDataUrl },
       folio, booking, charges, payments, draft: false, logoDataUrl,
+      billToState,
     });
     openInvoiceWindow(html);
   }
@@ -1961,8 +1971,9 @@ function FolioPage() {
                     <tr style={{ background: TEAL, color: "#fff" }}>
                       <th style={{ textAlign: "left" }}>Category</th>
                       <th style={{ textAlign: "right" }}>Taxable</th>
-                      <th style={{ textAlign: "right" }}>CGST</th>
-                      <th style={{ textAlign: "right" }}>SGST</th>
+                      {isIgst
+                        ? <th style={{ textAlign: "right" }}>IGST</th>
+                        : <><th style={{ textAlign: "right" }}>CGST</th><th style={{ textAlign: "right" }}>SGST</th></>}
                       <th style={{ textAlign: "right" }}>Total</th>
                     </tr>
                   </thead>
@@ -1977,18 +1988,27 @@ function FolioPage() {
                         <tr key={key}>
                           <td>{label}</td>
                           <td style={{ textAlign: "right" }}>{inr(taxable)}</td>
-                          <td style={{ textAlign: "right" }}>{inr(gst / 2)}</td>
-                          <td style={{ textAlign: "right" }}>{inr(gst / 2)}</td>
+                          {isIgst
+                            ? <td style={{ textAlign: "right" }}>{inr(gst)}</td>
+                            : <>
+                                <td style={{ textAlign: "right" }}>{inr(splitGst(gst, taxType).cgst)}</td>
+                                <td style={{ textAlign: "right" }}>{inr(splitGst(gst, taxType).sgst)}</td>
+                              </>}
                           <td style={{ textAlign: "right", fontWeight: 600 }}>{inr(gst)}</td>
                         </tr>
                       );
                     })}
                     <tr style={{ borderTop: `2px solid ${TEAL}` }}>
-                      <td colSpan={4} style={{ textAlign: "right", fontWeight: 700 }}>Total GST</td>
+                      <td colSpan={isIgst ? 3 : 4} style={{ textAlign: "right", fontWeight: 700 }}>Total GST</td>
                       <td style={{ textAlign: "right", fontWeight: 700, color: TEAL_DARK }}>{inr(folio.gst_amount)}</td>
                     </tr>
                   </tbody>
                 </table>
+                {billToStateUnknown && (
+                  <p className="mt-1 text-[10px] italic text-amber-700">
+                    Bill-To state not recorded — taxed as intra-state (CGST+SGST). Update the guest/company address for accurate place of supply.
+                  </p>
+                )}
               </div>
             )}
 

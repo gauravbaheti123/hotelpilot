@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { CityInput, StateSelect, NationInput } from "@/components/AddressFields";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,9 @@ function NewGuestPage() {
   const [idType, setIdType] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [nation, setNation] = useState("India");
   const [company, setCompany] = useState("");
   const [gstNumber, setGstNumber] = useState("");
   const [guestType, setGuestType] = useState<"regular" | "corporate">("regular");
@@ -55,6 +59,9 @@ function NewGuestPage() {
       id_proof_type: idType || null,
       id_proof_number: idNumber.trim() || null,
       address: address.trim() || null,
+      city: city.trim() || null,
+      state: state.trim() || null,
+      country: nation.trim() || "India",
       company: company.trim() || null,
       gst_number: gstNumber.trim().toUpperCase() || null,
       notes: notes.trim() || null,
@@ -138,7 +145,13 @@ function NewGuestPage() {
                 )}
               </Field>
             </div>
-            <div className="md:col-span-2"><Field label="Address"><Textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} /></Field></div>
+            <div className="md:col-span-2"><Field label="Address Line"><Textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} placeholder="Street / building / area" /></Field></div>
+            <Field label="City"><CityInput value={city} onChange={setCity} /></Field>
+            <Field label="State">
+              <StateSelect value={state} onChange={setState} />
+              <p className="mt-1 text-[11px] text-muted-foreground">Decides CGST+SGST vs IGST on invoices.</p>
+            </Field>
+            <Field label="Nation"><NationInput value={nation} onChange={setNation} /></Field>
             <div className="md:col-span-2"><Field label="Notes"><Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} /></Field></div>
           </div>
           <div className="flex justify-end gap-2">

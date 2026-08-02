@@ -621,6 +621,7 @@ export type Database = {
       billing_companies: {
         Row: {
           address: string | null
+          city: string | null
           contact_person: string | null
           created_at: string
           email: string | null
@@ -628,12 +629,15 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          nation: string
           phone: string | null
           property_id: string
+          state: string | null
           updated_at: string
         }
         Insert: {
           address?: string | null
+          city?: string | null
           contact_person?: string | null
           created_at?: string
           email?: string | null
@@ -641,12 +645,15 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          nation?: string
           phone?: string | null
           property_id: string
+          state?: string | null
           updated_at?: string
         }
         Update: {
           address?: string | null
+          city?: string | null
           contact_person?: string | null
           created_at?: string
           email?: string | null
@@ -654,8 +661,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          nation?: string
           phone?: string | null
           property_id?: string
+          state?: string | null
           updated_at?: string
         }
         Relationships: [

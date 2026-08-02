@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { resolveTaxType } from "@/lib/gst";
 
 export interface DailySummary {
   date: string;
@@ -137,6 +138,10 @@ export interface GstInvoiceSlabRow {
   taxable: number;
   cgst: number;
   sgst: number;
+  igst: number;
+  /** Phase 57 — place of supply of this invoice. */
+  tax_type: "cgst_sgst" | "igst";
+  bill_to_state: string | null;
   gst_total: number;
   invoice_total: number;     // filled only on the first slab row of each invoice
   is_first_of_invoice: boolean;
@@ -193,20 +198,31 @@ export async function fetchGstInvoiceSlabs(
   endD.setDate(endD.getDate() + 1);
   const end = endD.toISOString();
   const { data } = await supabase.from("folios")
-    .select("id,invoice_number,created_at,guest_gstin,guest_company,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
+    .select("id,invoice_number,created_at,guest_gstin,guest_company,billing_company_id,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name,state)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
     .eq("property_id", propertyId)
     .eq("gst_mode", "gst")
     .neq("status", "void")
     .gte("created_at", start)
     .lt("created_at", end)
     .order("created_at", { ascending: false });
+  // Phase 57 — place of supply needs the property's own state and any
+  // linked billing company's state.
+  const [{ data: propRow }, { data: coRows }] = await Promise.all([
+    supabase.from("properties").select("state").eq("id", propertyId).maybeSingle(),
+    supabase.from("billing_companies").select("id,state").eq("property_id", propertyId),
+  ]);
+  const propertyState = (propRow as { state?: string | null } | null)?.state ?? null;
+  const coState = new Map<string, string | null>(
+    ((coRows ?? []) as Array<{ id: string; state: string | null }>).map((c) => [c.id, c.state]),
+  );
   const out: GstInvoiceSlabRow[] = [];
   for (const raw of data ?? []) {
     const f = raw as unknown as {
       invoice_number: string; created_at: string;
       guest_gstin: string | null; guest_company: string | null;
+      billing_company_id: string | null;
       sub_total: number; gst_amount: number; total_amount: number;
-      bookings: { guests: { name: string } | null } | null;
+      bookings: { guests: { name: string; state: string | null } | null } | null;
       folio_charges: Array<{
         charge_type: string; amount: number | string;
         gst_rate: number | string | null;
@@ -214,6 +230,12 @@ export async function fetchGstInvoiceSlabs(
         discount_amount: number | string | null;
       }> | null;
     };
+    const billToState =
+      (f.billing_company_id ? coState.get(f.billing_company_id) ?? null : null) ||
+      f.bookings?.guests?.state ||
+      null;
+    const { taxType } = resolveTaxType(billToState, propertyState);
+    const igstBill = taxType === "igst";
     const bySlab = new Map<number, { taxable: number; gst: number }>();
     let lineGstSum = 0;
     for (const c of f.folio_charges ?? []) {
@@ -242,7 +264,7 @@ export async function fetchGstInvoiceSlabs(
       // For 0%-rate lines, gst is 0 by definition — factor doesn't apply.
       const gstScaled = rate > 0 ? round2(s.gst * factor) : 0;
       const taxableScaled = rate > 0 ? round2(s.taxable * factor) : round2(s.taxable);
-      const cgst = round2(gstScaled / 2);
+      const cgst = igstBill ? 0 : round2(gstScaled / 2);
       out.push({
         invoice_number: f.invoice_number,
         created_at: f.created_at,
@@ -253,6 +275,9 @@ export async function fetchGstInvoiceSlabs(
         taxable: taxableScaled,
         cgst,
         sgst: cgst,
+        igst: igstBill ? gstScaled : 0,
+        tax_type: taxType,
+        bill_to_state: billToState,
         gst_total: gstScaled,
         invoice_total: first ? Number(f.total_amount ?? 0) : 0,
         is_first_of_invoice: first,
@@ -270,7 +295,9 @@ export async function fetchGstInvoiceSlabs(
         guest_company: f.guest_company,
         gst_rate: 0,
         taxable: Number(f.sub_total ?? 0),
-        cgst: 0, sgst: 0, gst_total: 0,
+        cgst: 0, sgst: 0, igst: 0, gst_total: 0,
+        tax_type: taxType,
+        bill_to_state: billToState,
         invoice_total: Number(f.total_amount ?? 0),
         is_first_of_invoice: true,
       });

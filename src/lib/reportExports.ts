@@ -201,6 +201,7 @@ export interface TallySalesVoucher {
   taxable_amount: number;
   cgst_amount: number;
   sgst_amount: number;
+  igst_amount?: number;
   total_amount: number;
 }
 
@@ -225,6 +226,11 @@ export function buildTallySalesXml(vouchers: TallySalesVoucher[]) {
               <LEDGERNAME>SGST</LEDGERNAME>
               <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
               <AMOUNT>-${v.sgst_amount.toFixed(2)}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>` : ""}
+            ${(v.igst_amount ?? 0) > 0 ? `<ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>IGST</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>-${(v.igst_amount ?? 0).toFixed(2)}</AMOUNT>
             </ALLLEDGERENTRIES.LIST>` : ""}
             <ALLLEDGERENTRIES.LIST>
               <LEDGERNAME>Sundry Debtors</LEDGERNAME>

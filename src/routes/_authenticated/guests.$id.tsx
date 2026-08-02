@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { CityInput, StateSelect, NationInput } from "@/components/AddressFields";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -229,11 +230,14 @@ function GuestDetail() {
                   <p className="mt-1 text-[11px] text-red-600">{GSTIN_ERROR}</p>
                 )}
               </Field>
-              <Field label="City"><Input value={g.city ?? ""} onChange={(e) => patch("city", e.target.value)} /></Field>
-              <Field label="State"><Input value={g.state ?? ""} onChange={(e) => patch("state", e.target.value)} /></Field>
-              <Field label="Country"><Input value={g.country ?? ""} onChange={(e) => patch("country", e.target.value)} /></Field>
+              <Field label="City"><CityInput value={g.city ?? ""} onChange={(v) => patch("city", v)} /></Field>
+              <Field label="State">
+                <StateSelect value={g.state ?? ""} onChange={(v) => patch("state", v)} />
+                {!g.state && <p className="mt-1 text-[11px] text-muted-foreground">Used to decide CGST+SGST vs IGST on invoices.</p>}
+              </Field>
+              <Field label="Nation"><NationInput value={g.country ?? ""} onChange={(v) => patch("country", v)} /></Field>
               <Field label="Pincode"><Input value={g.pincode ?? ""} onChange={(e) => patch("pincode", e.target.value)} maxLength={12} /></Field>
-              <div className="md:col-span-2"><Field label="Address"><Textarea rows={2} value={g.address ?? ""} onChange={(e) => patch("address", e.target.value)} maxLength={500} /></Field></div>
+              <div className="md:col-span-2"><Field label="Address Line"><Textarea rows={2} value={g.address ?? ""} onChange={(e) => patch("address", e.target.value)} maxLength={500} /></Field></div>
               <div className="md:col-span-2"><Field label="Tags (comma separated)"><Input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} /></Field></div>
               <div className="md:col-span-2"><Field label="Notes"><Textarea rows={2} value={g.notes ?? ""} onChange={(e) => patch("notes", e.target.value)} maxLength={1000} /></Field></div>
             </div>

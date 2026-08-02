@@ -16,6 +16,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { inr, inrRound, roundHalfUp, computeBillDiscountAmount, type BillDiscount } from "@/lib/billing";
+import { resolveTaxType } from "@/lib/gst";
 import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { fmtDate } from "@/lib/reportExports";
@@ -114,7 +115,7 @@ function BanquetBillPage() {
       package_rate,hall_charge,fb_charge,extra_charge,discount_amount,total_amount,bill_type,
       discount_type,discount_value,line_discounts,
       advance_amount,balance_amount,status,notes,
-      halls(name),guests(name,mobile,email,gst_number,company)
+      halls(name),guests(name,mobile,email,gst_number,company,state)
     `).eq("id", id).single();
     if (error) { toast.error(error.message); setLoading(false); return; }
     const bq = data as unknown as Bq;
@@ -234,9 +235,16 @@ function BanquetBillPage() {
   const discount = Math.round((totalLineDisc + billDiscAmt) * 100) / 100;
   const taxable = Math.max(0, netSubtotal - billDiscAmt);
   const gstRate = 0.05;
-  const cgst = isGst ? Math.round((taxable * gstRate / 2) * 100) / 100 : 0;
+  const gstTotal = isGst ? Math.round(taxable * gstRate * 100) / 100 : 0;
+  const { taxType: banquetTaxType } = resolveTaxType(
+    (b.guests as { state?: string | null } | null)?.state ?? null,
+    (property as { state?: string | null } | null)?.state ?? null,
+  );
+  const isIgstBill = banquetTaxType === "igst";
+  const igst = isIgstBill ? gstTotal : 0;
+  const cgst = isIgstBill ? 0 : Math.round((gstTotal / 2) * 100) / 100;
   const sgst = cgst;
-  const totalRaw = Math.round((taxable + (isGst ? cgst + sgst : 0)) * 100) / 100;
+  const totalRaw = Math.round((taxable + gstTotal) * 100) / 100;
   const total = roundHalfUp(totalRaw);
   const roundOff = Math.round((total - totalRaw) * 100) / 100;
   const advance = Number(b.advance_amount || 0);
@@ -480,8 +488,12 @@ function BanquetBillPage() {
       <table class="totals">
         <tr><td>Subtotal</td><td class="right">${inr(subtotal)}</td></tr>
         ${discount > 0 ? `<tr><td>Discount</td><td class="right">- ${inr(discount)}</td></tr>` : ""}
-        ${isGst ? `<tr><td>CGST 2.5%</td><td class="right">${inr(cgst)}</td></tr>
-                   <tr><td>SGST 2.5%</td><td class="right">${inr(sgst)}</td></tr>` : ""}
+        ${isGst
+          ? (isIgstBill
+            ? `<tr><td>IGST 5%</td><td class="right">${inr(igst)}</td></tr>`
+            : `<tr><td>CGST 2.5%</td><td class="right">${inr(cgst)}</td></tr>
+                   <tr><td>SGST 2.5%</td><td class="right">${inr(sgst)}</td></tr>`)
+          : ""}
         ${Math.abs(roundOff) >= 0.01 ? `<tr><td>Round Off</td><td class="right">${roundOff >= 0 ? "+ " : "- "}${inr(Math.abs(roundOff))}</td></tr>` : ""}
         <tr class="grand"><td>Total</td><td class="right">${inrRound(total)}</td></tr>
         <tr><td>Advance</td><td class="right">- ${inr(advance)}</td></tr>
@@ -562,7 +574,7 @@ function BanquetBillPage() {
       packageAmount > 0 ? `Package: ${inr(packageAmount)}` : "",
       Number(b.fb_charge) > 0 ? `F&B: ${inr(b.fb_charge)}` : "",
       roomSubtotalGross > 0 ? `Rooms: ${inr(roomSubtotalGross)}` : "",
-      isGst ? `GST: ${inr(cgst + sgst)}` : "",
+      isGst ? `GST: ${inr(gstTotal)}` : "",
       `*Total: ${inrRound(total)}*`,
       `Advance: ${inr(advance)}`,
       `Balance Due: ${inrRound(balance)}`,
@@ -763,8 +775,12 @@ function BanquetBillPage() {
                   </Button>
                 </div>
                 {isGst && (<>
-                  <SummaryRow label="CGST 2.5%" value={inr(cgst)} />
-                  <SummaryRow label="SGST 2.5%" value={inr(sgst)} />
+                  {isIgstBill ? (
+                    <SummaryRow label="IGST 5%" value={inr(igst)} />
+                  ) : (<>
+                    <SummaryRow label="CGST 2.5%" value={inr(cgst)} />
+                    <SummaryRow label="SGST 2.5%" value={inr(sgst)} />
+                  </>)}
                 </>)}
                 {Math.abs(roundOff) >= 0.01 && (
                   <SummaryRow
