@@ -32,7 +32,7 @@ import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, M
 import { AlertTriangle, ShieldAlert, ArrowRightLeft } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
-import { resolveGstRate } from "@/lib/gst";
+import { resolveGstRate, resolveTaxType, splitGst } from "@/lib/gst";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
@@ -87,6 +87,7 @@ interface BookingCtx {
   ota_channels?: { name: string | null } | null;
   guests: {
     name: string; mobile: string | null; gst_number: string | null; company: string | null; address: string | null;
+    city?: string | null; state?: string | null; country?: string | null;
     id_proof_type: string | null; id_proof_number: string | null; nationality: string | null;
   } | null;
   booking_rooms: {
@@ -160,6 +161,14 @@ function FolioPage() {
     Array<{ id: string; name: string; gstin: string | null; address: string | null; phone: string | null; email: string | null; city?: string | null; state?: string | null; nation?: string | null }>
   >([]);
   const { methods: payMethods } = usePaymentMethods(folio?.property_id ?? booking?.property_id ?? null);
+
+  // Phase 57 — place of supply: Bill-To company's state, else the guest's state.
+  const billToState =
+    (folio?.billing_company_id
+      ? billingCompanies.find((c) => c.id === folio.billing_company_id)?.state ?? null
+      : null) ?? booking?.guests?.state ?? null;
+  const { taxType, unknownState: billToStateUnknown } = resolveTaxType(billToState, property?.state);
+  const isIgst = taxType === "igst";
 
   // Guards so auto-seed effects run at most once per folio load.
   // Without these, a silent unique-constraint (409) failure on insert
