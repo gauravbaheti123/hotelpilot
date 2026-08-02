@@ -14,8 +14,11 @@ export function getPrintStyles(paperSize: string | null | undefined): string {
   // Thermal roll: page height MUST be `auto` so the driver cuts right after
   // content. Also reset html/body layout — any inherited min-height/height
   // from the app shell would stretch the printable area to a full page.
+  // Body width = printable width (roll width minus the 2mm page margins) so
+  // the document lays out 1:1 without the margins clipping the right edge.
+  const printable = getPrintContainerWidth(size);
   return `@page { size: ${size} auto; margin: 2mm; }
-          html, body { width: ${size}; min-height: 0 !important; height: auto !important; margin: 0; padding: 0; }
+          html, body { width: ${printable}; min-height: 0 !important; height: auto !important; margin: 0; padding: 0; }
           body { font-size: 11px; }`;
 }
 
