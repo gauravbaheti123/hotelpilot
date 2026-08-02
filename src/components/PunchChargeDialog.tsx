@@ -372,7 +372,7 @@ export function PunchChargeDialog({
       }
 
       printSegmentBill({
-        billNumber: bill.bill_number, segment, propertyName: propertyName ?? "",
+        billNumber: bill.bill_number, segment, propertyName: propertyName ?? "", propertyId,
         guestName: guestName ?? "Guest",
         roomNumber: roomNumber ?? null,
         items: rowsAll.map((l) => ({
@@ -472,7 +472,7 @@ export function PunchChargeDialog({
         toast.error(pe?.message ?? "Kitchen print failed");
       }
       printSegmentBill({
-        billNumber, segment, propertyName: propertyName ?? "",
+        billNumber, segment, propertyName: propertyName ?? "", propertyId,
         guestName: walkin ? walkinGuest.trim() : (guestName ?? "Guest"),
         roomNumber: walkin ? null : (roomNumber ?? null),
         items: clean.map((l) => ({

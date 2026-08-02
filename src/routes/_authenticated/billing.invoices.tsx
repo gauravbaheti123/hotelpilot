@@ -317,6 +317,7 @@ function InvoicesPage() {
         billNumber: bill.bill_number,
         segment: bill.segment as "food" | "laundry",
         propertyName: currentProperty?.name ?? "",
+        propertyId: currentProperty?.id ?? null,
         guestName: bill.guest_name ?? "Walk-in Guest",
         roomNumber: (room as any)?.room_number ?? null,
         items: rows.map((i) => ({
