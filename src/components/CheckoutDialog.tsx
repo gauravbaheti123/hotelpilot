@@ -745,6 +745,92 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       )
     : 0;
 
+  // ---- Phase 48b: early checkout detection (IST) ----
+  const istToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+  const early = (() => {
+    if (!booking) return null;
+    if (booking.status === "checked_out" || booking.status === "cancelled") return null;
+    const ci = String(booking.check_in).slice(0, 10);
+    const co = String(booking.check_out).slice(0, 10);
+    if (!(istToday < co)) return null;
+    // Never allow a zero-night stay: minimum one night from the check-in date.
+    const newCheckout =
+      istToday > ci ? istToday : new Date(new Date(`${ci}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10);
+    const actualNights = Math.max(
+      1,
+      Math.round((new Date(`${newCheckout}T00:00:00Z`).getTime() - new Date(`${ci}T00:00:00Z`).getTime()) / 86400000),
+    );
+    if (actualNights >= nights) return null;
+    return { checkIn: ci, bookedCheckout: co, newCheckout, actualNights, bookedNights: nights };
+  })();
+
+  const roomChargeTotal = charges
+    .filter((c: any) => c.charge_type === "room")
+    .reduce((s: number, c: any) => s + Number(c.amount || 0) + Number(c.gst_amount || 0), 0);
+
+  async function applyEarlyChoice(choice: "actual_stay" | "full_booked") {
+    if (!early || !booking) return;
+    setEarlyChoice(choice);
+    const oldRoomTotal = roomChargeTotal;
+    if (choice === "actual_stay") {
+      setEarlyBusy(true);
+      // Rate stays locked (booking_rooms.rate untouched) — only the night count
+      // changes, letting trg_seed_room_charge_for_booking_room re-price in place.
+      for (const br of booking.booking_rooms ?? []) {
+        const { error } = await supabase
+          .from("booking_rooms")
+          .update({ check_out: early.newCheckout } as any)
+          .eq("id", br.id);
+        if (error) {
+          setEarlyBusy(false);
+          setEarlyChoice(null);
+          return toast.error(`Could not shorten stay: ${error.message}`);
+        }
+      }
+      const { error: bkErr } = await supabase
+        .from("bookings")
+        .update({ check_out: early.newCheckout } as any)
+        .eq("id", booking.id);
+      if (bkErr) {
+        setEarlyBusy(false);
+        setEarlyChoice(null);
+        return toast.error(`Could not shorten stay: ${bkErr.message}`);
+      }
+      // Reload so folio totals / balance reflect the reduced amount before payment.
+      await load();
+      setSingleAmount("");
+      setEarlyBusy(false);
+      toast.success(`Re-priced to ${early.actualNights} night(s) at the original locked rate.`);
+    }
+    const { data: freshCharges } = await supabase
+      .from("folio_charges")
+      .select("charge_type,amount,gst_amount,is_wiped")
+      .eq("folio_id", folio?.id as any);
+    const newRoomTotal = (freshCharges ?? [])
+      .filter((c: any) => c.charge_type === "room" && !c.is_wiped)
+      .reduce((s: number, c: any) => s + Number(c.amount || 0) + Number(c.gst_amount || 0), 0);
+    logActivity({
+      property_id: booking.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as never),
+      action_type: "EARLY_CHECKOUT_CHOICE",
+      module: "Front Desk",
+      reference_id: booking.id,
+      reference_label: booking.booking_number ?? null,
+      details: {
+        choice,
+        booking_id: booking.id,
+        booking_number: booking.booking_number ?? null,
+        booked_nights: early.bookedNights,
+        actual_nights: early.actualNights,
+        booked_check_out: early.bookedCheckout,
+        applied_check_out: choice === "actual_stay" ? early.newCheckout : early.bookedCheckout,
+        old_room_charge: Math.round(oldRoomTotal * 100) / 100,
+        new_room_charge: Math.round(newRoomTotal * 100) / 100,
+      },
+    });
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
