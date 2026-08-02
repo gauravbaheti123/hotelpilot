@@ -3,6 +3,9 @@
 
 export type GstCategory = "room" | "food" | "banquet" | "sundry";
 
+import { stateCodeFromGstin } from "@/lib/gstin";
+import { stateCodeFromName } from "@/lib/indiaGeo";
+
 export interface GstSlabRow {
   property_id?: string;
   charge_category: GstCategory | string;
