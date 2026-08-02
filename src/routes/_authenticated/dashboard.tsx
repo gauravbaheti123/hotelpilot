@@ -1107,6 +1107,19 @@ function OwnerDashboard({
           onSaved={() => { setPunchTarget(null); reload(); }}
         />
       )}
+      {kotHistoryTarget && propertyId && (
+        <KotHistoryDialog
+          open={!!kotHistoryTarget}
+          onClose={() => setKotHistoryTarget(null)}
+          segment={kotHistoryTarget.segment}
+          propertyId={propertyId}
+          roomId={kotHistoryTarget.roomId}
+          roomNumber={kotHistoryTarget.roomNumber}
+          guestName={kotHistoryTarget.guestName}
+          bookingId={kotHistoryTarget.bookingId}
+          onChanged={() => { setSegmentReloadTick((t) => t + 1); reload(); }}
+        />
+      )}
     </AppShell>
   );
 }
