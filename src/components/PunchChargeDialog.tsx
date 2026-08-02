@@ -613,6 +613,22 @@ export function PunchChargeDialog({
           </Button>
         </div>
 
+        <div>
+          <Label className="text-xs">
+            {segment === "food" ? "Notes / kitchen instructions" : "Notes / service instructions"}
+          </Label>
+          <Textarea
+            rows={2}
+            value={note}
+            maxLength={300}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={segment === "food" ? "e.g. less spicy, no onion, extra hot" : "e.g. handle delicate, urgent"}
+          />
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Prints on the {segment === "food" ? "KOT" : "service"} ticket only — not on the guest bill.
+          </p>
+        </div>
+
         <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
           <div className="flex justify-between"><span>Subtotal</span><span>{inr(totals.sub)}</span></div>
           <div className="flex justify-between"><span>GST</span><span>{inr(totals.gst)}</span></div>
