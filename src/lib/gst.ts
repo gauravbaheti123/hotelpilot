@@ -56,3 +56,43 @@ export function resolveGstRateInclusive(
   const second = resolveGstRate(slabs, category, taxable);
   return second ?? first;
 }
+
+/* ------------------------------------------------------------------ */
+/* Phase 57 — Place of supply: CGST+SGST (intra-state) vs IGST (inter) */
+/* ------------------------------------------------------------------ */
+
+export type TaxType = "cgst_sgst" | "igst";
+
+function normState(s: string | null | undefined): string {
+  return String(s ?? "").trim().toLowerCase().replace(/[^a-z]/g, "");
+}
+
+/**
+ * Decide the tax split for a bill.
+ * - Bill-To state unknown → falls back to CGST+SGST (never blocks billing),
+ *   flagged via `unknownState` so the UI can show a subtle data-quality note.
+ * - Different state → IGST (single combined-rate line).
+ */
+export function resolveTaxType(
+  billToState: string | null | undefined,
+  propertyState: string | null | undefined,
+): { taxType: TaxType; unknownState: boolean } {
+  const bill = normState(billToState);
+  const own = normState(propertyState);
+  if (!bill || !own) return { taxType: "cgst_sgst", unknownState: !bill };
+  return { taxType: bill === own ? "cgst_sgst" : "igst", unknownState: false };
+}
+
+export function isInterState(
+  billToState: string | null | undefined,
+  propertyState: string | null | undefined,
+): boolean {
+  return resolveTaxType(billToState, propertyState).taxType === "igst";
+}
+
+/** Split a GST amount into the lines that should print for this tax type. */
+export function splitGst(gstAmount: number, taxType: TaxType) {
+  const g = Number(gstAmount) || 0;
+  if (taxType === "igst") return { cgst: 0, sgst: 0, igst: g };
+  return { cgst: g / 2, sgst: g / 2, igst: 0 };
+}
