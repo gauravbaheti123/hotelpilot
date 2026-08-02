@@ -159,52 +159,63 @@ export async function disconnectQZ(): Promise<void> {
   setStatus({ connected: false });
 }
 
+/**
+ * Thermal DPI. EPSON TM-m30 (and virtually every 80mm thermal head) is a
+ * 203 DPI device: 72mm printable width x 203 DPI = 576 dots, the standard
+ * TM-m30 raster width.
+ */
+const THERMAL_DPI = 203;
+
+/**
+ * PRINTABLE width (not roll width) in millimetres. An 80mm roll only has
+ * ~72mm of printable area; 58mm rolls have ~48mm. Rendering at the full roll
+ * width makes the driver shrink-to-fit the printable area.
+ */
+function printableWidthMm(paperSize: QZPaperSize): number {
+  if (paperSize === "A4") return 190;
+  if (paperSize === "58mm") return 48;
+  return 72;
+}
+
+function printableWidthInches(paperSize: QZPaperSize): number {
+  return Math.round((printableWidthMm(paperSize) / 25.4) * 10000) / 10000;
+}
+
+// Everything below is expressed in INCHES on purpose.
+//
+// QZ interprets `size`, `margins`, `density` AND `options.pageWidth` in the
+// unit declared by the config's `units`. Mixing them is what produced the
+// tiny raster:
+//   - `units:"mm"` + `density:203`  → 203 dots per MM (~5156 DPI)
+//   - `units:"mm"` + `pageWidth:3.1496` (an inch value) → a 3.1 MM wide HTML
+//     canvas, rasterized to a few dozen pixels, then dropped on an 80mm page
+//     → the exact unreadable fragment reported.
+// With `units:"in"` a single unit governs every number, and density 203 is a
+// genuine 203 DPI.
 function paperSizeToConfig(paperSize: QZPaperSize) {
-  // Pixel/HTML print type: dimensions are millimetres, but QZ's `density`
-  // uses the same unit. Supplying density: 203 together with units: "mm"
-  // means 203 dots/mm (~5156 DPI), not the intended 203 DPI, and causes the
-  // Windows raster to be reduced to a tiny fragment. Let the printer driver
-  // use its native DPI instead.
-  // A4 is scaled to fit the sheet. Thermal rolls MUST print 1:1
-  // (scaleContent: false): with an auto height (height 0) QZ has no fixed
-  // page box to scale against, so scaleContent shrinks the raster to a tiny
-  // unreadable fragment. Height 0 lets the driver cut after content.
   if (paperSize === "A4") {
     return {
-      units: "mm" as const,
-      size: { width: 210, height: 297 },
-      margins: 10,
+      units: "in" as const,
+      size: { width: 8.27, height: 11.69 },
+      margins: 0.4,
+      density: 300,
       scaleContent: true,
       rasterize: true,
     };
   }
-  if (paperSize === "58mm") {
-    return {
-      units: "mm" as const,
-      size: { width: 58, height: 0 },
-      margins: 2,
-      scaleContent: false,
-      rasterize: true,
-    };
-  }
-  // Default 80mm thermal.
+  // Thermal rolls: no `size` — the Windows driver's own roll page
+  // ("Roll Paper 80 x 297 mm", verified correct on this printer) defines the
+  // page and handles the cut. Forcing a size here previously fought the
+  // driver. 1:1 raster (scaleContent:false) at the head's native 203 DPI.
   return {
-    units: "mm" as const,
-    size: { width: 80, height: 0 },
-    margins: 2,
+    units: "in" as const,
+    margins: 0,
+    density: THERMAL_DPI,
     scaleContent: false,
     rasterize: true,
+    colorType: "blackwhite" as const,
+    interpolation: "nearest-neighbor" as const,
   };
-}
-
-function paperWidthMm(paperSize: QZPaperSize): number {
-  if (paperSize === "A4") return 210;
-  if (paperSize === "58mm") return 58;
-  return 80;
-}
-
-function paperWidthInches(paperSize: QZPaperSize): number {
-  return paperWidthMm(paperSize) / 25.4;
 }
 
 /**
