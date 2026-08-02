@@ -385,7 +385,7 @@ function NewBanquetPage() {
                   mobile={guestMobile}
                   allowCreate={false}
                   placeholder="Search existing or type new"
-                  onChange={(v) => { setGuestName(v); if (linkedGuestId && v.trim() !== (linkedGuestName ?? "")) { /* keep link, form values stay local */ } }}
+                  onChange={(v) => setGuestName(v)}
                   onSelect={(g) => {
                     setLinkedGuestId(g.id);
                     setLinkedGuestName(g.name);
