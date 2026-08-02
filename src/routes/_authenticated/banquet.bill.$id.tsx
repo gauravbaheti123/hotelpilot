@@ -16,6 +16,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { inr, inrRound, roundHalfUp, computeBillDiscountAmount, type BillDiscount } from "@/lib/billing";
+import { resolveTaxType } from "@/lib/gst";
 import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { fmtDate } from "@/lib/reportExports";
