@@ -1,8 +1,19 @@
 // Phase 57 — structured address inputs (City / State / Nation) shared by
 // Guest Details and Billing Companies.
+// Phase 67 — City & State are searchable comboboxes; City supports free-typed
+// new entries which are saved to the city master for future suggestions.
+import { useEffect, useMemo, useState } from "react";
+import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { INDIAN_STATES, INDIAN_CITIES, NATIONS, DEFAULT_NATION } from "@/lib/indiaGeo";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { INDIAN_STATES, NATIONS, DEFAULT_NATION, titleCase } from "@/lib/indiaGeo";
+import { useCities } from "@/hooks/use-cities";
 
 interface Ctl {
   value: string;
@@ -10,44 +21,110 @@ interface Ctl {
   className?: string;
 }
 
-/** Free-entry with suggestions — covers towns that aren't in the shortlist. */
+/** Search + dropdown over the city master, with free-entry "Add" for new towns. */
 export function CityInput({ value, onChange, className }: Ctl) {
+  const { cities, addCity } = useCities();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  useEffect(() => { if (!open) setQuery(""); }, [open]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const base = q ? cities.filter((c) => c.name.toLowerCase().includes(q)) : cities;
+    return base.slice(0, 200);
+  }, [cities, query]);
+
+  const typed = titleCase(query);
+  const canAdd = typed.length > 1 && !cities.some((c) => c.name.toLowerCase() === typed.toLowerCase());
+
+  const commit = (raw: string) => {
+    const name = titleCase(raw);
+    onChange(name);
+    setOpen(false);
+    if (name && !cities.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
+      addCity.mutate(name);
+    }
+  };
+
   return (
-    <>
-      <Input
-        list="hp-city-list"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Start typing…"
-        maxLength={80}
-        className={className}
-      />
-      <datalist id="hp-city-list">
-        {INDIAN_CITIES.map((c) => <option key={c} value={c} />)}
-      </datalist>
-    </>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn("h-9 w-full justify-between font-normal", !value && "text-muted-foreground", className)}
+        >
+          <span className="truncate">{value || "Search or type city…"}</span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="p-0" style={{ width: "var(--radix-popover-trigger-width)", minWidth: 240 }} align="start">
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="Search or type new city…"
+            value={query}
+            onValueChange={setQuery}
+          />
+          <CommandList>
+            {!canAdd && filtered.length === 0 && <CommandEmpty>No matching city</CommandEmpty>}
+            {canAdd && (
+              <CommandGroup>
+                <CommandItem value={`__add__${typed}`} onSelect={() => commit(typed)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add "{typed}"
+                </CommandItem>
+              </CommandGroup>
+            )}
+            {filtered.length > 0 && (
+              <CommandGroup>
+                {filtered.map((c) => (
+                  <CommandItem key={c.id} value={c.id} onSelect={() => commit(c.name)}>
+                    <Check className={cn("mr-2 h-4 w-4", value.toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0")} />
+                    <span className="truncate">{c.name}</span>
+                    {c.state && <span className="ml-auto text-xs text-muted-foreground">{c.state}</span>}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
-export function StateSelect({ value, onChange }: Ctl) {
+export function StateSelect({ value, onChange, className }: Ctl) {
+  const options = useMemo(
+    () => INDIAN_STATES.map((s) => ({ value: s, label: s })),
+    [],
+  );
   return (
-    <Select value={value || undefined} onValueChange={onChange}>
-      <SelectTrigger><SelectValue placeholder="Select state / UT" /></SelectTrigger>
-      <SelectContent className="max-h-72">
-        {INDIAN_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-      </SelectContent>
-    </Select>
+    <SearchableSelect
+      value={value || ""}
+      onChange={(v) => onChange(titleCase(v))}
+      options={options}
+      placeholder="Search state / UT"
+      searchPlaceholder="Type to filter states…"
+      emptyText="No matching state"
+      searchThreshold={0}
+      className={className}
+    />
   );
 }
 
-export function NationInput({ value, onChange }: Ctl) {
+export function NationInput({ value, onChange, className }: Ctl) {
   return (
     <>
       <Input
         list="hp-nation-list"
         value={value || DEFAULT_NATION}
         onChange={(e) => onChange(e.target.value)}
+        onBlur={(e) => onChange(titleCase(e.target.value))}
         maxLength={60}
+        className={className}
       />
       <datalist id="hp-nation-list">
         {NATIONS.map((n) => <option key={n} value={n} />)}
