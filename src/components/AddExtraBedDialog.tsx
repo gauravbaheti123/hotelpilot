@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { todayIso } from "@/lib/front-desk";
+import { extraBedRateFor, resolveTariffForCategory } from "@/lib/tariff";
 
 interface Props {
   bookingId: string | null;
@@ -40,14 +41,22 @@ export function AddExtraBedDialog({ bookingId, open, onOpenChange, onDone }: Pro
       if (!b) { toast.error("Booking not found"); onOpenChange(false); return; }
       const { data: br } = await supabase
         .from("booking_rooms")
-        .select("category_id, room_categories(name, extra_bed_rate)")
+        .select("category_id, meal_plan, room_categories(name)")
         .eq("booking_id", bookingId)
         .neq("status", "shifted")
         .neq("status", "cancelled")
         .order("created_at", { ascending: false })
         .limit(1);
       const row = (br?.[0] as any) ?? null;
-      const rate = Number(row?.room_categories?.extra_bed_rate ?? 0);
+      // Phase 27b — extra bed price comes from the stay's tariff plan
+      // (extra_adult_rate), resolved against the booking's check-in date.
+      const plan = await resolveTariffForCategory(
+        (b as any).property_id,
+        row?.category_id ?? null,
+        (b as any).check_in,
+        row?.meal_plan ?? null,
+      ).catch(() => null);
+      const rate = extraBedRateFor(plan);
       setCtx({
         property_id: (b as any).property_id,
         check_in: (b as any).check_in,
@@ -68,7 +77,10 @@ export function AddExtraBedDialog({ bookingId, open, onOpenChange, onDone }: Pro
 
   const save = async () => {
     if (!ctx || !bookingId) return;
-    if (ctx.rate_per_night <= 0) { toast.error("No extra bed rate configured for this room category"); return; }
+    if (ctx.rate_per_night <= 0) {
+      toast.error("No extra bed rate on this tariff plan — set “Extra adult rate” in Master Data → Tariff Plans");
+      return;
+    }
     if (qty <= 0) { toast.error("Quantity must be at least 1"); return; }
     setSaving(true);
     try {
@@ -117,7 +129,7 @@ export function AddExtraBedDialog({ bookingId, open, onOpenChange, onDone }: Pro
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Rate / night (from master)</Label>
+                <Label>Rate / night (from tariff plan)</Label>
                 <Input value={`₹${ctx.rate_per_night.toLocaleString("en-IN")}`} readOnly />
               </div>
             </div>
