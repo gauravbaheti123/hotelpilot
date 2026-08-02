@@ -163,10 +163,10 @@ function FolioPage() {
   const { methods: payMethods } = usePaymentMethods(folio?.property_id ?? booking?.property_id ?? null);
 
   // Phase 57 — place of supply: Bill-To company's state, else the guest's state.
-  const billToState =
-    (folio?.billing_company_id
-      ? billingCompanies.find((c) => c.id === folio.billing_company_id)?.state ?? null
-      : null) ?? booking?.guests?.state ?? null;
+  const billToCompany = folio?.billing_company_id
+    ? billingCompanies.find((c) => c.id === folio.billing_company_id) ?? null
+    : null;
+  const billToState = billToCompany?.state || booking?.guests?.state || null;
   const { taxType, unknownState: billToStateUnknown } = resolveTaxType(billToState, property?.state);
   const isIgst = taxType === "igst";
 
