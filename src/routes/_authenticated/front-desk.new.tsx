@@ -317,7 +317,10 @@ function NewBookingPage() {
   const availableRooms = rooms.filter(
     (r) => (!categoryId || r.category_id === categoryId) && r.status === "vacant",
   );
-  const categoryTariffs = tariffs.filter((t) => !categoryId || t.category_id === categoryId);
+  // Only offer plans that are actually applicable to this stay's check-in date.
+  const categoryTariffs = tariffs.filter(
+    (t) => (!categoryId || t.category_id === categoryId) && isPlanValidOn(t, checkIn),
+  );
 
   // === Additional guests: auto-sync row count to adult/child counts ===
   useEffect(() => {
@@ -349,23 +352,24 @@ function NewBookingPage() {
   function pickCategory(id: string) {
     setCategoryId(id);
     setRoomId("");
-    // Always refresh rate from category/tariff on category change unless the
-    // user explicitly edited it (rateManuallySet).
-    const cat = cats.find((c) => c.id === id);
-    // Prefer "Rack Rate" tariff (case-insensitive name match), else first matching tariff.
-    const catTariffs = tariffs.filter((t) => t.category_id === id);
-    const t =
-      catTariffs.find((t) => /rack/i.test(t.name)) ??
-      catTariffs[0] ??
-      tariffs.find((t) => /rack/i.test(t.name)) ??
-      tariffs[0];
+    applyResolvedPlan(id, checkIn);
+  }
+
+  /**
+   * Phase 27b — resolve the applicable tariff plan for a category on the stay's
+   * check-in date. No room_categories.base_rate fallback: when nothing
+   * resolves, the user is told to fix the master data.
+   */
+  function applyResolvedPlan(id: string, date: string) {
+    const t = pickTariffPlan(tariffs, { categoryId: id, date });
     if (t) {
       setTariffId(t.id);
-      if (!rateManuallySet) setRate(t.rate);
+      if (!rateManuallySet) setRate(Number(t.rate) || 0);
       setMealPlan(t.meal_plan);
     } else {
       setTariffId("");
-      if (!rateManuallySet && cat) setRate(cat.base_rate);
+      if (!rateManuallySet) setRate(0);
+      toast.error(NO_TARIFF_PLAN_ERROR);
     }
   }
 
