@@ -132,13 +132,19 @@ function NewBookingPage() {
   const [rateType, setRateType] = useState<"exclusive" | "inclusive">("exclusive");
   const { limit: discountLimit } = useDiscountLimit();
 
-  // Standard rate = the picked tariff's rate, or the category base rate as fallback.
-  const standardRate = useMemo(() => {
-    const t = tariffs.find((x) => x.id === tariffId);
-    if (t?.rate) return Number(t.rate) || 0;
-    const cat = cats.find((c) => c.id === categoryId);
-    return Number(cat?.base_rate) || 0;
-  }, [tariffs, tariffId, cats, categoryId]);
+  // Phase 27b — pricing resolves exclusively through Tariff Plans. There is no
+  // room_categories.base_rate fallback: if nothing resolves, that is a data
+  // problem and the booking is blocked.
+  const resolvedPlan = useMemo(
+    () => pickTariffPlan(tariffs, { categoryId, date: checkIn, mealPlan }),
+    [tariffs, categoryId, checkIn, mealPlan],
+  );
+  const activePlan = useMemo(
+    () => tariffs.find((x) => x.id === tariffId) ?? resolvedPlan,
+    [tariffs, tariffId, resolvedPlan],
+  );
+  // Standard rate = the applicable tariff plan's rate. Nothing else.
+  const standardRate = useMemo(() => Number(activePlan?.rate) || 0, [activePlan]);
 
   const rateOverrideCheck = useMemo(() => {
     if (!standardRate || rate <= 0 || rate >= standardRate) {
