@@ -5155,6 +5155,7 @@ export type Database = {
           created_by: string | null
           folio_id: string | null
           gst_amount: number
+          guest_id: string | null
           guest_name: string | null
           id: string
           is_walkin: boolean
@@ -5176,6 +5177,7 @@ export type Database = {
           created_by?: string | null
           folio_id?: string | null
           gst_amount?: number
+          guest_id?: string | null
           guest_name?: string | null
           id?: string
           is_walkin?: boolean
@@ -5197,6 +5199,7 @@ export type Database = {
           created_by?: string | null
           folio_id?: string | null
           gst_amount?: number
+          guest_id?: string | null
           guest_name?: string | null
           id?: string
           is_walkin?: boolean
@@ -5224,6 +5227,13 @@ export type Database = {
             columns: ["folio_id"]
             isOneToOne: false
             referencedRelation: "folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "segment_bills_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
             referencedColumns: ["id"]
           },
           {
