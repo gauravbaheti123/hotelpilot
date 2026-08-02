@@ -46,27 +46,33 @@ function GstReportPage() {
 
   const [from, to] = monthBounds(month);
 
-  // Per-slab display: CGST% = SGST% = gst_rate / 2 (clean slab, no blending).
+  // Per-slab display. Intra-state rows split CGST/SGST at gst_rate/2;
+  // inter-state rows carry the full rate as IGST (GSTR-1 style separation).
   const display = useMemo(() => rows.map((r) => ({
     ...r,
-    cgstPct: r.gst_rate / 2,
-    sgstPct: r.gst_rate / 2,
+    cgstPct: r.tax_type === "igst" ? 0 : r.gst_rate / 2,
+    sgstPct: r.tax_type === "igst" ? 0 : r.gst_rate / 2,
+    igstPct: r.tax_type === "igst" ? r.gst_rate : 0,
+    supply: r.tax_type === "igst" ? "Inter-State" : "Intra-State",
   })), [rows]);
-  type Display = GstInvoiceSlabRow & { cgstPct: number; sgstPct: number };
+  type Display = GstInvoiceSlabRow & { cgstPct: number; sgstPct: number; igstPct: number; supply: string };
   const [derived, setDerived] = useState<Display[]>([]);
 
   const totals = useMemo(() => {
-    let taxable = 0, gst = 0, invoice = 0;
+    let taxable = 0, gst = 0, invoice = 0, cgst = 0, sgst = 0, igst = 0;
     const seen = new Set<string>();
     for (const r of derived) {
       taxable += Number(r.taxable ?? 0);
       gst += Number(r.gst_total ?? 0);
+      cgst += Number(r.cgst ?? 0);
+      sgst += Number(r.sgst ?? 0);
+      igst += Number(r.igst ?? 0);
       if (!seen.has(r.invoice_number)) {
         invoice += Number(r.invoice_total ?? 0);
         seen.add(r.invoice_number);
       }
     }
-    return { taxable, gst, invoice, cgst: gst / 2, sgst: gst / 2 };
+    return { taxable, gst, invoice, cgst, sgst, igst };
   }, [derived]);
 
   const columns: ReportColumn<Display>[] = [
@@ -74,11 +80,15 @@ function GstReportPage() {
     { key: "date", header: "Date", get: (r) => fmtDate(r.created_at), type: "date", sortValue: (r) => r.created_at, dateValue: (r) => r.created_at },
     { key: "guest", header: "Guest Name", get: (r) => r.guest_name ?? "", type: "text" },
     { key: "gstin", header: "GSTIN", get: (r) => r.guest_gstin ?? "", type: "text" },
+    { key: "supply", header: "Supply", get: (r) => r.supply, type: "text" },
+    { key: "state", header: "Bill-To State", get: (r) => r.bill_to_state ?? "", type: "text" },
     { key: "tax", header: "Taxable", get: (r) => r.taxable, currency: true, sortValue: (r) => Number(r.taxable) },
     { key: "cgstpct", header: "CGST %", get: (r) => r.cgstPct, numeric: true, sortValue: (r) => r.cgstPct },
     { key: "cgst", header: "CGST Amt", get: (r) => r.cgst, currency: true, sortValue: (r) => r.cgst },
     { key: "sgstpct", header: "SGST %", get: (r) => r.sgstPct, numeric: true, sortValue: (r) => r.sgstPct },
     { key: "sgst", header: "SGST Amt", get: (r) => r.sgst, currency: true, sortValue: (r) => r.sgst },
+    { key: "igstpct", header: "IGST %", get: (r) => r.igstPct, numeric: true, sortValue: (r) => r.igstPct },
+    { key: "igst", header: "IGST Amt", get: (r) => r.igst, currency: true, sortValue: (r) => r.igst },
     { key: "totalgst", header: "Total GST", get: (r) => r.gst_total, currency: true, sortValue: (r) => Number(r.gst_total) },
     { key: "invtotal", header: "Invoice Total", get: (r) => r.invoice_total, currency: true, sortValue: (r) => Number(r.invoice_total) },
   ];
@@ -88,6 +98,7 @@ function GstReportPage() {
       ["Total Taxable", fmtINR(totals.taxable)],
       ["Total CGST", fmtINR(totals.cgst)],
       ["Total SGST", fmtINR(totals.sgst)],
+      ["Total IGST", fmtINR(totals.igst)],
       ["Total GST", fmtINR(totals.gst)],
       ["Total Invoice Value", fmtINR(totals.invoice)],
     ] as [string, string|number][] };
@@ -137,12 +148,14 @@ function GstReportPage() {
           emptyText="No GST invoices in this month."
           totalsRow={() => (
             <tr>
-              <td colSpan={4} className="text-right px-2 py-2">Totals</td>
+              <td colSpan={6} className="text-right px-2 py-2">Totals</td>
               <td className="text-right px-2 py-2 tabular-nums">{fmtINR(totals.taxable)}</td>
               <td />
               <td className="text-right px-2 py-2 tabular-nums">{fmtINR(totals.cgst)}</td>
               <td />
               <td className="text-right px-2 py-2 tabular-nums">{fmtINR(totals.sgst)}</td>
+              <td />
+              <td className="text-right px-2 py-2 tabular-nums">{fmtINR(totals.igst)}</td>
               <td className="text-right px-2 py-2 tabular-nums">{fmtINR(totals.gst)}</td>
               <td className="text-right px-2 py-2 tabular-nums">{fmtINR(totals.invoice)}</td>
             </tr>
