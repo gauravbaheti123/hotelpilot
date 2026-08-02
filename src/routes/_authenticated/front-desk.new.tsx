@@ -131,6 +131,7 @@ function NewBookingPage() {
   const [rateManuallySet, setRateManuallySet] = useState(false);
   const [rateType, setRateType] = useState<"exclusive" | "inclusive">("exclusive");
   const { limit: discountLimit } = useDiscountLimit();
+  const [mealPlan, setMealPlan] = useState("EP");
 
   // Phase 27b — pricing resolves exclusively through Tariff Plans. There is no
   // room_categories.base_rate fallback: if nothing resolves, that is a data
@@ -155,7 +156,6 @@ function NewBookingPage() {
       base: standardRate,
     });
   }, [standardRate, rate, discountLimit]);
-  const [mealPlan, setMealPlan] = useState("EP");
   // Future reservations often don't have a specific room picked yet — only the
   // category. When true, room selection is bypassed and booking_rooms.room_id
   // is stored as NULL. See feature: "Room-less Future Reservations".
