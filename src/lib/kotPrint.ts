@@ -50,7 +50,7 @@ function esc(s: unknown) {
     .replace(/'/g, "&#39;");
 }
 
-function renderKotHtml(
+export function renderKotHtml(
   header: KotHeader,
   items: KotItemForPrint[],
   paperSize: string,
