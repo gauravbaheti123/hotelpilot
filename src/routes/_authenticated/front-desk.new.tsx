@@ -48,9 +48,8 @@ export const Route = createFileRoute("/_authenticated/front-desk/new")({
   component: () => (<RequirePermission module="bookings"><NewBookingPage /></RequirePermission>),
 });
 
-interface Category { id: string; name: string; base_rate: number; max_occupancy: number; extra_bed_rate: number; }
+interface Category { id: string; name: string; max_occupancy: number; }
 interface RoomRow { id: string; room_number: string; category_id: string | null; status: string; }
-interface Tariff { id: string; name: string; category_id: string | null; rate: number; meal_plan: string; }
 interface AdditionalGuest {
   key: string;
   kind: "adult" | "child";
@@ -88,7 +87,7 @@ function NewBookingPage() {
 
   const [cats, setCats] = useState<Category[]>([]);
   const [rooms, setRooms] = useState<RoomRow[]>([]);
-  const [tariffs, setTariffs] = useState<Tariff[]>([]);
+  const [tariffs, setTariffs] = useState<TariffPlan[]>([]);
 
   // Guest lookup
   const [searchOpen, setSearchOpen] = useState(true);
