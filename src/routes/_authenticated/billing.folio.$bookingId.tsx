@@ -42,7 +42,7 @@ import {
   resolveLogoUrl,
   type InvoiceProperty,
 } from "@/lib/invoiceTemplates";
-import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
+import { fetchPrinterPaperSize, isThermal, printIsolated, withPrintStyles } from "@/lib/printStyles";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
@@ -1343,8 +1343,18 @@ function FolioPage() {
     const paperSize = await fetchPrinterPaperSize(booking.property_id, "bill");
     // Invoice/Bill uses the browser's native print dialog — QZ Tray's
     // HTML-to-pixel pipeline caused persistent A4 table cutoff issues.
-    withPrintStyles(paperSize, () => window.print());
-    setTimeout(() => { document.title = prevTitle; }, 500);
+    // printIsolated() clones the invoice into an in-flow print root so long
+    // bills paginate across multiple A4 pages instead of being clipped to one.
+    const area = document.getElementById("invoice-print-area");
+    if (area) {
+      printIsolated(area as HTMLElement, {
+        paperSize: isThermal(paperSize) ? paperSize : "A4",
+        onAfter: () => { document.title = prevTitle; },
+      });
+    } else {
+      withPrintStyles(paperSize, () => window.print());
+      setTimeout(() => { document.title = prevTitle; }, 500);
+    }
   }
 
   function openEmail() {
@@ -1408,15 +1418,24 @@ function FolioPage() {
     <AppShell title={`Folio ${folio.invoice_number}`}>
       <style>{`
         @media print {
-          body * { visibility: hidden !important; }
-          #invoice-print-area, #invoice-print-area * { visibility: visible !important; }
+          /* NOTE: the print area MUST stay in normal flow (no fixed/absolute
+             positioning) — an out-of-flow element is clipped to a single page,
+             which silently dropped page 2+ of long invoices. Isolation from the
+             app shell is handled by printIsolated() in @/lib/printStyles. */
           #invoice-print-area {
-            position: fixed !important; top: 0; left: 0;
+            position: static !important;
             width: 100% !important; max-width: 100% !important;
             box-sizing: border-box !important;
             padding: 0 !important;
+            overflow: visible !important;
             background: white; box-shadow: none !important; border: none !important;
           }
+          #invoice-print-area table { page-break-inside: auto !important; break-inside: auto !important; }
+          #invoice-print-area thead { display: table-header-group; }
+          #invoice-print-area tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+          #invoice-print-area .totals-box,
+          #invoice-print-area .payments-block,
+          #invoice-print-area .signature-block { page-break-inside: avoid !important; break-inside: avoid !important; }
           #invoice-print-area * { box-sizing: border-box !important; }
           #invoice-print-area .totals-box { width: 55% !important; max-width: 55% !important; margin-left: auto !important; }
           #invoice-print-area .totals-box table { width: 100% !important; table-layout: fixed !important; }
@@ -2079,7 +2098,7 @@ function FolioPage() {
             <div className="mt-8 border-t pt-4 text-center text-sm text-gray-700">
               Thank you for staying with us! We hope to see you again.
             </div>
-            <div className="mt-10 flex justify-between gap-12 text-xs text-gray-600">
+            <div className="signature-block mt-10 flex justify-between gap-12 text-xs text-gray-600">
               <div className="flex-1 border-t border-gray-400 pt-1">Received by</div>
               <div className="flex-1 border-t border-gray-400 pt-1 text-right">Guest Signature</div>
             </div>
