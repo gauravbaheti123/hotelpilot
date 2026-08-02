@@ -145,15 +145,20 @@ function NewBanquetPage() {
     let totalRooms = 0;
     let revenue = 0;
     blockRows.forEach((r) => {
-      const q = Number(r.quantity) || 0;
-      const rate = Number(r.special_rate) || stdRate(r.category_id, r.checkin_date || eventDate);
+      if (!r.room_id) return;
+      const room = allRooms.find((x) => x.id === r.room_id);
+      const rate = Number(r.special_rate) || stdRate(room?.category_id, r.checkin_date || eventDate);
       const nights = r.checkin_date && r.checkout_date ? nightsBetween(r.checkin_date, r.checkout_date) : 1;
-      totalRooms += q;
-      revenue += q * rate * nights;
+      totalRooms += 1;
+      revenue += rate * nights;
     });
-    const categories = new Set(blockRows.filter((r) => r.category_id).map((r) => r.category_id)).size;
+    const categories = new Set(
+      blockRows
+        .map((r) => allRooms.find((x) => x.id === r.room_id)?.category_id)
+        .filter(Boolean),
+    ).size;
     return { totalRooms, revenue, categories };
-  }, [blockRows, tariffPlans, eventDate]);
+  }, [blockRows, allRooms, tariffPlans, eventDate]);
 
   const summaryRoomRevenue = useMemo(() => {
     if (roomMode === "bulk") return blockSummary.revenue;
@@ -165,9 +170,12 @@ function NewBanquetPage() {
   }, [roomMode, blockSummary.revenue, singleRoomId, singleRate, singleCheckIn, singleCheckOut]);
 
   function addBlockRow() {
+    const nextDay = new Date(eventDate);
+    nextDay.setDate(nextDay.getDate() + 1);
     setBlockRows((prev) => [...prev, {
-      category_id: "", quantity: "1",
-      checkin_date: eventDate, checkout_date: eventDate,
+      room_id: "", guest_name: "", guest_mobile: "",
+      checkin_date: eventDate, checkin_time: "12:00",
+      checkout_date: nextDay.toISOString().slice(0, 10), checkout_time: "11:00",
       special_rate: "",
     }]);
   }
@@ -176,37 +184,31 @@ function NewBanquetPage() {
   }
   function removeBlockRow(i: number) {
     setBlockRows((prev) => prev.filter((_, idx) => idx !== i));
-    setAssignments([]); setShowAssignments(false);
   }
 
-  async function prepareAssignments() {
-    if (!propertyId) return;
-    if (!eventName.trim()) return toast.error("Event name required");
-    try {
-      const out: AssignedBlock[] = [];
-      for (const row of blockRows) {
-        if (!row.category_id) continue;
-        const q = Number(row.quantity) || 0;
-        if (q <= 0) continue;
-        const cat = cats.find((c) => c.id === row.category_id);
-        const rooms = await pickAvailableRooms(propertyId, row.category_id, q);
+  /** Build event_room_blocks rows from the per-room bulk grid. */
+  function buildBulkAssignments(): AssignedBlock[] {
+    return blockRows
+      .filter((row) => row.room_id)
+      .map((row) => {
+        const room = allRooms.find((x) => x.id === row.room_id)!;
         const rate = row.special_rate
           ? Number(row.special_rate)
-          : stdRate(row.category_id, row.checkin_date || eventDate);
-        rooms.forEach((r) => out.push({
-          room_id: r.id, room_number: r.room_number,
-          room_category: r.category_name || cat?.name || "",
-          category_id: row.category_id,
+          : stdRate(room.category_id, row.checkin_date || eventDate);
+        return {
+          room_id: room.id,
+          room_number: room.room_number,
+          room_category: room.category_name ?? "",
+          category_id: room.category_id ?? "",
           checkin_date: row.checkin_date,
           checkout_date: row.checkout_date,
+          checkin_time: row.checkin_time || "12:00",
+          checkout_time: row.checkout_time || "11:00",
           special_rate: rate,
-        }));
-      }
-      setAssignments(out);
-      setShowAssignments(true);
-    } catch (e: any) {
-      toast.error(e.message ?? "Could not pick rooms");
-    }
+          guest_name: row.guest_name.trim(),
+          guest_mobile: row.guest_mobile.trim(),
+        } as AssignedBlock;
+      });
   }
 
   async function save() {
