@@ -26,6 +26,7 @@ import {
   commitRoomBlocks, nightsBetween,
   type AssignedBlock,
 } from "@/lib/eventRoomBlocks";
+import { isValidStayRange } from "@/lib/front-desk";
 
 export const Route = createFileRoute("/_authenticated/banquet/new")({
   head: () => ({ meta: [{ title: "New Banquet — HotelPilot" }] }),
