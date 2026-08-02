@@ -35,13 +35,21 @@ function waitForAssets(doc: Document): Promise<void> {
 }
 
 /**
- * Render a self-contained HTML document to a PNG of exactly `widthPx` pixels.
- * Height is whatever the content needs at that width.
+ * Render a self-contained HTML document to a PNG.
+ *
+ * `cssWidthPx` is the CSS layout width the template expects (e.g. 72mm ≈ 272
+ * CSS px) — the templates size themselves in mm, so laying out at the raw dot
+ * width would leave the content stranded in a corner. `targetWidthPx` is the
+ * printer's real dot width; the difference is applied as a render scale, so
+ * the bitmap comes out at exactly `targetWidthPx` pixels with crisp text.
  */
 export async function rasterizeHtmlToPng(
   html: string,
-  widthPx: number,
+  cssWidthPx: number,
+  targetWidthPx: number,
 ): Promise<RasterResult> {
+  const widthPx = Math.max(1, Math.round(cssWidthPx));
+  const scale = targetWidthPx / widthPx;
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
   Object.assign(iframe.style, {
@@ -95,14 +103,16 @@ export async function rasterizeHtmlToPng(
       height: heightPx,
       windowWidth: widthPx,
       windowHeight: heightPx,
-      scale: 1,
+      scale,
       useCORS: true,
       logging: false,
     });
     const dataUrl = canvas.toDataURL("image/png");
     const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
     console.info("[raster] html→png", {
-      requestedWidthPx: widthPx,
+      cssWidthPx: widthPx,
+      targetWidthPx,
+      scale: Math.round(scale * 1000) / 1000,
       canvasWidthPx: canvas.width,
       canvasHeightPx: canvas.height,
       pngBytes: Math.round((base64.length * 3) / 4),
