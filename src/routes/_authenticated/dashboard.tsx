@@ -16,6 +16,10 @@ import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrosse
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { AddExtraBedDialog } from "@/components/AddExtraBedDialog";
 import { PunchChargeDialog } from "@/components/PunchChargeDialog";
+import { KotHistoryDialog } from "@/components/KotHistoryDialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 // Bell moved to global header (AppShell). Reminders section removed here.
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { Input } from "@/components/ui/input";
@@ -220,6 +224,13 @@ function OwnerDashboard({
   >(new Map());
   const [segmentReloadTick, setSegmentReloadTick] = useState(0);
   const [punchTarget, setPunchTarget] = useState<{
+    segment: "food" | "laundry";
+    bookingId: string | null;
+    roomId: string | null;
+    roomNumber: string | null;
+    guestName: string | null;
+  } | null>(null);
+  const [kotHistoryTarget, setKotHistoryTarget] = useState<{
     segment: "food" | "laundry";
     bookingId: string | null;
     roomId: string | null;
