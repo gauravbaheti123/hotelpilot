@@ -239,10 +239,14 @@ export async function printToPrinter(
   const printConfig = paperSizeToConfig(paperSize);
   const cfg = qz.configs.create(found, printConfig);
   const widthMm = paperWidthMm(paperSize);
-  // Only A4 needs an explicit layout width (it is scaled to fit the sheet).
-  // For thermal, the document's own CSS already lays out at the roll width
-  // and prints 1:1; forcing pageWidth here combined with scaling was what
-  // produced tiny fragments.
+  // QZ's embedded webkit renders HTML at its own default viewport width
+  // (nowhere close to 58/80mm) unless options.pageWidth is supplied, then
+  // rasterizes that render onto the page. With scaleContent:false (required
+  // for thermal so content isn't shrunk), an unset pageWidth produces a
+  // render many times wider than the roll — the actual ticket content ends
+  // up as a tiny fragment in a corner of an otherwise blank page. Always
+  // pass pageWidth (mm, same units as the config) so the render width
+  // matches the physical/printable width for every paper size.
   const itemRows = (htmlContent.match(/class=["']item["']/g) ?? []).length;
   console.info("[qz/print-job]", {
     printer: printerName,
@@ -258,9 +262,7 @@ export async function printToPrinter(
       format: "html",
       flavor: "plain",
       data: htmlContent,
-      ...(isThermalPaper(paperSize)
-        ? {}
-        : { options: { pageWidth: widthMm, pageHeight: 0 } }),
+      options: { pageWidth: widthMm, pageHeight: 0 },
     },
   ]);
 }
