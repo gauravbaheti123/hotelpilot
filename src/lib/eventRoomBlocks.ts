@@ -16,6 +16,8 @@ export interface AssignedBlock {
   category_id: string;
   checkin_date: string;
   checkout_date: string;
+  checkin_time?: string;
+  checkout_time?: string;
   special_rate: number | null;
   guest_name?: string;
   guest_mobile?: string;
@@ -77,6 +79,8 @@ export async function commitRoomBlocks(args: {
     guest_mobile: r.guest_mobile?.trim() || null,
     checkin_date: r.checkin_date,
     checkout_date: r.checkout_date,
+    checkin_time: r.checkin_time || "12:00",
+    checkout_time: r.checkout_time || "11:00",
     special_rate: r.special_rate,
     status: "blocked",
   }));
@@ -112,6 +116,8 @@ export interface EventBlockRecord {
   guest_mobile: string | null;
   checkin_date: string;
   checkout_date: string;
+  checkin_time?: string | null;
+  checkout_time?: string | null;
   special_rate: number | null;
   status: "blocked" | "checked_in" | "checked_out" | "cancelled";
   booking_id: string | null;
@@ -120,7 +126,7 @@ export interface EventBlockRecord {
 export async function loadEventSummaries(propertyId: string): Promise<EventBlockSummary[]> {
   const { data, error } = await supabase
     .from("event_room_blocks")
-    .select("id, banquet_booking_id, event_name, room_id, room_number, room_category, guest_name, guest_mobile, checkin_date, checkout_date, special_rate, status, booking_id, banquet_bookings(function_type, event_date)")
+    .select("id, banquet_booking_id, event_name, room_id, room_number, room_category, guest_name, guest_mobile, checkin_date, checkout_date, checkin_time, checkout_time, special_rate, status, booking_id, banquet_bookings(function_type, event_date)")
     .eq("property_id", propertyId)
     .in("status", ["blocked", "checked_in"])
     .order("checkin_date");
@@ -216,6 +222,40 @@ export async function checkInBlock(args: {
   } as any).eq("id", block.id);
 
   return bookingId;
+}
+
+/**
+ * Bulk check-in: checks in every "blocked" room whose check-in date is today
+ * or earlier and that already has guest name + mobile. Uses the same
+ * `checkInBlock` path as an individual check-in.
+ */
+export async function bulkCheckInBlocks(args: {
+  propertyId: string;
+  blocks: EventBlockRecord[];
+  userId: string;
+}): Promise<{ done: number; failed: { room: string | null; message: string }[] }> {
+  const failed: { room: string | null; message: string }[] = [];
+  let done = 0;
+  for (const block of args.blocks) {
+    try {
+      await checkInBlock({ propertyId: args.propertyId, block, userId: args.userId });
+      done += 1;
+    } catch (e) {
+      failed.push({ room: block.room_number, message: (e as Error)?.message ?? "Check-in failed" });
+    }
+  }
+  return { done, failed };
+}
+
+/** Rooms eligible for bulk check-in: blocked, guest assigned, arriving today or earlier. */
+export function dueForCheckIn(blocks: EventBlockRecord[], today: string): EventBlockRecord[] {
+  return blocks.filter(
+    (b) =>
+      b.status === "blocked" &&
+      !!b.guest_name?.trim() &&
+      !!b.guest_mobile?.trim() &&
+      b.checkin_date <= today,
+  );
 }
 
 export async function checkOutBlock(args: {

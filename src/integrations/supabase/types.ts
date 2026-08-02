@@ -232,7 +232,7 @@ export type Database = {
           function_type: string
           guest_id: string | null
           hall_charge: number
-          hall_id: string
+          hall_id: string | null
           id: string
           line_discounts: Json
           notes: string | null
@@ -269,7 +269,7 @@ export type Database = {
           function_type?: string
           guest_id?: string | null
           hall_charge?: number
-          hall_id: string
+          hall_id?: string | null
           id?: string
           line_discounts?: Json
           notes?: string | null
@@ -306,7 +306,7 @@ export type Database = {
           function_type?: string
           guest_id?: string | null
           hall_charge?: number
-          hall_id?: string
+          hall_id?: string | null
           id?: string
           line_discounts?: Json
           notes?: string | null
@@ -349,11 +349,15 @@ export type Database = {
           banquet_id: string
           category_id: string | null
           check_in: string
+          check_in_time: string
           check_out: string
+          check_out_time: string
           created_at: string
           discount_amount: number
           discount_type: string | null
           discount_value: number
+          guest_mobile: string | null
+          guest_name: string | null
           id: string
           nights: number
           rate: number
@@ -363,11 +367,15 @@ export type Database = {
           banquet_id: string
           category_id?: string | null
           check_in: string
+          check_in_time?: string
           check_out: string
+          check_out_time?: string
           created_at?: string
           discount_amount?: number
           discount_type?: string | null
           discount_value?: number
+          guest_mobile?: string | null
+          guest_name?: string | null
           id?: string
           nights?: number
           rate?: number
@@ -377,11 +385,15 @@ export type Database = {
           banquet_id?: string
           category_id?: string | null
           check_in?: string
+          check_in_time?: string
           check_out?: string
+          check_out_time?: string
           created_at?: string
           discount_amount?: number
           discount_type?: string | null
           discount_value?: number
+          guest_mobile?: string | null
+          guest_name?: string | null
           id?: string
           nights?: number
           rate?: number
@@ -1429,7 +1441,9 @@ export type Database = {
           checked_out_at: string | null
           checked_out_by: string | null
           checkin_date: string
+          checkin_time: string
           checkout_date: string
+          checkout_time: string
           created_at: string
           event_name: string
           guest_id: string | null
@@ -1452,7 +1466,9 @@ export type Database = {
           checked_out_at?: string | null
           checked_out_by?: string | null
           checkin_date: string
+          checkin_time?: string
           checkout_date: string
+          checkout_time?: string
           created_at?: string
           event_name: string
           guest_id?: string | null
@@ -1475,7 +1491,9 @@ export type Database = {
           checked_out_at?: string | null
           checked_out_by?: string | null
           checkin_date?: string
+          checkin_time?: string
           checkout_date?: string
+          checkout_time?: string
           created_at?: string
           event_name?: string
           guest_id?: string | null

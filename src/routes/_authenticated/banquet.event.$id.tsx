@@ -18,7 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { BANQUET_STATUS_TONE, computeBanquetTotal, FUNCTION_TYPES } from "@/lib/banquet";
 import { ArrowLeft, BedDouble, Trash2, CheckCircle2, Ban, Plus, FileText, Pencil, Save, LogIn, LogOut, UserPlus, Eye } from "lucide-react";
-import { checkInBlock, checkOutBlock, type EventBlockRecord } from "@/lib/eventRoomBlocks";
+import { checkInBlock, checkOutBlock, bulkCheckInBlocks, dueForCheckIn, type EventBlockRecord } from "@/lib/eventRoomBlocks";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
@@ -81,6 +81,7 @@ function BanquetEventPage() {
   const [assignBlock, setAssignBlock] = useState<EventBlockRecord | null>(null);
   const [assignName, setAssignName] = useState("");
   const [assignMobile, setAssignMobile] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -235,6 +236,25 @@ function BanquetEventPage() {
       load();
     } catch (e: any) {
       toast.error(e?.message ?? "Checkout failed");
+    }
+  }
+
+  async function doBulkCheckIn() {
+    if (!b || !user) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const due = dueForCheckIn(blocks, today);
+    if (due.length === 0) {
+      return toast.error("No rooms due for check-in today (guest name + mobile required).");
+    }
+    if (!confirm(`Check in ${due.length} room(s) due today?`)) return;
+    setBulkBusy(true);
+    try {
+      const res = await bulkCheckInBlocks({ propertyId: b.property_id, blocks: due, userId: user.id });
+      if (res.done > 0) toast.success(`${res.done} room(s) checked in`);
+      res.failed.forEach((f) => toast.error(`Room ${f.room ?? "?"}: ${f.message}`));
+      load();
+    } finally {
+      setBulkBusy(false);
     }
   }
 
@@ -458,6 +478,11 @@ function BanquetEventPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2"><BedDouble className="h-4 w-4" /> Rooms · Assign Guest</CardTitle>
             <div className="flex gap-2">
+              {editable && blocks.some((bk) => bk.status === "blocked") && (
+                <Button size="sm" variant="outline" onClick={doBulkCheckIn} disabled={bulkBusy}>
+                  <LogIn className="h-4 w-4 mr-1" /> {bulkBusy ? "Checking in…" : "Bulk Check-In"}
+                </Button>
+              )}
               {blocks.some((bk) => bk.status === "checked_out") && (
                 <Button size="sm" variant="outline" onClick={() => router.navigate({ to: "/banquet/master-bill/$id", params: { id: b.id } })}>
                   <FileText className="h-4 w-4 mr-1" /> Master Bill
