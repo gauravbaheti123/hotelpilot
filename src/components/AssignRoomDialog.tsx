@@ -292,9 +292,9 @@ export function AssignRoomDialog({
                     name="rateChoice"
                     checked={rateChoice === "new_standard"}
                     onChange={() => setRateChoice("new_standard")}
-                    disabled={picked!.base_rate <= 0}
+                    disabled={picked!.standard_rate <= 0}
                   />
-                  Use category base ₹{picked!.base_rate}/night
+                  Use tariff plan ₹{picked!.standard_rate}/night
                 </label>
               </div>
             </div>
