@@ -30,6 +30,7 @@ interface Row {
   pax: number; total_amount: number; balance_amount: number; status: string;
   halls: { name: string } | null;
   guests: { name: string; mobile: string | null } | null;
+  host_name?: string | null;
 }
 
 function BanquetBookingsPage() {
@@ -48,7 +49,7 @@ function BanquetBookingsPage() {
     if (!propertyId) return;
     (async () => {
       const { data } = await supabase.from("banquet_bookings")
-        .select("id,banquet_number,function_type,event_date,start_time,end_time,pax,total_amount,balance_amount,status,halls(name),guests(name,mobile)")
+        .select("id,banquet_number,function_type,event_date,start_time,end_time,pax,total_amount,balance_amount,status,host_name,halls(name),guests(name,mobile)")
         .eq("property_id", propertyId)
         .order("event_date", { ascending: false })
         .limit(200);
@@ -62,7 +63,7 @@ function BanquetBookingsPage() {
   const filtered = rows.filter((r) =>
     !q ||
     r.banquet_number.toLowerCase().includes(q.toLowerCase()) ||
-    (r.guests?.name ?? "").toLowerCase().includes(q.toLowerCase()) ||
+    ((r.host_name ?? r.guests?.name) ?? "").toLowerCase().includes(q.toLowerCase()) ||
     (r.halls?.name ?? "").toLowerCase().includes(q.toLowerCase()));
 
   const isEventBill = (n: string) => /^EVENT/i.test(n);
@@ -122,7 +123,7 @@ function BanquetBookingsPage() {
                   <span className="text-xs text-muted-foreground">{r.function_type}</span>
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
-                  {r.halls?.name ?? "—"} · {r.event_date} · {r.start_time?.slice(0,5)}–{r.end_time?.slice(0,5)} · {r.pax} pax · {r.guests?.name ?? "—"}
+{r.halls?.name ?? "—"} · {r.event_date} · {r.start_time?.slice(0,5)}–{r.end_time?.slice(0,5)} · {r.pax} pax · {r.host_name ?? r.guests?.name ?? "—"}
                 </div>
               </Link>
               <div className="text-right">

@@ -234,6 +234,9 @@ export type Database = {
           guest_id: string | null
           hall_charge: number
           hall_id: string | null
+          host_email: string | null
+          host_mobile: string | null
+          host_name: string | null
           id: string
           line_discounts: Json
           notes: string | null
@@ -272,6 +275,9 @@ export type Database = {
           guest_id?: string | null
           hall_charge?: number
           hall_id?: string | null
+          host_email?: string | null
+          host_mobile?: string | null
+          host_name?: string | null
           id?: string
           line_discounts?: Json
           notes?: string | null
@@ -310,6 +316,9 @@ export type Database = {
           guest_id?: string | null
           hall_charge?: number
           hall_id?: string | null
+          host_email?: string | null
+          host_mobile?: string | null
+          host_name?: string | null
           id?: string
           line_discounts?: Json
           notes?: string | null

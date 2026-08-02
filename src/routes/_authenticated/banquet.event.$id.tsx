@@ -42,6 +42,7 @@ interface Bq {
   hall_id: string | null; halls: { id: string; name: string; capacity: number } | null;
   guests: { id: string; name: string; mobile: string | null; email: string | null } | null;
   guest_id: string | null;
+  host_name: string | null; host_mobile: string | null; host_email: string | null;
 }
 interface Room { id: string; room_number: string; category_id: string | null; status: string }
 interface Cat { id: string; name: string }
@@ -92,15 +93,16 @@ function BanquetEventPage() {
       id,property_id,banquet_number,event_name,function_type,event_date,event_end_date,start_time,end_time,pax,
       package_rate,hall_charge,fb_charge,extra_charge,extra_charge_description,discount_amount,total_amount,
       advance_amount,balance_amount,advance_payment_mode,status,notes,hall_id,guest_id,
+      host_name,host_mobile,host_email,
       halls(id,name,capacity),guests(id,name,mobile,email)
     `).eq("id", id).single();
     if (error) { toast.error(error.message); setLoading(false); return; }
     const bq = data as unknown as Bq;
     setB(bq);
     setHost({
-      name: bq.guests?.name ?? "",
-      mobile: bq.guests?.mobile ?? "",
-      email: bq.guests?.email ?? "",
+      name: bq.host_name ?? bq.guests?.name ?? "",
+      mobile: bq.host_mobile ?? bq.guests?.mobile ?? "",
+      email: bq.host_email ?? bq.guests?.email ?? "",
       function_type: bq.function_type ?? "",
       notes: bq.notes ?? "",
     });
@@ -300,26 +302,12 @@ function BanquetEventPage() {
     if (!host.name.trim()) return toast.error("Name required");
     setSavingHost(true);
     try {
-      let guestId = b.guest_id;
-      if (guestId) {
-        const { error } = await supabase.from("guests").update({
-          name: host.name.trim(),
-          mobile: host.mobile.trim() || null,
-          email: host.email.trim() || null,
-        } as any).eq("id", guestId);
-        if (error) throw error;
-      } else {
-        const { data: g, error } = await supabase.from("guests").insert({
-          property_id: b.property_id,
-          name: host.name.trim(),
-          mobile: host.mobile.trim() || null,
-          email: host.email.trim() || null,
-        } as any).select("id").single();
-        if (error) throw error;
-        guestId = (g as any).id;
-      }
+      // Banquet host details are stored on the event only — never written back
+      // into the `guests` master (shared/dummy contacts must stay untouched).
       const { error: be } = await supabase.from("banquet_bookings").update({
-        guest_id: guestId,
+        host_name: host.name.trim(),
+        host_mobile: host.mobile.trim() || null,
+        host_email: host.email.trim() || null,
         function_type: host.function_type || b.function_type,
         notes: host.notes.trim() || null,
       }).eq("id", b.id);

@@ -41,6 +41,7 @@ interface Bq {
   line_discounts?: Record<string, { type: DiscType; value: number; amount: number }> | null;
   halls: { name: string } | null;
   guests: { name: string; mobile: string | null; email: string | null; gst_number: string | null; company: string | null } | null;
+  host_name?: string | null; host_mobile?: string | null; host_email?: string | null;
 }
 interface Bulk {
   id: string; rate: number; nights: number; check_in: string; check_out: string;
@@ -115,6 +116,7 @@ function BanquetBillPage() {
       package_rate,hall_charge,fb_charge,extra_charge,discount_amount,total_amount,bill_type,
       discount_type,discount_value,line_discounts,
       advance_amount,balance_amount,status,notes,
+      host_name,host_mobile,host_email,
       halls(name),guests(name,mobile,email,gst_number,company,state)
     `).eq("id", id).single();
     if (error) { toast.error(error.message); setLoading(false); return; }
@@ -183,7 +185,7 @@ function BanquetBillPage() {
         details: {
           bill_number: b.banquet_number,
           amount: Number(b.total_amount ?? 0),
-          party_name: b.guests?.name ?? b.event_name ?? null,
+          party_name: b.host_name ?? b.guests?.name ?? b.event_name ?? null,
           generated_by: user.id,
         },
       });
@@ -425,7 +427,7 @@ function BanquetBillPage() {
   async function handlePrint() {
     if (!b) return;
     const prev = document.title;
-    const safe = (b.guests?.name ?? b.event_name ?? b.banquet_number).replace(/[^\w]+/g, "");
+    const safe = (b.host_name ?? b.guests?.name ?? b.event_name ?? b.banquet_number).replace(/[^\w]+/g, "");
     document.title = `INV-${b.banquet_number}-${safe}`;
     const paperSize = await fetchPrinterPaperSize(b.property_id, "bill");
     // Invoice/Bill uses the browser's native print dialog — QZ Tray's
@@ -472,8 +474,8 @@ function BanquetBillPage() {
       <div style="display:flex;justify-content:space-between;gap:16px;margin:8px 0">
         <div>
           <div><strong>Event:</strong> ${esc(bk.event_name ?? bk.function_type)}</div>
-          <div>Host: ${esc(bk.guests?.name ?? "—")}</div>
-          <div>${esc(bk.guests?.mobile ?? "")}</div>
+          <div>Host: ${esc(bk.host_name ?? bk.guests?.name ?? "—")}</div>
+          <div>${esc(bk.host_mobile ?? bk.guests?.mobile ?? "")}</div>
         </div>
         <div class="right">
           <div><strong>Bill No:</strong> <span style="color:#999;letter-spacing:4px">- - - - - -</span></div>
@@ -538,7 +540,7 @@ function BanquetBillPage() {
         source_id: b.id,
         source_bill_number: b.banquet_number,
         source_room_number: b.halls?.name ?? null,
-        source_guest_name: b.guests?.name ?? null,
+        source_guest_name: b.host_name ?? b.guests?.name ?? null,
         amount: balance,
         description: `Event: ${b.event_name ?? b.function_type}`,
         line_items: [{ name: `Event ${b.event_name ?? b.function_type}`, amount: balance }],
@@ -563,7 +565,7 @@ function BanquetBillPage() {
 
   async function whatsappToHost() {
     if (!b) return;
-    const phone = b.guests?.mobile?.replace(/\D/g, "") ?? "";
+    const phone = (b.host_mobile ?? b.guests?.mobile)?.replace(/\D/g, "") ?? "";
     const lines = [
       `*${property?.name ?? "Hotel"}*`,
       `${isGst ? "Event Tax Invoice" : "Event Cash Bill"}: ${b.banquet_number}`,
@@ -681,9 +683,9 @@ function BanquetBillPage() {
               <div className="grid grid-cols-2 gap-4 text-sm mb-4 pb-4 border-b">
                 <div>
                   <div className="text-xs uppercase text-gray-500 mb-1">Host</div>
-                  <div className="font-medium">{b.guests?.name ?? "—"}</div>
-                  {b.guests?.mobile && <div className="text-xs text-gray-600">{b.guests.mobile}</div>}
-                  {b.guests?.email && <div className="text-xs text-gray-600">{b.guests.email}</div>}
+                  <div className="font-medium">{b.host_name ?? b.guests?.name ?? "—"}</div>
+                  {(b.host_mobile ?? b.guests?.mobile) && <div className="text-xs text-gray-600">{b.host_mobile ?? b.guests?.mobile}</div>}
+                  {(b.host_email ?? b.guests?.email) && <div className="text-xs text-gray-600">{b.host_email ?? b.guests?.email}</div>}
                   {b.guests?.gst_number && <div className="text-xs text-gray-700">GSTIN: {b.guests.gst_number}</div>}
                   {b.guests?.company && <div className="text-xs text-gray-600">{b.guests.company}</div>}
                 </div>

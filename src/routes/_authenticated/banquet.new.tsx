@@ -27,6 +27,7 @@ import {
   type AssignedBlock,
 } from "@/lib/eventRoomBlocks";
 import { isValidStayRange } from "@/lib/front-desk";
+import { GuestSearchInput } from "@/components/GuestSearchInput";
 
 export const Route = createFileRoute("/_authenticated/banquet/new")({
   head: () => ({ meta: [{ title: "New Banquet — HotelPilot" }] }),
@@ -65,6 +66,10 @@ function NewBanquetPage() {
   const [guestName, setGuestName] = useState("");
   const [guestMobile, setGuestMobile] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
+  // Read-only reference to an existing guest, if one was explicitly picked.
+  // Banquet never creates or edits `guests` rows from this form.
+  const [linkedGuestId, setLinkedGuestId] = useState<string | null>(null);
+  const [linkedGuestName, setLinkedGuestName] = useState<string | null>(null);
 
   // event
   const [hallId, setHallId] = useState("");
@@ -264,15 +269,6 @@ function NewBanquetPage() {
     }
     setSaving(true);
     try {
-      const { data: g, error: ge } = await supabase.from("guests").insert({
-        property_id: propertyId,
-        name: guestName,
-        mobile: guestMobile,
-        email: guestEmail || null,
-        created_by: user?.id ?? null,
-      } as any).select("id").single();
-      if (ge) throw ge;
-
       const advanceAmt = Number(advance) || 0;
 
       // Build assignments depending on roomMode
@@ -303,7 +299,11 @@ function NewBanquetPage() {
       const { data: bq, error: be } = await supabase.from("banquet_bookings").insert({
         property_id: propertyId,
         hall_id: hallId || null,
-        guest_id: g!.id,
+        // Read-only link only when a guest was explicitly selected from search.
+        guest_id: linkedGuestId,
+        host_name: guestName.trim(),
+        host_mobile: guestMobile.trim() || null,
+        host_email: guestEmail.trim() || null,
         event_name: roomMode !== "none" ? eventName : null,
         function_type: functionType,
         event_date: eventDate,
@@ -378,7 +378,31 @@ function NewBanquetPage() {
           <Card>
             <CardHeader><CardTitle className="text-base">Guest / Host</CardTitle></CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-3">
-              <Field label="Name *"><Input value={guestName} onChange={(e) => setGuestName(e.target.value)} /></Field>
+              <Field label="Name *">
+                <GuestSearchInput
+                  propertyId={propertyId}
+                  value={guestName}
+                  mobile={guestMobile}
+                  allowCreate={false}
+                  placeholder="Search existing or type new"
+                  onChange={(v) => setGuestName(v)}
+                  onSelect={(g) => {
+                    setLinkedGuestId(g.id);
+                    setLinkedGuestName(g.name);
+                    setGuestName(g.name);
+                    setGuestMobile(sanitizeMobile(g.mobile ?? ""));
+                    setGuestEmail(g.email ?? "");
+                  }}
+                />
+                {linkedGuestId ? (
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Linked to existing guest (reference only — their CRM record is never changed).
+                    <button type="button" className="ml-1 underline" onClick={() => { setLinkedGuestId(null); setLinkedGuestName(null); }}>Unlink</button>
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[11px] text-muted-foreground">Manual entry is saved on this event only.</p>
+                )}
+              </Field>
               <Field label="Mobile *">
                 <Input
                   value={guestMobile}
