@@ -44,7 +44,7 @@ import {
   resolveLogoUrl,
   type InvoiceProperty,
 } from "@/lib/invoiceTemplates";
-import { fetchPrinterPaperSize, isThermal, printIsolated, withPrintStyles } from "@/lib/printStyles";
+import { printIsolated, withPrintStyles } from "@/lib/printStyles";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
@@ -1357,19 +1357,21 @@ function FolioPage() {
     const prevTitle = document.title;
     const safeName = (booking.guests?.name ?? "guest").replace(/[^\w]+/g, "");
     document.title = `INV-${folio.invoice_number}-${safeName}`;
-    const paperSize = await fetchPrinterPaperSize(booking.property_id, "bill");
     // Invoice/Bill uses the browser's native print dialog — QZ Tray's
     // HTML-to-pixel pipeline caused persistent A4 table cutoff issues.
     // printIsolated() clones the invoice into an in-flow print root so long
     // bills paginate across multiple A4 pages instead of being clipped to one.
+    // This full invoice template is always A4: applying a configured thermal
+    // printer width here shrinks the A4 document to 48/72mm before the browser
+    // hands it to Microsoft Print to PDF.
     const area = document.getElementById("invoice-print-area");
     if (area) {
       printIsolated(area as HTMLElement, {
-        paperSize: isThermal(paperSize) ? paperSize : "A4",
+        paperSize: "A4",
         onAfter: () => { document.title = prevTitle; },
       });
     } else {
-      withPrintStyles(paperSize, () => window.print());
+      withPrintStyles("A4", () => window.print());
       setTimeout(() => { document.title = prevTitle; }, 500);
     }
   }
@@ -1459,14 +1461,25 @@ function FolioPage() {
           #invoice-print-area .totals-box table td:first-child { width: 55% !important; }
           #invoice-print-area .totals-box table td:last-child { width: 45% !important; text-align: right !important; }
           #invoice-print-area .grand-total-row { width: 100% !important; box-sizing: border-box !important; }
-          /* Phase 65 — hold the header's two-column split in print / PDF too. */
+          /* A4 header columns: never allow the property/address side to collapse. */
           #invoice-print-area .invoice-header-bg {
-            display: flex !important; flex-wrap: nowrap !important;
+            display: grid !important;
+            grid-template-columns: minmax(360px, 1fr) 205px !important;
+            column-gap: 24px !important;
             align-items: center !important; justify-content: space-between !important;
           }
-          #invoice-print-area .invoice-header-left { flex: 1 1 auto !important; min-width: 0 !important; }
+          #invoice-print-area .invoice-header-left {
+            min-width: 360px !important; width: auto !important;
+          }
+          #invoice-print-area .invoice-header-copy {
+            min-width: 220px !important;
+          }
+          #invoice-print-area .invoice-property-address {
+            word-break: normal !important;
+            overflow-wrap: break-word !important;
+          }
           #invoice-print-area .invoice-header-right {
-            flex: 0 0 auto !important; min-width: 205px !important;
+            width: 205px !important; min-width: 205px !important;
             white-space: nowrap !important; text-align: right !important;
           }
           .no-print, [data-no-print], .sidebar, nav, header {
@@ -1744,14 +1757,11 @@ function FolioPage() {
           {/* Header */}
           {isPremium ? (
             <>
-              {/* Phase 65 — the two columns need explicit flex sizing. Phase 57 made
-                  propAddrLine much longer (address + city + state + pincode), and with
-                  both columns sized by content the left one collapsed and the right
-                  "TAX INVOICE" block wrapped into it. Left grows/shrinks, right never
-                  shrinks. */}
+              {/* Fixed A4-safe column floors prevent the property address from being
+                  squeezed to character width by the invoice metadata column. */}
               <div className="invoice-header-bg flex flex-nowrap items-center justify-between gap-6 px-10 py-7"
                    style={{ background: TEAL, color: "#ffffff", borderRadius: 0 }}>
-                <div className="invoice-header-left flex items-center gap-4 min-w-0 flex-1">
+                <div className="invoice-header-left flex flex-1 items-center gap-4" style={{ minWidth: 360 }}>
                   {property?.logo_url ? (
                     <div className="shrink-0" style={{ background: "#ffffff", padding: 8, borderRadius: 0, flex: "0 0 auto" }}>
                       <img src={property.logo_url} alt="" style={{ height: 96, width: 96, objectFit: "contain", display: "block" }} />
@@ -1761,11 +1771,11 @@ function FolioPage() {
                       {(property?.name ?? "HP").split(/\s+/).slice(0, 2).map(s => s[0]).join("").toUpperCase()}
                     </div>
                   )}
-                  <div className="min-w-0 flex-1">
+                  <div className="invoice-header-copy flex-1" style={{ minWidth: 220 }}>
                     <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: 0.3, color: "#ffffff", lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {property?.name ?? "Hotel"}
                     </div>
-                    <div style={{ fontSize: 11, color: "#ffffff", opacity: 0.95, marginTop: 6, lineHeight: 1.6, overflowWrap: "break-word" }}>
+                    <div className="invoice-property-address" style={{ fontSize: 11, color: "#ffffff", opacity: 0.95, marginTop: 6, lineHeight: 1.6, wordBreak: "normal", overflowWrap: "break-word" }}>
                       {propAddrLine && <div>{propAddrLine}</div>}
                       {(property?.phone || property?.email) && (
                         <div style={{ marginTop: 2 }}>
