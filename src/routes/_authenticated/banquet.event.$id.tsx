@@ -19,7 +19,8 @@ import { toast } from "sonner";
 import { isValidStayRange } from "@/lib/front-desk";
 import { BANQUET_STATUS_TONE, computeBanquetTotal, FUNCTION_TYPES } from "@/lib/banquet";
 import { ArrowLeft, BedDouble, Trash2, CheckCircle2, Ban, Plus, FileText, Pencil, Save, LogIn, LogOut, UserPlus, Eye } from "lucide-react";
-import { checkInBlock, checkOutBlock, bulkCheckInBlocks, dueForCheckIn, type EventBlockRecord } from "@/lib/eventRoomBlocks";
+import { checkInBlock, bulkCheckInBlocks, dueForCheckIn, type EventBlockRecord } from "@/lib/eventRoomBlocks";
+import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { GuestSearchInput } from "@/components/GuestSearchInput";
 import { sanitizeMobile } from "@/lib/mobile";
 
@@ -71,6 +72,9 @@ function BanquetEventPage() {
 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+
+  // Standard checkout flow (same dialog used by Dashboard / Front Desk).
+  const [checkoutBookingId, setCheckoutBookingId] = useState<string | null>(null);
 
   // Host edit local state
   const [host, setHost] = useState({ name: "", mobile: "", email: "", function_type: "", notes: "" });
@@ -253,16 +257,17 @@ function BanquetEventPage() {
     }
   }
 
-  async function doCheckOut(block: EventBlockRecord) {
+  /**
+   * Banquet room checkout uses the exact same CheckoutDialog as every other
+   * screen — balance validation, payment collection, pending KOT / segment-bill
+   * blocking, early/late repricing, WhatsApp trigger and invoice auto-open.
+   */
+  function doCheckOut(block: EventBlockRecord) {
     if (!user) return;
-    if (!confirm(`Checkout room ${block.room_number}?`)) return;
-    try {
-      await checkOutBlock({ block, userId: user.id });
-      toast.success("Checked out");
-      load();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Checkout failed");
+    if (!block.booking_id) {
+      return toast.error("This room has no active booking to check out");
     }
+    setCheckoutBookingId(block.booking_id);
   }
 
   async function doBulkCheckIn() {
@@ -725,6 +730,13 @@ function BanquetEventPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <CheckoutDialog
+        bookingId={checkoutBookingId}
+        open={!!checkoutBookingId}
+        onOpenChange={(o) => { if (!o) setCheckoutBookingId(null); }}
+        onDone={() => { setCheckoutBookingId(null); load(); }}
+      />
     </AppShell>
   );
 }

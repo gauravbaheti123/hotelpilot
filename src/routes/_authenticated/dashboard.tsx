@@ -1071,6 +1071,7 @@ function OwnerDashboard({
       />
       <BulkCheckoutDialog
         event={bulkCheckoutEvent}
+        propertyId={propertyId}
         userId={userId}
         onClose={() => setBulkCheckoutEvent(null)}
         onDone={() => { setBulkCheckoutEvent(null); reload(); }}
@@ -1897,9 +1898,10 @@ function BulkCheckinDialog({
 }
 
 function BulkCheckoutDialog({
-  event, userId, onClose, onDone,
+  event, propertyId, userId, onClose, onDone,
 }: {
   event: EventBlockSummary | null;
+  propertyId: string | null;
   userId: string;
   onClose: () => void;
   onDone: () => void;
@@ -1926,7 +1928,7 @@ function BulkCheckoutDialog({
       try {
         const { data: { user } } = await supabase.auth.getUser();
         logActivity({
-          property_id: event.blocks[0]?.banquet_booking_id ? "" : "",
+          property_id: propertyId ?? "",
           user_id: user?.id ?? "", user_name: userDisplayName(user as any),
           action_type: "BULK_CHECKOUT", module: "Front Desk",
           reference_id: event.banquet_booking_id, reference_label: event.event_name,

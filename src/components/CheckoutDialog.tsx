@@ -28,6 +28,7 @@ import { AlertTriangle, Plus, Trash2, Loader2, ArrowRightLeft, SplitSquareHorizo
 import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 import { SplitBillDialog } from "@/components/SplitBillDialog";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
+import { closeEventBlocksForBooking } from "@/lib/eventRoomBlocks";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 
@@ -731,6 +732,34 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
       }
     } catch {
       /* ignore */
+    }
+
+    // Banquet rooms: close the linked event_room_blocks rows so the event tile
+    // does not stay "occupied" after checkout. Fires regardless of the screen
+    // that initiated this checkout.
+    try {
+      const closed = await closeEventBlocksForBooking(booking.id, user?.id ?? "");
+      for (const blk of closed) {
+        logActivity({
+          property_id: booking.property_id,
+          user_id: user?.id ?? "",
+          user_name: userDisplayName(user as never),
+          action_type: "ROOM_STATUS_CHANGED",
+          module: "Banquet",
+          reference_id: blk.room_id ?? blk.id,
+          reference_label: blk.room_number ? `Room ${blk.room_number}` : null,
+          details: {
+            room_id: blk.room_id,
+            room_number: blk.room_number,
+            event_block_id: blk.id,
+            old_status: "checked_in",
+            new_status: "checked_out",
+            booking_id: booking.id,
+          },
+        });
+      }
+    } catch (e) {
+      console.error("[CheckoutDialog] event block close failed", e);
     }
 
     setBusy(false);
