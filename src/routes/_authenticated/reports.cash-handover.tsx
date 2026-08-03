@@ -264,7 +264,17 @@ function Page() {
                     {r.notes && (
                       <p className="mt-2 text-xs text-muted-foreground"><b>Overall notes:</b> {r.notes}</p>
                     )}
-                    <div className="mt-3 flex justify-end">
+                    <div className="mt-3 flex justify-end gap-2">
+                      {canDelete && latestId === r.id && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive border-destructive/40 hover:bg-destructive/10"
+                          onClick={() => { setDeleteTarget(r); setDeleteReason(""); }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" /> Delete Handover
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"
@@ -300,6 +310,33 @@ function Page() {
           })}
         </CardContent>
       </Card>
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) { setDeleteTarget(null); setDeleteReason(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete handover?</DialogTitle>
+            <DialogDescription>
+              This permanently removes the handover submitted on{" "}
+              {deleteTarget ? fmtDateTime(deleteTarget.created_at) : ""} and all its cash lines.
+              A full snapshot is written to the audit log. Only the latest handover can be deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Reason (required)</Label>
+            <Textarea
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              placeholder="Why is this handover being deleted?"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleting || !deleteReason.trim()}>
+              {deleting ? "Deleting…" : "Delete Handover"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ReportShell>
   );
 }
