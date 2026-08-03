@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
@@ -22,7 +26,11 @@ export const Route = createFileRoute("/_authenticated/expenses/new")({
   component: () => (<RequirePermission module="expenses"><NewExpensePage /></RequirePermission>),
 });
 
-interface Opt { id: string; name: string }
+interface Opt { id: string; name: string; mobile?: string | null; designation?: string | null }
+
+const ADD_NEW = "__add_new__";
+
+type AddKind = "category" | "vendor" | "staff" | null;
 
 function NewExpensePage() {
   const { currentId: propertyId } = useCurrentProperty();
@@ -31,6 +39,9 @@ function NewExpensePage() {
   const [vendors, setVendors] = useState<Opt[]>([]);
   const [staff, setStaff] = useState<Opt[]>([]);
   const [saving, setSaving] = useState(false);
+  const [addKind, setAddKind] = useState<AddKind>(null);
+  const [addSaving, setAddSaving] = useState(false);
+  const [addForm, setAddForm] = useState({ name: "", mobile: "", gstin: "", designation: "" });
 
   const [form, setForm] = useState({
     expense_date: new Date().toISOString().slice(0, 10),
@@ -48,9 +59,9 @@ function NewExpensePage() {
     const [c, v, s] = await Promise.all([
       supabase.from("expense_categories").select("id,name")
         .eq("property_id", propertyId).eq("is_active", true).order("name"),
-      supabase.from("vendors").select("id,name")
+      supabase.from("vendors").select("id,name,mobile")
         .eq("property_id", propertyId).eq("is_active", true).order("name"),
-      supabase.from("staff").select("id,name")
+      supabase.from("staff").select("id,name,mobile,designation")
         .eq("property_id", propertyId).eq("is_active", true).order("name"),
     ]);
     setCats((c.data ?? []) as Opt[]);
@@ -59,6 +70,81 @@ function NewExpensePage() {
   }, [propertyId]);
 
   useEffect(() => { loadRefs(); }, [loadRefs]);
+
+  const catOptions = useMemo<SearchableOption[]>(() => [
+    ...cats.map((c) => ({ value: c.id, label: c.name })),
+    { value: ADD_NEW, label: "+ Add new category" },
+  ], [cats]);
+
+  const vendorOptions = useMemo<SearchableOption[]>(() => [
+    ...vendors.map((v) => ({
+      value: v.id, label: v.name, keywords: v.mobile ?? "", hint: v.mobile ?? undefined,
+    })),
+    { value: ADD_NEW, label: "+ Add new vendor" },
+  ], [vendors]);
+
+  const staffOptions = useMemo<SearchableOption[]>(() => [
+    ...staff.map((s) => ({
+      value: s.id,
+      label: s.name,
+      keywords: `${s.mobile ?? ""} ${s.designation ?? ""}`.trim(),
+      hint: s.designation || s.mobile || undefined,
+    })),
+    { value: ADD_NEW, label: "+ Add new staff" },
+  ], [staff]);
+
+  function openAdd(kind: Exclude<AddKind, null>) {
+    setAddForm({ name: "", mobile: "", gstin: "", designation: "" });
+    setAddKind(kind);
+  }
+
+  async function saveInline() {
+    if (!propertyId || !addKind) return;
+    const name = addForm.name.trim();
+    if (!name) return toast.error("Enter a name");
+    const mobile = addForm.mobile.trim();
+    if (addKind !== "category" && mobile && !/^\d{10}$/.test(mobile)) {
+      return toast.error("Mobile must be exactly 10 digits");
+    }
+    setAddSaving(true);
+    let id: string | null = null;
+    let error: { message: string } | null = null;
+    if (addKind === "category") {
+      const r = await supabase.from("expense_categories")
+        .insert({ property_id: propertyId, name } as never).select("id,name").maybeSingle();
+      error = r.error; id = (r.data as Opt | null)?.id ?? null;
+      if (r.data) setCats((p) => [...p, r.data as Opt].sort((a, b) => a.name.localeCompare(b.name)));
+    } else if (addKind === "vendor") {
+      const r = await supabase.from("vendors")
+        .insert({
+          property_id: propertyId, name,
+          mobile: mobile || null,
+          gstin: addForm.gstin.trim().toUpperCase() || null,
+        } as never).select("id,name,mobile").maybeSingle();
+      error = r.error; id = (r.data as Opt | null)?.id ?? null;
+      if (r.data) setVendors((p) => [...p, r.data as Opt].sort((a, b) => a.name.localeCompare(b.name)));
+    } else {
+      const r = await supabase.from("staff")
+        .insert({
+          property_id: propertyId, name,
+          mobile: mobile || null,
+          designation: addForm.designation.trim() || null,
+        } as never).select("id,name,mobile,designation").maybeSingle();
+      error = r.error; id = (r.data as Opt | null)?.id ?? null;
+      if (r.data) setStaff((p) => [...p, r.data as Opt].sort((a, b) => a.name.localeCompare(b.name)));
+    }
+    setAddSaving(false);
+    if (error) return toast.error(error.message);
+    if (id) {
+      if (addKind === "category") setForm((f) => ({ ...f, category_id: id! }));
+      else if (addKind === "vendor") setForm((f) => ({ ...f, vendor_id: id!, paid_to_staff_id: "" }));
+      else setForm((f) => ({ ...f, paid_to_staff_id: id!, vendor_id: "" }));
+    }
+    toast.success(
+      addKind === "category" ? "Category added" : addKind === "vendor" ? "Vendor added" : "Staff added",
+    );
+    setAddKind(null);
+  }
 
   async function save() {
     if (!propertyId) return;
@@ -118,14 +204,16 @@ function NewExpensePage() {
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Category</Label>
-            <Select value={form.category_id} onValueChange={(v) => setForm((f) => ({ ...f, category_id: v }))}>
-              <SelectTrigger><SelectValue placeholder="Choose category…" /></SelectTrigger>
-              <SelectContent>
-                {cats.length === 0 ? (
-                  <SelectItem value="__none" disabled>No categories — add via Masters</SelectItem>
-                ) : cats.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.category_id}
+              onChange={(v) => (v === ADD_NEW
+                ? openAdd("category")
+                : setForm((f) => ({ ...f, category_id: v })))}
+              options={catOptions}
+              placeholder="Choose category…"
+              searchPlaceholder="Search categories…"
+              alwaysShowSearch
+            />
             <Link to="/masters/expense-categories" className="text-[10px] text-primary underline">Manage categories</Link>
           </div>
           <div className="space-y-1.5">
@@ -139,21 +227,30 @@ function NewExpensePage() {
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Paid to vendor</Label>
-            <Select value={form.vendor_id} onValueChange={(v) => setForm((f) => ({ ...f, vendor_id: v, paid_to_staff_id: "" }))}>
-              <SelectTrigger><SelectValue placeholder="Optional…" /></SelectTrigger>
-              <SelectContent>
-                {vendors.map((v) => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.vendor_id}
+              onChange={(v) => (v === ADD_NEW
+                ? openAdd("vendor")
+                : setForm((f) => ({ ...f, vendor_id: v, paid_to_staff_id: "" })))}
+              options={vendorOptions}
+              placeholder="Optional…"
+              searchPlaceholder="Search name or mobile…"
+              alwaysShowSearch
+            />
+            <Link to="/inventory/vendors" className="text-[10px] text-primary underline">Manage vendors</Link>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs">Paid to staff</Label>
-            <Select value={form.paid_to_staff_id} onValueChange={(v) => setForm((f) => ({ ...f, paid_to_staff_id: v, vendor_id: "" }))}>
-              <SelectTrigger><SelectValue placeholder="Optional…" /></SelectTrigger>
-              <SelectContent>
-                {staff.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={form.paid_to_staff_id}
+              onChange={(v) => (v === ADD_NEW
+                ? openAdd("staff")
+                : setForm((f) => ({ ...f, paid_to_staff_id: v, vendor_id: "" })))}
+              options={staffOptions}
+              placeholder="Optional…"
+              searchPlaceholder="Search name, mobile or role…"
+              alwaysShowSearch
+            />
           </div>
           <div className="col-span-2 space-y-1.5">
             <Label className="text-xs">Reference / Bill #</Label>
@@ -171,6 +268,48 @@ function NewExpensePage() {
           <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save expense"}</Button>
         </div>
       </CardContent></Card>
+
+      <Dialog open={addKind !== null} onOpenChange={(o) => !o && setAddKind(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {addKind === "category" ? "New category" : addKind === "vendor" ? "New vendor" : "New staff"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Name *</Label>
+              <Input value={addForm.name} maxLength={100}
+                onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))} />
+            </div>
+            {addKind !== "category" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Mobile</Label>
+                <Input inputMode="numeric" maxLength={10} value={addForm.mobile}
+                  onChange={(e) => setAddForm((f) => ({ ...f, mobile: e.target.value.replace(/\D/g, "").slice(0, 10) }))} />
+              </div>
+            )}
+            {addKind === "vendor" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">GSTIN (optional)</Label>
+                <Input value={addForm.gstin} maxLength={15}
+                  onChange={(e) => setAddForm((f) => ({ ...f, gstin: e.target.value.toUpperCase() }))} />
+              </div>
+            )}
+            {addKind === "staff" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Designation</Label>
+                <Input value={addForm.designation} maxLength={60}
+                  onChange={(e) => setAddForm((f) => ({ ...f, designation: e.target.value }))} />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddKind(null)}>Cancel</Button>
+            <Button onClick={saveInline} disabled={addSaving}>{addSaving ? "Saving…" : "Add"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
