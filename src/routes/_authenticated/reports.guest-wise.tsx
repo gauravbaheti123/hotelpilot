@@ -44,10 +44,11 @@ function Page() {
   const load = useCallback(async () => {
     if (!propertyId) return;
     const { data } = await supabase.from("bookings").select(`
-      id,booking_number,check_in,check_out,total_amount,balance_amount,status,guest_id,
+      id,booking_number,check_in,check_out,total_amount,balance_amount,status,guest_id,source,
       checked_in_by,checked_out_by,
       guests(name,mobile)
     `).eq("property_id", propertyId)
+      .neq("source", "event_block")
       .gte("check_in", from).lte("check_in", to);
 
     const raw = (data ?? []) as any[];
