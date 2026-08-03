@@ -78,6 +78,7 @@ interface Folio {
   round_off_amount?: number;
   complimentary_food_used?: number;
   billing_company_id?: string | null;
+  billing_guest_id?: string | null;
 }
 interface BookingCtx {
   id: string; booking_number: string; status: string;
