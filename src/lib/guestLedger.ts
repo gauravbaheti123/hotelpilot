@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchBanquetScope } from "@/lib/banquetScope";
 
 export type LedgerType = "Lodge" | "Food" | "Laundry" | "Banquet" | "Banquet Food" | "Other";
 
@@ -39,7 +40,8 @@ export async function fetchGuestLedger(guestId: string): Promise<GuestLedger> {
   const { data: bookingRows } = await supabase
     .from("bookings")
     .select("id")
-    .eq("guest_id", guestId);
+    .eq("guest_id", guestId)
+    .neq("source", "event_block");
   const bookingIds = (bookingRows ?? []).map((b) => b.id as string);
 
   const rows: LedgerRow[] = [];
