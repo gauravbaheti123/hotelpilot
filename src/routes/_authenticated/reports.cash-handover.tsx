@@ -42,6 +42,8 @@ interface HandoverRow {
   created_at: string;
   window_start: string;
   window_end?: string | null;
+  opening_cash: number | null;
+  closing_cash: number | null;
   outgoing_user_id: string;
   outgoing_user_name: string;
   incoming_user_id: string | null;
@@ -101,7 +103,7 @@ function Page() {
     if (!propertyId) return;
     const { data } = await supabase
       .from("shift_handovers")
-      .select("id,created_at,window_start,window_end,outgoing_user_id,outgoing_user_name,incoming_user_id,incoming_user_name,total_system,total_manual,total_difference,notes,shift_handover_lines(id,mode,system_total,manual_entry,difference,note)")
+      .select("id,created_at,window_start,window_end,opening_cash,closing_cash,outgoing_user_id,outgoing_user_name,incoming_user_id,incoming_user_name,total_system,total_manual,total_difference,notes,shift_handover_lines(id,mode,system_total,manual_entry,difference,note)")
       .eq("property_id", propertyId)
       .gte("created_at", `${from}T00:00:00`)
       .lte("created_at", `${to}T23:59:59`)
@@ -111,6 +113,8 @@ function Page() {
       created_at: r.created_at,
       window_start: r.window_start,
       window_end: r.window_end ?? null,
+      opening_cash: r.opening_cash === null || r.opening_cash === undefined ? null : Number(r.opening_cash),
+      closing_cash: r.closing_cash === null || r.closing_cash === undefined ? null : Number(r.closing_cash),
       outgoing_user_id: r.outgoing_user_id,
       outgoing_user_name: r.outgoing_user_name,
       incoming_user_id: r.incoming_user_id,
@@ -263,6 +267,12 @@ function Page() {
                     </div>
                     {r.notes && (
                       <p className="mt-2 text-xs text-muted-foreground"><b>Overall notes:</b> {r.notes}</p>
+                    )}
+                    {(r.opening_cash !== null || r.closing_cash !== null) && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        <b>Cash float:</b> opening {fmtINR(r.opening_cash ?? 0)} → closing (expected) {fmtINR(r.closing_cash ?? 0)}.
+                        The Cash line above already nets opening float, petty cash in/out and cash expenses.
+                      </p>
                     )}
                     <div className="mt-3 flex justify-end gap-2">
                       {canDelete && latestId === r.id && (

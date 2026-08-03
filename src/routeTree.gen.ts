@@ -24,6 +24,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedSuperadminRouteImport } from './routes/_authenticated/superadmin'
 import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
+import { Route as AuthenticatedPettyCashRouteImport } from './routes/_authenticated/petty-cash'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedWhatsappIndexRouteImport } from './routes/_authenticated/whatsapp.index'
 import { Route as AuthenticatedStaffIndexRouteImport } from './routes/_authenticated/staff.index'
@@ -185,6 +186,11 @@ const AuthenticatedSuperadminRoute = AuthenticatedSuperadminRouteImport.update({
 const AuthenticatedPropertiesRoute = AuthenticatedPropertiesRouteImport.update({
   id: '/properties',
   path: '/properties',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPettyCashRoute = AuthenticatedPettyCashRouteImport.update({
+  id: '/petty-cash',
+  path: '/petty-cash',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -719,6 +725,7 @@ export interface FileRoutesByFullPath {
   '/terms-of-service': typeof TermsOfServiceRoute
   '/totp-challenge': typeof TotpChallengeRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/petty-cash': typeof AuthenticatedPettyCashRoute
   '/properties': typeof AuthenticatedPropertiesRoute
   '/superadmin': typeof AuthenticatedSuperadminRouteWithChildren
   '/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
@@ -823,6 +830,7 @@ export interface FileRoutesByTo {
   '/terms-of-service': typeof TermsOfServiceRoute
   '/totp-challenge': typeof TotpChallengeRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/petty-cash': typeof AuthenticatedPettyCashRoute
   '/properties': typeof AuthenticatedPropertiesRoute
   '/superadmin': typeof AuthenticatedSuperadminRouteWithChildren
   '/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
@@ -929,6 +937,7 @@ export interface FileRoutesById {
   '/terms-of-service': typeof TermsOfServiceRoute
   '/totp-challenge': typeof TotpChallengeRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/petty-cash': typeof AuthenticatedPettyCashRoute
   '/_authenticated/properties': typeof AuthenticatedPropertiesRoute
   '/_authenticated/superadmin': typeof AuthenticatedSuperadminRouteWithChildren
   '/_authenticated/banquet/bookings': typeof AuthenticatedBanquetBookingsRoute
@@ -1035,6 +1044,7 @@ export interface FileRouteTypes {
     | '/terms-of-service'
     | '/totp-challenge'
     | '/dashboard'
+    | '/petty-cash'
     | '/properties'
     | '/superadmin'
     | '/banquet/bookings'
@@ -1139,6 +1149,7 @@ export interface FileRouteTypes {
     | '/terms-of-service'
     | '/totp-challenge'
     | '/dashboard'
+    | '/petty-cash'
     | '/properties'
     | '/superadmin'
     | '/banquet/bookings'
@@ -1244,6 +1255,7 @@ export interface FileRouteTypes {
     | '/terms-of-service'
     | '/totp-challenge'
     | '/_authenticated/dashboard'
+    | '/_authenticated/petty-cash'
     | '/_authenticated/properties'
     | '/_authenticated/superadmin'
     | '/_authenticated/banquet/bookings'
@@ -1456,6 +1468,13 @@ declare module '@tanstack/react-router' {
       path: '/properties'
       fullPath: '/properties'
       preLoaderRoute: typeof AuthenticatedPropertiesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/petty-cash': {
+      id: '/_authenticated/petty-cash'
+      path: '/petty-cash'
+      fullPath: '/petty-cash'
+      preLoaderRoute: typeof AuthenticatedPettyCashRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -2101,6 +2120,7 @@ const AuthenticatedSuperadminRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedPettyCashRoute: typeof AuthenticatedPettyCashRoute
   AuthenticatedPropertiesRoute: typeof AuthenticatedPropertiesRoute
   AuthenticatedSuperadminRoute: typeof AuthenticatedSuperadminRouteWithChildren
   AuthenticatedBanquetBookingsRoute: typeof AuthenticatedBanquetBookingsRoute
@@ -2190,6 +2210,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedPettyCashRoute: AuthenticatedPettyCashRoute,
   AuthenticatedPropertiesRoute: AuthenticatedPropertiesRoute,
   AuthenticatedSuperadminRoute: AuthenticatedSuperadminRouteWithChildren,
   AuthenticatedBanquetBookingsRoute: AuthenticatedBanquetBookingsRoute,
