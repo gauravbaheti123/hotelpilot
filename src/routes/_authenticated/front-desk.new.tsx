@@ -38,7 +38,7 @@ import {
 } from "@/lib/tariff";
 import { GuestIdUploadField, type SelectedIdFile } from "@/components/GuestIdUploadField";
 import { lookupExistingGuestId, type GuestIdLookupResult } from "@/lib/guestIdLookup";
-import { uploadFileToDrive, safeName } from "@/lib/driveUpload";
+import { uploadFileToDrive, safeName, driveFileExtension, logDriveUploadFailure } from "@/lib/driveUpload";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
