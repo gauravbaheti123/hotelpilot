@@ -1898,16 +1898,14 @@ function BulkCheckinDialog({
 }
 
 function BulkCheckoutDialog({
-  event, propertyId, userId, onClose, onDone,
+  event, onClose, onStart,
 }: {
   event: EventBlockSummary | null;
-  propertyId: string | null;
-  userId: string;
   onClose: () => void;
-  onDone: () => void;
+  /** Hands the selected bookings to the parent, which runs the standard CheckoutDialog one room at a time. */
+  onStart: (bookingIds: string[]) => void;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (event) setSelected(new Set(event.blocks.filter((b) => b.status === "checked_in").map((b) => b.id)));
   }, [event]);
@@ -1916,29 +1914,15 @@ function BulkCheckoutDialog({
   const toggle = (id: string) => {
     setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   };
-  const confirm = async () => {
-    setBusy(true);
-    try {
-      let n = 0;
-      for (const b of checked) {
-        if (!selected.has(b.id)) continue;
-        await checkOutBlock({ block: b, userId });
-        n++;
-      }
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        logActivity({
-          property_id: propertyId ?? "",
-          user_id: user?.id ?? "", user_name: userDisplayName(user as any),
-          action_type: "BULK_CHECKOUT", module: "Front Desk",
-          reference_id: event.banquet_booking_id, reference_label: event.event_name,
-          details: { event_name: event.event_name, rooms_count: n },
-        });
-      } catch { /* ignore */ }
-      toast.success(`${n} rooms checked out for ${event.event_name}`);
-      onDone();
-    } catch (e: any) { toast.error(e.message ?? "Failed"); }
-    finally { setBusy(false); }
+  const confirm = () => {
+    const ids = checked
+      .filter((b) => selected.has(b.id))
+      .map((b) => b.booking_id)
+      .filter((v): v is string => !!v);
+    if (ids.length === 0) {
+      return toast.error("Selected rooms have no active booking to check out");
+    }
+    onStart(ids);
   };
   return (
     <Dialog open={!!event} onOpenChange={(o) => !o && onClose()}>
@@ -1955,12 +1939,12 @@ function BulkCheckoutDialog({
           ))}
         </div>
         <div className="text-xs text-muted-foreground border-t pt-2">
-          Combined payment is collected per booking via the standard Checkout dialog. This action releases the rooms and marks them ready for housekeeping.
+          Each room opens in the standard Checkout screen one after another — same balance check, payment collection and bill as a normal checkout.
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button disabled={busy || selected.size === 0} onClick={confirm}>
-            {busy ? "Checking out…" : `Confirm Bulk Checkout (${selected.size})`}
+          <Button disabled={selected.size === 0} onClick={confirm}>
+            {`Start Checkout (${selected.size})`}
           </Button>
         </DialogFooter>
       </DialogContent>
