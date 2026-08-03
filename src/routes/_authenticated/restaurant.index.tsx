@@ -186,6 +186,7 @@ function RestaurantPage() {
           guest_id: booking?.guest_id ?? null,
           outlet_id: pcOutlet,
           amount: amt,
+          bill_no: pcBillNo.trim() || null,
           description: pcDesc || "Restaurant Charge",
           charge_date: pcDate,
           posted_by: user?.id ?? null,
@@ -198,6 +199,7 @@ function RestaurantPage() {
         property_id: current.id,
         charge_id: chargeId,
         amount: amt,
+        bill_no: pcBillNo.trim() || null,
         description: pcDesc || "Restaurant Charge",
         charge_date: pcDate,
       });
@@ -226,7 +228,7 @@ function RestaurantPage() {
 
       toast.success(`Charge posted to ${booking?.label ?? "guest"}`);
       setPostOpen(false);
-      setPcAmount(""); setPcDesc("Restaurant Charge"); setPcBooking(""); setPcOutlet("");
+      setPcAmount(""); setPcDesc("Restaurant Charge"); setPcBooking(""); setPcOutlet(""); setPcBillNo("");
       await loadDirect();
     } catch (e: any) {
       toast.error(e.message ?? "Failed to post charge");
@@ -234,6 +236,29 @@ function RestaurantPage() {
   }
 
   const unsettledPayables = useMemo(() => payables.filter((p) => !p.is_settled), [payables]);
+
+  const outletName = useMemo(() => {
+    const m = new Map(outlets.map((o) => [o.id, o.name]));
+    return (id?: string | null) => (id && m.get(id)) || UNASSIGNED;
+  }, [outlets]);
+
+  /** outlet name for a payable, resolved through its originating direct charge */
+  const payableOutlet = useMemo(() => {
+    const byCharge = new Map(directCharges.map((c) => [c.id, c.outlet_id ?? null]));
+    return (p: { charge_id: string | null }) => outletName(p.charge_id ? byCharge.get(p.charge_id) ?? null : null);
+  }, [directCharges, outletName]);
+
+  const payableBillNo = useMemo(() => {
+    const byCharge = new Map(directCharges.map((c) => [c.id, c.bill_no ?? null]));
+    return (p: PayableRow) => p.bill_no ?? (p.charge_id ? byCharge.get(p.charge_id) ?? null : null);
+  }, [directCharges]);
+
+  function groupByOutlet<T>(rows: T[], name: (r: T) => string, amount: (r: T) => number): Array<[string, number]> {
+    const m = new Map<string, number>();
+    for (const r of rows) m.set(name(r), (m.get(name(r)) ?? 0) + Number(amount(r) || 0));
+    return Array.from(m.entries()).sort((a, b) => (a[0] === UNASSIGNED ? 1 : b[0] === UNASSIGNED ? -1 : b[1] - a[1]));
+  }
+
   const settledPayables = useMemo(() => payables.filter((p) => p.is_settled), [payables]);
   const payablesByMonth = useMemo(() => {
     const m = new Map<string, PayableRow[]>();
