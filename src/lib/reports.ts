@@ -210,7 +210,7 @@ export async function fetchGstInvoiceSlabs(
   endD.setDate(endD.getDate() + 1);
   const end = endD.toISOString();
   const { data } = await supabase.from("folios")
-    .select("id,invoice_number,created_at,guest_gstin,guest_company,billing_company_id,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name,state,state_code,gst_number)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
+    .select("id,booking_id,invoice_number,created_at,guest_gstin,guest_company,billing_company_id,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name,state,state_code,gst_number)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
     .eq("property_id", propertyId)
     .eq("gst_mode", "gst")
     .neq("status", "void")
@@ -218,9 +218,10 @@ export async function fetchGstInvoiceSlabs(
     .lt("created_at", end)
     .order("created_at", { ascending: false });
   // Place of supply compares GST state codes (GSTIN → state_code → state name).
-  const [{ data: propRow }, { data: coRows }] = await Promise.all([
+  const [{ data: propRow }, { data: coRows }, scope] = await Promise.all([
     supabase.from("properties").select("state,state_code,gstin").eq("id", propertyId).maybeSingle(),
     supabase.from("billing_companies").select("id,state,state_code,gstin").eq("property_id", propertyId),
+    fetchBanquetScope(propertyId),
   ]);
   const propParty = (propRow ?? null) as
     { state?: string | null; state_code?: string | null; gstin?: string | null } | null;
@@ -229,7 +230,7 @@ export async function fetchGstInvoiceSlabs(
     ((coRows ?? []) as CoRow[]).map((c) => [c.id, c]),
   );
   const out: GstInvoiceSlabRow[] = [];
-  for (const raw of data ?? []) {
+  for (const raw of (data ?? []).filter((d) => !isBanquetRecord(scope, d as { booking_id?: string | null }))) {
     const f = raw as unknown as {
       invoice_number: string; created_at: string;
       guest_gstin: string | null; guest_company: string | null;
