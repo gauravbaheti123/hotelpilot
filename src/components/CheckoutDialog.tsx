@@ -37,6 +37,12 @@ interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onDone?: () => void;
+  /**
+   * Bulk (sequential) checkout only: suppress the jump to the invoice page for
+   * every room except the last one, otherwise the navigation would unmount the
+   * queue mid-run. All other checkout logic is unchanged.
+   */
+  skipInvoiceNavigation?: boolean;
 }
 
 interface SummaryRow {
