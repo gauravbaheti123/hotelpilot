@@ -258,6 +258,46 @@ export function dueForCheckIn(blocks: EventBlockRecord[], today: string): EventB
   );
 }
 
+/**
+ * Shared checkout-completion step for banquet rooms.
+ *
+ * Closes every event_room_blocks row linked to a booking that has just been
+ * checked out. Called from the standard CheckoutDialog flow so the block status
+ * is updated no matter which screen initiated the checkout (this was the cause
+ * of the "stuck event tile" bug — the block stayed `checked_in` forever).
+ *
+ * Returns the affected block rows (room id/number) so the caller can write the
+ * same ROOM_STATUS_CHANGED activity entries a regular checkout writes.
+ */
+export async function closeEventBlocksForBooking(
+  bookingId: string,
+  userId: string,
+): Promise<{ id: string; room_id: string | null; room_number: string | null }[]> {
+  const { data, error } = await supabase
+    .from("event_room_blocks")
+    .select("id, room_id, room_number, status")
+    .eq("booking_id", bookingId);
+  if (error) throw error;
+  const openRows = (data ?? []).filter((r: any) => r.status !== "checked_out" && r.status !== "cancelled");
+  if (openRows.length === 0) return [];
+  const { error: upErr } = await supabase
+    .from("event_room_blocks")
+    .update({
+      status: "checked_out",
+      checked_out_at: new Date().toISOString(),
+      checked_out_by: userId,
+    } as any)
+    .in("id", openRows.map((r: any) => r.id));
+  if (upErr) throw upErr;
+  return openRows.map((r: any) => ({ id: r.id, room_id: r.room_id, room_number: r.room_number }));
+}
+
+/**
+ * @deprecated Simplified checkout path — skips balance validation, payment
+ * collection, pending KOT/segment-bill blocking and invoice display. All
+ * banquet room checkouts now go through the standard CheckoutDialog instead.
+ * Kept only until the bulk-checkout UX is migrated.
+ */
 export async function checkOutBlock(args: {
   block: EventBlockRecord;
   userId: string;
