@@ -920,6 +920,10 @@ function RestaurantPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <Label>Bill No</Label>
+                <Input value={pcBillNo} onChange={(e) => setPcBillNo(e.target.value)} placeholder="e.g. 202" />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Amount (₹)</Label>
