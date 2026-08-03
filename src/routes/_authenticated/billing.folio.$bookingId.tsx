@@ -164,6 +164,10 @@ function FolioPage() {
     Array<{ id: string; name: string; gstin: string | null; address: string | null; phone: string | null; email: string | null; city?: string | null; state?: string | null; state_code?: string | null; nation?: string | null }>
   >([]);
   const { methods: payMethods } = usePaymentMethods(folio?.property_id ?? booking?.property_id ?? null);
+  // Bill-To can also be another individual guest (family member, corporate
+  // traveller booked by someone else). Held separately from the folio's own guest.
+  const [billToGuest, setBillToGuest] = useState<BillToGuest | null>(null);
+  const [guestHits, setGuestHits] = useState<BillToGuest[]>([]);
 
   // Place of supply: Bill-To company (when picked), else the guest. Resolution
   // order per party is GSTIN state code → stored state_code → address state.
@@ -171,11 +175,18 @@ function FolioPage() {
   const billToCompany = folio?.billing_company_id
     ? billingCompanies.find((c) => c.id === folio.billing_company_id) ?? null
     : null;
-  const billToState = billToCompany?.state || booking?.guests?.state || null;
+  const billToOtherGuest = folio?.billing_guest_id && billToGuest?.id === folio.billing_guest_id
+    ? billToGuest
+    : null;
+  const billToState =
+    billToCompany?.state || billToOtherGuest?.state || booking?.guests?.state || null;
   const billToGstin = billToCompany
     ? billToCompany.gstin
-    : (folio?.guest_gstin || booking?.guests?.gst_number || null);
-  const billToStateCode = billToCompany?.state_code ?? booking?.guests?.state_code ?? null;
+    : billToOtherGuest
+      ? (billToOtherGuest.gst_number ?? null)
+      : (folio?.guest_gstin || booking?.guests?.gst_number || null);
+  const billToStateCode =
+    billToCompany?.state_code ?? billToOtherGuest?.state_code ?? booking?.guests?.state_code ?? null;
   const { taxType } = resolveTaxType(
     { gstin: billToGstin, stateCode: billToStateCode, state: billToState },
     { gstin: property?.gstin, stateCode: property?.state_code, state: property?.state },
