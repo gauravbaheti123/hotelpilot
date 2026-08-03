@@ -38,7 +38,7 @@ import {
 } from "@/lib/tariff";
 import { GuestIdUploadField, type SelectedIdFile } from "@/components/GuestIdUploadField";
 import { lookupExistingGuestId, type GuestIdLookupResult } from "@/lib/guestIdLookup";
-import { uploadFileToDrive, safeName } from "@/lib/driveUpload";
+import { uploadFileToDrive, safeName, driveFileExtension, logDriveUploadFailure } from "@/lib/driveUpload";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
@@ -782,7 +782,8 @@ function NewBookingPage() {
       } else if (idFile && guestId) {
         try {
           const ts = Date.now();
-          const fileName = `${safeName(name || "Guest")}_${safeName(booking!.booking_number || booking!.id.slice(0, 8))}_${ts}.jpg`;
+          const ext = driveFileExtension(idFile.file);
+          const fileName = `${safeName(name || "Guest")}_${safeName(booking!.booking_number || booking!.id.slice(0, 8))}_${ts}.${ext}`;
           const res = await uploadFileToDrive(idFile.file, "id_doc", fileName);
           await supabase.from("guests").update({
             id_document_url: res.viewUrl,
@@ -800,8 +801,13 @@ function NewBookingPage() {
           } as any);
           toast.success("✓ ID document uploaded to Drive");
         } catch (e: any) {
-          console.warn("ID upload failed", e);
-          toast.error("ID upload failed, please try again");
+          await logDriveUploadFailure(e, {
+            stage: "persist",
+            folderType: "id_doc",
+            file: idFile.file,
+            extra: { bookingId: booking!.id, guestId },
+          });
+          toast.error(`ID upload failed: ${e?.message ?? "unknown error"}`);
         }
       }
 

@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Camera, FolderOpen, FileText, X } from "lucide-react";
 import { driveThumbnailUrl, type ExistingIdDoc } from "@/lib/guestIdLookup";
+import { validateDriveImage, logDriveUploadFailure } from "@/lib/driveUpload";
 
 export interface SelectedIdFile {
   file: File;
@@ -34,15 +35,22 @@ export function GuestIdUploadField({
   function handlePicked(f: File | undefined) {
     if (!f) return;
     setError(null);
-    if (f.size > 10 * 1024 * 1024) {
-      setError("File too large (max 10 MB)");
+    try {
+      validateDriveImage(f);
+    } catch (e: any) {
+      setError(e?.message ?? "Unsupported file");
+      void logDriveUploadFailure(e, { stage: "validation", folderType: "id_doc", file: f });
       return;
     }
-    const isImage = f.type.startsWith("image/");
+    // HEIC/HEIF usually cannot be rendered by browsers — allow the upload but
+    // skip the local preview instead of blocking the file.
+    const type = (f.type || "").toLowerCase();
+    const previewable =
+      type.startsWith("image/") && !type.includes("heic") && !type.includes("heif");
     onReuseChange?.(false);
     onChange({
       file: f,
-      previewUrl: isImage ? URL.createObjectURL(f) : null,
+      previewUrl: previewable ? URL.createObjectURL(f) : null,
     });
   }
 
@@ -128,7 +136,7 @@ export function GuestIdUploadField({
         <input
           ref={fileRef}
           type="file"
-          accept="image/*,application/pdf"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf"
           className="hidden"
           onChange={(e) => handlePicked(e.target.files?.[0])}
         />

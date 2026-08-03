@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Camera, Check, Loader2, Eye, Download, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
-import { uploadFileToDrive, validateDriveImage, safeName } from "@/lib/driveUpload";
+import { uploadFileToDrive, validateDriveImage, safeName, driveFileExtension, logDriveUploadFailure } from "@/lib/driveUpload";
 
 const BUCKET = "kot-delivery-proofs";
 
@@ -47,7 +47,7 @@ export function DeliveryProof({ kotId, propertyId, proofUrl, takenAt, takenBy, o
     setSaving(true);
     try {
       const ts = Date.now();
-      const fileName = `KOT${safeName(kotNumber || kotId.slice(0, 8))}_${ts}.jpg`;
+      const fileName = `KOT${safeName(kotNumber || kotId.slice(0, 8))}_${ts}.${driveFileExtension(file)}`;
       const res = await uploadFileToDrive(file, "kot_proof", fileName);
       const { error } = await supabase.from("kot_orders").update({
         delivery_proof_url: res.viewUrl,
@@ -58,6 +58,7 @@ export function DeliveryProof({ kotId, propertyId, proofUrl, takenAt, takenBy, o
       toast.success("Delivery proof captured");
       onSaved?.();
     } catch (e: any) {
+      await logDriveUploadFailure(e, { stage: "persist", folderType: "kot_proof", file, extra: { kotId } });
       toast.error(e.message ?? "Upload failed");
     } finally {
       setSaving(false);
