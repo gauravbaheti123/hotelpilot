@@ -26,6 +26,7 @@ import {
   type BillDiscount,
  inrRound,
   consolidateSegmentCharges,
+  expandRoomNights,
   type DisplayCharge,
 } from "@/lib/billing";
 import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil } from "lucide-react";
@@ -2022,7 +2023,9 @@ function FolioPage() {
                     {canEditNow && (
                       <td className="print:hidden" style={{ textAlign: "right" }}>
                         <div className="flex items-center justify-end gap-1">
-                          {c.is_consolidated ? (
+                          {c.is_night_split ? (
+                            <span className="text-[10px] text-muted-foreground">Night</span>
+                          ) : c.is_consolidated ? (
                             <span className="text-[10px] text-muted-foreground">Bill</span>
                           ) : (<>
                           {c.charge_type !== "discount" && c.charge_type !== "tax" && (
