@@ -814,6 +814,7 @@ function RestaurantPage() {
                     Total outstanding: <span className="font-bold text-destructive">₹{totalPayable.toLocaleString()}</span>
                   </span>
                 </CardTitle>
+                <OutletBreakdown parts={outletPayableAll} className="mt-1" />
               </CardHeader>
               <CardContent className="space-y-4">
                 {payablesByMonth.length === 0 && (
@@ -822,29 +823,43 @@ function RestaurantPage() {
                 {payablesByMonth.map(([ym, rows]) => {
                   const total = rows.reduce((s, p) => s + Number(p.amount), 0);
                   const ids = rows.map((r) => r.id);
+                  const byOutlet = groupByOutlet(rows, payableOutlet, (p) => Number(p.amount));
                   return (
                     <div key={ym} className="border rounded-md p-3">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium">{ym} · {rows.length} entries · ₹{total.toLocaleString()}</div>
+                        <div>
+                          <div className="font-medium">{ym} · {rows.length} entries · ₹{total.toLocaleString()}</div>
+                          <OutletBreakdown parts={byOutlet} className="mt-0.5" />
+                        </div>
                         <Button size="sm" variant="outline" onClick={() => { setSettleIds(ids); setSettleOpen(true); }}>
                           Mark as Settled
                         </Button>
                       </div>
-                      <Table>
-                        <TableHeader><TableRow>
-                          <TableHead>Date</TableHead><TableHead>Description</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                        </TableRow></TableHeader>
-                        <TableBody>
-                          {rows.map((p) => (
-                            <TableRow key={p.id}>
-                              <TableCell className="text-xs">{p.charge_date}</TableCell>
-                              <TableCell className="text-xs">{p.description ?? "—"}</TableCell>
-                              <TableCell className="text-right">₹{Number(p.amount).toFixed(2)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                      {byOutlet.map(([oname, osum]) => (
+                        <div key={oname} className="mb-2">
+                          <div className="text-xs font-medium text-muted-foreground px-1 py-1">
+                            {oname} · ₹{osum.toLocaleString()}
+                          </div>
+                          <Table>
+                            <TableHeader><TableRow>
+                              <TableHead>Date</TableHead><TableHead>Outlet</TableHead>
+                              <TableHead>Bill No</TableHead><TableHead>Description</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                            </TableRow></TableHeader>
+                            <TableBody>
+                              {rows.filter((p) => payableOutlet(p) === oname).map((p) => (
+                                <TableRow key={p.id}>
+                                  <TableCell className="text-xs">{p.charge_date}</TableCell>
+                                  <TableCell className="text-xs">{oname}</TableCell>
+                                  <TableCell className="text-xs font-mono">{payableBillNo(p) || "—"}</TableCell>
+                                  <TableCell className="text-xs">{p.description ?? "—"}</TableCell>
+                                  <TableCell className="text-right">₹{Number(p.amount).toFixed(2)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      ))}
                     </div>
                   );
                 })}
@@ -854,7 +869,8 @@ function RestaurantPage() {
                     <div className="text-sm font-medium mt-4 mb-2">Settlement history</div>
                     <Table>
                       <TableHeader><TableRow>
-                        <TableHead>Charge Date</TableHead><TableHead>Settled On</TableHead>
+                        <TableHead>Charge Date</TableHead><TableHead>Outlet</TableHead>
+                        <TableHead>Bill No</TableHead><TableHead>Settled On</TableHead>
                         <TableHead>Notes</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
                       </TableRow></TableHeader>
@@ -862,6 +878,8 @@ function RestaurantPage() {
                         {settledPayables.map((p) => (
                           <TableRow key={p.id}>
                             <TableCell className="text-xs">{p.charge_date}</TableCell>
+                            <TableCell className="text-xs">{payableOutlet(p)}</TableCell>
+                            <TableCell className="text-xs font-mono">{payableBillNo(p) || "—"}</TableCell>
                             <TableCell className="text-xs">{p.settlement_date ?? "—"}</TableCell>
                             <TableCell className="text-xs">{p.settlement_notes ?? "—"}</TableCell>
                             <TableCell className="text-right">₹{Number(p.amount).toFixed(2)}</TableCell>
