@@ -219,6 +219,8 @@ function OwnerDashboard({
   const [eventBlockByRoom, setEventBlockByRoom] = useState<Map<string, RoomEventInfo>>(new Map());
   const [bulkCheckinEvent, setBulkCheckinEvent] = useState<EventBlockSummary | null>(null);
   const [bulkCheckoutEvent, setBulkCheckoutEvent] = useState<EventBlockSummary | null>(null);
+  // Sequential bulk checkout queue — each booking runs through the standard CheckoutDialog.
+  const [checkoutQueue, setCheckoutQueue] = useState<string[]>([]);
   const [singleAssignBlock, setSingleAssignBlock] = useState<EventBlockRecord | null>(null);
   const [grouping, setGrouping] = useState<"category" | "floor">("category");
   const [unassigned, setUnassigned] = useState<UnassignedReservation[]>([]);
@@ -1053,8 +1055,23 @@ function OwnerDashboard({
       <CheckoutDialog
         bookingId={checkoutBookingId}
         open={!!checkoutBookingId}
-        onOpenChange={(o: boolean) => { if (!o) setCheckoutBookingId(null); }}
-        onDone={() => { setCheckoutBookingId(null); reload(); }}
+        skipInvoiceNavigation={checkoutQueue.length > 0}
+        onOpenChange={(o: boolean) => {
+          if (!o) {
+            // Cancelling mid-queue abandons the remaining rooms.
+            setCheckoutBookingId(null);
+            if (checkoutQueue.length > 0) {
+              setCheckoutQueue([]);
+              toast.info("Bulk checkout stopped — remaining rooms were not checked out");
+            }
+          }
+        }}
+        onDone={() => {
+          const [next, ...rest] = checkoutQueue;
+          setCheckoutQueue(rest);
+          setCheckoutBookingId(next ?? null);
+          reload();
+        }}
       />
       <AddExtraBedDialog
         bookingId={extraBedBookingId}
@@ -1071,10 +1088,13 @@ function OwnerDashboard({
       />
       <BulkCheckoutDialog
         event={bulkCheckoutEvent}
-        propertyId={propertyId}
-        userId={userId}
         onClose={() => setBulkCheckoutEvent(null)}
-        onDone={() => { setBulkCheckoutEvent(null); reload(); }}
+        onStart={(ids) => {
+          setBulkCheckoutEvent(null);
+          const [first, ...rest] = ids;
+          setCheckoutQueue(rest);
+          setCheckoutBookingId(first ?? null);
+        }}
       />
       <AssignGuestDialog
         block={singleAssignBlock}
