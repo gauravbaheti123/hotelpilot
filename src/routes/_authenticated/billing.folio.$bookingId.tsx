@@ -345,6 +345,18 @@ function FolioPage() {
       supabase.from("payments").select("*").eq("folio_id", fId).order("paid_at", { ascending: false }),
     ]);
     setFolio((f ?? null) as unknown as Folio);
+    // Hydrate the Bill-To guest (when the folio bills to another individual).
+    const billGuestId = (f as any)?.billing_guest_id ?? null;
+    if (billGuestId) {
+      const { data: bg } = await supabase
+        .from("guests")
+        .select("id,name,mobile,gst_number,company,address,city,state,state_code")
+        .eq("id", billGuestId)
+        .maybeSingle();
+      setBillToGuest(((bg ?? null) as unknown as BillToGuest | null));
+    } else {
+      setBillToGuest(null);
+    }
     // Auto-correct any room charge whose stored gst_rate doesn't match the
     // property's current slab configuration. This repairs folios seeded
     // before Custom GST Slabs were enabled (or when a hardcoded fallback
