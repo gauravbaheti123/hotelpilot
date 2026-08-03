@@ -1,23 +1,35 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Banquet-origin scope.
+ * Banquet-origin scope — TIME-BASED visibility.
  *
  * Rooms blocked for a banquet event are checked in as ordinary `bookings`
- * rows carrying `source = 'event_block'`. Their folios, payments, KOTs and
- * food bills must NOT appear in operational reports — banquet revenue lives
- * in `banquet_bookings` / `banquet_master_bills` and in the Owner-only
- * "Banquet Billing" report.
+ * rows carrying `source = 'event_block'`. These stay fully visible in every
+ * operational screen/report for 48 hours after the event completes. Once the
+ * window lapses they disappear from normal screens and remain readable only
+ * in the Owner-only "Banquet Billing" report.
+ *
+ * The 48h clock is EVENT-level: it starts when the LAST room of an event has
+ * checked out (`public.banquet_visibility` RPC), so all rooms + food bills +
+ * master bill of one event expire together.
  *
  * `bookings.source = 'event_block'` is the single reliable discriminator.
  * Never match on the invoice-number prefix: `-B-` is shared with
  * `banquet_bookings.banquet_number`.
  */
 export interface BanquetScope {
-  /** bookings.id where source = 'event_block' */
+  /** bookings.id that are PAST the 48h window and must be hidden */
   bookingIds: Set<string>;
-  /** folios.id whose booking is an event block */
+  /** folios.id whose booking is past the 48h window */
   folioIds: Set<string>;
+}
+
+export interface BanquetVisibilityRow {
+  booking_id: string;
+  event_id: string | null;
+  last_checkout_at: string | null;
+  expires_at: string | null;
+  expired: boolean;
 }
 
 export const EMPTY_BANQUET_SCOPE: BanquetScope = {
@@ -33,12 +45,25 @@ async function inChunks<T>(ids: string[], fn: (chunk: string[]) => Promise<T[]>)
   return out;
 }
 
-/** Loads every event-block booking id + folio id. Pass null for all properties. */
+/** Raw visibility rows for every event-block booking (owner report). */
+export async function fetchBanquetVisibility(
+  propertyId: string | null,
+): Promise<BanquetVisibilityRow[]> {
+  const { data } = await supabase.rpc("banquet_visibility", {
+    _property_id: propertyId ?? undefined,
+  });
+  return (data ?? []) as BanquetVisibilityRow[];
+}
+
+/**
+ * Loads the bookings/folios that must be HIDDEN from normal screens, i.e.
+ * event-block stays whose event finished more than 48 hours ago. Bookings
+ * still in-house, upcoming, or within the 48h window are NOT included and
+ * therefore continue to appear everywhere as ordinary stays.
+ */
 export async function fetchBanquetScope(propertyId: string | null): Promise<BanquetScope> {
-  let q = supabase.from("bookings").select("id").eq("source", "event_block");
-  if (propertyId) q = q.eq("property_id", propertyId);
-  const { data } = await q;
-  const bookingIds = new Set<string>(((data ?? []) as Array<{ id: string }>).map((b) => b.id));
+  const rows = await fetchBanquetVisibility(propertyId);
+  const bookingIds = new Set<string>(rows.filter((r) => r.expired).map((r) => r.booking_id));
   if (bookingIds.size === 0) return { bookingIds, folioIds: new Set<string>() };
 
   const folios = await inChunks<{ id: string }>(Array.from(bookingIds), async (chunk) => {

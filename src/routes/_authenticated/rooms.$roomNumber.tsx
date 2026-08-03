@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
+import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { AppShell } from "@/components/AppShell";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { supabase } from "@/integrations/supabase/client";
@@ -167,9 +168,12 @@ function RoomDetailPage() {
       .eq("room_id", (r as any).id)
       .order("check_in", { ascending: false })
       .limit(8);
+    // Banquet event-block stays leave room history 48h after the event ends.
+    const bqScope = await fetchBanquetScope(null);
     const histRows: HistoryRow[] = (histBr ?? [])
       .map((x: any) => x.booking)
       .filter(Boolean)
+      .filter((b: any) => !isBanquetRecord(bqScope, { booking_id: b.id }))
       .slice(0, 5)
       .map((b: any) => ({
         id: b.id, booking_number: b.booking_number, check_in: b.check_in, check_out: b.check_out,

@@ -1,5 +1,6 @@
 import { createFileRoute, useRouter, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,9 +68,13 @@ function NewCommPage() {
       supabase.from("message_templates").select("id,name,channel,subject,body").eq("property_id", current.id).eq("is_active", true).order("name"),
       supabase.from("bookings").select("id,booking_number,check_in,check_out,balance_amount,guests(id,name,mobile,email),booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))").eq("property_id", current.id).in("status", ["reserved", "checked_in", "checked_out"]).order("check_in", { ascending: false }).limit(80),
       supabase.from("guests").select("id,name,mobile,email").eq("property_id", current.id).order("name").limit(200),
-    ]).then(([t, b, g]) => {
+    ]).then(async ([t, b, g]) => {
       setTemplates((t.data ?? []) as Tpl[]);
-      setBookings((b.data ?? []) as unknown as Booking[]);
+      // Banquet event-block bookings drop out of the picker after 48h.
+      const scope = await fetchBanquetScope(current.id);
+      setBookings(((b.data ?? []) as any[]).filter(
+        (bk) => !isBanquetRecord(scope, { booking_id: bk.id }),
+      ) as unknown as Booking[]);
       setGuests((g.data ?? []) as Guest[]);
     });
   }, [current?.id]);

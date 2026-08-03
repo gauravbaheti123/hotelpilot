@@ -59,8 +59,12 @@ function Page() {
     if (roomId !== "all") q = q.eq("room_id", roomId);
     const { data, error } = await q;
     if (error) { console.error("[room-wise] load failed:", error); setRows([]); return; }
-    // Banquet event-block bookings are excluded from the operational room report.
-    const raw = ((data ?? []) as any[]).filter((br) => br.bookings?.source !== "event_block");
+    // Banquet event-block stays are shown normally for 48h after the event
+    // completes; only expired ones drop out of the operational room report.
+    const scope = await fetchBanquetScope(propertyId);
+    const raw = ((data ?? []) as any[]).filter(
+      (br) => !isBanquetRecord(scope, { booking_id: br.bookings?.id ?? null }),
+    );
     const uids = new Set<string>();
     for (const br of raw) {
       const b = br.bookings;

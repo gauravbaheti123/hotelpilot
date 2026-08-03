@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -186,8 +187,11 @@ function NightAuditPage() {
       .eq("property_id", propertyId)
       .neq("status", "void").eq("is_deleted", false)
       .gt("balance_amount", 0);
-    // Banquet event-block folios are excluded from Day Close figures.
-    setUnsettled(((uf ?? []) as any[]).filter((f) => f.bookings?.source !== "event_block").map((f) => ({
+    // Banquet event-block folios count normally for 48h after the event ends.
+    const bqScope = await fetchBanquetScope(propertyId);
+    setUnsettled(((uf ?? []) as any[]).filter(
+      (f) => !isBanquetRecord(bqScope, { booking_id: f.booking_id, folio_id: f.id }),
+    ).map((f) => ({
       id: f.id, invoice_number: f.invoice_number, booking_id: f.booking_id,
       guest_name: f.bookings?.guests?.name ?? null,
       balance_amount: Number(f.balance_amount || 0),
@@ -214,7 +218,7 @@ function NightAuditPage() {
       .eq("property_id", propertyId).neq("status", "void").eq("is_deleted", false)
       .gte("created_at", startIso).lt("created_at", endIso);
     const folioIds = ((folioRows ?? []) as any[])
-      .filter((f) => f.bookings?.source !== "event_block")
+      .filter((f) => !isBanquetRecord(bqScope, { folio_id: f.id }))
       .map((f) => f.id);
     let roomRev = 0, foodRev = 0, otherRev = 0;
     if (folioIds.length) {
