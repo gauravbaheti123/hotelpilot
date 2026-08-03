@@ -293,3 +293,62 @@ export function consolidateSegmentCharges<T extends DisplayCharge>(
 
   return out;
 }
+/* ------------------------------------------------------------------ *
+ * Per-night room charge expansion (DISPLAY ONLY)
+ * ------------------------------------------------------------------ */
+
+function addDays(iso: string, days: number): string {
+  const d = new Date(`${String(iso).slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return String(iso ?? "").slice(0, 10);
+  d.setDate(d.getDate() + days);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/**
+ * Split a combined multi-night room charge (qty = nights) into one display row
+ * per night — Date | Description | HSN | Qty 1 | Rate | Amount.
+ *
+ * Nightly rows are DERIVED (there is no per-night postings table): each
+ * folio_charges room row corresponds to one booking_rooms segment, so a
+ * mid-stay room/rate change (which closes one segment and opens another)
+ * already yields separate rows and therefore correct per-night rates.
+ *
+ * Amounts, GST and line discounts are distributed with remainder so the nights
+ * sum EXACTLY to the stored values — totals, GST breakup and the grand total
+ * are byte-identical to before. Night-audit rows (qty = 1) pass through.
+ */
+export function expandRoomNights<T extends DisplayCharge>(
+  rows: T[],
+): DisplayCharge[] {
+  const out: DisplayCharge[] = [];
+  for (const c of rows) {
+    const nights = Math.round(Number(c.qty ?? 0));
+    if (c.charge_type !== "room" || c.is_consolidated || nights <= 1) {
+      out.push(c);
+      continue;
+    }
+    const weights = Array.from({ length: nights }, () => 1);
+    const amounts = distributeWithRemainder(Number(c.amount ?? 0), weights);
+    const gsts = distributeWithRemainder(Number(c.gst_amount ?? 0), weights);
+    const discs = distributeWithRemainder(Number(c.discount_amount ?? 0), weights);
+    const start = String(c.charged_on ?? "").slice(0, 10);
+    const label = String(c.description ?? "").replace(/\s*·\s*\d+\s*night\(s\)\s*$/i, "");
+    for (let i = 0; i < nights; i++) {
+      out.push({
+        ...c,
+        id: `${c.id ?? "room"}:n${i}`,
+        description: label,
+        qty: 1,
+        rate: Number(c.rate ?? 0),
+        amount: amounts[i] ?? 0,
+        gst_amount: gsts[i] ?? 0,
+        discount_amount: discs[i] ?? 0,
+        charged_on: start ? addDays(start, i) : null,
+        is_night_split: true,
+        source_charge_ids: c.id ? [String(c.id)] : [],
+      });
+    }
+  }
+  return out;
+}
