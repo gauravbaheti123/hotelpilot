@@ -6239,6 +6239,10 @@ export type Database = {
         }
         Returns: string
       }
+      split_room_night: {
+        Args: { _booking_room_id: string; _new_rate: number; _night: string }
+        Returns: string
+      }
       sync_booking_balance: {
         Args: { _booking_id: string }
         Returns: undefined

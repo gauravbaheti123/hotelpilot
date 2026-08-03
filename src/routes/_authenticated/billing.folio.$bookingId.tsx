@@ -901,6 +901,67 @@ function FolioPage() {
     setTariffOpen(true);
   }
 
+  /** Per-night tariff edit. The clicked row is a DERIVED night row from
+   *  expandRoomNights() — it has no folio_charges row of its own. The
+   *  split_room_night() RPC slices the underlying booking_rooms segment around
+   *  that date (head / this night / tail) so the night carries its own rate;
+   *  the existing seed trigger then posts one charge per slice with GST from
+   *  the master slabs. Split mechanics are never surfaced to the user. */
+  async function saveEditNightTariff() {
+    if (!folio || !tariffTarget) return;
+    const brId = tariffTarget.source_table === "booking_rooms" ? tariffTarget.source_id : null;
+    const night = String(tariffTarget.charged_on ?? "").slice(0, 10);
+    if (!brId || !night) return toast.error("This night can't be edited");
+    const newRate = Number(tariffRate);
+    const oldRate = Number(tariffTarget.rate ?? 0);
+    if (newRate < oldRate - 0.01) {
+      const chk = canApplyDiscount(discountLimit, { discountRupees: oldRate - newRate, base: oldRate });
+      if (!chk.allowed) return toast.error(chk.reason ?? describeLimit(discountLimit));
+    }
+    setTariffSaving(true);
+    try {
+      const { error } = await supabase.rpc("split_room_night" as any, {
+        _booking_room_id: brId,
+        _night: night,
+        _new_rate: newRate,
+      });
+      if (error) { toast.error(error.message); return; }
+      const next = await refetchCharges();
+      const prevTotal = Number(folio.total_amount);
+      await persistTotals(next, payments);
+      logActivity({
+        property_id: booking?.property_id ?? "",
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "ROOM_TARIFF_EDITED",
+        module: "Billing",
+        reference_id: folio.id,
+        reference_label: folio.invoice_number,
+        details: {
+          bill_number: folio.invoice_number,
+          booking_number: booking?.booking_number ?? null,
+          scope: "single_night",
+          night_date: night,
+          description: tariffTarget.description,
+          booking_room_id: brId,
+          nights: 1,
+          previous_rate: oldRate,
+          new_rate: newRate,
+          segment_split: true,
+          previous_bill_total: prevTotal,
+          new_bill_total: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst")).total_amount,
+          edited_by: userDisplayName(user as any),
+        },
+      });
+      toast.success(`Tariff for ${night} updated: ${inr(oldRate)} → ${inr(newRate)}`);
+      setTariffOpen(false);
+      setTariffTarget(null);
+      load();
+    } finally {
+      setTariffSaving(false);
+    }
+  }
+
   async function saveEditTariff() {
     if (!folio || !tariffTarget) return;
     if (!isOpen) return toast.error("Tariff can only be changed while the bill is OPEN");
@@ -909,6 +970,7 @@ function FolioPage() {
     if (!Number.isFinite(newRate) || newRate < 0) return toast.error("Enter a valid tariff");
     const oldRate = Number(tariffTarget.rate ?? 0);
     if (Math.abs(newRate - oldRate) < 0.005) { setTariffOpen(false); setTariffTarget(null); return; }
+    if ((tariffTarget as any).is_night_split) return saveEditNightTariff();
     const nights = Number(tariffTarget.qty ?? 1) || 1;
     const oldAmount = Number(tariffTarget.amount ?? 0);
     const newAmount = Math.round(nights * newRate * 100) / 100;
@@ -2236,7 +2298,18 @@ function FolioPage() {
                       <td className="print:hidden" style={{ textAlign: "right" }}>
                         <div className="flex items-center justify-end gap-1">
                           {c.is_night_split ? (
-                            <span className="text-[10px] text-muted-foreground">Night</span>
+                            c.charge_type === "room" && canEditTariff ? (
+                              <button
+                                type="button"
+                                onClick={() => openEditTariff(c as any)}
+                                className="text-sky-700"
+                                title="Edit this night's tariff"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">Night</span>
+                            )
                           ) : c.is_consolidated ? (
                             <span className="text-[10px] text-muted-foreground">Bill</span>
                           ) : (<>
@@ -2741,11 +2814,19 @@ function FolioPage() {
         {/* EDIT TARIFF (room charge, OPEN folio only) */}
         <Dialog open={tariffOpen} onOpenChange={(o) => { setTariffOpen(o); if (!o) setTariffTarget(null); }}>
           <DialogContent className="sm:max-w-md">
-            <DialogHeader><DialogTitle>Edit tariff</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>
+                {(tariffTarget as any)?.is_night_split ? "Edit tariff for this night" : "Edit tariff"}
+              </DialogTitle>
+            </DialogHeader>
             <div className="space-y-3">
               <div className="text-xs text-muted-foreground">
                 {tariffTarget?.description}
-                {tariffTarget ? ` · ${Number(tariffTarget.qty)} night(s)` : ""}
+                {tariffTarget
+                  ? (tariffTarget as any).is_night_split
+                    ? ` · ${String(tariffTarget.charged_on ?? "").slice(0, 10)}`
+                    : ` · ${Number(tariffTarget.qty)} night(s)`
+                  : ""}
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Nightly tariff (₹) *</Label>
@@ -2758,7 +2839,9 @@ function FolioPage() {
                 <div className="text-xs text-muted-foreground">
                   New amount:{" "}
                   {inr(Math.round((Number(tariffTarget?.qty ?? 1) || 1) * (Number(tariffRate) || 0) * 100) / 100)}
-                  {" · GST recalculated from the master slabs. Applies to every night of this room segment."}
+                  {(tariffTarget as any)?.is_night_split
+                    ? " · GST recalculated from the master slabs. Applies to this night only — the other nights keep their rate."
+                    : " · GST recalculated from the master slabs. Applies to every night of this room segment."}
                 </div>
               </div>
             </div>
