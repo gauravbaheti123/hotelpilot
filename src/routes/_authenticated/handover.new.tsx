@@ -18,7 +18,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { userDisplayName } from "@/lib/activityLog";
-import { fmtINR } from "@/lib/reportExports";
+import { fmtINR, fmtDateTime } from "@/lib/reportExports";
+import {
+  CASH_MODE, PETTY_TYPE_LABEL, buildCashBreakdown, fetchPreviousClosingCash,
+  fetchUnreconciledCashExpenses, fetchUnreconciledPetty, pettySign,
+  type CashExpenseRow, type PettyCashEntry,
+} from "@/lib/pettyCash";
 
 export const Route = createFileRoute("/_authenticated/handover/new")({
   head: () => ({ meta: [{ title: "Shift Handover — HotelPilot" }] }),
@@ -52,6 +57,12 @@ function StartHandoverPage() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Petty cash / cash-expense reconciliation state
+  const [openingCash, setOpeningCash] = useState("0");
+  const [openingLocked, setOpeningLocked] = useState(false);
+  const [petty, setPetty] = useState<PettyCashEntry[]>([]);
+  const [cashExpenses, setCashExpenses] = useState<CashExpenseRow[]>([]);
+
   // Load window start (last handover time or start of today)
   useEffect(() => {
     if (!propertyId) return;
@@ -63,6 +74,45 @@ function StartHandoverPage() {
       setWindowStart(data as unknown as string);
     })();
   }, [propertyId]);
+
+  // Carry the previous shift's closing float forward as this shift's opening.
+  useEffect(() => {
+    if (!propertyId) return;
+    let cancelled = false;
+    (async () => {
+      const prev = await fetchPreviousClosingCash(propertyId);
+      if (cancelled) return;
+      if (prev === null) {
+        // Very first shift for this property — editable once.
+        setOpeningCash("0");
+        setOpeningLocked(false);
+      } else {
+        setOpeningCash(String(prev));
+        setOpeningLocked(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [propertyId]);
+
+  // Pending petty cash entries + cash expenses inside the open window.
+  useEffect(() => {
+    if (!propertyId || !windowStart) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [p, e] = await Promise.all([
+          fetchUnreconciledPetty(propertyId),
+          fetchUnreconciledCashExpenses(propertyId, windowStart),
+        ]);
+        if (cancelled) return;
+        setPetty(p);
+        setCashExpenses(e);
+      } catch (err) {
+        if (!cancelled) toast.error((err as Error).message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [propertyId, windowStart]);
 
   // Load staff for "incoming manager" dropdown.
   // Uses a security-definer RPC: profiles RLS only exposes your own row to
@@ -122,16 +172,33 @@ function StartHandoverPage() {
     return () => { cancelled = true; };
   }, [propertyId, windowStart, methods]);
 
+  const cashPayments = useMemo(
+    () => lines.find((l) => l.mode === CASH_MODE)?.system_total ?? 0,
+    [lines],
+  );
+
+  const cashBreak = useMemo(
+    () => buildCashBreakdown(Number(openingCash || 0), cashPayments, petty, cashExpenses),
+    [openingCash, cashPayments, petty, cashExpenses],
+  );
+
+  /** Expected figure for a line: cash uses the enriched formula, others unchanged. */
+  const expectedFor = useCallback(
+    (l: LineRow) => (l.mode === CASH_MODE ? cashBreak.expected : l.system_total),
+    [cashBreak.expected],
+  );
+
   const totals = useMemo(() => {
     let sys = 0, man = 0, diff = 0;
     for (const l of lines) {
-      sys += l.system_total;
+      const expected = l.mode === CASH_MODE ? cashBreak.expected : l.system_total;
+      sys += expected;
       const manual = Number(l.manual_entry || 0);
       man += manual;
-      diff += manual - l.system_total;
+      diff += manual - expected;
     }
     return { sys, man, diff };
-  }, [lines]);
+  }, [lines, cashBreak.expected]);
 
   function updateLine(i: number, patch: Partial<LineRow>) {
     setLines((ls) => ls.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
@@ -146,7 +213,7 @@ function StartHandoverPage() {
       if (l.manual_entry === "" || Number.isNaN(manual)) {
         return toast.error(`Enter counted amount for ${formatPaymentMethodLabel(l.mode)}`);
       }
-      const d = Number((manual - l.system_total).toFixed(2));
+      const d = Number((manual - expectedFor(l)).toFixed(2));
       if (Math.abs(d) > 0.009 && !l.note.trim()) {
         return toast.error(`Note required for ${formatPaymentMethodLabel(l.mode)} — difference ₹${d.toFixed(2)}`);
       }
@@ -167,6 +234,9 @@ function StartHandoverPage() {
         incoming_user_id: incomingId,
         incoming_user_name: incomingName,
         window_start: windowStart,
+        window_end: new Date().toISOString(),
+        opening_cash: cashBreak.opening,
+        closing_cash: cashBreak.expected,
         total_system: totals.sys,
         total_manual: totals.man,
         total_difference: totals.diff,
@@ -178,18 +248,37 @@ function StartHandoverPage() {
 
     const lineRows = lines.map((l) => {
       const manual = Number(l.manual_entry);
+      const expected = expectedFor(l);
       return {
         handover_id: (h as any).id,
         mode: l.mode,
-        system_total: l.system_total,
+        system_total: expected,
         manual_entry: manual,
-        difference: Number((manual - l.system_total).toFixed(2)),
+        difference: Number((manual - expected).toFixed(2)),
         note: l.note.trim() || null,
       };
     });
     const { error: lErr } = await supabase.from("shift_handover_lines").insert(lineRows as any);
+    if (lErr) { setSaving(false); return toast.error(lErr.message); }
+
+    // Mark everything folded into this window as reconciled so the next shift
+    // does not double-count it.
+    const handoverId = (h as any).id as string;
+    if (petty.length > 0) {
+      const { error: pErr } = await supabase
+        .from("petty_cash_entries")
+        .update({ handover_id: handoverId } as any)
+        .in("id", petty.map((p) => p.id));
+      if (pErr) toast.error(`Petty cash not marked reconciled: ${pErr.message}`);
+    }
+    if (cashExpenses.length > 0) {
+      const { error: eErr } = await supabase
+        .from("expenses")
+        .update({ handover_id: handoverId } as any)
+        .in("id", cashExpenses.map((e) => e.id));
+      if (eErr) toast.error(`Cash expenses not marked reconciled: ${eErr.message}`);
+    }
     setSaving(false);
-    if (lErr) return toast.error(lErr.message);
 
     toast.success("Handover submitted");
     navigate({ to: "/reports/cash-handover" });
@@ -219,6 +308,21 @@ function StartHandoverPage() {
                 <div className="font-medium">
                   {windowStart ? new Date(windowStart).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
                 </div>
+              </div>
+              <div>
+                <Label className="text-xs">Opening Cash (float)</Label>
+                {openingLocked ? (
+                  <div className="font-medium tabular-nums">
+                    {fmtINR(Number(openingCash || 0))}
+                    <span className="ml-2 text-[10px] text-muted-foreground">carried forward</span>
+                  </div>
+                ) : (
+                  <Input
+                    type="number" step="0.01" value={openingCash}
+                    onChange={(e) => setOpeningCash(e.target.value)}
+                    className="tabular-nums"
+                  />
+                )}
               </div>
               <div>
                 <Label className="text-xs">Incoming Manager (optional)</Label>
@@ -262,13 +366,21 @@ function StartHandoverPage() {
                   <tbody className="divide-y">
                     {lines.map((l, i) => {
                       const manual = Number(l.manual_entry || 0);
-                      const diff = Number((manual - l.system_total).toFixed(2));
+                      const expected = expectedFor(l);
+                      const diff = Number((manual - expected).toFixed(2));
                       const mismatch = l.manual_entry !== "" && Math.abs(diff) > 0.009;
                       const noteMissing = mismatch && !l.note.trim();
                       return (
                         <tr key={l.mode} className={mismatch ? "bg-rose-50/50" : ""}>
-                          <td className="px-3 py-2 font-medium">{formatPaymentMethodLabel(l.mode)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{fmtINR(l.system_total)}</td>
+                          <td className="px-3 py-2 font-medium">
+                            {formatPaymentMethodLabel(l.mode)}
+                            {l.mode === CASH_MODE && (
+                              <div className="text-[10px] font-normal text-muted-foreground">
+                                incl. float, petty cash &amp; cash expenses
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums">{fmtINR(expected)}</td>
                           <td className="px-3 py-2 text-right">
                             <Input
                               type="number" step="0.01"
@@ -305,6 +417,78 @@ function StartHandoverPage() {
                 </table>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm uppercase tracking-wider">Cash Line Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="overflow-x-auto rounded border">
+              <table className="w-full text-sm">
+                <tbody className="divide-y">
+                  <tr><td className="px-3 py-1.5">Opening cash (float)</td><td className="px-3 py-1.5 text-right tabular-nums">{fmtINR(cashBreak.opening)}</td></tr>
+                  <tr><td className="px-3 py-1.5">+ Cash payments received</td><td className="px-3 py-1.5 text-right tabular-nums">{fmtINR(cashBreak.payments)}</td></tr>
+                  <tr><td className="px-3 py-1.5">+ Petty cash in</td><td className="px-3 py-1.5 text-right tabular-nums">{fmtINR(cashBreak.cashIn)}</td></tr>
+                  <tr><td className="px-3 py-1.5">− Petty cash out</td><td className="px-3 py-1.5 text-right tabular-nums">{fmtINR(cashBreak.cashOut)}</td></tr>
+                  <tr><td className="px-3 py-1.5">− Cash expenses in window</td><td className="px-3 py-1.5 text-right tabular-nums">{fmtINR(cashBreak.expenses)}</td></tr>
+                  <tr className="bg-muted/30 font-semibold">
+                    <td className="px-3 py-2">= Expected cash in drawer</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{fmtINR(cashBreak.expected)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <div className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Pending petty cash ({petty.length})
+                </div>
+                {petty.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No pending entries.</p>
+                ) : (
+                  <ul className="divide-y rounded border text-xs">
+                    {petty.map((p) => (
+                      <li key={p.id} className="flex items-center gap-2 px-2 py-1.5">
+                        <span className="w-24 shrink-0 text-muted-foreground">{fmtDateTime(p.created_at)}</span>
+                        <span className="shrink-0">{PETTY_TYPE_LABEL[p.entry_type]}</span>
+                        <span className="flex-1 truncate text-muted-foreground">{p.reason ?? ""}</span>
+                        <span className={`tabular-nums ${p.entry_type === "out" ? "text-rose-700" : ""}`}>
+                          {(pettySign(p.entry_type) > 0 ? "+" : "−") + fmtINR(p.amount)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <div className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Cash expenses in window ({cashExpenses.length})
+                </div>
+                {cashExpenses.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No cash expenses pending.</p>
+                ) : (
+                  <ul className="divide-y rounded border text-xs">
+                    {cashExpenses.map((e) => (
+                      <li key={e.id} className="flex items-center gap-2 px-2 py-1.5">
+                        <span className="w-24 shrink-0 text-muted-foreground">
+                          {fmtDateTime(e.paid_at)}{e.paid_at_approx ? " ~" : ""}
+                        </span>
+                        <span className="flex-1 truncate text-muted-foreground">
+                          {e.description || e.reference || "Expense"}
+                        </span>
+                        <span className="tabular-nums text-rose-700">−{fmtINR(e.amount)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              “~” marks historical expenses whose exact payment time is approximate (backfilled to midday of the expense date).
+            </p>
           </CardContent>
         </Card>
 
