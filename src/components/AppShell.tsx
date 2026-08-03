@@ -142,6 +142,7 @@ const NAV_GROUPS: NavGroup[] = [
       { to: "/staff", label: "Staff HR", icon: Users, module: "staff_hr" },
       { to: "/banquet/bookings", label: "Banquet", icon: PartyPopper, module: "banquet" },
       { to: "/handover/new", label: "Shift Handover", icon: ClipboardCheck, module: "shift_handover" },
+      { to: "/petty-cash", label: "Petty Cash", icon: Wallet, module: "shift_handover" },
       { to: "/label-printing", label: "Label Printing", icon: Tag, module: "label_printing" },
       { to: "/masters", label: "Master Data", icon: LayoutGrid, module: "master_data" },
       { to: "/settings", label: "Settings", icon: Settings,
