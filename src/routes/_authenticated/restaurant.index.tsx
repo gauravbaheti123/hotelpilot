@@ -557,14 +557,17 @@ function RestaurantPage() {
           <Card><CardContent className="pt-4">
             <div className="text-xs text-muted-foreground">Total Amount</div>
             <div className="text-2xl font-semibold">₹{totalMonth.toLocaleString()}</div>
+            <OutletBreakdown parts={outletTotalAmount} className="mt-1" />
           </CardContent></Card>
           <Card><CardContent className="pt-4">
             <div className="text-xs text-muted-foreground">Settled</div>
             <div className="text-2xl font-semibold text-emerald-600">₹{totalSettled.toLocaleString()}</div>
+            <OutletBreakdown parts={outletSettled} className="mt-1" />
           </CardContent></Card>
           <Card><CardContent className="pt-4">
             <div className="text-xs text-muted-foreground">Outstanding</div>
             <div className={`text-2xl font-semibold ${totalActive > 0 ? "text-destructive" : ""}`}>₹{totalActive.toLocaleString()}</div>
+            <OutletBreakdown parts={outletOutstanding} className="mt-1" />
           </CardContent></Card>
         </div>
         <Tabs defaultValue="active">
@@ -580,8 +583,9 @@ function RestaurantPage() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Active Restaurant Credits ({MONTHS[month - 1]} {year})</span>
-                  <span className="text-sm font-normal text-muted-foreground">
+                  <span className="text-sm font-normal text-muted-foreground text-right">
                     Total outstanding this month: <span className="font-semibold text-foreground">₹{totalActive.toLocaleString()}</span>
+                    <OutletBreakdown parts={outletOutstanding} className="justify-end mt-0.5" />
                   </span>
                 </CardTitle>
               </CardHeader>
@@ -593,6 +597,7 @@ function RestaurantPage() {
                       <TableHead>Room</TableHead>
                       <TableHead>Guest</TableHead>
                       <TableHead>KOT Ref</TableHead>
+                      <TableHead>Outlet</TableHead>
                       <TableHead>Items</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead>Kitchen</TableHead>
@@ -602,10 +607,10 @@ function RestaurantPage() {
                   </TableHeader>
                   <TableBody>
                     {loading && (
-                      <TableRow><TableCell colSpan={9} className="text-center py-6 text-sm text-muted-foreground">Loading…</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={10} className="text-center py-6 text-sm text-muted-foreground">Loading…</TableCell></TableRow>
                     )}
                     {!loading && monthRows.length === 0 && (
-                      <TableRow><TableCell colSpan={9} className="text-center py-6 text-sm text-muted-foreground">No food orders this month</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={10} className="text-center py-6 text-sm text-muted-foreground">No food orders this month</TableCell></TableRow>
                     )}
                     {monthRows.map((r) => {
                       const e = enriched[r.id] ?? {};
@@ -615,6 +620,7 @@ function RestaurantPage() {
                           <TableCell>{e.room_no ?? "—"}</TableCell>
                           <TableCell>{e.guest_name ?? "—"}</TableCell>
                           <TableCell className="text-xs font-mono">{e.kot_number ?? "—"}</TableCell>
+                          <TableCell className="text-xs">{UNASSIGNED}</TableCell>
                           <TableCell className="text-xs max-w-[280px] truncate">{e.items ?? "—"}</TableCell>
                           <TableCell className="text-right font-medium">₹{Number(r.amount).toFixed(2)}</TableCell>
                           <TableCell className="text-xs capitalize">{e.kitchen ?? "—"}</TableCell>
