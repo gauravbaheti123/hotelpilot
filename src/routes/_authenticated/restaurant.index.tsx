@@ -47,6 +47,23 @@ interface CreditEnrichment {
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+const UNASSIGNED = "Unassigned";
+
+/** Small inline outlet-wise subtotal strip — reused on every settlement view. */
+function OutletBreakdown({ parts, className }: { parts: Array<[string, number]>; className?: string }) {
+  if (parts.length === 0) return null;
+  return (
+    <div className={`text-[11px] text-muted-foreground flex flex-wrap gap-x-2 gap-y-0.5 ${className ?? ""}`}>
+      {parts.map(([name, amt], i) => (
+        <span key={name}>
+          {i > 0 && <span className="mr-2">·</span>}
+          {name}: <span className="font-medium text-foreground">₹{amt.toLocaleString()}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function RestaurantPage() {
   const { current } = useCurrentProperty();
   const { user } = useAuth();
@@ -65,12 +82,13 @@ function RestaurantPage() {
   type DirectChargeRow = {
     id: string; booking_id: string | null; guest_id: string | null;
     amount: number; description: string | null; charge_date: string;
-    is_settled: boolean; created_at: string; outlet_id?: string | null;
+    is_settled: boolean; created_at: string; outlet_id?: string | null; bill_no?: string | null;
   };
   type PayableRow = {
     id: string; charge_id: string | null; amount: number;
     description: string | null; charge_date: string;
     is_settled: boolean; settlement_date: string | null; settlement_notes: string | null;
+    bill_no?: string | null;
   };
   const [directCharges, setDirectCharges] = useState<DirectChargeRow[]>([]);
   const [directEnrich, setDirectEnrich] = useState<Record<string, { room?: string; guest?: string }>>({});
@@ -81,6 +99,7 @@ function RestaurantPage() {
   const [pcOutlet, setPcOutlet] = useState("");
   const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]);
   const [pcAmount, setPcAmount] = useState<string>("");
+  const [pcBillNo, setPcBillNo] = useState<string>("");
   const [pcDesc, setPcDesc] = useState("Restaurant Charge");
   const [pcDate, setPcDate] = useState(new Date().toISOString().slice(0, 10));
   const [posting, setPosting] = useState(false);
@@ -95,12 +114,12 @@ function RestaurantPage() {
     const [dc, py, bk, ol] = await Promise.all([
       supabase
         .from("restaurant_direct_charges" as any)
-        .select("id,booking_id,guest_id,amount,description,charge_date,is_settled,created_at,outlet_id")
+        .select("id,booking_id,guest_id,amount,description,charge_date,is_settled,created_at,outlet_id,bill_no")
         .eq("property_id", current.id)
         .order("charge_date", { ascending: false }),
       supabase
         .from("restaurant_payables" as any)
-        .select("id,charge_id,amount,description,charge_date,is_settled,settlement_date,settlement_notes")
+        .select("id,charge_id,amount,description,charge_date,is_settled,settlement_date,settlement_notes,bill_no")
         .eq("property_id", current.id)
         .order("charge_date", { ascending: false }),
       supabase
@@ -167,6 +186,7 @@ function RestaurantPage() {
           guest_id: booking?.guest_id ?? null,
           outlet_id: pcOutlet,
           amount: amt,
+          bill_no: pcBillNo.trim() || null,
           description: pcDesc || "Restaurant Charge",
           charge_date: pcDate,
           posted_by: user?.id ?? null,
@@ -179,6 +199,7 @@ function RestaurantPage() {
         property_id: current.id,
         charge_id: chargeId,
         amount: amt,
+        bill_no: pcBillNo.trim() || null,
         description: pcDesc || "Restaurant Charge",
         charge_date: pcDate,
       });
@@ -207,7 +228,7 @@ function RestaurantPage() {
 
       toast.success(`Charge posted to ${booking?.label ?? "guest"}`);
       setPostOpen(false);
-      setPcAmount(""); setPcDesc("Restaurant Charge"); setPcBooking(""); setPcOutlet("");
+      setPcAmount(""); setPcDesc("Restaurant Charge"); setPcBooking(""); setPcOutlet(""); setPcBillNo("");
       await loadDirect();
     } catch (e: any) {
       toast.error(e.message ?? "Failed to post charge");
@@ -215,6 +236,29 @@ function RestaurantPage() {
   }
 
   const unsettledPayables = useMemo(() => payables.filter((p) => !p.is_settled), [payables]);
+
+  const outletName = useMemo(() => {
+    const m = new Map(outlets.map((o) => [o.id, o.name]));
+    return (id?: string | null) => (id && m.get(id)) || UNASSIGNED;
+  }, [outlets]);
+
+  /** outlet name for a payable, resolved through its originating direct charge */
+  const payableOutlet = useMemo(() => {
+    const byCharge = new Map(directCharges.map((c) => [c.id, c.outlet_id ?? null]));
+    return (p: { charge_id: string | null }) => outletName(p.charge_id ? byCharge.get(p.charge_id) ?? null : null);
+  }, [directCharges, outletName]);
+
+  const payableBillNo = useMemo(() => {
+    const byCharge = new Map(directCharges.map((c) => [c.id, c.bill_no ?? null]));
+    return (p: PayableRow) => p.bill_no ?? (p.charge_id ? byCharge.get(p.charge_id) ?? null : null);
+  }, [directCharges]);
+
+  function groupByOutlet<T>(rows: T[], name: (r: T) => string, amount: (r: T) => number): Array<[string, number]> {
+    const m = new Map<string, number>();
+    for (const r of rows) m.set(name(r), (m.get(name(r)) ?? 0) + Number(amount(r) || 0));
+    return Array.from(m.entries()).sort((a, b) => (a[0] === UNASSIGNED ? 1 : b[0] === UNASSIGNED ? -1 : b[1] - a[1]));
+  }
+
   const settledPayables = useMemo(() => payables.filter((p) => p.is_settled), [payables]);
   const payablesByMonth = useMemo(() => {
     const m = new Map<string, PayableRow[]>();
@@ -356,6 +400,53 @@ function RestaurantPage() {
   const restInvoiceNum = typeof restInvoice === "number" ? restInvoice : Number(restInvoice || 0);
   const difference = restInvoiceNum - totalActive;
 
+  // Outlet-wise breakdowns (KOT credits carry no outlet → Unassigned bucket)
+  const monthDirect = useMemo(
+    () => directCharges.filter((c) => {
+      const d = new Date(c.charge_date);
+      return d.getMonth() + 1 === month && d.getFullYear() === year;
+    }),
+    [directCharges, month, year],
+  );
+  const outletTotalAmount = useMemo(
+    () => groupByOutlet(
+      [
+        ...monthRows.map((r) => ({ n: UNASSIGNED, a: Number(r.amount) })),
+        ...monthDirect.map((c) => ({ n: outletName(c.outlet_id), a: Number(c.amount) })),
+      ],
+      (r) => r.n, (r) => r.a,
+    ),
+    [monthRows, monthDirect, outletName],
+  );
+  const outletSettled = useMemo(
+    () => groupByOutlet(
+      [
+        ...monthRows.filter((r) => r.is_settled).map((r) => ({ n: UNASSIGNED, a: Number(r.amount) })),
+        ...monthDirect.filter((c) => c.is_settled).map((c) => ({ n: outletName(c.outlet_id), a: Number(c.amount) })),
+      ],
+      (r) => r.n, (r) => r.a,
+    ),
+    [monthRows, monthDirect, outletName],
+  );
+  const outletOutstanding = useMemo(
+    () => groupByOutlet(
+      [
+        ...activeRows.map((r) => ({ n: UNASSIGNED, a: Number(r.amount) })),
+        ...monthDirect.filter((c) => !c.is_settled).map((c) => ({ n: outletName(c.outlet_id), a: Number(c.amount) })),
+      ],
+      (r) => r.n, (r) => r.a,
+    ),
+    [activeRows, monthDirect, outletName],
+  );
+  const outletDirectAll = useMemo(
+    () => groupByOutlet(directCharges, (c) => outletName(c.outlet_id), (c) => Number(c.amount)),
+    [directCharges, outletName],
+  );
+  const outletPayableAll = useMemo(
+    () => groupByOutlet(unsettledPayables, payableOutlet, (p) => Number(p.amount)),
+    [unsettledPayables, payableOutlet],
+  );
+
   async function settle() {
     if (!current) return;
     if (activeRows.length === 0) return toast.error("No outstanding credits to settle");
@@ -466,14 +557,17 @@ function RestaurantPage() {
           <Card><CardContent className="pt-4">
             <div className="text-xs text-muted-foreground">Total Amount</div>
             <div className="text-2xl font-semibold">₹{totalMonth.toLocaleString()}</div>
+            <OutletBreakdown parts={outletTotalAmount} className="mt-1" />
           </CardContent></Card>
           <Card><CardContent className="pt-4">
             <div className="text-xs text-muted-foreground">Settled</div>
             <div className="text-2xl font-semibold text-emerald-600">₹{totalSettled.toLocaleString()}</div>
+            <OutletBreakdown parts={outletSettled} className="mt-1" />
           </CardContent></Card>
           <Card><CardContent className="pt-4">
             <div className="text-xs text-muted-foreground">Outstanding</div>
             <div className={`text-2xl font-semibold ${totalActive > 0 ? "text-destructive" : ""}`}>₹{totalActive.toLocaleString()}</div>
+            <OutletBreakdown parts={outletOutstanding} className="mt-1" />
           </CardContent></Card>
         </div>
         <Tabs defaultValue="active">
@@ -489,8 +583,9 @@ function RestaurantPage() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Active Restaurant Credits ({MONTHS[month - 1]} {year})</span>
-                  <span className="text-sm font-normal text-muted-foreground">
+                  <span className="text-sm font-normal text-muted-foreground text-right">
                     Total outstanding this month: <span className="font-semibold text-foreground">₹{totalActive.toLocaleString()}</span>
+                    <OutletBreakdown parts={outletOutstanding} className="justify-end mt-0.5" />
                   </span>
                 </CardTitle>
               </CardHeader>
@@ -502,6 +597,7 @@ function RestaurantPage() {
                       <TableHead>Room</TableHead>
                       <TableHead>Guest</TableHead>
                       <TableHead>KOT Ref</TableHead>
+                      <TableHead>Outlet</TableHead>
                       <TableHead>Items</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead>Kitchen</TableHead>
@@ -511,10 +607,10 @@ function RestaurantPage() {
                   </TableHeader>
                   <TableBody>
                     {loading && (
-                      <TableRow><TableCell colSpan={9} className="text-center py-6 text-sm text-muted-foreground">Loading…</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={10} className="text-center py-6 text-sm text-muted-foreground">Loading…</TableCell></TableRow>
                     )}
                     {!loading && monthRows.length === 0 && (
-                      <TableRow><TableCell colSpan={9} className="text-center py-6 text-sm text-muted-foreground">No food orders this month</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={10} className="text-center py-6 text-sm text-muted-foreground">No food orders this month</TableCell></TableRow>
                     )}
                     {monthRows.map((r) => {
                       const e = enriched[r.id] ?? {};
@@ -524,6 +620,7 @@ function RestaurantPage() {
                           <TableCell>{e.room_no ?? "—"}</TableCell>
                           <TableCell>{e.guest_name ?? "—"}</TableCell>
                           <TableCell className="text-xs font-mono">{e.kot_number ?? "—"}</TableCell>
+                          <TableCell className="text-xs">{UNASSIGNED}</TableCell>
                           <TableCell className="text-xs max-w-[280px] truncate">{e.items ?? "—"}</TableCell>
                           <TableCell className="text-right font-medium">₹{Number(r.amount).toFixed(2)}</TableCell>
                           <TableCell className="text-xs capitalize">{e.kitchen ?? "—"}</TableCell>
@@ -583,6 +680,7 @@ function RestaurantPage() {
                   <Card><CardContent className="pt-4">
                     <div className="text-xs text-muted-foreground">Hotel Total (unsettled)</div>
                     <div className="text-2xl font-semibold">₹{totalActive.toLocaleString()}</div>
+                    <OutletBreakdown parts={outletOutstanding} className="mt-1" />
                   </CardContent></Card>
                   <Card><CardContent className="pt-4">
                     <Label className="text-xs">Restaurant invoice amount</Label>
@@ -611,11 +709,13 @@ function RestaurantPage() {
                   <div className="text-sm font-medium mb-2 flex items-center gap-2">
                     <FileSpreadsheet className="h-4 w-4" /> KOT-wise breakup
                   </div>
+                  <OutletBreakdown parts={outletTotalAmount} className="mb-2" />
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Date</TableHead>
                         <TableHead>KOT</TableHead>
+                        <TableHead>Outlet</TableHead>
                         <TableHead>Room</TableHead>
                         <TableHead>Guest</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
@@ -624,7 +724,7 @@ function RestaurantPage() {
                     </TableHeader>
                     <TableBody>
                       {monthRows.length === 0 && (
-                        <TableRow><TableCell colSpan={6} className="text-center py-4 text-sm text-muted-foreground">No data</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7} className="text-center py-4 text-sm text-muted-foreground">No data</TableCell></TableRow>
                       )}
                       {monthRows.map((r) => {
                         const e = enriched[r.id] ?? {};
@@ -632,6 +732,7 @@ function RestaurantPage() {
                           <TableRow key={r.id}>
                             <TableCell className="text-xs">{r.date}</TableCell>
                             <TableCell className="text-xs font-mono">{e.kot_number ?? "—"}</TableCell>
+                            <TableCell className="text-xs">{UNASSIGNED}</TableCell>
                             <TableCell>{e.room_no ?? "—"}</TableCell>
                             <TableCell>{e.guest_name ?? "—"}</TableCell>
                             <TableCell className="text-right">₹{Number(r.amount).toFixed(2)}</TableCell>
@@ -659,19 +760,21 @@ function RestaurantPage() {
                     <Plus className="h-4 w-4 mr-1" /> Post Restaurant Charge
                   </Button>
                 </CardTitle>
+                <OutletBreakdown parts={outletDirectAll} className="mt-1" />
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader><TableRow>
                     <TableHead>Date</TableHead><TableHead>Room</TableHead>
                     <TableHead>Guest</TableHead><TableHead>Outlet</TableHead>
+                    <TableHead>Bill No</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {directCharges.length === 0 && (
-                      <TableRow><TableCell colSpan={7} className="text-center py-6 text-sm text-muted-foreground">
+                      <TableRow><TableCell colSpan={8} className="text-center py-6 text-sm text-muted-foreground">
                         No direct charges posted yet
                       </TableCell></TableRow>
                     )}
@@ -683,8 +786,9 @@ function RestaurantPage() {
                           <TableCell>{e.room ?? "—"}</TableCell>
                           <TableCell>{e.guest ?? "—"}</TableCell>
                           <TableCell className="text-xs">
-                            {outlets.find((o) => o.id === c.outlet_id)?.name ?? "Unassigned"}
+                            {outletName(c.outlet_id)}
                           </TableCell>
+                          <TableCell className="text-xs font-mono">{c.bill_no || "—"}</TableCell>
                           <TableCell className="text-xs">{c.description}</TableCell>
                           <TableCell className="text-right font-medium">₹{Number(c.amount).toFixed(2)}</TableCell>
                           <TableCell>
@@ -710,6 +814,7 @@ function RestaurantPage() {
                     Total outstanding: <span className="font-bold text-destructive">₹{totalPayable.toLocaleString()}</span>
                   </span>
                 </CardTitle>
+                <OutletBreakdown parts={outletPayableAll} className="mt-1" />
               </CardHeader>
               <CardContent className="space-y-4">
                 {payablesByMonth.length === 0 && (
@@ -718,29 +823,43 @@ function RestaurantPage() {
                 {payablesByMonth.map(([ym, rows]) => {
                   const total = rows.reduce((s, p) => s + Number(p.amount), 0);
                   const ids = rows.map((r) => r.id);
+                  const byOutlet = groupByOutlet(rows, payableOutlet, (p) => Number(p.amount));
                   return (
                     <div key={ym} className="border rounded-md p-3">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium">{ym} · {rows.length} entries · ₹{total.toLocaleString()}</div>
+                        <div>
+                          <div className="font-medium">{ym} · {rows.length} entries · ₹{total.toLocaleString()}</div>
+                          <OutletBreakdown parts={byOutlet} className="mt-0.5" />
+                        </div>
                         <Button size="sm" variant="outline" onClick={() => { setSettleIds(ids); setSettleOpen(true); }}>
                           Mark as Settled
                         </Button>
                       </div>
-                      <Table>
-                        <TableHeader><TableRow>
-                          <TableHead>Date</TableHead><TableHead>Description</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                        </TableRow></TableHeader>
-                        <TableBody>
-                          {rows.map((p) => (
-                            <TableRow key={p.id}>
-                              <TableCell className="text-xs">{p.charge_date}</TableCell>
-                              <TableCell className="text-xs">{p.description ?? "—"}</TableCell>
-                              <TableCell className="text-right">₹{Number(p.amount).toFixed(2)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                      {byOutlet.map(([oname, osum]) => (
+                        <div key={oname} className="mb-2">
+                          <div className="text-xs font-medium text-muted-foreground px-1 py-1">
+                            {oname} · ₹{osum.toLocaleString()}
+                          </div>
+                          <Table>
+                            <TableHeader><TableRow>
+                              <TableHead>Date</TableHead><TableHead>Outlet</TableHead>
+                              <TableHead>Bill No</TableHead><TableHead>Description</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                            </TableRow></TableHeader>
+                            <TableBody>
+                              {rows.filter((p) => payableOutlet(p) === oname).map((p) => (
+                                <TableRow key={p.id}>
+                                  <TableCell className="text-xs">{p.charge_date}</TableCell>
+                                  <TableCell className="text-xs">{oname}</TableCell>
+                                  <TableCell className="text-xs font-mono">{payableBillNo(p) || "—"}</TableCell>
+                                  <TableCell className="text-xs">{p.description ?? "—"}</TableCell>
+                                  <TableCell className="text-right">₹{Number(p.amount).toFixed(2)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      ))}
                     </div>
                   );
                 })}
@@ -750,7 +869,8 @@ function RestaurantPage() {
                     <div className="text-sm font-medium mt-4 mb-2">Settlement history</div>
                     <Table>
                       <TableHeader><TableRow>
-                        <TableHead>Charge Date</TableHead><TableHead>Settled On</TableHead>
+                        <TableHead>Charge Date</TableHead><TableHead>Outlet</TableHead>
+                        <TableHead>Bill No</TableHead><TableHead>Settled On</TableHead>
                         <TableHead>Notes</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
                       </TableRow></TableHeader>
@@ -758,6 +878,8 @@ function RestaurantPage() {
                         {settledPayables.map((p) => (
                           <TableRow key={p.id}>
                             <TableCell className="text-xs">{p.charge_date}</TableCell>
+                            <TableCell className="text-xs">{payableOutlet(p)}</TableCell>
+                            <TableCell className="text-xs font-mono">{payableBillNo(p) || "—"}</TableCell>
                             <TableCell className="text-xs">{p.settlement_date ?? "—"}</TableCell>
                             <TableCell className="text-xs">{p.settlement_notes ?? "—"}</TableCell>
                             <TableCell className="text-right">₹{Number(p.amount).toFixed(2)}</TableCell>
@@ -797,6 +919,10 @@ function RestaurantPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <Label>Bill No</Label>
+                <Input value={pcBillNo} onChange={(e) => setPcBillNo(e.target.value)} placeholder="e.g. 202" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

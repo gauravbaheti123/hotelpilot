@@ -4644,6 +4644,7 @@ export type Database = {
       restaurant_direct_charges: {
         Row: {
           amount: number
+          bill_no: string | null
           booking_id: string | null
           charge_date: string
           created_at: string
@@ -4660,6 +4661,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          bill_no?: string | null
           booking_id?: string | null
           charge_date?: string
           created_at?: string
@@ -4676,6 +4678,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bill_no?: string | null
           booking_id?: string | null
           charge_date?: string
           created_at?: string
@@ -4783,6 +4786,7 @@ export type Database = {
       restaurant_payables: {
         Row: {
           amount: number
+          bill_no: string | null
           charge_date: string
           charge_id: string | null
           created_at: string
@@ -4795,6 +4799,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          bill_no?: string | null
           charge_date: string
           charge_id?: string | null
           created_at?: string
@@ -4807,6 +4812,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bill_no?: string | null
           charge_date?: string
           charge_id?: string | null
           created_at?: string
