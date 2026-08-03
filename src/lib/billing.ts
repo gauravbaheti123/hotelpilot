@@ -344,6 +344,8 @@ export function expandRoomNights<T extends DisplayCharge>(
         amount: amounts[i] ?? 0,
         gst_amount: gsts[i] ?? 0,
         discount_amount: discs[i] ?? 0,
+        discount_value:
+          c.discount_type === "percent" ? c.discount_value : (discs[i] ?? 0),
         charged_on: start ? addDays(start, i) : null,
         is_night_split: true,
         source_charge_ids: c.id ? [String(c.id)] : [],
