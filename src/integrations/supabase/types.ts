@@ -1837,6 +1837,7 @@ export type Database = {
           balance_amount: number
           bill_type: string | null
           billing_company_id: string | null
+          billing_guest_id: string | null
           booking_id: string
           complimentary_food_used: number
           created_at: string
@@ -1871,6 +1872,7 @@ export type Database = {
           balance_amount?: number
           bill_type?: string | null
           billing_company_id?: string | null
+          billing_guest_id?: string | null
           booking_id: string
           complimentary_food_used?: number
           created_at?: string
@@ -1905,6 +1907,7 @@ export type Database = {
           balance_amount?: number
           bill_type?: string | null
           billing_company_id?: string | null
+          billing_guest_id?: string | null
           booking_id?: string
           complimentary_food_used?: number
           created_at?: string
@@ -1941,6 +1944,13 @@ export type Database = {
             columns: ["billing_company_id"]
             isOneToOne: false
             referencedRelation: "billing_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folios_billing_guest_id_fkey"
+            columns: ["billing_guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
             referencedColumns: ["id"]
           },
           {
