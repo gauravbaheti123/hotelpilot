@@ -605,21 +605,55 @@ function FolioPage() {
     }).eq("id", folio.id);
   }
 
+  /** Debounced remote guest lookup for the Bill To picker (same search as the
+   *  Phase 21 guest lookup used elsewhere). */
+  const guestSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function searchBillToGuests(q: string) {
+    const propertyId = folio?.property_id ?? booking?.property_id ?? null;
+    if (guestSearchTimer.current) clearTimeout(guestSearchTimer.current);
+    if (!propertyId || q.trim().length < 2) { setGuestHits([]); return; }
+    guestSearchTimer.current = setTimeout(async () => {
+      const hits = await searchGuests(propertyId, q, 10);
+      const ids = hits.map((h) => h.id);
+      if (!ids.length) { setGuestHits([]); return; }
+      const { data } = await supabase
+        .from("guests")
+        .select("id,name,mobile,gst_number,company,address,city,state,state_code")
+        .in("id", ids);
+      setGuestHits(((data ?? []) as unknown as BillToGuest[]));
+    }, 350);
+  }
+
   /** Change the Bill-To party on an OPEN folio. Keeps the booking row in sync
    *  so the checkout dialog reflects the latest choice, clears the manual
    *  guest GSTIN when a company takes over (company GSTIN drives place of
    *  supply), and writes an audit trail. */
-  async function updateBillTo(companyId: string | null) {
+  async function updateBillTo(selection: string) {
     if (!folio || !isOpen) return;
-    const prevId = folio.billing_company_id ?? null;
-    if (prevId === companyId) return;
+    const prevCompanyId = folio.billing_company_id ?? null;
+    const prevGuestId = folio.billing_guest_id ?? null;
+    const companyId = selection.startsWith("co:") ? selection.slice(3) : null;
+    const guestId = selection.startsWith("gu:") ? selection.slice(3) : null;
+    if (prevCompanyId === companyId && prevGuestId === guestId) return;
     const co = companyId ? billingCompanies.find((c) => c.id === companyId) ?? null : null;
+    const gu = guestId
+      ? (guestHits.find((g) => g.id === guestId) ?? (billToGuest?.id === guestId ? billToGuest : null))
+      : null;
+    if (companyId && !co) { toast.error("Company not found"); return; }
+    if (guestId && !gu) { toast.error("Guest not found"); return; }
     const patch: Partial<Folio> = {
+      // A folio bills to exactly one party — company and guest are mutually exclusive.
       billing_company_id: companyId,
-      guest_company: co ? co.name : null,
-      // Company bills take the company's GSTIN; individual bills fall back to
-      // the guest's own GSTIN so resolveStateCode still has something to read.
-      guest_gstin: co ? (co.gstin ?? null) : (booking?.guests?.gst_number ?? null),
+      billing_guest_id: guestId,
+      guest_company: co ? co.name : gu ? gu.name : null,
+      // Company bills take the company's GSTIN; another-guest bills take that
+      // guest's; individual bills fall back to the folio guest's own GSTIN so
+      // resolveStateCode still has something to read.
+      guest_gstin: co
+        ? (co.gstin ?? null)
+        : gu
+          ? (gu.gst_number ?? null)
+          : (booking?.guests?.gst_number ?? null),
     };
     const { error } = await supabase.from("folios").update(patch as any).eq("id", folio.id);
     if (error) { toast.error(error.message); return; }
@@ -627,6 +661,8 @@ function FolioPage() {
       await supabase.from("bookings").update({ billing_company_id: companyId } as any).eq("id", booking.id);
     }
     setFolio({ ...folio, ...patch } as Folio);
+    setBillToGuest(gu);
+    const label = co ? co.name : gu ? `${gu.name}${gu.mobile ? ` · ${gu.mobile}` : ""}` : "Guest (individual)";
     if (user) {
       logActivity({
         property_id: folio.property_id,
@@ -637,15 +673,18 @@ function FolioPage() {
         reference_id: folio.id,
         reference_label: folio.invoice_number,
         details: {
-          from_billing_company_id: prevId,
+          from_billing_company_id: prevCompanyId,
+          from_billing_guest_id: prevGuestId,
           to_billing_company_id: companyId,
-          to_billing_company_name: co?.name ?? "Guest (individual)",
+          to_billing_guest_id: guestId,
+          to_billing_party_type: co ? "company" : gu ? "guest" : "self",
+          to_billing_company_name: label,
           to_gstin: patch.guest_gstin ?? null,
           booking_number: booking?.booking_number ?? null,
         },
       });
     }
-    toast.success(`Bill To: ${co ? co.name : "Guest (individual)"}`);
+    toast.success(`Bill To: ${label}`);
     load();
   }
 
