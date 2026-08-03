@@ -53,9 +53,12 @@ function Page() {
       .order("paid_at", { ascending: true });
     if (mode !== "all") q = q.eq("mode", mode);
     if (staff !== "all") q = q.eq("created_by", staff);
-    const { data } = await q;
+    const [{ data }, scope] = await Promise.all([q, fetchBanquetScope(propertyId)]);
     const profileMap = new Map(staffList.map((s) => [s.id, s.name] as const));
-    const out: Row[] = ((data ?? []) as any[]).map((p) => ({
+    // Banquet event-block collections are excluded (Owner-only Banquet Billing report).
+    const out: Row[] = ((data ?? []) as any[])
+      .filter((p) => !isBanquetRecord(scope, p))
+      .map((p) => ({
       _id: p.id,
       date: p.paid_at, time: p.paid_at,
       bill_no: p.folios?.invoice_number ?? "—",
