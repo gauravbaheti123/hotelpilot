@@ -1363,6 +1363,10 @@ function FolioPage() {
   // which hid the edit UI on settled/paid bills whenever a role had edit but not delete.
   const canEditAnyStatus = can("invoices", "edit");
   const canEditNow = isOpen || canEditAnyStatus;
+  // Room tariff is editable by ANY role holding the folio-edit permission
+  // (invoices/edit) while the bill is OPEN — no owner-only override. Once the
+  // folio is settled/checked out it locks like every other finalized field.
+  const canEditTariff = isOpen && can("invoices", "edit");
 
   async function markAllServed() {
     const ids = pendingKots.map((k) => k.id);
