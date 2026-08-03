@@ -1689,6 +1689,22 @@ function FolioPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Bill To</Label>
+                  {isOpen ? (
+                    <SearchableSelect
+                      className="h-9 w-72"
+                      value={folio.billing_company_id ?? "__guest__"}
+                      onValueChange={(v) => updateBillTo(v === "__guest__" ? null : v)}
+                      placeholder="Guest (individual)"
+                      searchPlaceholder="Search company…"
+                      options={[
+                        { value: "__guest__", label: "Guest (individual)" },
+                        ...billingCompanies.map((c) => ({
+                          value: c.id,
+                          label: c.gstin ? `${c.name} — ${c.gstin}` : c.name,
+                        })),
+                      ] as SearchableOption[]}
+                    />
+                  ) : (
                   <div className="h-9 flex items-center rounded-md border bg-muted/30 px-3 text-sm">
                     {(() => {
                       const co = folio.billing_company_id
@@ -1699,8 +1715,11 @@ function FolioPage() {
                         : <span>Guest (individual)</span>;
                     })()}
                   </div>
+                  )}
                   <p className="text-[11px] text-muted-foreground">
-                    Set at booking (Guest Details → “Bill to someone else?”). Confirmed again at checkout.
+                    {isOpen
+                      ? "Editable until checkout. Checkout uses whatever is set here."
+                      : "Locked — the bill is finalised."}
                   </p>
                 </div>
               </>
