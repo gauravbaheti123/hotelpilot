@@ -73,6 +73,9 @@ function BanquetEventPage() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
 
+  // Standard checkout flow (same dialog used by Dashboard / Front Desk).
+  const [checkoutBookingId, setCheckoutBookingId] = useState<string | null>(null);
+
   // Host edit local state
   const [host, setHost] = useState({ name: "", mobile: "", email: "", function_type: "", notes: "" });
   const [savingHost, setSavingHost] = useState(false);
@@ -727,6 +730,13 @@ function BanquetEventPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <CheckoutDialog
+        bookingId={checkoutBookingId}
+        open={!!checkoutBookingId}
+        onOpenChange={(o) => { if (!o) setCheckoutBookingId(null); }}
+        onDone={() => { setCheckoutBookingId(null); load(); }}
+      />
     </AppShell>
   );
 }
