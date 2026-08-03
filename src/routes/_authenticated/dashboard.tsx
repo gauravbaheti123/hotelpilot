@@ -26,7 +26,7 @@ import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  loadEventSummaries, checkInBlock, checkOutBlock,
+  loadEventSummaries, checkInBlock,
   type EventBlockSummary, type EventBlockRecord,
 } from "@/lib/eventRoomBlocks";
 import { CalendarDays } from "lucide-react";
