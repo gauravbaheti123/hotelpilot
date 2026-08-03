@@ -1814,16 +1814,40 @@ function FolioPage() {
                   {isOpen ? (
                     <SearchableSelect
                       className="h-9 w-72"
-                      value={folio.billing_company_id ?? "__guest__"}
-                      onChange={(v: string) => updateBillTo(v === "__guest__" ? null : v)}
+                      value={
+                        folio.billing_company_id
+                          ? `co:${folio.billing_company_id}`
+                          : folio.billing_guest_id
+                            ? `gu:${folio.billing_guest_id}`
+                            : "__guest__"
+                      }
+                      onChange={(v: string) => updateBillTo(v)}
                       placeholder="Guest (individual)"
-                      searchPlaceholder="Search company…"
+                      searchPlaceholder="Search company or guest…"
+                      alwaysShowSearch
+                      onSearchChange={searchBillToGuests}
                       options={[
                         { value: "__guest__", label: "Guest (individual)" },
                         ...billingCompanies.map((c) => ({
-                          value: c.id,
+                          value: `co:${c.id}`,
                           label: c.gstin ? `${c.name} — ${c.gstin}` : c.name,
+                          group: "Companies",
                         })),
+                        // Remote guest matches (plus the currently selected one,
+                        // so it stays visible before any search is typed).
+                        ...[
+                          ...(billToGuest && !guestHits.some((g) => g.id === billToGuest.id)
+                            ? [billToGuest] : []),
+                          ...guestHits,
+                        ]
+                          .filter((g) => g.id !== (booking?.guests as any)?.id)
+                          .map((g) => ({
+                            value: `gu:${g.id}`,
+                            label: g.name,
+                            hint: g.mobile ?? undefined,
+                            keywords: `${g.mobile ?? ""} ${g.company ?? ""} ${g.gst_number ?? ""}`,
+                            group: "Guests",
+                          })),
                       ] as SearchableOption[]}
                     />
                   ) : (
@@ -1832,9 +1856,13 @@ function FolioPage() {
                       const co = folio.billing_company_id
                         ? billingCompanies.find((c) => c.id === folio.billing_company_id)
                         : null;
-                      return co
-                        ? <><span className="font-medium">{co.name}</span>{co.gstin ? <span className="ml-2 text-xs text-muted-foreground">{co.gstin}</span> : null}</>
-                        : <span>Guest (individual)</span>;
+                      if (co) {
+                        return <><span className="font-medium">{co.name}</span>{co.gstin ? <span className="ml-2 text-xs text-muted-foreground">{co.gstin}</span> : null}</>;
+                      }
+                      if (folio.billing_guest_id && billToGuest) {
+                        return <><span className="font-medium">{billToGuest.name}</span>{billToGuest.mobile ? <span className="ml-2 text-xs text-muted-foreground">{billToGuest.mobile}</span> : null}</>;
+                      }
+                      return <span>Guest (individual)</span>;
                     })()}
                   </div>
                   )}
