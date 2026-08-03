@@ -568,9 +568,52 @@ function FolioPage() {
     }).eq("id", folio.id);
   }
 
+  /** Change the Bill-To party on an OPEN folio. Keeps the booking row in sync
+   *  so the checkout dialog reflects the latest choice, clears the manual
+   *  guest GSTIN when a company takes over (company GSTIN drives place of
+   *  supply), and writes an audit trail. */
+  async function updateBillTo(companyId: string | null) {
+    if (!folio || !isOpen) return;
+    const prevId = folio.billing_company_id ?? null;
+    if (prevId === companyId) return;
+    const co = companyId ? billingCompanies.find((c) => c.id === companyId) ?? null : null;
+    const patch: Partial<Folio> = {
+      billing_company_id: companyId,
+      guest_company: co ? co.name : null,
+      // Company bills take the company's GSTIN; individual bills fall back to
+      // the guest's own GSTIN so resolveStateCode still has something to read.
+      guest_gstin: co ? (co.gstin ?? null) : (booking?.guests?.gst_number ?? null),
+    };
+    const { error } = await supabase.from("folios").update(patch as any).eq("id", folio.id);
+    if (error) { toast.error(error.message); return; }
+    if (booking?.id) {
+      await supabase.from("bookings").update({ billing_company_id: companyId } as any).eq("id", booking.id);
+    }
+    setFolio({ ...folio, ...patch } as Folio);
+    if (user) {
+      logActivity({
+        property_id: folio.property_id,
+        user_id: user.id,
+        user_name: userDisplayName(user as any),
+        action_type: "BILL_TO_CHANGED",
+        module: "Billing",
+        reference_id: folio.id,
+        reference_label: folio.invoice_number,
+        details: {
+          from_billing_company_id: prevId,
+          to_billing_company_id: companyId,
+          to_billing_company_name: co?.name ?? "Guest (individual)",
+          to_gstin: patch.guest_gstin ?? null,
+          booking_number: booking?.booking_number ?? null,
+        },
+      });
+    }
+    toast.success(`Bill To: ${co ? co.name : "Guest (individual)"}`);
+    load();
+  }
+
   async function toggleMode(mode: "cash" | "gst") {
     if (!folio) return;
-    void 0;
     if (mode === "cash" && !isOwnerStrict) {
       toast.error("Only the property owner can generate a Cash Bill");
       return;
