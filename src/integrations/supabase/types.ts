@@ -1657,8 +1657,11 @@ export type Database = {
           created_by: string | null
           description: string | null
           expense_date: string
+          handover_id: string | null
           id: string
           is_wiped: boolean
+          paid_at: string | null
+          paid_at_approx: boolean
           paid_to_staff_id: string | null
           payment_mode: string
           property_id: string
@@ -1675,8 +1678,11 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           expense_date?: string
+          handover_id?: string | null
           id?: string
           is_wiped?: boolean
+          paid_at?: string | null
+          paid_at_approx?: boolean
           paid_to_staff_id?: string | null
           payment_mode?: string
           property_id: string
@@ -1693,8 +1699,11 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           expense_date?: string
+          handover_id?: string | null
           id?: string
           is_wiped?: boolean
+          paid_at?: string | null
+          paid_at_approx?: boolean
           paid_to_staff_id?: string | null
           payment_mode?: string
           property_id?: string
@@ -1710,6 +1719,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_handover_id_fkey"
+            columns: ["handover_id"]
+            isOneToOne: false
+            referencedRelation: "shift_handovers"
             referencedColumns: ["id"]
           },
           {
@@ -3980,6 +3996,69 @@ export type Database = {
         }
         Relationships: []
       }
+      petty_cash_entries: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          entry_type: Database["public"]["Enums"]["petty_cash_entry_type"]
+          handover_id: string | null
+          id: string
+          is_deleted: boolean
+          property_id: string
+          reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          entry_type: Database["public"]["Enums"]["petty_cash_entry_type"]
+          handover_id?: string | null
+          id?: string
+          is_deleted?: boolean
+          property_id: string
+          reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          entry_type?: Database["public"]["Enums"]["petty_cash_entry_type"]
+          handover_id?: string | null
+          id?: string
+          is_deleted?: boolean
+          property_id?: string
+          reason?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "petty_cash_entries_handover_id_fkey"
+            columns: ["handover_id"]
+            isOneToOne: false
+            referencedRelation: "shift_handovers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "petty_cash_entries_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pos_categories: {
         Row: {
           created_at: string
@@ -5374,11 +5453,13 @@ export type Database = {
       }
       shift_handovers: {
         Row: {
+          closing_cash: number | null
           created_at: string
           id: string
           incoming_user_id: string | null
           incoming_user_name: string | null
           notes: string | null
+          opening_cash: number | null
           outgoing_user_id: string
           outgoing_user_name: string
           property_id: string
@@ -5390,11 +5471,13 @@ export type Database = {
           window_start: string
         }
         Insert: {
+          closing_cash?: number | null
           created_at?: string
           id?: string
           incoming_user_id?: string | null
           incoming_user_name?: string | null
           notes?: string | null
+          opening_cash?: number | null
           outgoing_user_id: string
           outgoing_user_name: string
           property_id: string
@@ -5406,11 +5489,13 @@ export type Database = {
           window_start: string
         }
         Update: {
+          closing_cash?: number | null
           created_at?: string
           id?: string
           incoming_user_id?: string | null
           incoming_user_name?: string | null
           notes?: string | null
+          opening_cash?: number | null
           outgoing_user_id?: string
           outgoing_user_name?: string
           property_id?: string
@@ -6300,6 +6385,7 @@ export type Database = {
       housekeeping_status: "clean" | "dirty" | "inspected" | "out_of_order"
       kot_type: "kitchen" | "bar" | "both"
       meal_plan: "EP" | "CP" | "MAP" | "AP"
+      petty_cash_entry_type: "opening" | "in" | "out"
       printer_type: "kot" | "bill" | "both"
       room_status: "vacant" | "occupied" | "blocked" | "maintenance"
     }
@@ -6447,6 +6533,7 @@ export const Constants = {
       housekeeping_status: ["clean", "dirty", "inspected", "out_of_order"],
       kot_type: ["kitchen", "bar", "both"],
       meal_plan: ["EP", "CP", "MAP", "AP"],
+      petty_cash_entry_type: ["opening", "in", "out"],
       printer_type: ["kot", "bill", "both"],
       room_status: ["vacant", "occupied", "blocked", "maintenance"],
     },
