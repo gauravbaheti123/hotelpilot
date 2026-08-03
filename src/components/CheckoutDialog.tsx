@@ -28,6 +28,7 @@ import { AlertTriangle, Plus, Trash2, Loader2, ArrowRightLeft, SplitSquareHorizo
 import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 import { SplitBillDialog } from "@/components/SplitBillDialog";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
+import { closeEventBlocksForBooking } from "@/lib/eventRoomBlocks";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 
