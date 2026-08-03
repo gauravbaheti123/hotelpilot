@@ -80,6 +80,18 @@ interface Folio {
   billing_company_id?: string | null;
   billing_guest_id?: string | null;
 }
+/** Another individual guest picked as the Bill-To party. */
+interface BillToGuest {
+  id: string;
+  name: string;
+  mobile: string | null;
+  gst_number: string | null;
+  company: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  state_code: string | null;
+}
 interface BookingCtx {
   id: string; booking_number: string; status: string;
   check_in: string; check_out: string; total_amount: number;
