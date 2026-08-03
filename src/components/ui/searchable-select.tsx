@@ -19,6 +19,8 @@ export interface SearchableOption {
   keywords?: string;
   /** Optional secondary text shown muted next to the label. */
   hint?: string;
+  /** Optional section heading; options sharing a group render together. */
+  group?: string;
 }
 
 interface Props {
@@ -32,6 +34,10 @@ interface Props {
   className?: string;
   /** Only show the search input when there are more than this many options (default 5). */
   searchThreshold?: number;
+  /** Notified as the user types — lets the caller load remote matches (e.g. guests). */
+  onSearchChange?: (query: string) => void;
+  /** Force the search box on even when there are few options. */
+  alwaysShowSearch?: boolean;
 }
 
 export function SearchableSelect({
@@ -44,10 +50,25 @@ export function SearchableSelect({
   disabled,
   className,
   searchThreshold = 5,
+  onSearchChange,
+  alwaysShowSearch,
 }: Props) {
   const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
   const selected = options.find((o) => o.value === value);
-  const showSearch = options.length > searchThreshold;
+  const showSearch = alwaysShowSearch || options.length > searchThreshold;
+
+  // Preserve first-appearance order of groups; ungrouped options come first.
+  const groups = React.useMemo(() => {
+    const map = new Map<string, SearchableOption[]>();
+    for (const opt of options) {
+      const key = opt.group ?? "";
+      const list = map.get(key);
+      if (list) list.push(opt);
+      else map.set(key, [opt]);
+    }
+    return Array.from(map.entries());
+  }, [options]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -90,11 +111,21 @@ export function SearchableSelect({
             return haystack.includes(search.toLowerCase()) ? 1 : 0;
           }}
         >
-          {showSearch && <CommandInput placeholder={searchPlaceholder} />}
+          {showSearch && (
+            <CommandInput
+              placeholder={searchPlaceholder}
+              value={query}
+              onValueChange={(v) => {
+                setQuery(v);
+                onSearchChange?.(v);
+              }}
+            />
+          )}
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup>
-              {options.map((opt) => (
+            {groups.map(([heading, opts]) => (
+              <CommandGroup key={heading || "__none__"} heading={heading || undefined}>
+              {opts.map((opt) => (
                 <CommandItem
                   key={opt.value}
                   value={`${opt.label} ${opt.keywords ?? ""} ${opt.hint ?? ""}`}
@@ -116,7 +147,8 @@ export function SearchableSelect({
                   )}
                 </CommandItem>
               ))}
-            </CommandGroup>
+              </CommandGroup>
+            ))}
           </CommandList>
         </Command>
       </PopoverContent>
