@@ -2260,6 +2260,16 @@ function FolioPage() {
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
                           )}
+                          {c.charge_type === "room" && canEditTariff && (
+                            <button
+                              type="button"
+                              onClick={() => openEditTariff(c as any)}
+                              className="text-sky-700"
+                              title="Edit tariff"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                           {canVoid && (
                             <button
                               type="button"
@@ -2730,6 +2740,7 @@ function FolioPage() {
 
         {/* ADD PAYMENT */}
         <Dialog open={payOpen} onOpenChange={setPayOpen}>
+          {null}
           <DialogContent>
             <DialogHeader><DialogTitle>Record payment</DialogTitle></DialogHeader>
             <div className="space-y-3">
