@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { resolveTaxType } from "@/lib/gst";
 import { stateNameFromCode } from "@/lib/indiaGeo";
+import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 
 export interface DailySummary {
   date: string;
@@ -37,18 +38,26 @@ function dayRange(date: string) {
 export async function fetchDailySummary(propertyId: string, date: string): Promise<DailySummary> {
   const { startIso, endIso } = dayRange(date);
 
-  const [{ data: folios }, { data: pays }] = await Promise.all([
+  const [{ data: folioRows }, { data: payRows }, scope] = await Promise.all([
     supabase.from("folios")
-      .select("id,status,sub_total,gst_amount,total_amount,created_at,settled_at,gst_mode,bill_type")
+      .select("id,booking_id,status,sub_total,gst_amount,total_amount,created_at,settled_at,gst_mode,bill_type")
       .eq("property_id", propertyId)
       .gte("created_at", startIso)
       .lt("created_at", endIso),
     supabase.from("payments")
-      .select("amount,mode,paid_at")
+      .select("amount,mode,paid_at,booking_id,folio_id")
       .eq("property_id", propertyId)
       .gte("paid_at", startIso)
       .lt("paid_at", endIso),
+    fetchBanquetScope(propertyId),
   ]);
+  // Banquet-origin (event_block) folios/payments are excluded from operational totals.
+  const folios = (folioRows ?? []).filter(
+    (f) => !isBanquetRecord(scope, { booking_id: (f as { booking_id?: string | null }).booking_id, folio_id: (f as { id: string }).id }),
+  );
+  const pays = (payRows ?? []).filter(
+    (p) => !isBanquetRecord(scope, p as { booking_id?: string | null; folio_id?: string | null }),
+  );
 
   const summary: DailySummary = {
     date,
@@ -156,14 +165,16 @@ export async function fetchGstInvoices(propertyId: string, from: string, to: str
   endD.setDate(endD.getDate() + 1);
   const end = endD.toISOString();
   const { data } = await supabase.from("folios")
-    .select("invoice_number,created_at,guest_gstin,guest_company,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name))")
+    .select("id,booking_id,invoice_number,created_at,guest_gstin,guest_company,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name))")
     .eq("property_id", propertyId)
     .eq("gst_mode", "gst")
     .neq("status", "void")
     .gte("created_at", start)
     .lt("created_at", end)
     .order("created_at", { ascending: false });
-  return (data ?? []).map((d) => {
+  const scope = await fetchBanquetScope(propertyId);
+  const visible = (data ?? []).filter((d) => !isBanquetRecord(scope, d as { booking_id?: string | null }));
+  return visible.map((d) => {
     const row = d as unknown as {
       invoice_number: string; created_at: string;
       guest_gstin: string | null; guest_company: string | null;
@@ -199,7 +210,7 @@ export async function fetchGstInvoiceSlabs(
   endD.setDate(endD.getDate() + 1);
   const end = endD.toISOString();
   const { data } = await supabase.from("folios")
-    .select("id,invoice_number,created_at,guest_gstin,guest_company,billing_company_id,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name,state,state_code,gst_number)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
+    .select("id,booking_id,invoice_number,created_at,guest_gstin,guest_company,billing_company_id,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name,state,state_code,gst_number)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
     .eq("property_id", propertyId)
     .eq("gst_mode", "gst")
     .neq("status", "void")
@@ -207,9 +218,10 @@ export async function fetchGstInvoiceSlabs(
     .lt("created_at", end)
     .order("created_at", { ascending: false });
   // Place of supply compares GST state codes (GSTIN → state_code → state name).
-  const [{ data: propRow }, { data: coRows }] = await Promise.all([
+  const [{ data: propRow }, { data: coRows }, scope] = await Promise.all([
     supabase.from("properties").select("state,state_code,gstin").eq("id", propertyId).maybeSingle(),
     supabase.from("billing_companies").select("id,state,state_code,gstin").eq("property_id", propertyId),
+    fetchBanquetScope(propertyId),
   ]);
   const propParty = (propRow ?? null) as
     { state?: string | null; state_code?: string | null; gstin?: string | null } | null;
@@ -218,7 +230,7 @@ export async function fetchGstInvoiceSlabs(
     ((coRows ?? []) as CoRow[]).map((c) => [c.id, c]),
   );
   const out: GstInvoiceSlabRow[] = [];
-  for (const raw of data ?? []) {
+  for (const raw of (data ?? []).filter((d) => !isBanquetRecord(scope, d as { booking_id?: string | null }))) {
     const f = raw as unknown as {
       invoice_number: string; created_at: string;
       guest_gstin: string | null; guest_company: string | null;

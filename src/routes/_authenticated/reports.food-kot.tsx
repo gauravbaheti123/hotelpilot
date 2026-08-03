@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { ReportShell } from "@/components/ReportShell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -58,8 +59,12 @@ function Page() {
       kot_items(id,item_name,qty,rate,amount,menu_items(category_id,kitchen_type,menu_categories(name)))
     `).eq("property_id", propertyId).gte("created_at", fromIso).lte("created_at", toIso)
       .order("created_at", { ascending: false });
+    // KOTs raised against banquet event-block rooms are excluded from the
+    // operational food report (Owner-only Banquet Billing report shows them).
+    const scope = await fetchBanquetScope(propertyId);
+    const kotRows = ((kotData ?? []) as any[]).filter((k) => !isBanquetRecord(scope, { booking_id: k.booking_id }));
     // Fetch food bill numbers for the bookings involved in this window.
-    const bookingIds = Array.from(new Set(((kotData ?? []) as any[]).map((k) => k.booking_id).filter(Boolean)));
+    const bookingIds = Array.from(new Set(kotRows.map((k) => k.booking_id).filter(Boolean)));
     const fbMap = new Map<string, string>();
     if (bookingIds.length > 0) {
       const { data: fbs } = await supabase
@@ -70,7 +75,7 @@ function Page() {
     }
     const kr: KotRow[] = []; const ir: ItemRow[] = [];
     const itemAgg = new Map<string, ItemRow>();
-    for (const k of (kotData ?? []) as any[]) {
+    for (const k of kotRows) {
       const kitchens = new Set<string>();
       for (const it of (k.kot_items ?? [])) {
         const kt = it.menu_items?.kitchen_type ?? "hotel";

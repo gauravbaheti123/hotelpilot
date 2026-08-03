@@ -9,6 +9,7 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { supabase } from "@/integrations/supabase/client";
 import { inr } from "@/lib/billing";
 import { todayIso, PAYMENT_MODE_LABELS } from "@/lib/reports";
+import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/reports/sales")({
@@ -42,14 +43,18 @@ function SalesReportPage() {
     const endD = new Date(`${to}T00:00:00`); endD.setDate(endD.getDate() + 1);
     const end = endD.toISOString();
     (async () => {
-      const [{ data: f }, { data: p }] = await Promise.all([
-        supabase.from("folios").select("created_at,sub_total,gst_amount,total_amount,status")
+      const [{ data: f }, { data: p }, scope] = await Promise.all([
+        supabase.from("folios").select("created_at,sub_total,gst_amount,total_amount,status,id,booking_id")
           .eq("property_id", propertyId).neq("status", "void").gte("created_at", start).lt("created_at", end),
-        supabase.from("payments").select("paid_at,amount,mode")
+        supabase.from("payments").select("paid_at,amount,mode,booking_id,folio_id")
           .eq("property_id", propertyId).gte("paid_at", start).lt("paid_at", end),
+        fetchBanquetScope(propertyId),
       ]);
-      setFolios((f ?? []) as typeof folios);
-      setPays((p ?? []) as typeof pays);
+      // Banquet event-block folios/payments are excluded from operational sales.
+      setFolios(((f ?? []) as any[]).filter(
+        (row) => !isBanquetRecord(scope, { booking_id: row.booking_id, folio_id: row.id }),
+      ) as typeof folios);
+      setPays(((p ?? []) as any[]).filter((row) => !isBanquetRecord(scope, row)) as typeof pays);
     })();
   }, [propertyId, from, to]);
 

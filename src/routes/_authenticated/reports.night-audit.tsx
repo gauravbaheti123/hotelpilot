@@ -182,11 +182,12 @@ function NightAuditPage() {
     // Unsettled bills
     const { data: uf } = await supabase
       .from("folios")
-      .select("id, invoice_number, booking_id, balance_amount, status, bookings(guests(name))")
+      .select("id, invoice_number, booking_id, balance_amount, status, bookings(source,guests(name))")
       .eq("property_id", propertyId)
       .neq("status", "void").eq("is_deleted", false)
       .gt("balance_amount", 0);
-    setUnsettled(((uf ?? []) as any[]).map((f) => ({
+    // Banquet event-block folios are excluded from Day Close figures.
+    setUnsettled(((uf ?? []) as any[]).filter((f) => f.bookings?.source !== "event_block").map((f) => ({
       id: f.id, invoice_number: f.invoice_number, booking_id: f.booking_id,
       guest_name: f.bookings?.guests?.name ?? null,
       balance_amount: Number(f.balance_amount || 0),
@@ -209,10 +210,12 @@ function NightAuditPage() {
 
     // Split revenue by source (best-effort)
     const { data: folioRows } = await supabase
-      .from("folios").select("id, total_amount")
+      .from("folios").select("id, total_amount, bookings(source)")
       .eq("property_id", propertyId).neq("status", "void").eq("is_deleted", false)
       .gte("created_at", startIso).lt("created_at", endIso);
-    const folioIds = (folioRows ?? []).map((f: any) => f.id);
+    const folioIds = ((folioRows ?? []) as any[])
+      .filter((f) => f.bookings?.source !== "event_block")
+      .map((f) => f.id);
     let roomRev = 0, foodRev = 0, otherRev = 0;
     if (folioIds.length) {
       const { data: ch } = await supabase

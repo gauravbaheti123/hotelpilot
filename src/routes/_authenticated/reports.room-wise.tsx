@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { ReportShell } from "@/components/ReportShell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -51,14 +52,15 @@ function Page() {
       rooms:room_id(id,room_number),
       room_categories(name),
       tariff:tariff_id(name),
-      bookings(id,status,total_amount,balance_amount,checked_in_by,checked_out_by,guests(name))
+      bookings(id,source,status,total_amount,balance_amount,checked_in_by,checked_out_by,guests(name))
     `).eq("property_id", propertyId)
       .gte("check_in", from).lte("check_in", to);
     if (catId !== "all") q = q.eq("category_id", catId);
     if (roomId !== "all") q = q.eq("room_id", roomId);
     const { data, error } = await q;
     if (error) { console.error("[room-wise] load failed:", error); setRows([]); return; }
-    const raw = (data ?? []) as any[];
+    // Banquet event-block bookings are excluded from the operational room report.
+    const raw = ((data ?? []) as any[]).filter((br) => br.bookings?.source !== "event_block");
     const uids = new Set<string>();
     for (const br of raw) {
       const b = br.bookings;

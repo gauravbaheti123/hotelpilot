@@ -34,6 +34,7 @@ const ITEMS = [
 
 const OWNER_ITEMS = [
   { to: "/reports/kot-activity", label: "KOT Activity Log", icon: ClipboardList, desc: "KOT edits, voids & deletes (Owner)" },
+  { to: "/reports/banquet-billing", label: "Banquet Billing", icon: FileSpreadsheet, desc: "Event-block folios & food bills (Owner)" },
 ];
 
 function ReportsIndex() {

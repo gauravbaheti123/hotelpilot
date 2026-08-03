@@ -62,6 +62,7 @@ import { Route as AuthenticatedReportsDailyRouteImport } from './routes/_authent
 import { Route as AuthenticatedReportsCashHandoverRouteImport } from './routes/_authenticated/reports.cash-handover'
 import { Route as AuthenticatedReportsCashCollectionRouteImport } from './routes/_authenticated/reports.cash-collection'
 import { Route as AuthenticatedReportsBillWiseRouteImport } from './routes/_authenticated/reports.bill-wise'
+import { Route as AuthenticatedReportsBanquetBillingRouteImport } from './routes/_authenticated/reports.banquet-billing'
 import { Route as AuthenticatedReportsBanquetRouteImport } from './routes/_authenticated/reports.banquet'
 import { Route as AuthenticatedReportsAnalyticsRouteImport } from './routes/_authenticated/reports.analytics'
 import { Route as AuthenticatedReportsActivityRouteImport } from './routes/_authenticated/reports.activity'
@@ -409,6 +410,12 @@ const AuthenticatedReportsBillWiseRoute =
     path: '/reports/bill-wise',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedReportsBanquetBillingRoute =
+  AuthenticatedReportsBanquetBillingRouteImport.update({
+    id: '/reports/banquet-billing',
+    path: '/reports/banquet-billing',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedReportsBanquetRoute =
   AuthenticatedReportsBanquetRouteImport.update({
     id: '/reports/banquet',
@@ -754,6 +761,7 @@ export interface FileRoutesByFullPath {
   '/reports/activity': typeof AuthenticatedReportsActivityRoute
   '/reports/analytics': typeof AuthenticatedReportsAnalyticsRoute
   '/reports/banquet': typeof AuthenticatedReportsBanquetRoute
+  '/reports/banquet-billing': typeof AuthenticatedReportsBanquetBillingRoute
   '/reports/bill-wise': typeof AuthenticatedReportsBillWiseRoute
   '/reports/cash-collection': typeof AuthenticatedReportsCashCollectionRoute
   '/reports/cash-handover': typeof AuthenticatedReportsCashHandoverRoute
@@ -857,6 +865,7 @@ export interface FileRoutesByTo {
   '/reports/activity': typeof AuthenticatedReportsActivityRoute
   '/reports/analytics': typeof AuthenticatedReportsAnalyticsRoute
   '/reports/banquet': typeof AuthenticatedReportsBanquetRoute
+  '/reports/banquet-billing': typeof AuthenticatedReportsBanquetBillingRoute
   '/reports/bill-wise': typeof AuthenticatedReportsBillWiseRoute
   '/reports/cash-collection': typeof AuthenticatedReportsCashCollectionRoute
   '/reports/cash-handover': typeof AuthenticatedReportsCashHandoverRoute
@@ -962,6 +971,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/activity': typeof AuthenticatedReportsActivityRoute
   '/_authenticated/reports/analytics': typeof AuthenticatedReportsAnalyticsRoute
   '/_authenticated/reports/banquet': typeof AuthenticatedReportsBanquetRoute
+  '/_authenticated/reports/banquet-billing': typeof AuthenticatedReportsBanquetBillingRoute
   '/_authenticated/reports/bill-wise': typeof AuthenticatedReportsBillWiseRoute
   '/_authenticated/reports/cash-collection': typeof AuthenticatedReportsCashCollectionRoute
   '/_authenticated/reports/cash-handover': typeof AuthenticatedReportsCashHandoverRoute
@@ -1067,6 +1077,7 @@ export interface FileRouteTypes {
     | '/reports/activity'
     | '/reports/analytics'
     | '/reports/banquet'
+    | '/reports/banquet-billing'
     | '/reports/bill-wise'
     | '/reports/cash-collection'
     | '/reports/cash-handover'
@@ -1170,6 +1181,7 @@ export interface FileRouteTypes {
     | '/reports/activity'
     | '/reports/analytics'
     | '/reports/banquet'
+    | '/reports/banquet-billing'
     | '/reports/bill-wise'
     | '/reports/cash-collection'
     | '/reports/cash-handover'
@@ -1274,6 +1286,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/activity'
     | '/_authenticated/reports/analytics'
     | '/_authenticated/reports/banquet'
+    | '/_authenticated/reports/banquet-billing'
     | '/_authenticated/reports/bill-wise'
     | '/_authenticated/reports/cash-collection'
     | '/_authenticated/reports/cash-handover'
@@ -1711,6 +1724,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsBillWiseRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/reports/banquet-billing': {
+      id: '/_authenticated/reports/banquet-billing'
+      path: '/reports/banquet-billing'
+      fullPath: '/reports/banquet-billing'
+      preLoaderRoute: typeof AuthenticatedReportsBanquetBillingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/reports/banquet': {
       id: '/_authenticated/reports/banquet'
       path: '/reports/banquet'
@@ -2123,6 +2143,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsActivityRoute: typeof AuthenticatedReportsActivityRoute
   AuthenticatedReportsAnalyticsRoute: typeof AuthenticatedReportsAnalyticsRoute
   AuthenticatedReportsBanquetRoute: typeof AuthenticatedReportsBanquetRoute
+  AuthenticatedReportsBanquetBillingRoute: typeof AuthenticatedReportsBanquetBillingRoute
   AuthenticatedReportsBillWiseRoute: typeof AuthenticatedReportsBillWiseRoute
   AuthenticatedReportsCashCollectionRoute: typeof AuthenticatedReportsCashCollectionRoute
   AuthenticatedReportsCashHandoverRoute: typeof AuthenticatedReportsCashHandoverRoute
@@ -2217,6 +2238,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsActivityRoute: AuthenticatedReportsActivityRoute,
   AuthenticatedReportsAnalyticsRoute: AuthenticatedReportsAnalyticsRoute,
   AuthenticatedReportsBanquetRoute: AuthenticatedReportsBanquetRoute,
+  AuthenticatedReportsBanquetBillingRoute:
+    AuthenticatedReportsBanquetBillingRoute,
   AuthenticatedReportsBillWiseRoute: AuthenticatedReportsBillWiseRoute,
   AuthenticatedReportsCashCollectionRoute:
     AuthenticatedReportsCashCollectionRoute,

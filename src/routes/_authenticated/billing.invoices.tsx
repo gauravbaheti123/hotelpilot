@@ -10,6 +10,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { FOLIO_STATUS_TONE, inr } from "@/lib/billing";
@@ -98,12 +99,14 @@ function InvoicesPage() {
     if (!propertyId) return;
     (async () => {
       let qb = supabase.from("folios")
-        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,guests(name))" as any)
+        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name))" as any)
         .eq("property_id", propertyId);
       if (!audit) qb = qb.eq("is_deleted" as any, false);
       const { data } = await qb.order("created_at", { ascending: false })
         .limit(300);
-      setRows((data ?? []) as unknown as Row[]);
+      // Banquet event-block folios are excluded — Owner-only Banquet Billing report.
+      const visible = ((data ?? []) as any[]).filter((f) => f.bookings?.source !== "event_block");
+      setRows(visible as unknown as Row[]);
     })();
   };
   useEffect(load, [propertyId, audit]); // eslint-disable-line react-hooks/exhaustive-deps
