@@ -47,6 +47,23 @@ interface CreditEnrichment {
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+const UNASSIGNED = "Unassigned";
+
+/** Small inline outlet-wise subtotal strip — reused on every settlement view. */
+function OutletBreakdown({ parts, className }: { parts: Array<[string, number]>; className?: string }) {
+  if (parts.length === 0) return null;
+  return (
+    <div className={`text-[11px] text-muted-foreground flex flex-wrap gap-x-2 gap-y-0.5 ${className ?? ""}`}>
+      {parts.map(([name, amt], i) => (
+        <span key={name}>
+          {i > 0 && <span className="mr-2">·</span>}
+          {name}: <span className="font-medium text-foreground">₹{amt.toLocaleString()}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function RestaurantPage() {
   const { current } = useCurrentProperty();
   const { user } = useAuth();
@@ -65,12 +82,13 @@ function RestaurantPage() {
   type DirectChargeRow = {
     id: string; booking_id: string | null; guest_id: string | null;
     amount: number; description: string | null; charge_date: string;
-    is_settled: boolean; created_at: string; outlet_id?: string | null;
+    is_settled: boolean; created_at: string; outlet_id?: string | null; bill_no?: string | null;
   };
   type PayableRow = {
     id: string; charge_id: string | null; amount: number;
     description: string | null; charge_date: string;
     is_settled: boolean; settlement_date: string | null; settlement_notes: string | null;
+    bill_no?: string | null;
   };
   const [directCharges, setDirectCharges] = useState<DirectChargeRow[]>([]);
   const [directEnrich, setDirectEnrich] = useState<Record<string, { room?: string; guest?: string }>>({});
@@ -81,6 +99,7 @@ function RestaurantPage() {
   const [pcOutlet, setPcOutlet] = useState("");
   const [outlets, setOutlets] = useState<{ id: string; name: string }[]>([]);
   const [pcAmount, setPcAmount] = useState<string>("");
+  const [pcBillNo, setPcBillNo] = useState<string>("");
   const [pcDesc, setPcDesc] = useState("Restaurant Charge");
   const [pcDate, setPcDate] = useState(new Date().toISOString().slice(0, 10));
   const [posting, setPosting] = useState(false);
@@ -95,12 +114,12 @@ function RestaurantPage() {
     const [dc, py, bk, ol] = await Promise.all([
       supabase
         .from("restaurant_direct_charges" as any)
-        .select("id,booking_id,guest_id,amount,description,charge_date,is_settled,created_at,outlet_id")
+        .select("id,booking_id,guest_id,amount,description,charge_date,is_settled,created_at,outlet_id,bill_no")
         .eq("property_id", current.id)
         .order("charge_date", { ascending: false }),
       supabase
         .from("restaurant_payables" as any)
-        .select("id,charge_id,amount,description,charge_date,is_settled,settlement_date,settlement_notes")
+        .select("id,charge_id,amount,description,charge_date,is_settled,settlement_date,settlement_notes,bill_no")
         .eq("property_id", current.id)
         .order("charge_date", { ascending: false }),
       supabase
