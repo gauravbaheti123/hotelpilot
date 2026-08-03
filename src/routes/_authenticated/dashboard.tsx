@@ -153,9 +153,13 @@ function SuperadminDashboard({ email }: { email: string }) {
         supabase.from("properties").select("id", { count: "exact", head: true }),
         supabase.from("rooms").select("id", { count: "exact", head: true }),
         supabase.from("user_roles").select("user_id", { count: "exact", head: true }).neq("role", "superadmin"),
-        supabase.from("payments").select("amount").gte("paid_at", `${today}T00:00:00`).lte("paid_at", `${today}T23:59:59`),
+        supabase.from("payments").select("amount,booking_id,folio_id").gte("paid_at", `${today}T00:00:00`).lte("paid_at", `${today}T23:59:59`),
       ]);
-      const revenue = (pay.data ?? []).reduce((a, x: any) => a + Number(x.amount || 0), 0);
+      // Banquet event-block collections are excluded from operational revenue.
+      const scope = await fetchBanquetScope(null);
+      const revenue = ((pay.data ?? []) as any[])
+        .filter((x) => !isBanquetRecord(scope, x))
+        .reduce((a, x) => a + Number(x.amount || 0), 0);
       setCounts({ properties: p.count ?? 0, rooms: r.count ?? 0, staff: s.count ?? 0, revenue });
     })();
   }, []);
