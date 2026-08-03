@@ -760,19 +760,21 @@ function RestaurantPage() {
                     <Plus className="h-4 w-4 mr-1" /> Post Restaurant Charge
                   </Button>
                 </CardTitle>
+                <OutletBreakdown parts={outletDirectAll} className="mt-1" />
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader><TableRow>
                     <TableHead>Date</TableHead><TableHead>Room</TableHead>
                     <TableHead>Guest</TableHead><TableHead>Outlet</TableHead>
+                    <TableHead>Bill No</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {directCharges.length === 0 && (
-                      <TableRow><TableCell colSpan={7} className="text-center py-6 text-sm text-muted-foreground">
+                      <TableRow><TableCell colSpan={8} className="text-center py-6 text-sm text-muted-foreground">
                         No direct charges posted yet
                       </TableCell></TableRow>
                     )}
@@ -784,8 +786,9 @@ function RestaurantPage() {
                           <TableCell>{e.room ?? "—"}</TableCell>
                           <TableCell>{e.guest ?? "—"}</TableCell>
                           <TableCell className="text-xs">
-                            {outlets.find((o) => o.id === c.outlet_id)?.name ?? "Unassigned"}
+                            {outletName(c.outlet_id)}
                           </TableCell>
+                          <TableCell className="text-xs font-mono">{c.bill_no || "—"}</TableCell>
                           <TableCell className="text-xs">{c.description}</TableCell>
                           <TableCell className="text-right font-medium">₹{Number(c.amount).toFixed(2)}</TableCell>
                           <TableCell>
