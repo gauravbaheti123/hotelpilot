@@ -26,6 +26,7 @@ import {
   type BillDiscount,
  inrRound,
   consolidateSegmentCharges,
+  expandRoomNights,
   type DisplayCharge,
 } from "@/lib/billing";
 import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil } from "lucide-react";
@@ -1259,7 +1260,7 @@ function FolioPage() {
   // Phase 1.5 / 52 — the invoice Charges table shows Food/Laundry segment
   // charges as ONE consolidated line per distinct bill reference. Totals,
   // GST breakup and all persistence keep using the raw `charges` array.
-  const invoiceRows = consolidateSegmentCharges(charges as any);
+  const invoiceRows = expandRoomNights(consolidateSegmentCharges(charges as any));
 
   async function shareOnWhatsApp() {
     if (!folio || !booking) return;
@@ -1976,6 +1977,7 @@ function FolioPage() {
               <thead>
                 <tr style={{ background: TEAL, color: "#fff" }}>
                   <th style={{ textAlign: "left", width: 40 }}>#</th>
+                  <th style={{ textAlign: "left", width: 90 }}>Date</th>
                   <th style={{ textAlign: "left" }}>Description</th>
                   {isGst && <th style={{ textAlign: "left", width: 80 }}>HSN</th>}
                   <th style={{ textAlign: "right", width: 50 }}>Qty</th>
@@ -1986,10 +1988,13 @@ function FolioPage() {
               </thead>
               <tbody className="zebra">
                 {charges.length === 0 ? (
-                  <tr><td colSpan={isGst ? 7 : 6} style={{ textAlign: "center", color: "#666", padding: 16 }}>No charges yet.</td></tr>
+                  <tr><td colSpan={isGst ? 8 : 7} style={{ textAlign: "center", color: "#666", padding: 16 }}>No charges yet.</td></tr>
                 ) : invoiceRows.map((c: DisplayCharge, i: number) => (
                   <tr key={c.id}>
                     <td>{i + 1}</td>
+                    <td style={{ whiteSpace: "nowrap", fontSize: 11 }}>
+                      {c.charged_on ? new Date(`${String(c.charged_on).slice(0, 10)}T00:00:00`).toLocaleDateString("en-IN") : "—"}
+                    </td>
                     <td>
                       <div>{c.description}</div>
                       {isGst && <div style={{ fontSize: 10, color: "#666" }}>GST {Number(c.gst_rate)}%</div>}
@@ -2018,7 +2023,9 @@ function FolioPage() {
                     {canEditNow && (
                       <td className="print:hidden" style={{ textAlign: "right" }}>
                         <div className="flex items-center justify-end gap-1">
-                          {c.is_consolidated ? (
+                          {c.is_night_split ? (
+                            <span className="text-[10px] text-muted-foreground">Night</span>
+                          ) : c.is_consolidated ? (
                             <span className="text-[10px] text-muted-foreground">Bill</span>
                           ) : (<>
                           {c.charge_type !== "discount" && c.charge_type !== "tax" && (

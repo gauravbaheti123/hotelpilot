@@ -2,7 +2,7 @@
 // All templates pull from property settings (logo, color, footer, toggles).
 
 import { supabase } from "@/integrations/supabase/client";
-import { consolidateSegmentCharges, inr } from "@/lib/billing";
+import { consolidateSegmentCharges, expandRoomNights, inr } from "@/lib/billing";
 import { resolveTaxType, splitGst } from "@/lib/gst";
 
 export interface InvoiceProperty {
@@ -60,6 +60,7 @@ export interface InvoiceCharge {
   charge_type: string;
   hsn_code?: string | null;
   segment_bill_ref?: string | null;
+  charged_on?: string | null;
 }
 
 export interface InvoicePayment {
@@ -294,7 +295,8 @@ function metaBlock(ctx: InvoiceContext): string {
 function chargesTable(ctx: InvoiceContext): string {
   const { folio, charges, property } = ctx;
   // Phase 1.5/52 — Food & Laundry segment charges show as ONE line per bill.
-  const rowsData = consolidateSegmentCharges(charges as any);
+  // Room charges show one row per night (display-only split; totals unchanged).
+  const rowsData = expandRoomNights(consolidateSegmentCharges(charges as any));
   const isGst = isGstBill(folio);
   const showHsn = isGst && (property.invoice_show_hsn ?? true);
   const showGstSplit = isGst && (property.invoice_show_gst_breakup ?? true);
@@ -307,6 +309,7 @@ function chargesTable(ctx: InvoiceContext): string {
   const head = `
     <tr>
       <th ${thStyle}>#</th>
+      <th ${thStyle}>Date</th>
       <th ${thStyle}>Description</th>
       ${showHsn ? `<th ${thStyle}>HSN/SAC</th>` : ""}
       <th ${thStyle} class="right">Qty</th>
@@ -324,6 +327,7 @@ function chargesTable(ctx: InvoiceContext): string {
     return `
       <tr>
         <td ${tdStyle}>${i + 1}</td>
+        <td ${tdStyle} style="padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:11px;white-space:nowrap">${c.charged_on ? esc(new Date(`${String(c.charged_on).slice(0,10)}T00:00:00`).toLocaleDateString("en-IN")) : ""}</td>
         <td ${tdStyle}>${esc(c.description)}${c.segment_bill_ref && !c.is_consolidated ? ` <span class="small" style="color:#666">(Ref: ${esc(c.segment_bill_ref)})</span>` : ""}</td>
         ${showHsn ? `<td ${tdStyle}>${esc(c.hsn_code ?? defaultHsn(c.charge_type))}</td>` : ""}
         <td ${tdStyle} class="right">${Number(c.qty).toLocaleString("en-IN")}</td>
@@ -341,7 +345,7 @@ function chargesTable(ctx: InvoiceContext): string {
     `;
   }).join("");
 
-  return `<table style="margin-top:6px"><thead>${head}</thead><tbody>${rows || `<tr><td ${tdStyle} colspan="9" class="center small">No charges</td></tr>`}</tbody></table>`;
+  return `<table style="margin-top:6px"><thead>${head}</thead><tbody>${rows || `<tr><td ${tdStyle} colspan="10" class="center small">No charges</td></tr>`}</tbody></table>`;
 }
 
 /** Entry-wise "Payment Received" log — one row per recorded payment transaction. */
