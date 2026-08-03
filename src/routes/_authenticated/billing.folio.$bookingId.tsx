@@ -38,6 +38,7 @@ import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
+import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import {
   renderInvoiceHtml,
   openInvoiceWindow,
@@ -565,6 +566,50 @@ function FolioPage() {
       balance_amount: Math.max(0, t.total_amount - paid),
       ...extraFolioPatch,
     }).eq("id", folio.id);
+  }
+
+  /** Change the Bill-To party on an OPEN folio. Keeps the booking row in sync
+   *  so the checkout dialog reflects the latest choice, clears the manual
+   *  guest GSTIN when a company takes over (company GSTIN drives place of
+   *  supply), and writes an audit trail. */
+  async function updateBillTo(companyId: string | null) {
+    if (!folio || !isOpen) return;
+    const prevId = folio.billing_company_id ?? null;
+    if (prevId === companyId) return;
+    const co = companyId ? billingCompanies.find((c) => c.id === companyId) ?? null : null;
+    const patch: Partial<Folio> = {
+      billing_company_id: companyId,
+      guest_company: co ? co.name : null,
+      // Company bills take the company's GSTIN; individual bills fall back to
+      // the guest's own GSTIN so resolveStateCode still has something to read.
+      guest_gstin: co ? (co.gstin ?? null) : (booking?.guests?.gst_number ?? null),
+    };
+    const { error } = await supabase.from("folios").update(patch as any).eq("id", folio.id);
+    if (error) { toast.error(error.message); return; }
+    if (booking?.id) {
+      await supabase.from("bookings").update({ billing_company_id: companyId } as any).eq("id", booking.id);
+    }
+    setFolio({ ...folio, ...patch } as Folio);
+    if (user) {
+      logActivity({
+        property_id: folio.property_id,
+        user_id: user.id,
+        user_name: userDisplayName(user as any),
+        action_type: "BILL_TO_CHANGED",
+        module: "Billing",
+        reference_id: folio.id,
+        reference_label: folio.invoice_number,
+        details: {
+          from_billing_company_id: prevId,
+          to_billing_company_id: companyId,
+          to_billing_company_name: co?.name ?? "Guest (individual)",
+          to_gstin: patch.guest_gstin ?? null,
+          booking_number: booking?.booking_number ?? null,
+        },
+      });
+    }
+    toast.success(`Bill To: ${co ? co.name : "Guest (individual)"}`);
+    load();
   }
 
   async function toggleMode(mode: "cash" | "gst") {
@@ -1689,6 +1734,22 @@ function FolioPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Bill To</Label>
+                  {isOpen ? (
+                    <SearchableSelect
+                      className="h-9 w-72"
+                      value={folio.billing_company_id ?? "__guest__"}
+                      onChange={(v: string) => updateBillTo(v === "__guest__" ? null : v)}
+                      placeholder="Guest (individual)"
+                      searchPlaceholder="Search company…"
+                      options={[
+                        { value: "__guest__", label: "Guest (individual)" },
+                        ...billingCompanies.map((c) => ({
+                          value: c.id,
+                          label: c.gstin ? `${c.name} — ${c.gstin}` : c.name,
+                        })),
+                      ] as SearchableOption[]}
+                    />
+                  ) : (
                   <div className="h-9 flex items-center rounded-md border bg-muted/30 px-3 text-sm">
                     {(() => {
                       const co = folio.billing_company_id
@@ -1699,8 +1760,11 @@ function FolioPage() {
                         : <span>Guest (individual)</span>;
                     })()}
                   </div>
+                  )}
                   <p className="text-[11px] text-muted-foreground">
-                    Set at booking (Guest Details → “Bill to someone else?”). Confirmed again at checkout.
+                    {isOpen
+                      ? "Editable until checkout. Checkout uses whatever is set here."
+                      : "Locked — the bill is finalised."}
                   </p>
                 </div>
               </>
