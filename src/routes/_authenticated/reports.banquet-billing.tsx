@@ -80,7 +80,7 @@ function Page() {
           .gte("created_at", fromIso).lte("created_at", toIso)
           .order("created_at", { ascending: false }),
         supabase.from("segment_bills")
-          .select("id,booking_id,bill_number,segment,created_at,sub_total,gst_amount,total_amount,paid_amount,status")
+          .select("id,booking_id,folio_id,bill_number,segment,created_at,sub_total,gst_amount,total_amount,paid_amount,status")
           .in("booking_id", bookingIds)
           .gte("created_at", fromIso).lte("created_at", toIso)
           .order("created_at", { ascending: false }),
@@ -117,6 +117,9 @@ function Page() {
         });
       }
       for (const s of (segs ?? []) as any[]) {
+        // Skip bills already posted onto the room folio — otherwise the same
+        // money would be counted twice in the grand total.
+        if (s.folio_id) continue;
         const info = meta.get(s.booking_id) ?? { room: "", guest: "" };
         const seg = String(s.segment ?? "other");
         const total = Number(s.total_amount ?? 0);
