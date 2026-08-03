@@ -400,6 +400,53 @@ function RestaurantPage() {
   const restInvoiceNum = typeof restInvoice === "number" ? restInvoice : Number(restInvoice || 0);
   const difference = restInvoiceNum - totalActive;
 
+  // Outlet-wise breakdowns (KOT credits carry no outlet → Unassigned bucket)
+  const monthDirect = useMemo(
+    () => directCharges.filter((c) => {
+      const d = new Date(c.charge_date);
+      return d.getMonth() + 1 === month && d.getFullYear() === year;
+    }),
+    [directCharges, month, year],
+  );
+  const outletTotalAmount = useMemo(
+    () => groupByOutlet(
+      [
+        ...monthRows.map((r) => ({ n: UNASSIGNED, a: Number(r.amount) })),
+        ...monthDirect.map((c) => ({ n: outletName(c.outlet_id), a: Number(c.amount) })),
+      ],
+      (r) => r.n, (r) => r.a,
+    ),
+    [monthRows, monthDirect, outletName],
+  );
+  const outletSettled = useMemo(
+    () => groupByOutlet(
+      [
+        ...monthRows.filter((r) => r.is_settled).map((r) => ({ n: UNASSIGNED, a: Number(r.amount) })),
+        ...monthDirect.filter((c) => c.is_settled).map((c) => ({ n: outletName(c.outlet_id), a: Number(c.amount) })),
+      ],
+      (r) => r.n, (r) => r.a,
+    ),
+    [monthRows, monthDirect, outletName],
+  );
+  const outletOutstanding = useMemo(
+    () => groupByOutlet(
+      [
+        ...activeRows.map((r) => ({ n: UNASSIGNED, a: Number(r.amount) })),
+        ...monthDirect.filter((c) => !c.is_settled).map((c) => ({ n: outletName(c.outlet_id), a: Number(c.amount) })),
+      ],
+      (r) => r.n, (r) => r.a,
+    ),
+    [activeRows, monthDirect, outletName],
+  );
+  const outletDirectAll = useMemo(
+    () => groupByOutlet(directCharges, (c) => outletName(c.outlet_id), (c) => Number(c.amount)),
+    [directCharges, outletName],
+  );
+  const outletPayableAll = useMemo(
+    () => groupByOutlet(unsettledPayables, payableOutlet, (p) => Number(p.amount)),
+    [unsettledPayables, payableOutlet],
+  );
+
   async function settle() {
     if (!current) return;
     if (activeRows.length === 0) return toast.error("No outstanding credits to settle");
