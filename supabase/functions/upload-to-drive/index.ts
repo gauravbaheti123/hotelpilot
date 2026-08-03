@@ -83,6 +83,37 @@ async function getAccessToken(): Promise<string> {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  // Diagnostic mode: report whether the configured folder lives on a Shared Drive
+  // (driveId present) or in the service account's personal My Drive.
+  if (req.method === "GET") {
+    try {
+      const url = new URL(req.url);
+      const folderType = url.searchParams.get("folderType") ?? "id_doc";
+      const folderId = resolveFolderId(folderType);
+      if (!folderId) throw new Error(`Folder not configured: ${folderType}`);
+      const accessToken = await getAccessToken();
+      const metaRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${folderId}?supportsAllDrives=true&fields=id,name,mimeType,driveId,ownedByMe,capabilities(canAddChildren)`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      const meta = await metaRes.json();
+      return new Response(
+        JSON.stringify({
+          success: metaRes.ok,
+          folderType,
+          status: metaRes.status,
+          meta,
+          isSharedDrive: Boolean(meta?.driveId),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    } catch (e: any) {
+      return new Response(JSON.stringify({ success: false, error: e?.message ?? String(e) }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ success: false, error: "Method not allowed" }), {
       status: 405,
@@ -123,7 +154,7 @@ Deno.serve(async (req) => {
     body.set(closer, preface.length + fileBytes.length);
 
     const upRes = await fetch(
-      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id",
+      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink",
       {
         method: "POST",
         headers: {
@@ -137,11 +168,13 @@ Deno.serve(async (req) => {
       const t = await upRes.text();
       throw new Error(`Drive upload failed: ${upRes.status} ${t}`);
     }
-    const { id: fileId } = await upRes.json();
+    const uploaded = await upRes.json();
+    const fileId = uploaded.id as string;
+    let webViewLink = (uploaded.webViewLink as string | undefined) ?? null;
 
     // Make link-viewable.
     const permRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}/permissions`,
+      `https://www.googleapis.com/drive/v3/files/${fileId}/permissions?supportsAllDrives=true`,
       {
         method: "POST",
         headers: {
@@ -156,8 +189,20 @@ Deno.serve(async (req) => {
       console.error("Drive permission set failed:", permRes.status, t);
     }
 
-    const viewUrl = `https://drive.google.com/uc?id=${fileId}`;
-    return new Response(JSON.stringify({ success: true, fileId, viewUrl }), {
+    if (!webViewLink) {
+      const metaRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true&fields=webViewLink`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+      if (metaRes.ok) {
+        const meta = await metaRes.json();
+        webViewLink = (meta.webViewLink as string | undefined) ?? null;
+      }
+    }
+
+    // webViewLink opens the Drive preview; fall back to the canonical view URL.
+    const viewUrl = webViewLink ?? `https://drive.google.com/file/d/${fileId}/view`;
+    return new Response(JSON.stringify({ success: true, fileId, viewUrl, webViewLink }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
