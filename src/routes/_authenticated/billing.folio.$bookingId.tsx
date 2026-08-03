@@ -886,6 +886,98 @@ function FolioPage() {
     load();
   }
 
+  /** Edit the nightly room tariff on an OPEN folio. Available to any role
+   *  granted invoices/edit (the folio-edit permission) — deliberately NOT an
+   *  owner-only override. Targets a single folio_charges room row, which maps
+   *  1:1 to a booking_rooms segment, so a mid-stay rate change (room shift)
+   *  keeps its own rate. Amount + GST are recomputed with the same gst_slabs
+   *  lookup used when the charge was first posted, then folio totals go
+   *  through the existing persistTotals()/recomputeFolio() path. */
+  function openEditTariff(c: Charge) {
+    if (!isOpen) { toast.error("Tariff can only be changed while the bill is OPEN"); return; }
+    if (!canEditTariff) { toast.error("You don't have permission to edit the tariff"); return; }
+    setTariffTarget(c);
+    setTariffRate(String(Number(c.rate ?? 0)));
+    setTariffOpen(true);
+  }
+
+  async function saveEditTariff() {
+    if (!folio || !tariffTarget) return;
+    if (!isOpen) return toast.error("Tariff can only be changed while the bill is OPEN");
+    if (!canEditTariff) return toast.error("You don't have permission to edit the tariff");
+    const newRate = Number(tariffRate);
+    if (!Number.isFinite(newRate) || newRate < 0) return toast.error("Enter a valid tariff");
+    const oldRate = Number(tariffTarget.rate ?? 0);
+    if (Math.abs(newRate - oldRate) < 0.005) { setTariffOpen(false); setTariffTarget(null); return; }
+    const nights = Number(tariffTarget.qty ?? 1) || 1;
+    const oldAmount = Number(tariffTarget.amount ?? 0);
+    const newAmount = Math.round(nights * newRate * 100) / 100;
+    // A rate reduction is a discount — same per-role limit as every other path.
+    if (newAmount < oldAmount - 0.01) {
+      const chk = canApplyDiscount(discountLimit, {
+        discountRupees: oldAmount - newAmount,
+        base: oldAmount,
+      });
+      if (!chk.allowed) return toast.error(chk.reason ?? describeLimit(discountLimit));
+    }
+    const gstR = resolveRoomGstRate(newRate, gstSlabs);
+    if (gstR == null) {
+      return toast.error("No GST slab configured for this tariff — add a room slab in Master Data › GST Slabs");
+    }
+    const gstAmt = Math.round(newAmount * gstR) / 100;
+    setTariffSaving(true);
+    try {
+      const { error } = await supabase
+        .from("folio_charges")
+        .update({ rate: newRate, amount: newAmount, gst_rate: gstR, gst_amount: gstAmt } as any)
+        .eq("id", tariffTarget.id);
+      if (error) { toast.error(error.message); return; }
+      // Keep the source segment in sync so the seed/self-heal path in load()
+      // doesn't re-post the old rate.
+      if (tariffTarget.source_table === "booking_rooms" && tariffTarget.source_id) {
+        const { error: brErr } = await supabase
+          .from("booking_rooms")
+          .update({ rate: newRate } as any)
+          .eq("id", tariffTarget.source_id);
+        if (brErr) console.warn("booking_rooms rate sync failed", brErr);
+      }
+      const next = await refetchCharges();
+      const prevTotal = Number(folio.total_amount);
+      await persistTotals(next, payments);
+      logActivity({
+        property_id: booking?.property_id ?? "",
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "ROOM_TARIFF_EDITED",
+        module: "Billing",
+        reference_id: folio.id,
+        reference_label: folio.invoice_number,
+        details: {
+          bill_number: folio.invoice_number,
+          booking_number: booking?.booking_number ?? null,
+          charge_id: tariffTarget.id,
+          description: tariffTarget.description,
+          booking_room_id: tariffTarget.source_table === "booking_rooms" ? tariffTarget.source_id : null,
+          nights,
+          previous_rate: oldRate,
+          new_rate: newRate,
+          previous_amount: oldAmount,
+          new_amount: newAmount,
+          gst_rate: gstR,
+          previous_bill_total: prevTotal,
+          new_bill_total: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst")).total_amount,
+          edited_by: userDisplayName(user as any),
+        },
+      });
+      toast.success(`Tariff updated: ${inr(oldRate)} → ${inr(newRate)}`);
+      setTariffOpen(false);
+      setTariffTarget(null);
+      load();
+    } finally {
+      setTariffSaving(false);
+    }
+  }
+
   // ---------- DISCOUNT HANDLERS ----------
   const unlimitedDisc = () => hasRole(roles, "owner") || hasRole(roles, "superadmin");
   const capPctForRole = () => (unlimitedDisc() ? 100 : Math.max(0, Math.min(100, Number(maxDiscPct) || 0)));
