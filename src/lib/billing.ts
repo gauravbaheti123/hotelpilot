@@ -214,8 +214,11 @@ export interface DisplayCharge {
   discount_value?: number | string | null;
   hsn_code?: string | null;
   segment_bill_ref?: string | null;
+  charged_on?: string | null;
   /** true when the row represents several folio_charges rolled into one */
   is_consolidated?: boolean;
+  /** true when the row is one derived night of a multi-night room charge */
+  is_night_split?: boolean;
   /** ids of the underlying folio_charges rows (consolidated rows only) */
   source_charge_ids?: string[];
 }
