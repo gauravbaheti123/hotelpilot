@@ -9,6 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { usePermissions } from "@/hooks/use-permissions";
+import { toast } from "sonner";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -16,7 +22,7 @@ import {
   exportExcel, exportPdf, fmtDateTime, fmtINR, firstOfMonthIso, type ReportColumn,
 } from "@/lib/reportExports";
 import { formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
-import { Plus, ChevronDown, ChevronRight, Printer } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Printer, Trash2 } from "lucide-react";
 import { printHandover } from "@/lib/handoverPrint";
 
 export const Route = createFileRoute("/_authenticated/reports/cash-handover")({
@@ -56,6 +62,40 @@ function Page() {
   const [mismatchOnly, setMismatchOnly] = useState(false);
   const [rows, setRows] = useState<HandoverRow[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const { can, isSuperadmin } = usePermissions();
+  const canDelete = isSuperadmin || can("shift_handover", "delete");
+  const [deleteTarget, setDeleteTarget] = useState<HandoverRow | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [latestId, setLatestId] = useState<string | null>(null);
+
+  const loadLatest = useCallback(async () => {
+    if (!propertyId) { setLatestId(null); return; }
+    const { data } = await supabase
+      .from("shift_handovers")
+      .select("id,window_end,created_at")
+      .eq("property_id", propertyId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setLatestId((data as any)?.id ?? null);
+  }, [propertyId]);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    if (!deleteReason.trim()) return toast.error("Reason is required");
+    setDeleting(true);
+    const { error } = await supabase.rpc("delete_shift_handover" as any, {
+      _id: deleteTarget.id,
+      _reason: deleteReason.trim(),
+    } as any);
+    setDeleting(false);
+    if (error) return toast.error(error.message);
+    toast.success("Handover deleted");
+    setDeleteTarget(null);
+    setDeleteReason("");
+    await Promise.all([load(), loadLatest()]);
+  };
 
   const load = useCallback(async () => {
     if (!propertyId) return;
@@ -88,6 +128,7 @@ function Page() {
   }, [propertyId, from, to]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadLatest(); }, [loadLatest]);
 
   const managers = useMemo(() => {
     const set = new Map<string, string>();
@@ -223,7 +264,17 @@ function Page() {
                     {r.notes && (
                       <p className="mt-2 text-xs text-muted-foreground"><b>Overall notes:</b> {r.notes}</p>
                     )}
-                    <div className="mt-3 flex justify-end">
+                    <div className="mt-3 flex justify-end gap-2">
+                      {canDelete && latestId === r.id && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-destructive border-destructive/40 hover:bg-destructive/10"
+                          onClick={() => { setDeleteTarget(r); setDeleteReason(""); }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" /> Delete Handover
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"
@@ -259,6 +310,33 @@ function Page() {
           })}
         </CardContent>
       </Card>
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) { setDeleteTarget(null); setDeleteReason(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete handover?</DialogTitle>
+            <DialogDescription>
+              This permanently removes the handover submitted on{" "}
+              {deleteTarget ? fmtDateTime(deleteTarget.created_at) : ""} and all its cash lines.
+              A full snapshot is written to the audit log. Only the latest handover can be deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Reason (required)</Label>
+            <Textarea
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              placeholder="Why is this handover being deleted?"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={deleting || !deleteReason.trim()}>
+              {deleting ? "Deleting…" : "Delete Handover"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </ReportShell>
   );
 }
