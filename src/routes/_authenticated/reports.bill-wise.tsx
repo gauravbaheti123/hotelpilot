@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { RequirePermission } from "@/components/RequirePermission";
 import { ReportDataTable } from "@/components/ReportDataTable";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
+import { fetchBanquetScope } from "@/lib/banquetScope";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
   buildTallySalesXml, downloadXml, buildFileName,
@@ -50,13 +51,15 @@ function Page() {
     const fromIso = `${from}T00:00:00`;
     const toIso = `${to}T23:59:59`;
     let q = supabase.from("folios").select(`
-      id,invoice_number,created_at,sub_total,gst_amount,discount_amount,total_amount,bill_type,status,
+      id,booking_id,invoice_number,created_at,sub_total,gst_amount,discount_amount,total_amount,bill_type,status,
       bookings(booking_rooms(rooms!booking_rooms_room_id_fkey(room_number)),guests(name))
     `).eq("property_id", propertyId).gte("created_at", fromIso).lte("created_at", toIso)
       .order("created_at", { ascending: false });
     if (billType !== "all") q = q.eq("bill_type", billType);
     if (status !== "all") q = q.eq("status", status === "active" ? "settled" : "voided");
-    const { data: folios } = await q;
+    const [{ data: allFolios }, scope] = await Promise.all([q, fetchBanquetScope(propertyId)]);
+    // Banquet event-block folios are excluded here — they live in the Owner-only Banquet Billing report.
+    const folios = (allFolios ?? []).filter((f: any) => !f.booking_id || !scope.bookingIds.has(f.booking_id));
     const ids = (folios ?? []).map((f: any) => f.id);
     const [{ data: charges }, { data: pays }] = await Promise.all([
       ids.length ? supabase.from("folio_charges").select("folio_id,charge_type,amount").in("folio_id", ids) : Promise.resolve({ data: [] as any[] }),
