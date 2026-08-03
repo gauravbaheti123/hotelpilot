@@ -238,6 +238,14 @@ function FolioPage() {
   const [editBaseAmount, setEditBaseAmount] = useState(0);
   const { limit: discountLimit } = useDiscountLimit();
 
+  // Edit Tariff dialog — nightly room rate on an OPEN folio. Targets ONE
+  // folio_charges row (= one booking_rooms segment), never a display-only
+  // per-night split row.
+  const [tariffOpen, setTariffOpen] = useState(false);
+  const [tariffTarget, setTariffTarget] = useState<Charge | null>(null);
+  const [tariffRate, setTariffRate] = useState("0");
+  const [tariffSaving, setTariffSaving] = useState(false);
+
   const [payOpen, setPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payMode, setPayMode] = useState<string>("cash");
