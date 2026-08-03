@@ -1796,7 +1796,7 @@ function FolioPage() {
                   <Input
                     className={`h-9 w-56 ${folio.guest_gstin && !isValidOrEmptyGSTIN(folio.guest_gstin) ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     value={folio.guest_gstin ?? ""}
-                    disabled={!isOpen || !!folio.billing_company_id}
+                    disabled={!isOpen || !!folio.billing_company_id || !!folio.billing_guest_id}
                     maxLength={15}
                     placeholder="e.g. 27AASFB5351R1ZM"
                     onChange={async (e) => {
@@ -2026,7 +2026,9 @@ function FolioPage() {
                 const linkedCo = folio.billing_company_id
                   ? billingCompanies.find((c) => c.id === folio.billing_company_id) ?? null
                   : null;
-                const companyAddress = linkedCo?.address || booking.guests?.address || "";
+                const linkedGuest = folio.billing_guest_id ? billToGuest : null;
+                const companyAddress =
+                  linkedCo?.address || linkedGuest?.address || booking.guests?.address || "";
                 const otaName =
                   booking.ota_channels?.name?.trim() ||
                   booking.ota_partner_name?.trim() ||
@@ -2037,7 +2039,9 @@ function FolioPage() {
                       <div className="text-base font-semibold">{companyName}</div>
                       {companyGstin && <div className="text-xs text-gray-700">GSTIN: {companyGstin}</div>}
                       {companyAddress && <div className="text-xs text-gray-700">{companyAddress}</div>}
-                      {linkedCo?.phone && <div className="text-xs text-gray-700">Ph: {linkedCo.phone}</div>}
+                      {(linkedCo?.phone || linkedGuest?.mobile) && (
+                        <div className="text-xs text-gray-700">Ph: {linkedCo?.phone || linkedGuest?.mobile}</div>
+                      )}
                       <div className="mt-3 text-xs text-gray-700">
                         <span className="font-semibold">Guest Stayed:</span> {booking.guests?.name ?? "—"}
                         {booking.guests?.mobile ? ` · ${booking.guests.mobile}` : ""}
