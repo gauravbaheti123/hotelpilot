@@ -9,6 +9,7 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { supabase } from "@/integrations/supabase/client";
 import { inr } from "@/lib/billing";
 import { todayIso, PAYMENT_MODE_LABELS } from "@/lib/reports";
+import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/reports/sales")({
