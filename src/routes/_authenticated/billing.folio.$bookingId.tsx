@@ -2738,9 +2738,39 @@ function FolioPage() {
           </DialogContent>
         </Dialog>
 
+        {/* EDIT TARIFF (room charge, OPEN folio only) */}
+        <Dialog open={tariffOpen} onOpenChange={(o) => { setTariffOpen(o); if (!o) setTariffTarget(null); }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader><DialogTitle>Edit tariff</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div className="text-xs text-muted-foreground">
+                {tariffTarget?.description}
+                {tariffTarget ? ` · ${Number(tariffTarget.qty)} night(s)` : ""}
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Nightly tariff (₹) *</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={tariffRate}
+                  onChange={(e) => setTariffRate(e.target.value)}
+                />
+                <div className="text-xs text-muted-foreground">
+                  New amount:{" "}
+                  {inr(Math.round((Number(tariffTarget?.qty ?? 1) || 1) * (Number(tariffRate) || 0) * 100) / 100)}
+                  {" · GST recalculated from the master slabs. Applies to every night of this room segment."}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setTariffOpen(false); setTariffTarget(null); }}>Cancel</Button>
+              <Button onClick={saveEditTariff} disabled={tariffSaving}>{tariffSaving ? "Saving…" : "Save tariff"}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* ADD PAYMENT */}
         <Dialog open={payOpen} onOpenChange={setPayOpen}>
-          {null}
           <DialogContent>
             <DialogHeader><DialogTitle>Record payment</DialogTitle></DialogHeader>
             <div className="space-y-3">
