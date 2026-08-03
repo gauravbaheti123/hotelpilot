@@ -2298,7 +2298,18 @@ function FolioPage() {
                       <td className="print:hidden" style={{ textAlign: "right" }}>
                         <div className="flex items-center justify-end gap-1">
                           {c.is_night_split ? (
-                            <span className="text-[10px] text-muted-foreground">Night</span>
+                            c.charge_type === "room" && canEditTariff ? (
+                              <button
+                                type="button"
+                                onClick={() => openEditTariff(c as any)}
+                                className="text-sky-700"
+                                title="Edit this night's tariff"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">Night</span>
+                            )
                           ) : c.is_consolidated ? (
                             <span className="text-[10px] text-muted-foreground">Bill</span>
                           ) : (<>
@@ -2803,11 +2814,19 @@ function FolioPage() {
         {/* EDIT TARIFF (room charge, OPEN folio only) */}
         <Dialog open={tariffOpen} onOpenChange={(o) => { setTariffOpen(o); if (!o) setTariffTarget(null); }}>
           <DialogContent className="sm:max-w-md">
-            <DialogHeader><DialogTitle>Edit tariff</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>
+                {(tariffTarget as any)?.is_night_split ? "Edit tariff for this night" : "Edit tariff"}
+              </DialogTitle>
+            </DialogHeader>
             <div className="space-y-3">
               <div className="text-xs text-muted-foreground">
                 {tariffTarget?.description}
-                {tariffTarget ? ` · ${Number(tariffTarget.qty)} night(s)` : ""}
+                {tariffTarget
+                  ? (tariffTarget as any).is_night_split
+                    ? ` · ${String(tariffTarget.charged_on ?? "").slice(0, 10)}`
+                    : ` · ${Number(tariffTarget.qty)} night(s)`
+                  : ""}
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Nightly tariff (₹) *</Label>
@@ -2820,7 +2839,9 @@ function FolioPage() {
                 <div className="text-xs text-muted-foreground">
                   New amount:{" "}
                   {inr(Math.round((Number(tariffTarget?.qty ?? 1) || 1) * (Number(tariffRate) || 0) * 100) / 100)}
-                  {" · GST recalculated from the master slabs. Applies to every night of this room segment."}
+                  {(tariffTarget as any)?.is_night_split
+                    ? " · GST recalculated from the master slabs. Applies to this night only — the other nights keep their rate."
+                    : " · GST recalculated from the master slabs. Applies to every night of this room segment."}
                 </div>
               </div>
             </div>
