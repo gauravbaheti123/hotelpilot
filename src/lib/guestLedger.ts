@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { fetchBanquetScope } from "@/lib/banquetScope";
 
 export type LedgerType = "Lodge" | "Food" | "Laundry" | "Banquet" | "Banquet Food" | "Other";
 
