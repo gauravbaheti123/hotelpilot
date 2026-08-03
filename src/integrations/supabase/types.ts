@@ -6099,6 +6099,10 @@ export type Database = {
         Returns: Json
       }
       delete_night_audit: { Args: { _id: string }; Returns: undefined }
+      delete_shift_handover: {
+        Args: { _id: string; _reason: string }
+        Returns: Json
+      }
       generate_bill_number: {
         Args: { _property_id: string; _segment: string }
         Returns: string
