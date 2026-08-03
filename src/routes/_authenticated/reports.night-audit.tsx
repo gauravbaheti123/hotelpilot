@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { toast } from "sonner";
 import { fetchDailySummary, fetchOccupancy, todayIso, PAYMENT_MODE_LABELS } from "@/lib/reports";
 import { inr } from "@/lib/billing";
