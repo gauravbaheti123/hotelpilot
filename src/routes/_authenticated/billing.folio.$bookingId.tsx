@@ -570,6 +570,7 @@ function FolioPage() {
 
   async function toggleMode(mode: "cash" | "gst") {
     if (!folio) return;
+    void 0;
     if (mode === "cash" && !isOwnerStrict) {
       toast.error("Only the property owner can generate a Cash Bill");
       return;
