@@ -109,7 +109,7 @@ function pickCheckoutFolio(rows: any[]) {
     })[0] ?? null;
 }
 
-export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props) {
+export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvoiceNavigation }: Props) {
   // Phase 64 — after a successful checkout, take staff straight to the finalized
   // Lodge invoice instead of dropping them back on the Dashboard.
   const navigate = useNavigate();
@@ -778,7 +778,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone }: Props)
     // the folio reflects whatever the Phase 48b early-checkout choice repriced it
     // to. Skip when we are already on that folio page — onDone() refreshes it.
     const invoicePath = `/billing/folio/${booking.id}`;
-    if (currentPath !== invoicePath) {
+    if (!skipInvoiceNavigation && currentPath !== invoicePath) {
       navigate({ to: "/billing/folio/$bookingId", params: { bookingId: booking.id } });
     }
   }
