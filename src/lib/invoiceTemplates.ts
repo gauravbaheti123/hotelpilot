@@ -284,6 +284,7 @@ function metaBlock(ctx: InvoiceContext): string {
         <div class="small">Booking: ${esc(booking.booking_number)}</div>
         <div class="small">Date: ${new Date().toLocaleDateString("en-IN")}</div>
         ${rooms ? `<div class="small">Room: ${esc(rooms)}</div>` : ""}
+        <div class="small">Guest: ${esc(guestName || "—")}${booking.guests?.mobile ? ` · ${esc(booking.guests.mobile)}` : ""}</div>
         <div class="small">Check-in: ${esc(booking.check_in)} ${property.default_checkin_time ? esc(property.default_checkin_time.slice(0,5)) : ""}</div>
         <div class="small">Check-out: ${esc(booking.check_out)} ${property.default_checkout_time ? esc(property.default_checkout_time.slice(0,5)) : ""}</div>
         <div class="small">Nights: ${ns} · Pax: ${(booking.adults ?? 0)}A${booking.children ? `+${booking.children}C` : ""}</div>
