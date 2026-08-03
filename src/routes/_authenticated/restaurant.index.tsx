@@ -680,6 +680,7 @@ function RestaurantPage() {
                   <Card><CardContent className="pt-4">
                     <div className="text-xs text-muted-foreground">Hotel Total (unsettled)</div>
                     <div className="text-2xl font-semibold">₹{totalActive.toLocaleString()}</div>
+                    <OutletBreakdown parts={outletOutstanding} className="mt-1" />
                   </CardContent></Card>
                   <Card><CardContent className="pt-4">
                     <Label className="text-xs">Restaurant invoice amount</Label>
@@ -708,11 +709,13 @@ function RestaurantPage() {
                   <div className="text-sm font-medium mb-2 flex items-center gap-2">
                     <FileSpreadsheet className="h-4 w-4" /> KOT-wise breakup
                   </div>
+                  <OutletBreakdown parts={outletTotalAmount} className="mb-2" />
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Date</TableHead>
                         <TableHead>KOT</TableHead>
+                        <TableHead>Outlet</TableHead>
                         <TableHead>Room</TableHead>
                         <TableHead>Guest</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
@@ -721,7 +724,7 @@ function RestaurantPage() {
                     </TableHeader>
                     <TableBody>
                       {monthRows.length === 0 && (
-                        <TableRow><TableCell colSpan={6} className="text-center py-4 text-sm text-muted-foreground">No data</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7} className="text-center py-4 text-sm text-muted-foreground">No data</TableCell></TableRow>
                       )}
                       {monthRows.map((r) => {
                         const e = enriched[r.id] ?? {};
@@ -729,6 +732,7 @@ function RestaurantPage() {
                           <TableRow key={r.id}>
                             <TableCell className="text-xs">{r.date}</TableCell>
                             <TableCell className="text-xs font-mono">{e.kot_number ?? "—"}</TableCell>
+                            <TableCell className="text-xs">{UNASSIGNED}</TableCell>
                             <TableCell>{e.room_no ?? "—"}</TableCell>
                             <TableCell>{e.guest_name ?? "—"}</TableCell>
                             <TableCell className="text-right">₹{Number(r.amount).toFixed(2)}</TableCell>
