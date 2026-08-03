@@ -38,6 +38,7 @@ import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
+import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import {
   renderInvoiceHtml,
   openInvoiceWindow,
@@ -1693,7 +1694,7 @@ function FolioPage() {
                     <SearchableSelect
                       className="h-9 w-72"
                       value={folio.billing_company_id ?? "__guest__"}
-                      onValueChange={(v) => updateBillTo(v === "__guest__" ? null : v)}
+                      onChange={(v: string) => updateBillTo(v === "__guest__" ? null : v)}
                       placeholder="Guest (individual)"
                       searchPlaceholder="Search company…"
                       options={[
