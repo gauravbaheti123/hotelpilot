@@ -27,6 +27,7 @@ import {
  inrRound,
   consolidateSegmentCharges,
   expandRoomNights,
+*** placeholder
   type DisplayCharge,
 } from "@/lib/billing";
 import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil } from "lucide-react";
