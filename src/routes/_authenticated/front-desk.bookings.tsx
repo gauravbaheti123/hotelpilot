@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -65,7 +66,11 @@ function BookingsPage() {
     if (status !== "all") q = q.eq("status", status as any);
     const { data, error } = await q;
     if (error) toast.error(error.message);
-    setRows((data ?? []) as unknown as BookingRow[]);
+    // Banquet event-block stays stay listed for 48h after the event ends.
+    const scope = await fetchBanquetScope(current.id);
+    setRows(((data ?? []) as any[]).filter(
+      (b) => !isBanquetRecord(scope, { booking_id: b.id }),
+    ) as unknown as BookingRow[]);
     setLoading(false);
   }
 

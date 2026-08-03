@@ -6153,6 +6153,16 @@ export type Database = {
     Functions: {
       auto_cancel_incomplete_bookings: { Args: never; Returns: number }
       auto_close_segment_bills: { Args: never; Returns: number }
+      banquet_visibility: {
+        Args: { _property_id?: string }
+        Returns: {
+          booking_id: string
+          event_id: string
+          expired: boolean
+          expires_at: string
+          last_checkout_at: string
+        }[]
+      }
       can_billing: {
         Args: { _property_id: string; _user_id: string }
         Returns: boolean
@@ -6279,6 +6289,42 @@ export type Database = {
           _table_name: string
         }
         Returns: string
+      }
+      owner_update_bill_item: {
+        Args: {
+          _description: string
+          _gst_rate: number
+          _item_id: string
+          _qty: number
+          _rate: number
+          _reason: string
+        }
+        Returns: Json
+      }
+      owner_update_folio_charge: {
+        Args: {
+          _charge_id: string
+          _description: string
+          _gst_rate: number
+          _qty: number
+          _rate: number
+          _reason: string
+        }
+        Returns: Json
+      }
+      owner_update_folio_header: {
+        Args: {
+          _folio_id: string
+          _guest_company: string
+          _guest_gstin: string
+          _notes: string
+          _reason: string
+        }
+        Returns: Json
+      }
+      owner_void_banquet_document: {
+        Args: { _id: string; _kind: string; _reason: string }
+        Returns: Json
       }
       post_nightly_room_charges: {
         Args: { _audit_date: string; _property_id: string }

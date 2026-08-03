@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
+import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { AppShell } from "@/components/AppShell";
 import { CityInput, StateSelect, NationInput } from "@/components/AddressFields";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,7 +69,11 @@ function GuestDetail() {
     const { data: b } = await supabase.from("bookings")
       .select("id,booking_number,status,check_in,check_out,total_amount")
       .eq("guest_id", id).order("check_in", { ascending: false }).limit(50);
-    setStays((b ?? []) as Stay[]);
+    // Hide banquet event-block stays once their 48h window has lapsed.
+    const scope = await fetchBanquetScope(null);
+    setStays(((b ?? []) as any[]).filter(
+      (s) => !isBanquetRecord(scope, { booking_id: s.id }),
+    ) as Stay[]);
     const { data: f } = await supabase.from("guest_feedback")
       .select("id,feedback_date,overall_rating,comments,source")
       .eq("guest_id", id).order("feedback_date", { ascending: false }).limit(20);

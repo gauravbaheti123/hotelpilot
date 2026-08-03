@@ -104,8 +104,12 @@ function InvoicesPage() {
       if (!audit) qb = qb.eq("is_deleted" as any, false);
       const { data } = await qb.order("created_at", { ascending: false })
         .limit(300);
-      // Banquet event-block folios are excluded — Owner-only Banquet Billing report.
-      const visible = ((data ?? []) as any[]).filter((f) => f.bookings?.source !== "event_block");
+      // Banquet event-block folios stay visible for 48h after the event ends,
+      // then move to the Owner-only Banquet Billing report.
+      const scope = await fetchBanquetScope(propertyId);
+      const visible = ((data ?? []) as any[]).filter(
+        (f) => !isBanquetRecord(scope, { booking_id: f.booking_id, folio_id: f.id }),
+      );
       setRows(visible as unknown as Row[]);
     })();
   };

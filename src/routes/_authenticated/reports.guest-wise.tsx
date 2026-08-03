@@ -48,10 +48,13 @@ function Page() {
       checked_in_by,checked_out_by,
       guests(name,mobile)
     `).eq("property_id", propertyId)
-      .neq("source", "event_block")
       .gte("check_in", from).lte("check_in", to);
 
-    const raw = (data ?? []) as any[];
+    // Banquet event-block stays remain visible for 48h after the event ends.
+    const scope = await fetchBanquetScope(propertyId);
+    const raw = ((data ?? []) as any[]).filter(
+      (b) => !isBanquetRecord(scope, { booking_id: b.id }),
+    );
     const uids = new Set<string>();
     for (const b of raw) {
       if (b.checked_in_by) uids.add(b.checked_in_by);
