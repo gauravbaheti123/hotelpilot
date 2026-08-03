@@ -45,17 +45,18 @@ function Page() {
     if (!propertyId) return;
     const fromIso = `${from}T00:00:00`;
     const toIso = `${to}T23:59:59`;
-    const [charges, banquetRes, payRes, folioRes] = await Promise.all([
+    const [charges, banquetRes, payRes, folioRes, scope] = await Promise.all([
       supabase.from("folio_charges")
-        .select("charge_type,amount,charged_on,folios!inner(property_id)")
+        .select("charge_type,amount,charged_on,folio_id,folios!inner(property_id,booking_id)")
         .gte("charged_on", from).lte("charged_on", to)
         .eq("folios.property_id", propertyId),
       supabase.from("banquet_bookings").select("event_date,total_amount").eq("property_id", propertyId)
         .gte("event_date", from).lte("event_date", to),
-      supabase.from("payments").select("amount,paid_at").eq("property_id", propertyId)
+      supabase.from("payments").select("amount,paid_at,booking_id,folio_id").eq("property_id", propertyId)
         .gte("paid_at", fromIso).lte("paid_at", toIso),
-      supabase.from("folios").select("total_amount,paid_amount,created_at").eq("property_id", propertyId)
+      supabase.from("folios").select("id,booking_id,total_amount,paid_amount,created_at").eq("property_id", propertyId)
         .gte("created_at", fromIso).lte("created_at", toIso).neq("status", "voided"),
+      fetchBanquetScope(propertyId),
     ]);
 
     const map = new Map<string, DayRow>();
@@ -63,6 +64,8 @@ function Page() {
       map.set(d, { date: d, rooms: 0, food: 0, banquet: 0, other: 0, total: 0, collections: 0, outstanding: 0 });
     }
     for (const c of (charges.data ?? []) as any[]) {
+      // Skip charges on banquet event-block folios.
+      if (isBanquetRecord(scope, { folio_id: c.folio_id, booking_id: c.folios?.booking_id })) continue;
       const key = (c.charged_on as string).slice(0, 10);
       const r = map.get(key); if (!r) continue;
       const a = Number(c.amount || 0);
@@ -75,10 +78,12 @@ function Page() {
       r.banquet += Number(b.total_amount || 0);
     }
     for (const p of (payRes.data ?? []) as any[]) {
+      if (isBanquetRecord(scope, p)) continue;
       const r = map.get((p.paid_at as string).slice(0, 10)); if (!r) continue;
       r.collections += Number(p.amount || 0);
     }
     for (const f of (folioRes.data ?? []) as any[]) {
+      if (isBanquetRecord(scope, { booking_id: f.booking_id, folio_id: f.id })) continue;
       const r = map.get((f.created_at as string).slice(0, 10)); if (!r) continue;
       r.outstanding += Math.max(0, Number(f.total_amount || 0) - Number(f.paid_amount || 0));
     }
