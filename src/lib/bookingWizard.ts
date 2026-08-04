@@ -189,6 +189,10 @@ export function isPristine(s: WizardState) {
   return (
     s.kind === "lodge" &&
     !s.reservation &&
+    s.extraGuests.length === 0 &&
+    s.adults === 1 && s.children === 0 &&
+    s.rooms.length <= 1 &&
+    !s.rooms.some((r) => r.categoryId || r.roomId || Number(r.rate) > 0) &&
     !g.name && !g.mobile && !g.email && !g.dob && !g.address && !g.pincode &&
     !g.idProofNumber && !g.passportNumber && !g.visaNumber && !g.visaExpiry &&
     !g.company && !g.gstNumber && !g.idDocFileId && !g.guestId
