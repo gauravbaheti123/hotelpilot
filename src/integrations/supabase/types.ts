@@ -6263,6 +6263,7 @@ export type Database = {
         Args: { _d: string; _property_id: string }
         Returns: boolean
       }
+      is_global_owner: { Args: { _user_id: string }; Returns: boolean }
       is_owner_or_super: { Args: { _user_id: string }; Returns: boolean }
       is_superadmin: { Args: { _uid: string }; Returns: boolean }
       last_handover_window_start: {
@@ -6334,6 +6335,10 @@ export type Database = {
       owner_void_banquet_document: {
         Args: { _id: string; _kind: string; _reason: string }
         Returns: Json
+      }
+      permitted_property_ids: {
+        Args: { _action: string; _module: string; _user_id: string }
+        Returns: string[]
       }
       post_nightly_room_charges: {
         Args: { _audit_date: string; _property_id: string }
