@@ -37,25 +37,19 @@ function Page() {
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    let q = supabase.from("banquet_bookings").select(`
-      id,banquet_number,event_name,function_type,event_date,pax,
-      hall_charge,fb_charge,extra_charge,total_amount,advance_amount,balance_amount,
-      total_room_charges,status,
-      halls(name),guests(name)
-    `).eq("property_id", propertyId)
-      .gte("event_date", from).lte("event_date", to)
-      .order("event_date", { ascending: false });
-    if (func !== "all") q = q.eq("function_type", func);
-    if (status !== "all") q = q.eq("status", status);
-    const { data } = await q;
-    const out: Row[] = ((data ?? []) as any[]).map((b) => ({
-      _id: b.id, bill_no: b.banquet_number, event_name: b.event_name ?? b.function_type,
-      function_type: b.function_type, hall: b.halls?.name ?? "", date: b.event_date,
-      host: b.guests?.name ?? "", pax: Number(b.pax || 0),
-      hall_charge: Number(b.hall_charge || 0), fb_charge: Number(b.fb_charge || 0),
-      room_charge: Number(b.total_room_charges || 0),
-      total: Number(b.total_amount || 0), advance: Number(b.advance_amount || 0),
-      balance: Number(b.balance_amount || 0), status: b.status,
+    const events = await listEventBookings(propertyId, {
+      from, to,
+      functionType: func !== "all" ? func : undefined,
+      status: status !== "all" ? status : undefined,
+    });
+    const out: Row[] = events.map((b) => ({
+      _id: b.booking_id, bill_no: b.banquet_number, event_name: b.event_name ?? b.function_type,
+      function_type: b.function_type, hall: b.hall_name, date: b.event_date,
+      host: b.guest_name ?? b.host_name ?? "", pax: b.pax,
+      hall_charge: b.hall_charge, fb_charge: b.fb_charge,
+      room_charge: b.total_room_charges,
+      total: b.total_amount, advance: b.advance_amount,
+      balance: b.balance_amount, status: b.status,
     }));
     setRows(out);
   }, [propertyId, from, to, func, status]);
