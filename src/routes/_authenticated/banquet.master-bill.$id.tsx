@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { inr } from "@/lib/billing";
 import { fmtDate } from "@/lib/reportExports";
 import { RequirePermission } from "@/components/RequirePermission";
+import { resolveEventIds } from "@/lib/banquetEvent";
 
 export const Route = createFileRoute("/_authenticated/banquet/master-bill/$id")({
   head: () => ({ meta: [{ title: "Banquet Master Bill — HotelPilot" }] }),
@@ -46,12 +47,17 @@ function MasterBillPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    // $id is banquet_booking_id
+    // $id may be the unified bookings.id or the legacy banquet_bookings.id.
+    let legacyId = id;
+    try {
+      const r = await resolveEventIds(id);
+      if (r?.legacyId) legacyId = r.legacyId;
+    } catch { /* fall back to the raw param */ }
     const { data, error } = await (supabase as any).from("banquet_master_bills")
       .select(`id,bill_number,food_subtotal,gst_amount,total_amount,created_at,property_id,
                banquet_bookings(id,banquet_number,event_name,function_type,event_date,pax,
                  guests(name,mobile), halls(name))`)
-      .eq("banquet_booking_id", id).maybeSingle();
+      .eq("banquet_booking_id", legacyId).maybeSingle();
     if (error) { toast.error(error.message); setLoading(false); return; }
     if (!data) {
       setLoading(false); return;

@@ -224,6 +224,7 @@ export type Database = {
           discount_value: number
           end_time: string
           event_bill_id: string | null
+          event_booking_id: string | null
           event_date: string
           event_end_date: string | null
           event_name: string | null
@@ -265,6 +266,7 @@ export type Database = {
           discount_value?: number
           end_time: string
           event_bill_id?: string | null
+          event_booking_id?: string | null
           event_date: string
           event_end_date?: string | null
           event_name?: string | null
@@ -306,6 +308,7 @@ export type Database = {
           discount_value?: number
           end_time?: string
           event_bill_id?: string | null
+          event_booking_id?: string | null
           event_date?: string
           event_end_date?: string | null
           event_name?: string | null
@@ -333,6 +336,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "banquet_bookings_event_booking_id_fkey"
+            columns: ["event_booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "banquet_bookings_event_booking_id_fkey"
+            columns: ["event_booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "banquet_bookings_guest_id_fkey"
             columns: ["guest_id"]
@@ -6330,6 +6347,7 @@ export type Database = {
       }
       check_login_allowed: { Args: { _email: string }; Returns: Json }
       create_booking: { Args: { payload: Json }; Returns: Json }
+      create_event_booking: { Args: { payload: Json }; Returns: Json }
       current_user_max_discount_pct: {
         Args: { _property_id: string }
         Returns: number
@@ -6498,6 +6516,7 @@ export type Database = {
         }
         Returns: Json
       }
+      resolve_event_ids: { Args: { _id: string }; Returns: Json }
       room_gst_rate_for_tariff: { Args: { _rate: number }; Returns: number }
       save_property_secrets: {
         Args: {

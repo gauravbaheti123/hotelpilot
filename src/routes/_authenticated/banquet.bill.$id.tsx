@@ -23,6 +23,7 @@ import { fmtDate } from "@/lib/reportExports";
 import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
+import { loadEventBooking, patchEventBooking, type EventIds } from "@/lib/banquetEvent";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/banquet/bill/$id")({
@@ -79,6 +80,9 @@ function BanquetBillPage() {
   const { user, roles } = useAuth();
   const { can } = usePermissions();
   const [b, setB] = useState<Bq | null>(null);
+  // Unified model: header is read from the bookings row; `b.id` stays the
+  // legacy id so extras / bulk rooms / event payments keep resolving.
+  const [ids, setIds] = useState<EventIds | null>(null);
   const [bulk, setBulk] = useState<Bulk[]>([]);
   const [extras, setExtras] = useState<ExtraCharge[]>([]);
   const [property, setProperty] = useState<PropertyInfo | null>(null);
@@ -107,23 +111,22 @@ function BanquetBillPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("banquet_bookings").select(`
-      id,property_id,banquet_number,function_type,event_date,start_time,end_time,pax,event_name,
-      package_rate,hall_charge,fb_charge,extra_charge,discount_amount,total_amount,bill_type,
-      discount_type,discount_value,line_discounts,
-      advance_amount,balance_amount,status,notes,
-      host_name,host_mobile,host_email,
-      halls(name),guests(name,mobile,email,gst_number,company,state,state_code)
-    `).eq("id", id).single();
-    if (error) { toast.error(error.message); setLoading(false); return; }
-    const bq = data as unknown as Bq;
+    let bq: Bq;
+    try {
+      const ev = await loadEventBooking(id);
+      if (!ev) { setLoading(false); return; }
+      setIds({ bookingId: ev.booking_id, legacyId: ev.legacy_id });
+      bq = ev as unknown as Bq;
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to load event"); setLoading(false); return;
+    }
     setB(bq);
     setBillType((bq.bill_type as "gst_invoice" | "cash_bill") ?? "gst_invoice"); // historical only; no UI toggle
 
     const [{ data: br }, { data: p }] = await Promise.all([
       supabase.from("banquet_bulk_rooms")
         .select("id,rate,nights,check_in,check_out,discount_type,discount_value,discount_amount,rooms(room_number),room_categories(name)")
-        .eq("banquet_id", id),
+        .eq("banquet_id", bq.id),
       supabase.from("properties")
         .select("name,gstin,state_code,address,city,state,pincode,phone,email,wa_number,logo_url")
         .eq("id", bq.property_id).single(),
@@ -137,12 +140,12 @@ function BanquetBillPage() {
     }
     const { data: ex } = await supabase.from("banquet_extra_charges")
       .select("id,point_name,amount,discount_type,discount_value,discount_amount")
-      .eq("banquet_booking_id", id)
+      .eq("banquet_booking_id", bq.id)
       .order("sort_order", { ascending: true });
     setExtras(((ex ?? []) as unknown) as ExtraCharge[]);
     const { data: pp } = await supabase.from("event_payments" as any)
       .select("id,amount,payment_mode,reference,paid_at,notes")
-      .eq("event_id", id).order("paid_at", { ascending: false });
+      .eq("event_id", bq.id).order("paid_at", { ascending: false });
     setPays(((pp as any) ?? []) as EventPayment[]);
     setLoading(false);
   }, [id]);
@@ -278,13 +281,19 @@ function BanquetBillPage() {
     const nextRoundOff = round2(nextTotal - nextTotalRaw);
     const nextDiscountAmount = round2(nextFixedLineDisc + roomLineDiscTotal + nextBillDiscAmt);
     const nextBalance = Math.max(0, round2(nextTotal - totalPaid));
-    return await supabase.from("banquet_bookings").update({
+    if (!ids) return { error: null as any };
+    try {
+      await patchEventBooking(ids, {
       ...patch,
       discount_amount: nextDiscountAmount,
       total_amount: nextTotal,
       round_off_amount: nextRoundOff,
       balance_amount: nextBalance,
-    } as any).eq("id", b.id);
+      } as any);
+      return { error: null as any };
+    } catch (e: any) {
+      return { error: e };
+    }
   }
 
   async function saveDiscount({ type, value, rupees }: { type: DiscType; value: number; rupees: number }) {

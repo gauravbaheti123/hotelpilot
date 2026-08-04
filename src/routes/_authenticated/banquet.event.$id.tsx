@@ -29,6 +29,13 @@ import { RequirePermission } from "@/components/RequirePermission";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { istDateISO, istToday } from "@/lib/date";
+import { hasRole } from "@/hooks/use-auth";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
+import {
+  loadEventBooking, loadEventFinancials, patchEventBooking, resolveEventIds,
+  seedEventFolioCharges, setEventStatus, type EventIds,
+} from "@/lib/banquetEvent";
+import { Input as TextInput } from "@/components/ui/input";
 export const Route = createFileRoute("/_authenticated/banquet/event/$id")({
   head: () => ({ meta: [{ title: "Banquet Event — HotelPilot" }] }),
   component: () => (<RequirePermission module="banquet"><BanquetEventPage /></RequirePermission>),
@@ -54,9 +61,12 @@ interface Hall { id: string; name: string; capacity: number }
 function BanquetEventPage() {
   const { id } = Route.useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const { limit: discountLimit } = useDiscountLimit();
   const [b, setB] = useState<Bq | null>(null);
+  // Unified model ids — `b.id` is the legacy id (child tables still key on it).
+  const [ids, setIds] = useState<EventIds | null>(null);
+  const [fin, setFin] = useState<{ advance: number; balance: number; hasFolio: boolean } | null>(null);
   const [blocks, setBlocks] = useState<EventBlockRecord[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [cats, setCats] = useState<Cat[]>([]);
@@ -74,6 +84,11 @@ function BanquetEventPage() {
 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+
+  // Owner-only hard delete (same pattern as the events list).
+  const [delOpen, setDelOpen] = useState(false);
+  const [delPwd, setDelPwd] = useState("");
+  const [delBusy, setDelBusy] = useState(false);
 
   // Standard checkout flow (same dialog used by Dashboard / Front Desk).
   const [checkoutBookingId, setCheckoutBookingId] = useState<string | null>(null);
@@ -95,15 +110,16 @@ function BanquetEventPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("banquet_bookings").select(`
-      id,property_id,banquet_number,event_name,function_type,event_date,event_end_date,start_time,end_time,pax,
-      package_rate,hall_charge,fb_charge,extra_charge,extra_charge_description,discount_amount,total_amount,
-      advance_amount,balance_amount,advance_payment_mode,status,notes,hall_id,guest_id,
-      host_name,host_mobile,host_email,
-      halls(id,name,capacity),guests(id,name,mobile,email)
-    `).eq("id", id).single();
-    if (error) { toast.error(error.message); setLoading(false); return; }
-    const bq = data as unknown as Bq;
+    let bq: Bq;
+    try {
+      const ev = await loadEventBooking(id);
+      if (!ev) { setLoading(false); return; }
+      setIds({ bookingId: ev.booking_id, legacyId: ev.legacy_id });
+      loadEventFinancials(ev.booking_id).then(setFin).catch(() => setFin(null));
+      bq = ev as unknown as Bq;
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to load event"); setLoading(false); return;
+    }
     setB(bq);
     setHost({
       name: bq.host_name ?? bq.guests?.name ?? "",
@@ -138,7 +154,7 @@ function BanquetEventPage() {
     setCats((cs ?? []) as Cat[]);
     setHalls((hs ?? []) as Hall[]);
     const { data: erb } = await supabase.from("event_room_blocks")
-      .select("*").eq("banquet_booking_id", id).order("room_number");
+      .select("*").eq("banquet_booking_id", bq.id).order("room_number");
     setBlocks((erb ?? []) as unknown as EventBlockRecord[]);
     setLoading(false);
   }, [id]);
@@ -299,26 +315,26 @@ function BanquetEventPage() {
         return toast.error(`${occ} room(s) still occupied. Checkout guests before completing event.`);
       }
     }
-    await supabase.from("banquet_bookings").update({ status: next }).eq("id", b.id);
+    if (!ids) return;
+    await setEventStatus(ids, next);
     toast.success(`Marked ${next.replace("_", " ")}`);
     load();
   }
 
   async function saveHost() {
-    if (!b) return;
+    if (!b || !ids) return;
     if (!host.name.trim()) return toast.error("Name required");
     setSavingHost(true);
     try {
       // Banquet host details are stored on the event only — never written back
       // into the `guests` master (shared/dummy contacts must stay untouched).
-      const { error: be } = await supabase.from("banquet_bookings").update({
+      await patchEventBooking(ids, {
         host_name: host.name.trim(),
         host_mobile: host.mobile.trim() || null,
         host_email: host.email.trim() || null,
         function_type: host.function_type || b.function_type,
         notes: host.notes.trim() || null,
-      }).eq("id", b.id);
-      if (be) throw be;
+      });
       toast.success("Host details saved");
       load();
     } catch (e: any) {
@@ -329,40 +345,40 @@ function BanquetEventPage() {
   }
 
   async function saveMeta() {
-    if (!b) return;
+    if (!b || !ids) return;
     if (!meta.event_date || !meta.start_time || !meta.end_time) return toast.error("Date and time required");
     const endDate = meta.event_end_date || meta.event_date;
     if (!isValidStayRange(meta.event_date, endDate, meta.start_time, meta.end_time))
       return toast.error("Check-out must be after check-in");
-    const { error } = await supabase.from("banquet_bookings").update({
-      event_name: meta.event_name.trim() || null,
-      hall_id: meta.hall_id || null,
-      event_date: meta.event_date,
-      event_end_date: meta.event_end_date || meta.event_date,
-      start_time: meta.start_time,
-      end_time: meta.end_time,
-      pax: Number(meta.pax) || 0,
-      function_type: meta.function_type || b.function_type,
-    } as any).eq("id", b.id);
-    if (error) return toast.error(error.message);
+    try {
+      await patchEventBooking(ids, {
+        event_name: meta.event_name.trim() || null,
+        hall_id: meta.hall_id || null,
+        event_date: meta.event_date,
+        event_end_date: meta.event_end_date || meta.event_date,
+        start_time: meta.start_time,
+        end_time: meta.end_time,
+        pax: Number(meta.pax) || 0,
+        function_type: meta.function_type || b.function_type,
+      });
+      await seedEventFolioCharges(ids.bookingId).catch(() => {});
+    } catch (e: any) { return toast.error(e?.message ?? "Update failed"); }
     setMetaOpen(false);
     toast.success("Event updated");
     load();
   }
 
   async function cancel() {
-    if (!b) return;
+    if (!b || !ids) return;
     if (!cancelReason.trim()) return toast.error("Reason required");
-    await supabase.from("banquet_bookings").update({
-      status: "cancelled", cancelled_at: new Date().toISOString(), cancelled_reason: cancelReason,
-    }).eq("id", b.id);
+    await setEventStatus(ids, "cancelled", { cancelled_reason: cancelReason });
     setCancelOpen(false);
     toast.success("Event cancelled");
     load();
   }
 
   async function patchCharges(patch: Partial<Bq>) {
-    if (!b) return;
+    if (!b || !ids) return;
     const merged = { ...b, ...patch } as Bq;
     // Enforce per-role discount limit on the discount field.
     if (Object.prototype.hasOwnProperty.call(patch, "discount_amount")) {
@@ -388,8 +404,90 @@ function BanquetEventPage() {
     const dbPatch: any = { ...patch, total_amount: total, balance_amount: balance };
     delete dbPatch.guests;
     delete dbPatch.halls;
-    await supabase.from("banquet_bookings").update(dbPatch).eq("id", b.id);
+    try {
+      await patchEventBooking(ids, dbPatch);
+      await seedEventFolioCharges(ids.bookingId).catch(() => {});
+      loadEventFinancials(ids.bookingId).then(setFin).catch(() => {});
+    } catch (e: any) { return toast.error(e?.message ?? "Update failed"); }
     setB({ ...merged, total_amount: total, balance_amount: balance });
+  }
+
+  const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+
+  /**
+   * Owner-only hard delete — same guard rails as the events list:
+   * night-audit day lock, password re-auth, full activity_log snapshot,
+   * then removal of BOTH the unified booking and the legacy mirror.
+   */
+  async function deleteEvent() {
+    if (!b || !ids || !user?.email) return;
+    if (!isOwner) return toast.error("Only the owner can delete an event");
+    if (blocks.some((bk) => bk.status === "checked_in")) {
+      return toast.error("Check out all rooms before deleting this event");
+    }
+    setDelBusy(true);
+    try {
+      const { data: locked } = await supabase.rpc("is_day_locked" as any, {
+        _property_id: b.property_id, _d: b.event_date,
+      } as any);
+      if (locked === true) return toast.error("Cannot delete — this date is locked by night audit.");
+      const { error: pErr } = await supabase.auth.signInWithPassword({ email: user.email, password: delPwd });
+      if (pErr) return toast.error("Password incorrect");
+
+      const [{ data: unified }, { data: legacy }] = await Promise.all([
+        supabase.from("bookings").select("*").eq("id", ids.bookingId).maybeSingle(),
+        ids.legacyId
+          ? supabase.from("banquet_bookings").select("*").eq("id", ids.legacyId).maybeSingle()
+          : Promise.resolve({ data: null } as any),
+      ]);
+      const roomIds = blocks.map((bk) => bk.room_id).filter(Boolean) as string[];
+
+      await logActivity({
+        property_id: b.property_id,
+        user_id: user.id,
+        user_name: userDisplayName(user as any),
+        action_type: "BANQUET_EVENT_DELETED",
+        module: "Banquet",
+        reference_id: ids.bookingId,
+        reference_label: `${b.banquet_number} — ${b.host_name ?? b.guests?.name ?? ""}`,
+        details: {
+          event_id: ids.bookingId, legacy_event_id: ids.legacyId,
+          banquet_number: b.banquet_number, amount: b.total_amount,
+          booking: unified ?? null, event: legacy ?? null,
+          rooms: blocks.map((bk) => ({ room: bk.room_number, status: bk.status })),
+          deleted_at: new Date().toISOString(), acting_user_id: user.id,
+        },
+      });
+
+      // Folio lines first, then the folio, then the room rows, then the bookings.
+      const { data: folios } = await supabase.from("folios").select("id").eq("booking_id", ids.bookingId);
+      const folioIds = ((folios ?? []) as any[]).map((f) => f.id);
+      if (folioIds.length > 0) {
+        await supabase.from("folio_charges").delete().in("folio_id", folioIds);
+        await supabase.from("folios").delete().in("id", folioIds);
+      }
+      await supabase.from("booking_rooms").delete().eq("booking_id", ids.bookingId);
+      if (ids.legacyId) {
+        const { error: le } = await supabase.from("banquet_bookings").delete().eq("id", ids.legacyId);
+        if (le) throw le;
+      }
+      const { error: ue } = await supabase.from("bookings").delete().eq("id", ids.bookingId);
+      if (ue) throw ue;
+
+      if (roomIds.length > 0) {
+        await supabase.from("rooms")
+          .update({ status: "vacant", housekeeping_status: "dirty" } as any)
+          .in("id", roomIds).eq("status", "blocked");
+      }
+      toast.success(`Event ${b.banquet_number} permanently deleted`);
+      router.navigate({ to: "/banquet/bookings" });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Delete failed");
+    } finally {
+      setDelBusy(false);
+      setDelOpen(false);
+      setDelPwd("");
+    }
   }
 
   if (loading) return <AppShell title="Banquet"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
@@ -427,6 +525,11 @@ function BanquetEventPage() {
               {b.status === "in_progress" && <Button size="sm" onClick={() => setStatus("completed")}><CheckCircle2 className="h-4 w-4 mr-1" /> Complete Event</Button>}
               <Button size="sm" variant="outline" className="text-destructive" onClick={() => setCancelOpen(true)}><Ban className="h-4 w-4 mr-1" /> Cancel</Button>
             </div>
+          )}
+          {isOwner && (
+            <Button size="sm" variant="outline" className="text-destructive" onClick={() => setDelOpen(true)}>
+              <Trash2 className="h-4 w-4 mr-1" /> Delete Event
+            </Button>
           )}
         </div>
 
@@ -491,7 +594,14 @@ function BanquetEventPage() {
               </div>
               <div className="space-y-1.5 sm:col-span-2 border-t pt-2 text-sm">
                 <Row k="Total" v={`₹${Number(b.total_amount).toLocaleString("en-IN")}`} bold />
-                <Row k="Balance" v={`₹${Number(b.balance_amount).toLocaleString("en-IN")}`} bold highlight={Number(b.balance_amount) > 0} />
+                {fin?.hasFolio ? (
+                  <>
+                    <Row k="Received" v={`₹${fin.advance.toLocaleString("en-IN")}`} />
+                    <Row k="Balance" v={`₹${fin.balance.toLocaleString("en-IN")}`} bold highlight={fin.balance > 0} />
+                  </>
+                ) : (
+                  <Row k="Balance" v={`₹${Number(b.balance_amount).toLocaleString("en-IN")}`} bold highlight={Number(b.balance_amount) > 0} />
+                )}
               </div>
             </CardContent>
           </Card>
@@ -728,6 +838,26 @@ function BanquetEventPage() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setCancelOpen(false)}>Keep</Button>
               <Button variant="destructive" onClick={cancel}>Cancel event</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={delOpen} onOpenChange={(o) => { setDelOpen(o); if (!o) setDelPwd(""); }}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Delete event permanently</DialogTitle></DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              {b.banquet_number} and its bill lines will be removed for good. A full snapshot is
+              written to the activity log first. Confirm with your password.
+            </p>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Password</Label>
+              <TextInput type="password" value={delPwd} onChange={(e) => setDelPwd(e.target.value)} />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDelOpen(false)}>Keep</Button>
+              <Button variant="destructive" disabled={delBusy || !delPwd} onClick={deleteEvent}>
+                {delBusy ? "Deleting…" : "Delete permanently"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

@@ -29,6 +29,7 @@ import {
 import { isValidStayRange } from "@/lib/front-desk";
 import { GuestSearchInput } from "@/components/GuestSearchInput";
 import { istDateISO, istToday } from "@/lib/date";
+import { createEventBooking, seedEventFolioCharges } from "@/lib/banquetEvent";
 
 export const Route = createFileRoute("/_authenticated/banquet/new")({
   head: () => ({ meta: [{ title: "New Banquet — HotelPilot" }] }),
@@ -297,7 +298,9 @@ function NewBanquetPage() {
       }, 0);
       const combinedTotal = total + totalRoomCharges;
 
-      const { data: bq, error: be } = await supabase.from("banquet_bookings").insert({
+      // Unified model: creates the bookings row (booking_type='banquet') with the
+      // next EVT number, plus the legacy mirror row, in one transaction.
+      const created = await createEventBooking({
         property_id: propertyId,
         hall_id: hallId || null,
         // Read-only link only when a guest was explicitly selected from search.
@@ -322,10 +325,7 @@ function NewBanquetPage() {
         balance_amount: Math.max(0, combinedTotal - advanceAmt),
         total_room_charges: totalRoomCharges,
         notes: notes || null,
-        status: "reserved",
-        created_by: user?.id ?? null,
-      } as any).select("id").single();
-      if (be) throw be;
+      });
 
       // Persist extras
       const extraRows = extras
@@ -334,7 +334,7 @@ function NewBanquetPage() {
       if (extraRows.length > 0) {
         const { error: exErr } = await supabase.from("banquet_extra_charges").insert(
           extraRows.map((x) => ({
-            banquet_booking_id: bq!.id,
+            banquet_booking_id: created.legacyId,
             property_id: propertyId,
             point_name: x.point_name,
             amount: x.amount,
@@ -349,20 +349,21 @@ function NewBanquetPage() {
       if (roomMode !== "none" && finalAssignments.length > 0) {
         roomsBlocked = await commitRoomBlocks({
           propertyId,
-          banquetBookingId: bq!.id,
+          banquetBookingId: created.legacyId,
           eventName,
           rows: finalAssignments,
         });
       }
 
-      // load number for message
-      const { data: bnRow } = await supabase.from("banquet_bookings")
-        .select("banquet_number").eq("id", bq!.id).maybeSingle();
-      const bn = (bnRow as any)?.banquet_number ?? "";
+      // Hall + itemised extras land on the event folio immediately.
+      await seedEventFolioCharges(created.bookingId).catch((e) =>
+        toast.error(`Event saved, but folio charges failed: ${e?.message ?? e}`));
+
+      const bn = created.banquetNumber;
       toast.success(roomsBlocked > 0
         ? `Event saved — ${bn} generated, ${roomsBlocked} rooms assigned to event`
         : `Event saved — ${bn} generated`);
-      router.navigate({ to: "/banquet/event/$id", params: { id: bq!.id } });
+      router.navigate({ to: "/banquet/event/$id", params: { id: created.bookingId } });
     } catch (e: any) {
       toast.error(e.message ?? "Failed");
     } finally {
