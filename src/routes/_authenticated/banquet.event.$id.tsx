@@ -23,7 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { billNo } from "@/lib/billNumber";
+import { billNo , eventRef, eventRefShort } from "@/lib/billNumber";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { isValidStayRange } from "@/lib/front-desk";
@@ -85,6 +85,7 @@ interface Bq {
   booking_id: string;
   property_id: string;
   banquet_number: string | null;
+  booking_number?: string | null;
   function_type: string;
   event_name: string | null;
   event_date: string;
@@ -292,7 +293,7 @@ function BanquetEventPage() {
     const { error } = await supabase.from("event_room_blocks").insert({
       property_id: b.property_id,
       event_booking_id: b.booking_id ?? b.id,
-      event_name: b.event_name ?? billNo(b.banquet_number),
+      event_name: b.event_name ?? eventRefShort(b.banquet_number, b.booking_number),
       room_id: roomRow!.id,
       room_number: roomRow!.room_number,
       room_category: cat?.name ?? null,
@@ -608,10 +609,10 @@ function BanquetEventPage() {
         action_type: "BANQUET_EVENT_DELETED",
         module: "Banquet",
         reference_id: ids.bookingId,
-        reference_label: `${billNo(b.banquet_number)} — ${b.host_name ?? b.guests?.name ?? ""}`,
+        reference_label: `${eventRefShort(b.banquet_number, b.booking_number)} — ${b.host_name ?? b.guests?.name ?? ""}`,
         details: {
           event_id: ids.bookingId,
-          banquet_number: billNo(b.banquet_number),
+          banquet_number: eventRefShort(b.banquet_number, b.booking_number),
           amount: b.total_amount,
           booking: unified ?? null,
           event: unified ?? null,
@@ -643,7 +644,7 @@ function BanquetEventPage() {
           .in("id", roomIds)
           .eq("status", "blocked");
       }
-      toast.success(`Event ${billNo(b.banquet_number)} permanently deleted`);
+      toast.success(`Event ${eventRefShort(b.banquet_number, b.booking_number)} permanently deleted`);
       router.navigate({ to: "/banquet/bookings" });
     } catch (e: any) {
       toastError(e, "Delete failed");
@@ -671,7 +672,7 @@ function BanquetEventPage() {
     b.status === "reserved" || b.status === "confirmed" || b.status === "in_progress";
 
   return (
-    <AppShell title={`Banquet ${billNo(b.banquet_number)}`}>
+    <AppShell title={`Banquet ${eventRef(b.banquet_number, b.booking_number)}`}>
       <div className="max-w-6xl space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <BackButton fallbackTo="/banquet/bookings" />
@@ -1413,7 +1414,7 @@ function BanquetEventPage() {
               <DialogTitle>Delete event permanently</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-muted-foreground">
-              {billNo(b.banquet_number)} and its bill lines will be removed for good. A full snapshot is
+              {eventRefShort(b.banquet_number, b.booking_number)} and its bill lines will be removed for good. A full snapshot is
               written to the activity log first. Confirm with your password.
             </p>
             <div className="space-y-1.5">

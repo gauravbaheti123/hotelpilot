@@ -26,7 +26,7 @@ import { useAuth, hasRole } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { supabase } from "@/integrations/supabase/client";
-import { billNo } from "@/lib/billNumber";
+import { billNo , eventRef, eventRefShort, hasBillNumber, PROVISIONAL_DOC_TITLE } from "@/lib/billNumber";
 import { toast } from "sonner";
 import {
   inr,
@@ -64,6 +64,7 @@ interface Bq {
   booking_id: string;
   property_id: string;
   banquet_number: string | null;
+  booking_number?: string | null;
   function_type: string;
   event_date: string;
   start_time: string;
@@ -433,9 +434,9 @@ function BanquetBillPage() {
         action_type: "DISCOUNT_APPLIED",
         module: "Banquet",
         reference_id: b.id,
-        reference_label: billNo(b.banquet_number),
+        reference_label: eventRefShort(b.banquet_number, b.booking_number),
         details: {
-          bill_number: billNo(b.banquet_number),
+          bill_number: eventRefShort(b.banquet_number, b.booking_number),
           level: "bill",
           discount_type: type,
           discount_value: value,
@@ -464,9 +465,9 @@ function BanquetBillPage() {
         action_type: "DISCOUNT_APPLIED",
         module: "Banquet",
         reference_id: b.id,
-        reference_label: billNo(b.banquet_number),
+        reference_label: eventRefShort(b.banquet_number, b.booking_number),
         details: {
-          bill_number: billNo(b.banquet_number),
+          bill_number: eventRefShort(b.banquet_number, b.booking_number),
           level: "line_item",
           line_description: discTarget.description,
           discount_type: type,
@@ -490,9 +491,9 @@ function BanquetBillPage() {
         action_type: "DISCOUNT_APPLIED",
         module: "Banquet",
         reference_id: b.id,
-        reference_label: billNo(b.banquet_number),
+        reference_label: eventRefShort(b.banquet_number, b.booking_number),
         details: {
-          bill_number: billNo(b.banquet_number),
+          bill_number: eventRefShort(b.banquet_number, b.booking_number),
           level: "line_item",
           line_description: discTarget.description,
           discount_type: type,
@@ -524,9 +525,9 @@ function BanquetBillPage() {
         action_type: "DISCOUNT_APPLIED",
         module: "Banquet",
         reference_id: b.id,
-        reference_label: billNo(b.banquet_number),
+        reference_label: eventRefShort(b.banquet_number, b.booking_number),
         details: {
-          bill_number: billNo(b.banquet_number),
+          bill_number: eventRefShort(b.banquet_number, b.booking_number),
           level: "line_item",
           line_description: discTarget.description,
           discount_type: type,
@@ -589,11 +590,11 @@ function BanquetBillPage() {
   async function handlePrint() {
     if (!b) return;
     const prev = document.title;
-    const safe = (b.host_name ?? b.guests?.name ?? b.event_name ?? billNo(b.banquet_number)).replace(
+    const safe = (b.host_name ?? b.guests?.name ?? b.event_name ?? eventRefShort(b.banquet_number, b.booking_number)).replace(
       /[^\w]+/g,
       "",
     );
-    document.title = `INV-${billNo(b.banquet_number)}-${safe}`;
+    document.title = `INV-${eventRefShort(b.banquet_number, b.booking_number)}-${safe}`;
     const paperSize = await fetchPrinterPaperSize(b.property_id, "bill");
     // Invoice/Bill uses the browser's native print dialog — QZ Tray's
     // HTML-to-pixel pipeline caused persistent A4 table cutoff issues.
@@ -725,7 +726,7 @@ function BanquetBillPage() {
     const phone = (b.host_mobile ?? b.guests?.mobile)?.replace(/\D/g, "") ?? "";
     const lines = [
       `*${property?.name ?? "Hotel"}*`,
-      `${isGst ? "Event Tax Invoice" : "Event Cash Bill"}: ${billNo(b.banquet_number)}`,
+      `${isGst ? "Event Tax Invoice" : "Event Cash Bill"}: ${eventRefShort(b.banquet_number, b.booking_number)}`,
       `Event: ${b.event_name ?? b.function_type}`,
       `Date: ${b.event_date}`,
       ``,
@@ -762,7 +763,7 @@ function BanquetBillPage() {
     .join(", ");
 
   return (
-    <AppShell title={`Event Bill ${billNo(b.banquet_number)}`}>
+    <AppShell title={`Event Bill ${eventRefShort(b.banquet_number, b.booking_number)}`}>
       <style>{`
         #invoice-print-area { color: #111111; background-color: #ffffff; }
         #invoice-print-area * { border-color: #e5e7eb; }
@@ -774,7 +775,7 @@ function BanquetBillPage() {
       <div className="max-w-5xl space-y-4">
         <div className="flex flex-wrap items-center gap-3 no-print">
           <BackButton fallbackTo="/banquet/bookings" />
-          <Badge variant="outline">{billNo(b.banquet_number)}</Badge>
+          <Badge variant="outline">{eventRefShort(b.banquet_number, b.booking_number)}</Badge>
           <div className="text-sm text-muted-foreground">
             {b.event_name ?? b.function_type} · {fmtDate(b.event_date)}
           </div>
@@ -851,7 +852,7 @@ function BanquetBillPage() {
                     {isGst ? "Tax Invoice" : "Cash Bill"} · Event
                   </div>
                   <div className="text-2xl font-bold" style={{ color: TEAL }}>
-                    {billNo(b.banquet_number)}
+                    {eventRef(b.banquet_number, b.booking_number)}
                   </div>
                   <div className="text-xs text-gray-600">Date: {fmtDate(b.event_date)}</div>
                   <div className="text-xs text-gray-600">Status: {b.status.toUpperCase()}</div>
