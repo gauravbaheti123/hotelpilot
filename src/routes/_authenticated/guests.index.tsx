@@ -206,9 +206,7 @@ function GuestsListPage() {
 
   /** Full reload after a mutation (delete / import). */
   const load = useCallback(() => {
-    setRows([]);
-    setDebouncedQ((s) => s); // no-op keeps deps stable
-    if (!propertyId) return;
+    setRows([]);    if (!propertyId) return;
     (async () => {
       try {
         const { batch, count } = await fetchPage(0);
