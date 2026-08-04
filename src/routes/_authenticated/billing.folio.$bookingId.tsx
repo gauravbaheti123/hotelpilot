@@ -15,7 +15,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { billNo } from "@/lib/billNumber";
+import { billNo, hasBillNumber, PROVISIONAL_DOC_TITLE } from "@/lib/billNumber";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
@@ -1505,6 +1505,9 @@ function FolioPage() {
   }
 
   const isGst = folio.gst_mode === "gst";
+  // P1 — until the folio is settled it carries no number: show a proforma.
+  const isProvisional = !hasBillNumber(folio.invoice_number);
+  const provisionalRef = `Ref: ${booking.booking_number} (provisional)`;
   const propAddrLine = [property?.address, property?.city, property?.state, property?.pincode]
     .filter(Boolean).join(", ");
   const nights = booking.booking_rooms.reduce((acc, br) => {
