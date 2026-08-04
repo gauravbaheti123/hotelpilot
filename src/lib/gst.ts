@@ -65,6 +65,7 @@ export function resolveGstRateInclusive(
 /* Phase 57 — Place of supply: CGST+SGST (intra-state) vs IGST (inter) */
 /* ------------------------------------------------------------------ */
 
+
 export type TaxType = "cgst_sgst" | "igst";
 
 export interface TaxParty {
