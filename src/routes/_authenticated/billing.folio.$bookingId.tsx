@@ -1506,7 +1506,35 @@ function FolioPage() {
   // Phase 1.5 / 52 — the invoice Charges table shows Food/Laundry segment
   // charges as ONE consolidated line per distinct bill reference. Totals,
   // GST breakup and all persistence keep using the raw `charges` array.
-  const invoiceRows = expandRoomNights(consolidateSegmentCharges(charges as any));
+  // Display-only: append "(Bill No …)" to restaurant-charge line items by
+  // joining folio_charges → restaurant_direct_charges (folio_charge_id first,
+  // then a same-amount fallback for rows re-created by split/undo flows).
+  // Nothing is written back — stored descriptions stay exactly as entered.
+  const chargesForDisplay = (() => {
+    if (restBills.length === 0) return charges;
+    const byFolioCharge = new Map(
+      restBills.filter((r) => r.folio_charge_id).map((r) => [r.folio_charge_id as string, r]),
+    );
+    const usedByAmount = new Set<number>();
+    return charges.map((c) => {
+      if (c.charge_type !== "extra") return c;
+      let hit = byFolioCharge.get(c.id) ?? null;
+      if (!hit) {
+        const amt = Number(c.amount);
+        const idx = restBills.findIndex(
+          (r, i) => !usedByAmount.has(i) && !byFolioCharge.has(c.id) && Math.abs(r.amount - amt) < 0.01,
+        );
+        if (idx >= 0) { usedByAmount.add(idx); hit = restBills[idx]!; }
+      }
+      const bill = (hit?.bill_no ?? "").trim();
+      if (!bill) return c;
+      const base = String(c.description ?? "").trim();
+      if (base.toLowerCase().includes(bill.toLowerCase())) return c;
+      return { ...c, description: `${base} (Bill No ${bill})` };
+    });
+  })();
+
+  const invoiceRows = expandRoomNights(consolidateSegmentCharges(chargesForDisplay as any));
 
   async function shareOnWhatsApp() {
     if (!folio || !booking) return;
