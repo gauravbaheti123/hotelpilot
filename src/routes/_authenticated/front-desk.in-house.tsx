@@ -309,19 +309,17 @@ function AssignRoomDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [rooms, setRooms] = useState<Array<{ id: string; room_number: string; category_id: string | null }>>([]);
+  // Shared cache, filtered to vacant rooms client-side.
+  const { rooms: allRooms } = useRooms(propertyId);
+  const rooms = useMemo(
+    () => (bookingId ? allRooms.filter((r) => r.status === "vacant") : []),
+    [allRooms, bookingId],
+  );
   const [picked, setPicked] = useState<string>("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!bookingId || !propertyId) { setRooms([]); setPicked(""); return; }
-    supabase.from("rooms")
-      .select("id,room_number,category_id")
-      .eq("property_id", propertyId)
-      .eq("is_active", true)
-      .eq("status", "vacant")
-      .order("room_number")
-      .then(guardQuery("rooms")).then(({ data }) => setRooms((data ?? []) as any));
+    if (!bookingId || !propertyId) setPicked("");
   }, [bookingId, propertyId]);
 
   const assign = async () => {
