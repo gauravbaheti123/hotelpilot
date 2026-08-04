@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { GstSlabRow } from "@/lib/gst";
+import { guardQuery } from "@/lib/queryError";
 
 /** Fetch every active GST slab for a property so pages can resolve rates
  *  locally without a round-trip per charge. Data is treated as master data
@@ -17,7 +18,7 @@ export function useGstSlabs(propertyId: string | null | undefined) {
       .from("gst_slabs" as any)
       .select("property_id,charge_category,from_amount,to_amount,gst_rate,is_active,effective_from")
       .eq("property_id", propertyId)
-      .then(({ data }) => {
+      .then(guardQuery("gst slabs")).then(({ data }) => {
         if (cancelled) return;
         setSlabs(((data as any[]) ?? []) as GstSlabRow[]);
         setLoading(false);

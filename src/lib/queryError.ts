@@ -50,3 +50,16 @@ export function reportQueryError(label: string, error: unknown): void {
 
   toast.error(`Failed to load ${label}: ${message}`);
 }
+
+/**
+ * Chainable guard for `.then(({ data }) => …)` style reads, where destructuring
+ * `error` would mean rewriting the callback. Insert it before the consumer:
+ *
+ *   supabase.from("rooms").select("*").then(guardQuery("rooms")).then(({ data }) => …)
+ */
+export function guardQuery<T extends { error?: unknown }>(label: string): (res: T) => T {
+  return (res: T) => {
+    if (res?.error) reportQueryError(label, res.error);
+    return res;
+  };
+}

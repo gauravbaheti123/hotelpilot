@@ -15,7 +15,7 @@ import {
   ReportColumn, exportExcel, exportPdf, fmtDateTime, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
-import { reportQueryError } from "@/lib/queryError";
+import { reportQueryError, guardQuery } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/reports/room-shift")({
   head: () => ({ meta: [{ title: "Room Shift Report — HotelPilot" }] }),
@@ -53,7 +53,7 @@ function Page() {
   useEffect(() => {
     if (!propertyId) return;
     supabase.from("room_categories").select("id,name").eq("property_id", propertyId)
-      .then(({ data }) => setCats((data ?? []) as any));
+      .then(guardQuery("room categories")).then(({ data }) => setCats((data ?? []) as any));
   }, [propertyId]);
 
   const load = useCallback(async () => {

@@ -43,6 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { guardQuery } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/label-printing/")({
   head: () => ({ meta: [{ title: "Label Printing — HotelPilot" }] }),
@@ -749,7 +750,7 @@ function CompanySettingsTab() {
       .select("*")
       .eq("property_id", current.id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(guardQuery("label company settings")).then(({ data }) => {
         setForm((data as any) ?? { property_id: current.id });
         setLoading(false);
       });
@@ -1214,7 +1215,7 @@ function PrintLabelTab() {
       .select("*")
       .eq("property_id", current.id)
       .maybeSingle()
-      .then(({ data }) => setCompany((data as any) ?? null));
+      .then(guardQuery("label company settings")).then(({ data }) => setCompany((data as any) ?? null));
   }, [current?.id]);
 
   const filtered = useMemo(() => {

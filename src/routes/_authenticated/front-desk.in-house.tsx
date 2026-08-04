@@ -26,7 +26,7 @@ import { toast } from "sonner";
 import { RequirePermission } from "@/components/RequirePermission";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { istToday } from "@/lib/date";
-import { reportQueryError } from "@/lib/queryError";
+import { reportQueryError, guardQuery } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/front-desk/in-house")({
   head: () => ({ meta: [{ title: "In-house — HotelPilot" }] }),
   component: () => (<RequirePermission module="inhouse"><InHousePage /></RequirePermission>),
@@ -320,7 +320,7 @@ function AssignRoomDialog({
       .eq("is_active", true)
       .eq("status", "vacant")
       .order("room_number")
-      .then(({ data }) => setRooms((data ?? []) as any));
+      .then(guardQuery("rooms")).then(({ data }) => setRooms((data ?? []) as any));
   }, [bookingId, propertyId]);
 
   const assign = async () => {

@@ -15,7 +15,7 @@ import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
-import { reportQueryError } from "@/lib/queryError";
+import { reportQueryError, guardQuery } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/reports/food-kot")({
   head: () => ({ meta: [{ title: "Food / KOT Report — HotelPilot" }] }),
@@ -48,7 +48,7 @@ function Page() {
   useEffect(() => {
     if (!propertyId) return;
     supabase.from("menu_categories" as any).select("id,name").eq("property_id", propertyId)
-      .then(({ data }) => setCats((data ?? []) as any));
+      .then(guardQuery("menu categories")).then(({ data }) => setCats((data ?? []) as any));
   }, [propertyId]);
 
   const load = useCallback(async () => {

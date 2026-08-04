@@ -41,7 +41,7 @@ import {
 } from "@/components/AssignRoomDialog";
 
 import { RequirePermission } from "@/components/RequirePermission";
-import { reportQueryError } from "@/lib/queryError";
+import { reportQueryError, guardQuery } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — HotelPilot" }] }),
   component: () => (<RequirePermission module="dashboard"><DashboardRouter /></RequirePermission>),
@@ -253,7 +253,7 @@ function OwnerDashboard({
   useEffect(() => {
     if (!userId) return;
     supabase.from("profiles").select("name").eq("id", userId).maybeSingle()
-      .then(({ data }) => { if (data?.name) setName(data.name); });
+      .then(guardQuery("profiles")).then(({ data }) => { if (data?.name) setName(data.name); });
   }, [userId]);
 
   // Load persisted room grouping preference for this property
@@ -261,7 +261,7 @@ function OwnerDashboard({
     if (!propertyId) return;
     let cancelled = false;
     supabase.from("property_settings").select("room_grouping").eq("property_id", propertyId).maybeSingle()
-      .then(({ data }) => {
+      .then(guardQuery("property settings")).then(({ data }) => {
         if (cancelled) return;
         const g = (data as any)?.room_grouping;
         if (g === "floor" || g === "category") setGrouping(g);
@@ -598,9 +598,9 @@ function OwnerDashboard({
   useEffect(() => {
     if (!propertyId) return;
     supabase.from("staff").select("id, name").eq("property_id", propertyId).eq("is_active", true).order("name")
-      .then(({ data }) => setStaff((data ?? []) as StaffOpt[]));
+      .then(guardQuery("staff")).then(({ data }) => setStaff((data ?? []) as StaffOpt[]));
     supabase.from("room_categories").select("id, name").eq("property_id", propertyId).order("name")
-      .then(({ data }) => setCategories((data ?? []) as RoomCategory[]));
+      .then(guardQuery("room categories")).then(({ data }) => setCategories((data ?? []) as RoomCategory[]));
   }, [propertyId]);
 
   // Live updates: Realtime subscription + 60s polling fallback
