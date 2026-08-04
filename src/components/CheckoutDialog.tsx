@@ -302,6 +302,11 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
   useEffect(() => {
     if (!open || loading || !folio || !booking) return;
     if (didSeedRoomCharges.current) return;
+    // A settled folio is final — never re-derive or re-seed charges on it.
+    if (folio.status === "settled" || folio.status === "void") {
+      didSeedRoomCharges.current = true;
+      return;
+    }
     if (!booking.booking_rooms?.length) return;
     const existingRoomSourceIds = new Set(
       charges
@@ -431,6 +436,11 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     const balance = Math.max(0, grand - paid);
     return { rooms, food, other, roomTotal, foodTotal, otherTotal, grand, paid, balance };
   }, [charges, payments, folio?.gst_mode]);
+
+  // Settled folio with zero balance: trust folios.balance_amount as the source
+  // of truth and skip the client-side charge re-derivation entirely.
+  const settledZero =
+    !!folio && folio.status === "settled" && Number(folio.balance_amount ?? 0) <= 0.01;
 
   // Pre-fill single amount once balance computed
   useEffect(() => {
