@@ -829,6 +829,11 @@ function OwnerDashboard({
           </CardContent>
         </Card>
 
+        </>
+        )}
+
+        {dashView === "overview" && (
+        <>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Kpi label="Occupied Rooms" value={kpi.occupied} icon={BedDouble} />
           <Kpi
@@ -897,11 +902,7 @@ function OwnerDashboard({
             </CardContent>
           </Card>
         )}
-        </>
-        )}
 
-        {dashView === "overview" && (
-        <>
         <Card>
           <CardHeader className="pb-3">
             <button
