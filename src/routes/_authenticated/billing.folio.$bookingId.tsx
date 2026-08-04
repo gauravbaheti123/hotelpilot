@@ -1396,7 +1396,7 @@ function FolioPage() {
     const logoDataUrl = await resolveLogoUrl(property.logo_url);
     const html = renderInvoiceHtml({
       property: { ...property, logo_url: logoDataUrl },
-      folio, booking, charges, payments, draft: false, logoDataUrl,
+      folio, booking, charges: chargesForDisplay, payments, draft: false, logoDataUrl,
       billToState, billToStateCode, billToGstin,
     });
     openInvoiceWindow(html);
