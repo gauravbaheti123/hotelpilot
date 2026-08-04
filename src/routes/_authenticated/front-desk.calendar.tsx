@@ -38,7 +38,6 @@ interface BRRow {
 
 interface EventBlockRow {
   id: string;
-  banquet_booking_id: string;
   /** Unified bookings.id for the event (Part 5). */
   event_booking_id: string | null;
   event_name: string;
@@ -90,7 +89,7 @@ function CalendarPage() {
         .gt("check_out", start),
       supabase
         .from("event_room_blocks")
-        .select("id,banquet_booking_id,event_booking_id,event_name,room_id,checkin_date,checkout_date,status,guest_name")
+        .select("id,event_booking_id,event_name,room_id,checkin_date,checkout_date,status,guest_name")
         .eq("property_id", current.id)
         .in("status", ["blocked", "checked_in"])
         .lt("checkin_date", rangeEnd)

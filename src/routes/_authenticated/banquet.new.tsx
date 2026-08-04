@@ -415,7 +415,7 @@ function NewBanquetPage() {
       if (roomMode !== "none" && finalAssignments.length > 0) {
         roomsBlocked = await commitRoomBlocks({
           propertyId,
-          banquetBookingId: created.legacyId,
+          eventBookingId: created.bookingId,
           eventName,
           rows: finalAssignments,
         });

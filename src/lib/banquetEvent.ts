@@ -1,19 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * Banquet events on the unified `bookings` model (Part 4).
+ * Banquet events on the unified `bookings` model (Part 6 — legacy mirror retired).
  *
  * Source of truth is the `bookings` row with booking_type = 'banquet'.
- * `banquet_bookings` is kept as a legacy mirror (DB triggers sync both ways)
- * because extras, bulk rooms, master bills and room blocks still FK to it and
- * the list page / reports still read it.
- *
- * Every screen resolves whichever id it was handed (unified or legacy) into
- * BOTH ids, then reads the event header from the unified row.
+ * Extras, master bills and room blocks all FK to `bookings.id`.
+ * `EventIds.legacyId` is kept only as a deprecated alias of `bookingId`.
  */
 import { supabase } from "@/integrations/supabase/client";
 import { reportQueryError } from "@/lib/queryError";
 
-/** Columns that live on `bookings`; everything else is written to the mirror. */
+/** Columns that live on `bookings` (all of them now). */
 const UNIFIED_FIELDS = new Set([
   "hall_id",
   "guest_id",
@@ -42,14 +38,20 @@ const UNIFIED_FIELDS = new Set([
   "notes",
   "cancelled_at",
   "cancelled_reason",
+  "event_status",
+  "total_room_charges",
+  "bill_type",
+  "line_discounts",
+  "advance_payment_mode",
 ]);
 
 export interface EventIds {
   bookingId: string;
+  /** @deprecated same value as bookingId; kept for call-site compatibility. */
   legacyId: string | null;
 }
 
-/** Accepts a unified bookings.id OR a legacy banquet_bookings.id. */
+/** Resolves a unified bookings.id for a banquet event. */
 export async function resolveEventIds(id: string): Promise<EventIds | null> {
   const { data, error } = await supabase.rpc("resolve_event_ids" as any, { _id: id } as any);
   if (error) throw error;
@@ -57,17 +59,13 @@ export async function resolveEventIds(id: string): Promise<EventIds | null> {
   if (!row?.booking_id) return null;
   return {
     bookingId: row.booking_id as string,
-    legacyId: (row.banquet_booking_id ?? null) as string | null,
+    legacyId: row.booking_id as string,
   };
 }
 
 /**
- * Event header, read from the unified booking and merged with the few
- * legacy-only fields (bill_type, line_discounts, advance_payment_mode,
- * total_room_charges) that have not been moved yet.
- *
- * `id` is intentionally the LEGACY id so existing child queries
- * (extras / bulk rooms / room blocks / master bill) keep working unchanged.
+ * Event header, read entirely from the unified booking.
+ * `id` is the unified bookings.id, which every child table now points at.
  */
 export async function loadEventBooking(id: string) {
   const ids = await resolveEventIds(id);
@@ -82,6 +80,7 @@ export async function loadEventBooking(id: string) {
     package_rate,hall_charge,fb_charge,extra_charge,extra_charge_description,
     discount_type,discount_value,discount_amount,round_off_amount,
     total_amount,advance_amount,balance_amount,notes,cancelled_at,cancelled_reason,
+    event_status,total_room_charges,bill_type,line_discounts,advance_payment_mode,
     halls(id,name,capacity),
     guests(id,name,mobile,email,gst_number,company,state,state_code)
   `,
@@ -90,30 +89,18 @@ export async function loadEventBooking(id: string) {
     .single();
   if (error) throw error;
 
-  let legacy: any = null;
-  if (ids.legacyId) {
-    const { data: l, error: __qe1 } = await supabase
-      .from("banquet_bookings")
-      .select("id,status,bill_type,advance_payment_mode,line_discounts,total_room_charges")
-      .eq("id", ids.legacyId)
-      .maybeSingle();
-    if (__qe1) reportQueryError("banquet bookings", __qe1);
-    legacy = l ?? null;
-  }
-
+  const row: any = u as any;
   const ev: any = {
-    ...(u as any),
-    // Legacy id space keeps every child table query working untouched.
-    id: ids.legacyId ?? (u as any).id,
+    ...row,
+    id: ids.bookingId,
     booking_id: ids.bookingId,
-    legacy_id: ids.legacyId,
-    // Event lifecycle status stays on the legacy vocabulary
-    // (reserved / confirmed / in_progress / completed / cancelled).
-    status: legacy?.status ?? (u as any).status,
-    bill_type: legacy?.bill_type ?? "gst_invoice",
-    advance_payment_mode: legacy?.advance_payment_mode ?? null,
-    line_discounts: legacy?.line_discounts ?? {},
-    total_room_charges: Number(legacy?.total_room_charges ?? 0),
+    legacy_id: ids.bookingId,
+    // Event lifecycle vocabulary (confirmed / in_progress / completed / cancelled).
+    status: row.event_status ?? row.status,
+    bill_type: row.bill_type ?? "gst_invoice",
+    advance_payment_mode: row.advance_payment_mode ?? null,
+    line_discounts: row.line_discounts ?? {},
+    total_room_charges: Number(row.total_room_charges ?? 0),
   };
   return ev as any;
 }
@@ -135,17 +122,17 @@ export async function loadEventFinancials(bookingId: string) {
   };
 }
 
-/**
- * Patch an event. Unified columns go to `bookings`; legacy-only columns go to
- * the mirror. DB triggers keep the other side in sync either way.
- */
+/** Patch an event. Everything is written straight to `bookings`. */
 export async function patchEventBooking(ids: EventIds, patch: Record<string, any>): Promise<void> {
   const unified: Record<string, any> = {};
-  const legacyOnly: Record<string, any> = {};
   for (const [k, v] of Object.entries(patch)) {
     if (v === undefined) continue;
-    if (k === "halls" || k === "guests" || k === "id") continue;
-    (UNIFIED_FIELDS.has(k) ? unified : legacyOnly)[k] = v;
+    if (k === "halls" || k === "guests" || k === "id" || k === "booking_id" || k === "legacy_id") continue;
+    if (k === "status") {
+      unified.event_status = v;
+      continue;
+    }
+    if (UNIFIED_FIELDS.has(k)) unified[k] = v;
   }
   if (Object.keys(unified).length > 0) {
     const { error } = await supabase
@@ -154,46 +141,24 @@ export async function patchEventBooking(ids: EventIds, patch: Record<string, any
       .eq("id", ids.bookingId);
     if (error) throw error;
   }
-  if (Object.keys(legacyOnly).length > 0 && ids.legacyId) {
-    const { error } = await supabase
-      .from("banquet_bookings")
-      .update(legacyOnly as any)
-      .eq("id", ids.legacyId);
-    if (error) throw error;
-  }
 }
 
-/** Event lifecycle status lives on the mirror; cancellation mirrors to bookings. */
+/** Event lifecycle status lives on bookings.event_status. */
 export async function setEventStatus(
   ids: EventIds,
   status: "reserved" | "confirmed" | "in_progress" | "completed" | "cancelled",
   extra?: { cancelled_reason?: string },
 ): Promise<void> {
-  if (ids.legacyId) {
-    const { error } = await supabase
-      .from("banquet_bookings")
-      .update({
-        status,
-        ...(status === "cancelled"
-          ? {
-              cancelled_at: new Date().toISOString(),
-              cancelled_reason: extra?.cancelled_reason ?? null,
-            }
-          : {}),
-      } as any)
-      .eq("id", ids.legacyId);
-    if (error) throw error;
-  }
+  const patch: Record<string, any> = {
+    event_status: status === "reserved" ? "confirmed" : status,
+  };
   if (status === "cancelled") {
-    await supabase
-      .from("bookings")
-      .update({
-        status: "cancelled",
-        cancelled_at: new Date().toISOString(),
-        cancelled_reason: extra?.cancelled_reason ?? null,
-      } as any)
-      .eq("id", ids.bookingId);
+    patch.status = "cancelled";
+    patch.cancelled_at = new Date().toISOString();
+    patch.cancelled_reason = extra?.cancelled_reason ?? null;
   }
+  const { error } = await supabase.from("bookings").update(patch as any).eq("id", ids.bookingId);
+  if (error) throw error;
 }
 
 export interface CreateEventPayload {
@@ -225,7 +190,7 @@ export interface CreateEventPayload {
   extras?: { point_name: string; amount: number }[];
 }
 
-/** Creates the unified event booking (+ mirror) and returns both ids. */
+/** Creates the unified event booking and returns its id. */
 export async function createEventBooking(payload: CreateEventPayload): Promise<{
   bookingId: string;
   legacyId: string;
@@ -236,7 +201,7 @@ export async function createEventBooking(payload: CreateEventPayload): Promise<{
   const r = data as any;
   return {
     bookingId: r.booking_id as string,
-    legacyId: r.banquet_booking_id as string,
+    legacyId: r.booking_id as string,
     banquetNumber: r.banquet_number as string,
   };
 }
@@ -251,11 +216,8 @@ export async function seedEventFolioCharges(bookingId: string): Promise<void> {
 }
 
 /* ------------------------------------------------------------------ *
- * Part 5 — unified read paths
- * Every list / report / ledger screen reads the event header from the
- * unified `bookings` row (booking_type = 'banquet'). The legacy mirror is
- * consulted ONLY for the two columns that have not moved yet:
- * the event lifecycle status vocabulary and total_room_charges.
+ * Unified read paths — every list / report / ledger screen reads the
+ * event header from the unified `bookings` row (booking_type='banquet').
  * ------------------------------------------------------------------ */
 
 export interface EventRow {
@@ -309,7 +271,7 @@ export async function listEventBookings(
       `id,property_id,banquet_number,status,guest_id,hall_id,event_name,function_type,
        event_date,event_end_date,start_time,end_time,pax,
        hall_charge,fb_charge,extra_charge,total_amount,advance_amount,balance_amount,
-       host_name,host_mobile,
+       host_name,host_mobile,event_status,total_room_charges,
        halls(name),guests(name,mobile)`,
     )
     .eq("property_id", propertyId)
@@ -325,24 +287,10 @@ export async function listEventBookings(
   const base = (data ?? []) as any[];
   if (base.length === 0) return [];
 
-  // Mirror lookup for the two not-yet-migrated columns.
-  const numbers = base.map((b) => b.banquet_number).filter(Boolean) as string[];
-  const mirror = new Map<string, any>();
-  if (numbers.length) {
-    const { data: legacy, error: __qe3 } = await supabase
-      .from("banquet_bookings")
-      .select("id,banquet_number,status,total_room_charges")
-      .eq("property_id", propertyId)
-      .in("banquet_number", numbers);
-    if (__qe3) reportQueryError("banquet bookings", __qe3);
-    for (const l of (legacy ?? []) as any[]) mirror.set(l.banquet_number, l);
-  }
-
   const rows: EventRow[] = base.map((b) => {
-    const m = mirror.get(b.banquet_number) ?? null;
     return {
       booking_id: b.id,
-      legacy_id: m?.id ?? null,
+      legacy_id: b.id,
       property_id: b.property_id,
       banquet_number: b.banquet_number,
       event_name: b.event_name ?? null,
@@ -362,13 +310,12 @@ export async function listEventBookings(
       hall_charge: n(b.hall_charge),
       fb_charge: n(b.fb_charge),
       extra_charge: n(b.extra_charge),
-      total_room_charges: n(m?.total_room_charges),
+      total_room_charges: n(b.total_room_charges),
       total_amount: n(b.total_amount),
       advance_amount: n(b.advance_amount),
       balance_amount: n(b.balance_amount),
-      // Lifecycle vocabulary still lives on the mirror
-      // (reserved / confirmed / in_progress / completed / cancelled).
-      status: (m?.status ?? b.status ?? "reserved") as string,
+      // Lifecycle vocabulary (confirmed / in_progress / completed / cancelled).
+      status: (b.event_status ?? b.status ?? "confirmed") as string,
     };
   });
   return opts.status ? rows.filter((r) => r.status === opts.status) : rows;
@@ -442,11 +389,8 @@ export async function recordEventPayments(
   if (error) throw error;
 }
 
-/** Hard-delete an event: unified booking first, then the legacy mirror. */
+/** Hard-delete an event (children cascade from bookings). */
 export async function deleteEventBooking(ids: EventIds): Promise<void> {
   const { error } = await supabase.from("bookings").delete().eq("id", ids.bookingId);
   if (error) throw error;
-  if (ids.legacyId) {
-    await supabase.from("banquet_bookings").delete().eq("id", ids.legacyId);
-  }
 }
