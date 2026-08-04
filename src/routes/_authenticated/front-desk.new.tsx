@@ -231,6 +231,11 @@ function NewBookingWizardPage() {
         state,
         checkInNow,
         actorName: userDisplayName(user as never),
+        event: {
+          eventId: search?.eventId ?? null,
+          blockId: search?.blockId ?? null,
+          eventName: search?.eventName ?? null,
+        },
       });
       draft.clear();
       setSaved(res);
