@@ -64,6 +64,14 @@ export function EventRoomBlocks({
     onRowsChange(rows.filter((_, idx) => idx !== i));
   }
 
+  /** Picking a room in the bulk grid pre-fills the tariff-plan rate (still editable). */
+  function selectBulkRoom(i: number, roomId: string) {
+    const row = rows[i];
+    const room = rooms.find((x) => x.id === roomId);
+    const rate = stdRateFor(plans, room?.category_id, row?.checkIn || eventDate);
+    patchRow(i, { roomId, ...(rate > 0 ? { specialRate: String(rate) } : {}) });
+  }
+
   function switchMode(next: RoomBlockMode) {
     onModeChange(next);
     if (next === "none") return;
@@ -150,7 +158,7 @@ export function EventRoomBlocks({
                   className="grid gap-2 sm:grid-cols-[1fr_1.2fr_1fr_1fr_1fr_120px_30px] items-end p-2 border rounded"
                 >
                   <Field label={i === 0 ? "Room *" : ""}>
-                    <Select value={r.roomId} onValueChange={(v) => patchRow(i, { roomId: v })}>
+                    <Select value={r.roomId} onValueChange={(v) => selectBulkRoom(i, v)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Pick room" />
                       </SelectTrigger>
@@ -223,7 +231,6 @@ export function EventRoomBlocks({
                   >
                     <Input
                       type="number"
-                      placeholder="default"
                       value={r.specialRate}
                       onChange={(e) => patchRow(i, { specialRate: e.target.value })}
                     />
