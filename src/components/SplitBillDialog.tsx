@@ -316,6 +316,21 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   }, [parentPayments, payAlloc, childTargets]);
 
   /**
+   * Step 4 defaults: each child's payment box pre-fills with the amount still
+   * OUTSTANDING after the payments carried over from the parent folio.
+   */
+  function seedPayRows(created: { total: number }[]): PaymentRow[] {
+    const totals = childTargets.map((c) => c.total);
+    const carried = created.map((_, i) =>
+      parentPayments.reduce((s, p) => s + (allocFor(p, totals)[i] ?? 0), 0));
+    return created.map((cb, i) => ({
+      mode: "cash",
+      amount: Math.max(0, round2(cb.total - (carried[i] ?? 0))).toFixed(2),
+      reference: "",
+    }));
+  }
+
+  /**
    * Re-home every parent-folio payment onto the child folios BEFORE the parent
    * is voided, so void_folio_safe() succeeds normally with _force:false and no
    * payment history is orphaned or lost.
