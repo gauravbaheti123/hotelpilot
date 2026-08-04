@@ -47,6 +47,7 @@ interface Guest {
 interface Stay {
   id: string; booking_number: string; status: string;
   check_in: string; check_out: string; total_amount: number;
+  rooms?: string[]; categories?: string[];
 }
 
 interface Feedback {
@@ -74,13 +75,20 @@ function GuestDetail() {
     setG((data as Guest | null) ?? null);
     setTagsInput((data?.tags ?? []).join(", "));
     const { data: b } = await supabase.from("bookings")
-      .select("id,booking_number,status,check_in,check_out,total_amount")
+      .select("id,booking_number,status,check_in,check_out,total_amount,booking_rooms(rooms!booking_rooms_room_id_fkey(room_number),room_categories(name))")
       .eq("guest_id", id).order("check_in", { ascending: false }).limit(50);
     // Hide banquet event-block stays once their 48h window has lapsed.
     const scope = await fetchBanquetScope(null);
-    setStays(((b ?? []) as any[]).filter(
-      (s) => !isBanquetRecord(scope, { booking_id: s.id }),
-    ) as Stay[]);
+    setStays(((b ?? []) as any[])
+      .filter((s) => !isBanquetRecord(scope, { booking_id: s.id }))
+      .map((s) => {
+        const brs = (s.booking_rooms ?? []) as any[];
+        return {
+          ...s,
+          rooms: Array.from(new Set(brs.map((r) => r.rooms?.room_number).filter(Boolean))).map(String),
+          categories: Array.from(new Set(brs.map((r) => r.room_categories?.name).filter(Boolean))).map(String),
+        };
+      }) as Stay[]);
     const { data: f } = await supabase.from("guest_feedback")
       .select("id,feedback_date,overall_rating,comments,source")
       .eq("guest_id", id).order("feedback_date", { ascending: false }).limit(20);
