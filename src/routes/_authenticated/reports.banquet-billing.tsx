@@ -103,7 +103,7 @@ function Page() {
 
       const [{ data: bks }, events] = await Promise.all([
         supabase.from("bookings")
-          .select("id,booking_number,guests(name),booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))")
+          .select("id,booking_number,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number))")
           .in("id", bookingIds),
         listEventBookings(propertyId),
       ]);

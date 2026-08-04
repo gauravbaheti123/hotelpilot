@@ -319,7 +319,7 @@ function RestaurantPage() {
         .order("charge_date", { ascending: false }),
       supabase
         .from("bookings")
-        .select("id,booking_number,guest_id,guests(name),booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))")
+        .select("id,booking_number,guest_id,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number))")
         .eq("property_id", current.id)
         .eq("status", "checked_in"),
       (supabase as any)
@@ -346,7 +346,7 @@ function RestaurantPage() {
     if (bIds.length) {
       const { data: bdata } = await supabase
         .from("bookings")
-        .select("id,guests(name),booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))")
+        .select("id,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number))")
         .in("id", bIds);
       const map: typeof directEnrich = {};
       for (const b of (bdata ?? []) as any[]) {

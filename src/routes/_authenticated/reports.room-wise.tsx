@@ -53,7 +53,7 @@ function Page() {
       rooms:room_id(id,room_number),
       room_categories(name),
       tariff:tariff_id(name),
-      bookings(id,source,status,total_amount,balance_amount,checked_in_by,checked_out_by,guests(name))
+      bookings!booking_rooms_booking_id_fkey(id,source,status,total_amount,balance_amount,checked_in_by,checked_out_by,guests(name))
     `).eq("property_id", propertyId)
       .gte("check_in", from).lte("check_in", to);
     if (catId !== "all") q = q.eq("category_id", catId);

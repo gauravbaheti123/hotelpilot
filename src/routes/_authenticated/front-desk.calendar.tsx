@@ -83,7 +83,7 @@ function CalendarPage() {
         .order("room_number"),
       supabase
         .from("booking_rooms")
-        .select("id,booking_id,room_id,check_in,check_out,bookings!inner(booking_number,status,property_id,guests(name))")
+        .select("id,booking_id,room_id,check_in,check_out,bookings!booking_rooms_booking_id_fkey!inner(booking_number,status,property_id,guests(name))")
         .eq("bookings.property_id", current.id)
         .lt("check_in", rangeEnd)
         .gt("check_out", start),

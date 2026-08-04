@@ -83,7 +83,7 @@ export function AssignRoomDialog({
       if (roomIds.length > 0) {
         const { data: br } = await supabase
           .from("booking_rooms")
-          .select("room_id,check_in,check_out,status,bookings!inner(status)")
+          .select("room_id,check_in,check_out,status,bookings!booking_rooms_booking_id_fkey!inner(status)")
           .in("room_id", roomIds)
           .lt("check_in", checkOut)
           .gt("check_out", checkIn);
@@ -386,7 +386,7 @@ export async function loadUnassignedReservations(
     .from("booking_rooms")
     .select(
       "id,category_id,check_in,check_out,rate,adults,children,room_categories(name)," +
-      "bookings!inner(id,booking_number,status,check_out,guests:guest_id(name))",
+      "bookings!booking_rooms_booking_id_fkey!inner(id,booking_number,status,check_out,guests:guest_id(name))",
     )
     .eq("property_id", propertyId)
     .is("room_id", null)

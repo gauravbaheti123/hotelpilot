@@ -56,7 +56,7 @@ function InHousePage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("bookings")
-      .select("id,booking_number,check_in,check_out,adults,children,balance_amount,guests(name,mobile),booking_rooms(id,rate,rooms!booking_rooms_room_id_fkey(room_number))")
+      .select("id,booking_number,check_in,check_out,adults,children,balance_amount,guests(name,mobile),booking_rooms!booking_rooms_booking_id_fkey(id,rate,rooms!booking_rooms_room_id_fkey(room_number))")
       .eq("property_id", current.id)
       .eq("status", "checked_in")
       .order("check_out", { ascending: true });

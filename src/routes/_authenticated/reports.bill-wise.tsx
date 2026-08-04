@@ -53,7 +53,7 @@ function Page() {
     const toIso = `${to}T23:59:59`;
     let q = supabase.from("folios").select(`
       id,booking_id,invoice_number,created_at,sub_total,gst_amount,discount_amount,total_amount,bill_type,gst_mode,status,
-      bookings(booking_rooms(rooms!booking_rooms_room_id_fkey(room_number)),guests(name))
+      bookings(booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number)),guests(name))
     `).eq("property_id", propertyId).gte("created_at", fromIso).lte("created_at", toIso)
       .order("created_at", { ascending: false });
     if (status !== "all") q = q.eq("status", status === "active" ? "settled" : "voided");

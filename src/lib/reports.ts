@@ -103,7 +103,7 @@ export async function fetchOccupancy(propertyId: string, date: string): Promise<
       .eq("property_id", propertyId)
       .eq("is_active", true),
     supabase.from("booking_rooms")
-      .select("id,booking_id,bookings!inner(property_id,check_in,check_out,status)")
+      .select("id,booking_id,bookings!booking_rooms_booking_id_fkey!inner(property_id,check_in,check_out,status)")
       .eq("bookings.property_id", propertyId)
       .lte("bookings.check_in", date)
       .gt("bookings.check_out", date)
