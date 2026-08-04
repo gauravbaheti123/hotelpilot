@@ -298,8 +298,13 @@ function NewBanquetPage() {
       }, 0);
       const combinedTotal = total + totalRoomCharges;
 
+      const extraRows = extras
+        .map((x, idx) => ({ point_name: x.point_name.trim(), amount: Number(x.amount) || 0, sort_order: idx }))
+        .filter((x) => x.point_name && x.amount > 0);
+
       // Unified model: creates the bookings row (booking_type='banquet') with the
-      // next EVT number, plus the legacy mirror row, in one transaction.
+      // next EVT number, the legacy mirror row, the extra-charge lines and the
+      // seeded event folio — all in one transaction.
       const created = await createEventBooking({
         property_id: propertyId,
         hall_id: hallId || null,
@@ -325,25 +330,8 @@ function NewBanquetPage() {
         balance_amount: Math.max(0, combinedTotal - advanceAmt),
         total_room_charges: totalRoomCharges,
         notes: notes || null,
+        extras: extraRows.map((x) => ({ point_name: x.point_name, amount: x.amount })),
       });
-
-      // Persist extras
-      const extraRows = extras
-        .map((x, idx) => ({ point_name: x.point_name.trim(), amount: Number(x.amount) || 0, sort_order: idx }))
-        .filter((x) => x.point_name && x.amount > 0);
-      if (extraRows.length > 0) {
-        const { error: exErr } = await supabase.from("banquet_extra_charges").insert(
-          extraRows.map((x) => ({
-            banquet_booking_id: created.legacyId,
-            property_id: propertyId,
-            point_name: x.point_name,
-            amount: x.amount,
-            sort_order: x.sort_order,
-            created_by: user?.id ?? null,
-          })) as any,
-        );
-        if (exErr) throw exErr;
-      }
 
       let roomsBlocked = 0;
       if (roomMode !== "none" && finalAssignments.length > 0) {
@@ -355,7 +343,7 @@ function NewBanquetPage() {
         });
       }
 
-      // Hall + itemised extras land on the event folio immediately.
+      // Re-seed so any rooms assigned above also land on the event folio.
       await seedEventFolioCharges(created.bookingId).catch((e) =>
         toast.error(`Event saved, but folio charges failed: ${e?.message ?? e}`));
 
