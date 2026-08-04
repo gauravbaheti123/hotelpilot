@@ -679,15 +679,17 @@ function OwnerDashboard({
   }, [propertyId, dashView]);
 
   return (
-    <AppShell title="Dashboard">
-      <div className="w-full space-y-6">
-        <div className="inline-flex rounded-md border overflow-hidden text-xs">
+    <AppShell
+      title="Dashboard"
+      onTitleClick={() => setDashView("rooms")}
+      titleSlot={
+        <div className="inline-flex rounded-md border overflow-hidden text-xs shrink-0">
           {(["rooms", "overview", "invoices"] as const).map((v) => (
             <button
               key={v}
               type="button"
               onClick={() => setDashView(v)}
-              className={`px-4 h-9 font-medium capitalize transition-colors ${
+              className={`px-3 sm:px-4 h-8 font-medium capitalize transition-colors ${
                 dashView === v
                   ? "bg-primary text-primary-foreground"
                   : "bg-background hover:bg-muted"
@@ -697,7 +699,9 @@ function OwnerDashboard({
             </button>
           ))}
         </div>
-
+      }
+    >
+      <div className="w-full space-y-6">
         {dashView === "rooms" && (
         <>
         <Card>
