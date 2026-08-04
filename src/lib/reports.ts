@@ -175,7 +175,7 @@ export async function fetchGstInvoices(propertyId: string, from: string, to: str
   const visible = (data ?? []).filter((d) => !isBanquetRecord(scope, d as { booking_id?: string | null }));
   return visible.map((d) => {
     const row = d as unknown as {
-      invoice_number: string | null; created_at: string;
+      invoice_number: string | null; created_at: string; settled_at?: string | null;
       guest_gstin: string | null; guest_company: string | null;
       sub_total: number; gst_amount: number; total_amount: number;
       bookings: { guests: { name: string } | null } | null;
@@ -241,7 +241,7 @@ export async function fetchGstInvoiceSlabs(
   const out: GstInvoiceSlabRow[] = [];
   for (const raw of (data ?? []).filter((d) => !isBanquetRecord(scope, d as { booking_id?: string | null }))) {
     const f = raw as unknown as {
-      invoice_number: string | null; created_at: string;
+      invoice_number: string | null; created_at: string; settled_at?: string | null;
       guest_gstin: string | null; guest_company: string | null;
       billing_company_id: string | null;
       sub_total: number; gst_amount: number; total_amount: number;
@@ -300,7 +300,7 @@ export async function fetchGstInvoiceSlabs(
       const cgst = igstBill ? 0 : round2(gstScaled / 2);
       out.push({
         invoice_number: f.invoice_number,
-        created_at: f.created_at,
+        created_at: f.settled_at ?? f.created_at,
         guest_name: f.bookings?.guests?.name ?? null,
         guest_gstin: f.guest_gstin,
         guest_company: f.guest_company,
@@ -322,7 +322,7 @@ export async function fetchGstInvoiceSlabs(
     if (bySlab.size === 0) {
       out.push({
         invoice_number: f.invoice_number,
-        created_at: f.created_at,
+        created_at: f.settled_at ?? f.created_at,
         guest_name: f.bookings?.guests?.name ?? null,
         guest_gstin: f.guest_gstin,
         guest_company: f.guest_company,
