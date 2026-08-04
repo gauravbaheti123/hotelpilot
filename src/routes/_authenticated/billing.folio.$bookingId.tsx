@@ -496,10 +496,13 @@ function FolioPage() {
       for (const br of booking.booking_rooms) {
         if (Number(br.rate) <= 0) continue;
         const { data, error } = await supabase.rpc("seed_room_charge_for_booking_room", {
-          _beb_id: undefined as never,
-        } as never);
-        void data; void error;
-        seeded += 0;
+          _booking_room_id: br.id,
+        } as any);
+        if (error) {
+          console.warn("[folio] room charge seed failed:", error.message);
+          continue;
+        }
+        if (data) seeded += 1;
       }
       if (seeded > 0) load();
     })();
