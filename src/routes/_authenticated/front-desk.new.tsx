@@ -41,12 +41,16 @@ export const Route = createFileRoute("/_authenticated/front-desk/new")({
     categoryId: typeof s.categoryId === "string" ? s.categoryId : undefined,
     checkIn: typeof s.checkIn === "string" ? s.checkIn : undefined,
     checkOut: typeof s.checkOut === "string" ? s.checkOut : undefined,
+    // Banquet → front-desk room-block handoff (existing integration point).
+    eventId: typeof s.eventId === "string" ? s.eventId : undefined,
+    blockId: typeof s.blockId === "string" ? s.blockId : undefined,
+    eventName: typeof s.eventName === "string" ? s.eventName : undefined,
   }),
   head: () => ({
     meta: [
-      { title: "New Booking Wizard | HotelPilot" },
+      { title: "New Booking | HotelPilot" },
       { name: "description", content: "Step-by-step new booking flow for front desk check-ins and reservations." },
-      { property: "og:title", content: "New Booking Wizard | HotelPilot" },
+      { property: "og:title", content: "New Booking | HotelPilot" },
       { property: "og:description", content: "Step-by-step new booking flow for front desk check-ins and reservations." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
