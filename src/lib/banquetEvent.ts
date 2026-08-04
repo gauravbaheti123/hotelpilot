@@ -169,6 +169,8 @@ export interface CreateEventPayload {
   balance_amount?: number;
   total_room_charges?: number;
   notes?: string | null;
+  /** Named extra-charge lines, saved inside the same transaction. */
+  extras?: { point_name: string; amount: number }[];
 }
 
 /** Creates the unified event booking (+ mirror) and returns both ids. */
