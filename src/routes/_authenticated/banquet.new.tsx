@@ -32,7 +32,7 @@ import { GuestSearchInput } from "@/components/GuestSearchInput";
 import { istDateISO, istToday } from "@/lib/date";
 import { createEventBooking, seedEventFolioCharges } from "@/lib/banquetEvent";
 import { reportQueryError } from "@/lib/queryError";
-import { toastError } from "@/lib/errorMessage";
+import { toastError, errorMessage } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/banquet/new")({
   head: () => ({ meta: [{ title: "New Banquet — HotelPilot" }] }),

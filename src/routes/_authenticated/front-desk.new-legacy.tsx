@@ -48,7 +48,7 @@ import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { reportQueryError } from "@/lib/queryError";
-import { toastError } from "@/lib/errorMessage";
+import { toastError, errorMessage } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/front-desk/new-legacy")({
   head: () => ({ meta: [{ title: "New Booking — HotelPilot" }] }),
   validateSearch: (s: Record<string, unknown>) => ({
