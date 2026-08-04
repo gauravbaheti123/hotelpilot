@@ -80,6 +80,7 @@ function GrcPage() {
   const [booking, setBooking] = useState<any>(null);
   const [property, setProperty] = useState<any>(null);
   const [grc, setGrc] = useState<GrcState>(empty);
+  const [staffOptions, setStaffOptions] = useState<string[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -115,6 +116,15 @@ function GrcPage() {
           .from("profiles").select("name,email").eq("id", uid).maybeSingle();
         signedInName = (prof?.name || prof?.email || "").trim();
       }
+      // Duty Manager options come from the property's staff list.
+      const { data: staffRows } = await supabase.rpc("list_property_staff", {
+        _property_id: b.property_id,
+      });
+      const names = ((staffRows ?? []) as Array<{ display_name: string | null; email: string | null }>)
+        .map((r) => (r.display_name || r.email || "").trim())
+        .filter(Boolean);
+      if (signedInName && !names.includes(signedInName)) names.unshift(signedInName);
+      setStaffOptions(Array.from(new Set(names)));
       if (g) {
         setGrc({
           id: g.id, grc_number: g.grc_number,
