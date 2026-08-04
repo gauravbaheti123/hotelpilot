@@ -41,6 +41,20 @@ export interface CreateBookingExtraGuest {
   relation?: string | null;
 }
 
+/** One room line of a (possibly multi-room) booking. */
+export interface CreateBookingRoom {
+  category_id?: string | null;
+  room_id?: string | null;
+  assign_later?: boolean;
+  tariff_id?: string | null;
+  meal_plan?: string;
+  rate?: number;
+  check_in?: string;
+  check_out?: string;
+  adults?: number;
+  children?: number;
+}
+
 export interface CreateBookingPayload {
   property_id: string;
   check_in_now: boolean;
@@ -59,6 +73,11 @@ export interface CreateBookingPayload {
   meal_plan?: string;
   rate?: number;
   rate_type?: "exclusive" | "inclusive";
+  /**
+   * Multi-room bookings. When present and non-empty this replaces the
+   * single-room fields above; both are handled inside the same transaction.
+   */
+  rooms?: CreateBookingRoom[];
 
   extra_bed_qty?: number;
   extra_bed_rate?: number;

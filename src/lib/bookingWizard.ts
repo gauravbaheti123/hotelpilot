@@ -3,7 +3,8 @@
 // same object without touching the shell.
 import { DEFAULT_NATION } from "@/lib/indiaGeo";
 import { isValidMobile } from "@/lib/mobile";
-import { addDaysIso, isValidStayRange, todayIso } from "@/lib/front-desk";
+import { addDaysIso, isValidStayRange, nightsBetween, todayIso } from "@/lib/front-desk";
+import { isValidOrEmptyGSTIN } from "@/lib/gstin";
 
 export type BookingKind = "lodge" | "banquet";
 
@@ -45,6 +46,34 @@ export interface WizardState {
   rooms: WizardRoom[];
   source: string;
   otaPartnerName: string;
+  /** Step 4 — optional "bill to someone else". */
+  billTo: WizardBillTo;
+  /** Step 5 — advance payment at check-in. */
+  payment: WizardPayment;
+  /** Step 6 — remark highlighted at checkout. */
+  customRemark: string;
+}
+
+/** Part 4 — Bill To (billing_companies row, or none). */
+export interface WizardBillTo {
+  enabled: boolean;
+  /** Existing billing_companies id, or "" when adding a new one. */
+  companyId: string;
+  name: string;
+  gstin: string;
+  address: string;
+  email: string;
+  city: string;
+  state: string;
+  nation: string;
+}
+
+/** Part 4 — payment at check-in. */
+export interface WizardPayment {
+  advance: number;
+  mode: string;
+  reference: string;
+  notes: string;
 }
 
 /** Part 3 — accompanying guest (booking_guests row). */
@@ -129,6 +158,23 @@ export function emptyWizardState(): WizardState {
     rooms: [emptyRoom()],
     source: "walk_in",
     otaPartnerName: "",
+    billTo: emptyBillTo(),
+    payment: { advance: 0, mode: "cash", reference: "", notes: "" },
+    customRemark: "",
+  };
+}
+
+export function emptyBillTo(): WizardBillTo {
+  return {
+    enabled: false,
+    companyId: "",
+    name: "",
+    gstin: "",
+    address: "",
+    email: "",
+    city: DEFAULT_CITY,
+    state: DEFAULT_STATE,
+    nation: DEFAULT_NATION,
   };
 }
 
@@ -193,6 +239,7 @@ export function isPristine(s: WizardState) {
     s.adults === 1 && s.children === 0 &&
     s.rooms.length <= 1 &&
     !s.rooms.some((r) => r.categoryId || r.roomId || Number(r.rate) > 0) &&
+    !s.billTo.enabled && !s.customRemark && !(Number(s.payment?.advance) > 0) &&
     !g.name && !g.mobile && !g.email && !g.dob && !g.address && !g.pincode &&
     !g.idProofNumber && !g.passportNumber && !g.visaNumber && !g.visaExpiry &&
     !g.company && !g.gstNumber && !g.idDocFileId && !g.guestId
@@ -221,6 +268,14 @@ export function isStepValid(step: number, s: WizardState): boolean {
   if (step === STEP.STAY) {
     return s.rooms.length > 0 && s.rooms.every((r) => isRoomValid(r, s.reservation));
   }
+  if (step === STEP.BILL_TO) {
+    if (!s.billTo.enabled) return true;
+    if (s.billTo.companyId) return true;
+    return s.billTo.name.trim().length > 0 && isValidOrEmptyGSTIN(s.billTo.gstin);
+  }
+  if (step === STEP.PAYMENT) {
+    return Number(s.payment.advance) >= 0;
+  }
   return true;
 }
 
@@ -231,6 +286,7 @@ export const WIZARD_STEPS = [
   "Stay & Room",
   "Bill To",
   "Payment",
+  "Remarks",
   "Review",
 ];
 
@@ -241,8 +297,27 @@ export const STEP = {
   STAY: 3,
   BILL_TO: 4,
   PAYMENT: 5,
-  REVIEW: 6,
+  REMARKS: 6,
+  REVIEW: 7,
 } as const;
+
+/** Total room charge across every room line (nights x rate). */
+export function roomsTotal(rooms: WizardRoom[]): number {
+  return rooms.reduce(
+    (sum, r) => sum + nightsBetween(r.checkIn, r.checkOut) * (Number(r.rate) || 0),
+    0,
+  );
+}
+
+/** Earliest check-in / latest check-out across all rooms (booking-level dates). */
+export function stayRange(rooms: WizardRoom[]): { checkIn: string; checkOut: string } {
+  const ins = rooms.map((r) => r.checkIn).filter(Boolean).sort();
+  const outs = rooms.map((r) => r.checkOut).filter(Boolean).sort();
+  return {
+    checkIn: ins[0] ?? todayIso(),
+    checkOut: outs[outs.length - 1] ?? addDaysIso(todayIso(), 1),
+  };
+}
 
 /** Reservations skip Additional Guests and Bill To. */
 export function isStepSkipped(step: number, s: WizardState): boolean {

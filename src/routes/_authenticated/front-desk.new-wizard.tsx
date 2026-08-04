@@ -2,7 +2,8 @@
 // Runs in parallel with the legacy front-desk.new route until Part 5 cutover.
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2, Printer, Save } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,10 +20,19 @@ import { StepBookingType } from "@/components/booking-wizard/StepBookingType";
 import { StepGuestDetails } from "@/components/booking-wizard/StepGuestDetails";
 import { StepAdditionalGuests } from "@/components/booking-wizard/StepAdditionalGuests";
 import { StepStayRoom } from "@/components/booking-wizard/StepStayRoom";
+import { StepBillTo } from "@/components/booking-wizard/StepBillTo";
+import { StepPayment } from "@/components/booking-wizard/StepPayment";
+import { StepRemarks } from "@/components/booking-wizard/StepRemarks";
+import { StepReview } from "@/components/booking-wizard/StepReview";
+import { supabase } from "@/integrations/supabase/client";
+import { userDisplayName } from "@/lib/activityLog";
+import { submitWizard } from "@/lib/bookingWizardSubmit";
+import type { CreateBookingResult } from "@/lib/bookingCreate";
 import {
   emptyWizardState, isPristine, isStepValid, isStepSkipped, nextStepIndex, prevStepIndex,
   STEP, WIZARD_DRAFT_KEY, WIZARD_STEPS,
   type WizardGuest, type WizardState, type WizardExtraGuest, type WizardRoom,
+  type WizardBillTo, type WizardPayment,
 } from "@/lib/bookingWizard";
 
 export const Route = createFileRoute("/_authenticated/front-desk/new-wizard")({
@@ -75,7 +85,7 @@ function Stepper({ step, skipped }: { step: number; skipped: (i: number) => bool
 function NewBookingWizardPage() {
   const router = useRouter();
   const search = Route.useSearch();
-  const { roles } = useAuth();
+  const { roles, user } = useAuth();
   const canBook = roles.some((r) => ["superadmin", "owner", "manager", "receptionist"].includes(r));
   const { current, loading: propLoading } = useCurrentProperty();
 
@@ -85,6 +95,10 @@ function NewBookingWizardPage() {
   const [resumeOpen, setResumeOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const [stepBlocked, setStepBlocked] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<CreateBookingResult | null>(null);
+  const [catNames, setCatNames] = useState<Record<string, string>>({});
+  const [roomNames, setRoomNames] = useState<Record<string, string>>({});
   const resumeChecked = useRef(false);
   const prefilled = useRef(false);
 
@@ -118,6 +132,28 @@ function NewBookingWizardPage() {
   const setMeta = useCallback((p: { source?: string; otaPartnerName?: string }) => {
     setState((s) => ({ ...s, ...p }));
   }, []);
+  const patchBillTo = useCallback((patch: Partial<WizardBillTo>) => {
+    setState((s) => ({ ...s, billTo: { ...s.billTo, ...patch } }));
+  }, []);
+  const patchPayment = useCallback((patch: Partial<WizardPayment>) => {
+    setState((s) => ({ ...s, payment: { ...s.payment, ...patch } }));
+  }, []);
+
+  // Label lookups for the read-only Review step.
+  useEffect(() => {
+    if (!current?.id) return;
+    let cancelled = false;
+    (async () => {
+      const [c, r] = await Promise.all([
+        supabase.from("room_categories").select("id,name").eq("property_id", current.id),
+        supabase.from("rooms").select("id,room_number").eq("property_id", current.id),
+      ]);
+      if (cancelled) return;
+      setCatNames(Object.fromEntries(((c.data ?? []) as any[]).map((x) => [x.id, x.name])));
+      setRoomNames(Object.fromEntries(((r.data ?? []) as any[]).map((x) => [x.id, x.room_number])));
+    })();
+    return () => { cancelled = true; };
+  }, [current?.id]);
 
   // Entry-context prefill (?roomId=…&categoryId=…&checkIn=…&checkOut=…).
   // Values stay changeable — they only seed the first room line.
@@ -176,6 +212,69 @@ function NewBookingWizardPage() {
 
   const stepValid = isStepValid(step, state);
   const banquetBlocked = step === 0 && state.kind === "banquet";
+  const onReview = step === STEP.REVIEW;
+
+  async function handleSubmit(checkInNow: boolean) {
+    if (!current) return;
+    if (checkInNow && state.rooms.some((r) => r.assignLater || !r.roomId)) {
+      toast.error("Assign a room before checking in — a room is required to check in a guest");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await submitWizard({
+        propertyId: current.id,
+        state,
+        checkInNow,
+        actorName: userDisplayName(user as never),
+      });
+      draft.clear();
+      setSaved(res);
+      toast.success(`Booking ${res.booking_number ?? ""} created`);
+    } catch (e: any) {
+      // Draft is deliberately kept on failure so nothing typed is lost.
+      toast.error(e?.message ?? "Failed to save booking");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (saved) {
+    return (
+      <AppShell title="New Booking">
+        <Card className="mx-auto max-w-xl">
+          <CardHeader>
+            <CardTitle>Booking {saved.booking_number ?? ""} created</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {state.guest.name} · {state.rooms.length} room{state.rooms.length === 1 ? "" : "s"}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() =>
+                  router.navigate({ to: "/bookings/$bookingId/grc", params: { bookingId: saved.booking_id } })
+                }
+              >
+                <Printer className="mr-2 h-4 w-4" /> Print GRC
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  router.navigate({ to: "/front-desk/booking/$id", params: { id: saved.booking_id } })
+                }
+              >
+                Open booking
+              </Button>
+              <Button variant="ghost" onClick={() => router.navigate({ to: "/dashboard" })}>
+                Back to dashboard
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell title="New Booking">
@@ -229,16 +328,40 @@ function NewBookingWizardPage() {
             />
           )}
 
-          {step > STEP.STAY && (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              Step {step + 1} coming in the next update.
-            </p>
+          {step === STEP.BILL_TO && (
+            <StepBillTo propertyId={current.id} value={state.billTo} onChange={patchBillTo} />
+          )}
+
+          {step === STEP.PAYMENT && (
+            <StepPayment
+              propertyId={current.id}
+              rooms={state.rooms}
+              value={state.payment}
+              onChange={patchPayment}
+            />
+          )}
+
+          {step === STEP.REMARKS && (
+            <StepRemarks
+              value={state.customRemark}
+              onChange={(customRemark) => setState((s) => ({ ...s, customRemark }))}
+            />
+          )}
+
+          {step === STEP.REVIEW && (
+            <StepReview
+              state={state}
+              categoryName={(id) => catNames[id] ?? "Category"}
+              roomLabel={(id) => (roomNames[id] ? `Room ${roomNames[id]}` : "Room")}
+              onEdit={setStep}
+            />
           )}
 
           <div className="flex items-center justify-between border-t pt-4">
             <Button
               type="button"
               variant="outline"
+              disabled={saving}
               onClick={() =>
                 step === 0
                   ? (dirty ? setExitOpen(true) : router.history.back())
@@ -248,14 +371,27 @@ function NewBookingWizardPage() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               {step === 0 ? "Cancel" : "Back"}
             </Button>
-            <Button
-              type="button"
-              disabled={!stepValid || banquetBlocked || (step === STEP.STAY && stepBlocked) || step >= WIZARD_STEPS.length - 1}
-              onClick={() => setStep((s) => nextStepIndex(s, state))}
-            >
-              Next
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            {onReview ? (
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button type="button" variant="outline" disabled={saving} onClick={() => handleSubmit(false)}>
+                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save as reservation
+                </Button>
+                <Button type="button" disabled={saving} onClick={() => handleSubmit(true)}>
+                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save &amp; check-in now
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                disabled={!stepValid || banquetBlocked || (step === STEP.STAY && stepBlocked)}
+                onClick={() => setStep((s) => nextStepIndex(s, state))}
+              >
+                Next
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
