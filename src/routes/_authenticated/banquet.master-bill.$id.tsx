@@ -40,7 +40,7 @@ interface MB {
   total_amount: number;
   created_at: string;
   property_id: string;
-  banquet_bookings: {
+  bookings: {
     id: string;
     banquet_number: string;
     event_name: string | null;
@@ -72,11 +72,10 @@ function MasterBillPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    // $id may be the unified bookings.id or the legacy banquet_bookings.id.
-    let legacyId = id;
+    let bookingId = id;
     try {
       const r = await resolveEventIds(id);
-      if (r?.legacyId) legacyId = r.legacyId;
+      if (r?.bookingId) bookingId = r.bookingId;
     } catch {
       /* fall back to the raw param */
     }
@@ -84,10 +83,10 @@ function MasterBillPage() {
       .from("banquet_master_bills")
       .select(
         `id,bill_number,food_subtotal,gst_amount,total_amount,created_at,property_id,
-               banquet_bookings(id,banquet_number,event_name,function_type,event_date,pax,
+               bookings!banquet_master_bills_booking_id_fkey(id,banquet_number,event_name,function_type,event_date,pax,
                  guests(name,mobile), halls(name))`,
       )
-      .eq("banquet_booking_id", legacyId)
+      .eq("booking_id", bookingId)
       .maybeSingle();
     if (error) {
       toastError(error);
@@ -146,7 +145,7 @@ function MasterBillPage() {
     );
   }
 
-  const ev = mb.banquet_bookings!;
+  const ev = mb.bookings!;
   return (
     <AppShell title="Banquet Master Bill">
       <style>{`@media print {
