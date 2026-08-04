@@ -4,6 +4,24 @@ import { Pencil } from "lucide-react";
 import { inr } from "@/lib/billing";
 import { nightsBetween } from "@/lib/front-desk";
 import { roomsTotal, STEP, type WizardState } from "@/lib/bookingWizard";
+import { SOURCES } from "@/lib/front-desk";
+import { ID_PROOF_LABELS } from "@/lib/guests";
+
+const MEAL_PLAN_LABELS: Record<string, string> = {
+  EP: "EP — Room only",
+  CP: "CP — Breakfast",
+  MAP: "MAP — Breakfast + 1 meal",
+  AP: "AP — All meals",
+};
+
+const titleCase = (v: string) =>
+  v.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+const sourceLabel = (v: string) =>
+  SOURCES.find((s) => s.value === v)?.label ?? (v ? titleCase(v) : "");
+
+const idTypeLabel = (v: string) =>
+  (ID_PROOF_LABELS as Record<string, string>)[v] ?? (v ? titleCase(v) : "");
 
 interface Props {
   state: WizardState;
@@ -48,7 +66,7 @@ export function StepReview({ state, categoryName, roomLabel, onEdit }: Props) {
       <Section title="Booking type" step={STEP.TYPE} onEdit={onEdit}>
         <Row label="Type" value={state.kind === "lodge" ? "Lodge" : "Banquet"} />
         <Row label="Mode" value={state.reservation ? "Reservation (no check-in yet)" : "Walk-in / check-in"} />
-        <Row label="Source" value={state.source} />
+        <Row label="Source" value={sourceLabel(state.source)} />
         {state.otaPartnerName && <Row label="OTA partner" value={state.otaPartnerName} />}
       </Section>
 
@@ -56,8 +74,8 @@ export function StepReview({ state, categoryName, roomLabel, onEdit }: Props) {
         <Row label="Name" value={g.name} />
         <Row label="Mobile" value={g.mobile} />
         <Row label="Email" value={g.email} />
-        <Row label="Nation" value={g.nation} />
-        <Row label="ID" value={g.idProofNumber ? `${g.idProofType}: ${g.idProofNumber}` : g.passportNumber} />
+        <Row label="Nation" value={g.nation ? titleCase(g.nation) : ""} />
+        <Row label="ID" value={g.idProofNumber ? `${idTypeLabel(g.idProofType)}: ${g.idProofNumber}` : g.passportNumber} />
         <Row label="Address" value={[g.address, g.city, g.state, g.pincode].filter(Boolean).join(", ")} />
         <Row label="Company" value={g.company} />
         <Row label="GSTIN" value={g.gstNumber} />
@@ -98,7 +116,8 @@ export function StepReview({ state, categoryName, roomLabel, onEdit }: Props) {
                   {r.checkIn} {r.checkInTime} → {r.checkOut} {r.checkOutTime} · {n} night{n === 1 ? "" : "s"}
                 </p>
                 <p className="text-muted-foreground">
-                  {r.planName || "Plan"} · {r.mealPlan} · {inr(r.rate)}/night ({r.rateType}) ={" "}
+                  {r.planName || "Plan"} · {MEAL_PLAN_LABELS[r.mealPlan] ?? r.mealPlan} ·{" "}
+                  {inr(r.rate)}/night ({r.rateType === "inclusive" ? "Incl. GST" : "Excl. GST"}) ={" "}
                   <span className="font-medium text-foreground">{inr(n * (Number(r.rate) || 0))}</span>
                 </p>
               </div>
@@ -125,7 +144,7 @@ export function StepReview({ state, categoryName, roomLabel, onEdit }: Props) {
 
       <Section title="Payment" step={STEP.PAYMENT} onEdit={onEdit}>
         <Row label="Room total" value={inr(total)} />
-        <Row label="Advance" value={`${inr(advance)}${advance > 0 ? ` (${state.payment.mode})` : ""}`} />
+        <Row label="Advance" value={`${inr(advance)}${advance > 0 ? ` (${titleCase(state.payment.mode ?? "")})` : ""}`} />
         <Row label="Balance" value={inr(Math.max(0, total - advance))} />
         <Row label="Notes" value={state.payment.notes} />
       </Section>
