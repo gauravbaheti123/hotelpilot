@@ -13,6 +13,7 @@ import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { FOLIO_STATUS_TONE, inr } from "@/lib/billing";
+import { billNo, hasBillNumber } from "@/lib/billNumber";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
@@ -32,7 +33,7 @@ import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 
 interface Row {
-  id: string; invoice_number: string; gst_mode: string; status: string;
+  id: string; invoice_number: string | null; gst_mode: string; status: string;
   total_amount: number; paid_amount: number; balance_amount: number;
   created_at: string;
   booking_id: string;
@@ -130,7 +131,10 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
       // then move to the Owner-only Banquet Billing report.
       const scope = await fetchBanquetScope(propertyId);
       const visible = ((data ?? []) as any[]).filter(
-        (f) => !isBanquetRecord(scope, { booking_id: f.booking_id, folio_id: f.id }),
+        (f) =>
+          // An unnumbered folio is a running bill, not an invoice yet.
+          hasBillNumber(f.invoice_number) &&
+          !isBanquetRecord(scope, { booking_id: f.booking_id, folio_id: f.id }),
       );
       setRows(visible as unknown as Row[]);
     })();
@@ -181,7 +185,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
   if (!propertyId) return <EmptyPropertyState />;
 
   const filtered = rows.filter((r) =>
-    !q || r.invoice_number.toLowerCase().includes(q.toLowerCase()) ||
+    !q || billNo(r.invoice_number).toLowerCase().includes(q.toLowerCase()) ||
     (r.bookings?.booking_number ?? "").toLowerCase().includes(q.toLowerCase()) ||
     (r.bookings?.guests?.name ?? "").toLowerCase().includes(q.toLowerCase()));
 
@@ -205,16 +209,16 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
       action_type: "BILL_VOIDED",
       module: "Billing",
       reference_id: delTarget.id,
-      reference_label: `${delTarget.invoice_number} — ${delTarget.bookings?.guests?.name ?? ""}`,
+      reference_label: `${billNo(delTarget.invoice_number)} — ${delTarget.bookings?.guests?.name ?? ""}`,
       details: {
-        bill_number: delTarget.invoice_number, amount: delTarget.total_amount,
+        bill_number: billNo(delTarget.invoice_number), amount: delTarget.total_amount,
         reason: delReason.trim(), paid_amount: delTarget.paid_amount ?? 0,
       },
     });
     const voidedId = delTarget.id;
     const priorStatus = delTarget.status ?? "open";
     toastWithUndo(
-      `Bill ${delTarget.invoice_number} voided`,
+      `Bill ${billNo(delTarget.invoice_number)} voided`,
       async () => {
         const { error: undoErr } = await supabase.from("folios").update({
           is_deleted: false, deleted_at: null, deleted_by: null,
@@ -265,9 +269,9 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
         action_type: "BILL_DELETED",
         module: "Billing",
         reference_id: hardDelTarget.id,
-        reference_label: `${hardDelTarget.invoice_number} — ${hardDelTarget.bookings?.guests?.name ?? ""}`,
+        reference_label: `${billNo(hardDelTarget.invoice_number)} — ${hardDelTarget.bookings?.guests?.name ?? ""}`,
         details: {
-          bill_number: hardDelTarget.invoice_number,
+          bill_number: billNo(hardDelTarget.invoice_number),
           amount: hardDelTarget.total_amount,
           reason: hardDelReason || null,
           original_void_reason: (folioRow as any)?.void_reason ?? null,
@@ -281,7 +285,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
       // 5. Hard delete (folio_charges & payments cascade)
       const { error: dErr } = await supabase.from("folios").delete().eq("id", hardDelTarget.id);
       if (dErr) { setBusy(false); return toastError(dErr); }
-      toast.success(`Bill ${hardDelTarget.invoice_number} permanently deleted`);
+      toast.success(`Bill ${billNo(hardDelTarget.invoice_number)} permanently deleted`);
       setHardDelTarget(null); setHardDelPwd(""); setHardDelReason(""); setHardDelStep(1);
       load();
     } finally {
@@ -295,7 +299,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
     if (!trimmed) return toast.error("Bill number is required");
     if (trimmed === numTarget.invoice_number) return toast.error("Enter a different number");
     // Same-series uniqueness (regex prefix comparison)
-    const oldPrefix = (numTarget.invoice_number.match(/^[A-Za-z]+/) ?? [""])[0];
+    const oldPrefix = (billNo(numTarget.invoice_number, "").match(/^[A-Za-z]+/) ?? [""])[0];
     const newPrefix = (trimmed.match(/^[A-Za-z]+/) ?? [""])[0];
     if (oldPrefix && newPrefix && oldPrefix !== newPrefix) {
       return toast.error(`Series mismatch — must start with "${oldPrefix}"`);
@@ -327,14 +331,14 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
       action_type: "BILL_NUMBER_EDITED",
       module: "Billing",
       reference_id: numTarget.id,
-      reference_label: `${numTarget.invoice_number} → ${trimmed}`,
+      reference_label: `${billNo(numTarget.invoice_number)} → ${trimmed}`,
       details: {
-        old_number: numTarget.invoice_number,
+        old_number: billNo(numTarget.invoice_number),
         new_number: trimmed,
         reason: numReason || null,
       },
     });
-    toast.success(`Renumbered ${numTarget.invoice_number} → ${trimmed}`);
+    toast.success(`Renumbered ${billNo(numTarget.invoice_number)} → ${trimmed}`);
     setNumTarget(null); setNumNew(""); setNumReason("");
     setBusy(false);
     load();
@@ -343,7 +347,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
   async function exportAudit() {
     const XLSX = await import("xlsx");
     const data = filtered.map((r) => ({
-      Invoice: r.invoice_number,
+      Invoice: billNo(r.invoice_number),
       Booking: r.bookings?.booking_number ?? "",
       Guest: r.bookings?.guests?.name ?? "",
       Status: r.is_deleted ? "VOIDED" : r.status.toUpperCase(),
@@ -455,7 +459,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
               <div key={r.id} className={`flex items-center gap-3 px-4 py-3 cursor-pointer ${voided ? "bg-rose-50/30" : "hover:bg-muted/50"}`}>
                 <Link to="/billing/folio/$bookingId" params={{ bookingId: r.booking_id }} search={{ folio: r.id }} className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <div className={`font-medium text-sm ${voided ? "line-through text-destructive" : ""}`}>{r.invoice_number}</div>
+                    <div className={`font-medium text-sm ${voided ? "line-through text-destructive" : ""}`}>{billNo(r.invoice_number)}</div>
                     {voided ? (
                       <Badge variant="outline" className="bg-rose-100 text-rose-800 border-rose-300">VOIDED</Badge>
                     ) : (
@@ -478,14 +482,14 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
                   <div className="flex items-center gap-1 ml-2">
                     {canRenumber && (
                       <Button size="sm" variant="ghost" title="Edit bill number"
-                        onClick={(e) => { e.preventDefault(); setNumTarget(r); setNumNew(r.invoice_number); setNumReason(""); }}>
+                        onClick={(e) => { e.preventDefault(); setNumTarget(r); setNumNew(billNo(r.invoice_number, "")); setNumReason(""); }}>
                         <Hash className="h-4 w-4" />
                       </Button>
                     )}
                     {canEditPaymentMode && (
                       <Button size="sm" variant="ghost" title="Change payment mode"
                         onClick={(e) => { e.preventDefault(); setPayModeTarget({
-                          id: r.id, invoice_number: r.invoice_number, property_id: propertyId!,
+                          id: r.id, invoice_number: billNo(r.invoice_number), property_id: propertyId!,
                           booking_id: r.booking_id, status: r.status, is_deleted: r.is_deleted,
                         }); }}>
                         <Wallet className="h-4 w-4" />
@@ -511,7 +515,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
                     {canEditPaymentMode && (
                       <Button size="sm" variant="ghost" title="Change payment mode (owner override)"
                         onClick={(e) => { e.preventDefault(); setPayModeTarget({
-                          id: r.id, invoice_number: r.invoice_number, property_id: propertyId!,
+                          id: r.id, invoice_number: billNo(r.invoice_number), property_id: propertyId!,
                           booking_id: r.booking_id, status: r.status, is_deleted: r.is_deleted,
                         }); }}>
                         <Wallet className="h-4 w-4" />
@@ -658,7 +662,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
           {delTarget && (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Void bill <b>{delTarget.invoice_number}</b>? This bill will be voided but the bill number
+                Void bill <b>{billNo(delTarget.invoice_number)}</b>? This bill will be voided but the bill number
                 will be retained for audit continuity.
               </p>
               {Number(delTarget.paid_amount ?? 0) > 0 && (
@@ -690,7 +694,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" />
               {hardDelStep === 1
-                ? `Permanently delete ${hardDelTarget?.invoice_number}?`
+                ? `Permanently delete ${billNo(hardDelTarget?.invoice_number)}?`
                 : "Confirm with your password"}
             </DialogTitle>
           </DialogHeader>
@@ -734,7 +738,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
             <div className="space-y-3">
               <div>
                 <Label className="text-xs">Current</Label>
-                <div className="font-mono text-sm">{numTarget.invoice_number}</div>
+                <div className="font-mono text-sm">{billNo(numTarget.invoice_number)}</div>
               </div>
               <div>
                 <Label className="text-xs">New bill number</Label>

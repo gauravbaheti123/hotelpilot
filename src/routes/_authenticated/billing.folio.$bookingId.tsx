@@ -15,6 +15,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { billNo } from "@/lib/billNumber";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
@@ -76,7 +77,7 @@ interface Payment {
   paid_at: string; notes: string | null;
 }
 interface Folio {
-  id: string; invoice_number: string; gst_mode: string; status: string;
+  id: string; invoice_number: string | null; gst_mode: string; status: string;
   sub_total: number; discount_amount: number; gst_amount: number;
   total_amount: number; paid_amount: number; balance_amount: number;
   guest_gstin: string | null; guest_company: string | null;
@@ -713,7 +714,7 @@ function FolioPage() {
         action_type: "BILL_TO_CHANGED",
         module: "Billing",
         reference_id: folio.id,
-        reference_label: folio.invoice_number,
+        reference_label: billNo(folio.invoice_number),
         details: {
           from_billing_company_id: prevCompanyId,
           from_billing_guest_id: prevGuestId,
@@ -773,9 +774,9 @@ function FolioPage() {
         action_type: "BILL_EDITED",
         module: "Billing",
         reference_id: folio.id,
-        reference_label: folio.invoice_number,
+        reference_label: billNo(folio.invoice_number),
         details: {
-          bill_number: folio.invoice_number,
+          bill_number: billNo(folio.invoice_number),
           previous_amount: prevTotal,
           new_amount: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst"), folioBillDiscount(folio)).total_amount,
           edited_by: userDisplayName(user as any),
@@ -815,9 +816,9 @@ function FolioPage() {
         action_type: "BILL_EDITED",
         module: "Billing",
         reference_id: folio.id,
-        reference_label: folio.invoice_number,
+        reference_label: billNo(folio.invoice_number),
         details: {
-          bill_number: folio.invoice_number,
+          bill_number: billNo(folio.invoice_number),
           previous_amount: prevTotal,
           new_amount: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst"), folioBillDiscount(folio)).total_amount,
           edited_by: userDisplayName(user as any),
@@ -875,9 +876,9 @@ function FolioPage() {
         action_type: "BILL_EDITED",
         module: "Billing",
         reference_id: folio.id,
-        reference_label: folio.invoice_number,
+        reference_label: billNo(folio.invoice_number),
         details: {
-          bill_number: folio.invoice_number,
+          bill_number: billNo(folio.invoice_number),
           previous_amount: prevTotal,
           new_amount: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst"), folioBillDiscount(folio)).total_amount,
           edited_by: userDisplayName(user as any),
@@ -941,9 +942,9 @@ function FolioPage() {
         action_type: "ROOM_TARIFF_EDITED",
         module: "Billing",
         reference_id: folio.id,
-        reference_label: folio.invoice_number,
+        reference_label: billNo(folio.invoice_number),
         details: {
-          bill_number: folio.invoice_number,
+          bill_number: billNo(folio.invoice_number),
           booking_number: booking?.booking_number ?? null,
           scope: "single_night",
           night_date: night,
@@ -1018,9 +1019,9 @@ function FolioPage() {
         action_type: "ROOM_TARIFF_EDITED",
         module: "Billing",
         reference_id: folio.id,
-        reference_label: folio.invoice_number,
+        reference_label: billNo(folio.invoice_number),
         details: {
-          bill_number: folio.invoice_number,
+          bill_number: billNo(folio.invoice_number),
           booking_number: booking?.booking_number ?? null,
           charge_id: tariffTarget.id,
           description: tariffTarget.description,
@@ -1114,9 +1115,9 @@ function FolioPage() {
         action_type: "DISCOUNT_APPLIED",
         module: "Billing",
         reference_id: folio.id,
-        reference_label: folio.invoice_number,
+        reference_label: billNo(folio.invoice_number),
         details: {
-          bill_number: folio.invoice_number,
+          bill_number: billNo(folio.invoice_number),
           level: "bill",
           discount_type: discType,
           discount_value: val,
@@ -1148,9 +1149,9 @@ function FolioPage() {
         action_type: "DISCOUNT_APPLIED",
         module: "Billing",
         reference_id: folio.id,
-        reference_label: folio.invoice_number,
+        reference_label: billNo(folio.invoice_number),
         details: {
-          bill_number: folio.invoice_number,
+          bill_number: billNo(folio.invoice_number),
           level: "line_item",
           line_description: discTarget.description,
           discount_type: discType,
@@ -1294,7 +1295,7 @@ function FolioPage() {
         payment_id: payEditTarget.id,
         folio_id: folio.id,
         bill_id: folio.id,
-        bill_number: folio.invoice_number,
+        bill_number: billNo(folio.invoice_number),
         booking_id: booking.id,
         amount: Number(payEditTarget.amount),
         old_mode: oldMode,
@@ -1563,7 +1564,7 @@ function FolioPage() {
     const phone = booking.guests?.mobile?.replace(/\D/g, "") ?? "";
     const lines = [
       `*${property?.name ?? "Hotel"}*`,
-      `${isGst ? "Tax Invoice" : "Cash Bill"}: ${folio.invoice_number}`,
+      `${isGst ? "Tax Invoice" : "Cash Bill"}: ${billNo(folio.invoice_number)}`,
       `Guest: ${booking.guests?.name ?? "—"}`,
       `Stay: ${booking.check_in} → ${booking.check_out}`,
       ``,
