@@ -208,171 +208,6 @@ export type Database = {
         }
         Relationships: []
       }
-      banquet_bookings: {
-        Row: {
-          advance_amount: number
-          advance_payment_mode: string | null
-          balance_amount: number
-          banquet_number: string
-          bill_type: string
-          cancelled_at: string | null
-          cancelled_reason: string | null
-          created_at: string
-          created_by: string | null
-          discount_amount: number
-          discount_type: string | null
-          discount_value: number
-          end_time: string
-          event_bill_id: string | null
-          event_booking_id: string | null
-          event_date: string
-          event_end_date: string | null
-          event_name: string | null
-          extra_charge: number
-          extra_charge_description: string | null
-          fb_charge: number
-          function_type: string
-          guest_id: string | null
-          hall_charge: number
-          hall_id: string | null
-          host_email: string | null
-          host_mobile: string | null
-          host_name: string | null
-          id: string
-          line_discounts: Json
-          notes: string | null
-          package_rate: number
-          pax: number
-          property_id: string
-          round_off_amount: number
-          start_time: string
-          status: string
-          total_amount: number
-          total_room_charges: number
-          updated_at: string
-        }
-        Insert: {
-          advance_amount?: number
-          advance_payment_mode?: string | null
-          balance_amount?: number
-          banquet_number?: string
-          bill_type?: string
-          cancelled_at?: string | null
-          cancelled_reason?: string | null
-          created_at?: string
-          created_by?: string | null
-          discount_amount?: number
-          discount_type?: string | null
-          discount_value?: number
-          end_time: string
-          event_bill_id?: string | null
-          event_booking_id?: string | null
-          event_date: string
-          event_end_date?: string | null
-          event_name?: string | null
-          extra_charge?: number
-          extra_charge_description?: string | null
-          fb_charge?: number
-          function_type?: string
-          guest_id?: string | null
-          hall_charge?: number
-          hall_id?: string | null
-          host_email?: string | null
-          host_mobile?: string | null
-          host_name?: string | null
-          id?: string
-          line_discounts?: Json
-          notes?: string | null
-          package_rate?: number
-          pax?: number
-          property_id: string
-          round_off_amount?: number
-          start_time: string
-          status?: string
-          total_amount?: number
-          total_room_charges?: number
-          updated_at?: string
-        }
-        Update: {
-          advance_amount?: number
-          advance_payment_mode?: string | null
-          balance_amount?: number
-          banquet_number?: string
-          bill_type?: string
-          cancelled_at?: string | null
-          cancelled_reason?: string | null
-          created_at?: string
-          created_by?: string | null
-          discount_amount?: number
-          discount_type?: string | null
-          discount_value?: number
-          end_time?: string
-          event_bill_id?: string | null
-          event_booking_id?: string | null
-          event_date?: string
-          event_end_date?: string | null
-          event_name?: string | null
-          extra_charge?: number
-          extra_charge_description?: string | null
-          fb_charge?: number
-          function_type?: string
-          guest_id?: string | null
-          hall_charge?: number
-          hall_id?: string | null
-          host_email?: string | null
-          host_mobile?: string | null
-          host_name?: string | null
-          id?: string
-          line_discounts?: Json
-          notes?: string | null
-          package_rate?: number
-          pax?: number
-          property_id?: string
-          round_off_amount?: number
-          start_time?: string
-          status?: string
-          total_amount?: number
-          total_room_charges?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "banquet_bookings_event_booking_id_fkey"
-            columns: ["event_booking_id"]
-            isOneToOne: false
-            referencedRelation: "booking_financials"
-            referencedColumns: ["booking_id"]
-          },
-          {
-            foreignKeyName: "banquet_bookings_event_booking_id_fkey"
-            columns: ["event_booking_id"]
-            isOneToOne: false
-            referencedRelation: "bookings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "banquet_bookings_guest_id_fkey"
-            columns: ["guest_id"]
-            isOneToOne: false
-            referencedRelation: "guests"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "banquet_bookings_hall_id_fkey"
-            columns: ["hall_id"]
-            isOneToOne: false
-            referencedRelation: "halls"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "banquet_bookings_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       banquet_extra_charges: {
         Row: {
           amount: number
@@ -1121,13 +956,6 @@ export type Database = {
             columns: ["billing_company_id"]
             isOneToOne: false
             referencedRelation: "billing_companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookings_event_id_fkey"
-            columns: ["event_id"]
-            isOneToOne: false
-            referencedRelation: "banquet_bookings"
             referencedColumns: ["id"]
           },
           {
@@ -6250,10 +6078,6 @@ export type Database = {
       delete_shift_handover: {
         Args: { _id: string; _reason: string }
         Returns: Json
-      }
-      ensure_event_booking: {
-        Args: { _banquet_booking_id: string }
-        Returns: string
       }
       event_gst_rate: {
         Args: { _amount: number; _property_id: string }
