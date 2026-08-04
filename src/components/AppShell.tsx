@@ -162,8 +162,24 @@ const SUPERADMIN_NAV: NavGroup[] = [
   },
 ];
 
-export function AppShell({ title, children }: { title: string; children: ReactNode }) {
-  return <AppShellInner title={title}>{children}</AppShellInner>;
+export function AppShell({
+  title,
+  children,
+  titleSlot,
+  onTitleClick,
+}: {
+  title: string;
+  children: ReactNode;
+  /** Optional controls rendered inline next to the page title. */
+  titleSlot?: ReactNode;
+  /** When set, the page title becomes a clickable "go home" action. */
+  onTitleClick?: () => void;
+}) {
+  return (
+    <AppShellInner title={title} titleSlot={titleSlot} onTitleClick={onTitleClick}>
+      {children}
+    </AppShellInner>
+  );
 }
 
 function NavEntry({ item, currentPath, collapsed }: { item: NavItem; currentPath: string; collapsed: boolean }) {
