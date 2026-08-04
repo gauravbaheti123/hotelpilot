@@ -421,6 +421,43 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
    * the paise level; the last party absorbs the remainder.
    */
   async function confirmShareSplit() {
+    return confirmShareSplitInner();
+  }
+
+  /**
+   * After a split, segment_bills / food_bills rows still point at the voided
+   * parent folio. Repoint them to the child folio that actually received the
+   * matching food charge rows (fallback: the largest child).
+   */
+  async function repointBills(parentFolioId: string, childFolioIds: string[]) {
+    try {
+      if (childFolioIds.length === 0) return;
+      const { data: childCharges } = await supabase
+        .from("folio_charges")
+        .select("folio_id,source_table,source_id")
+        .in("folio_id", childFolioIds);
+      const bySegment = new Map<string, string>();
+      for (const c of (childCharges ?? []) as any[]) {
+        if (c.source_table === "segment_bills" && c.source_id) bySegment.set(c.source_id, c.folio_id);
+      }
+      const fallback = bySegment.size > 0
+        ? [...bySegment.values()][0]
+        : childFolioIds[childFolioIds.length - 1];
+
+      const { data: segs } = await supabase
+        .from("segment_bills")
+        .select("id")
+        .eq("folio_id", parentFolioId);
+      for (const s of (segs ?? []) as any[]) {
+        await supabase.from("segment_bills")
+          .update({ folio_id: bySegment.get(s.id) ?? fallback } as any).eq("id", s.id);
+      }
+      await supabase.from("food_bills")
+        .update({ folio_id: fallback } as any).eq("folio_id", parentFolioId);
+    } catch { /* non-fatal — split already succeeded */ }
+  }
+
+  async function confirmShareSplitInner() {
     if (!folio || !booking) return;
     if (parties.length < 2) return toast.error("Add at least two parties");
     if (parties.some((p) => !p.name.trim())) return toast.error("Every party needs a name");
