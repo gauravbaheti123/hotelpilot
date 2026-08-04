@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { toastWithUndo } from "@/lib/undoToast";
 import { KOT_STATUS_LABEL, KOT_STATUS_TONE, computeKotTotals } from "@/lib/food";
 import { buildKotPrintPlan, runKotPrintJobs, type PrinterInfo, type PrintMode } from "@/lib/kotPrint";
 import { useCurrentProperty } from "@/hooks/use-property";
@@ -125,8 +126,22 @@ function KotDetailPage() {
       status: "void", void_reason: voidReason,
     }).eq("id", k.id);
     if (error) return toast.error(error.message);
-    toast.success("KOT voided");
+    const kotId = k.id;
+    const priorStatus = k.status;
+    const priorReason = (k as any).void_reason ?? null;
     setVoidOpen(false);
+    toastWithUndo(
+      "KOT voided",
+      async () => {
+        const { error: undoErr } = await supabase.from("kot_orders").update({
+          status: priorStatus === "void" ? "pending" : priorStatus,
+          void_reason: priorReason,
+        } as any).eq("id", kotId);
+        if (undoErr) throw undoErr;
+        load();
+      },
+      { undoneMessage: "KOT restored" },
+    );
     load();
   }
 

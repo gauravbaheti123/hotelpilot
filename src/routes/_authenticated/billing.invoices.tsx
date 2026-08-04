@@ -18,6 +18,7 @@ import { useAuth, hasRole } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { toast } from "sonner";
+import { toastWithUndo } from "@/lib/undoToast";
 import { Pencil, Trash2, FileSpreadsheet, Hash, AlertTriangle, Wallet } from "lucide-react";
 import { ChangePaymentModeDialog, type ChangePaymentModeFolio } from "@/components/ChangePaymentModeDialog";
 import { Printer } from "lucide-react";
@@ -203,7 +204,21 @@ function InvoicesPage() {
         reason: delReason.trim(), paid_amount: delTarget.paid_amount ?? 0,
       },
     });
-    toast.success(`Bill ${delTarget.invoice_number} voided`);
+    const voidedId = delTarget.id;
+    const priorStatus = delTarget.status ?? "open";
+    toastWithUndo(
+      `Bill ${delTarget.invoice_number} voided`,
+      async () => {
+        const { error: undoErr } = await supabase.from("folios").update({
+          is_deleted: false, deleted_at: null, deleted_by: null,
+          status: priorStatus === "void" ? "open" : priorStatus,
+          voided_at: null, void_reason: null,
+        } as any).eq("id", voidedId);
+        if (undoErr) throw undoErr;
+        load();
+      },
+      { undoneMessage: "Bill restored" },
+    );
     setDelTarget(null);
     setDelReason("");
     load();
