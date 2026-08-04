@@ -1,0 +1,1 @@
+ALTER TABLE public.folios ALTER COLUMN invoice_number DROP DEFAULT;
