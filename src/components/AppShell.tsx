@@ -49,7 +49,6 @@ import {
   Tags,
   CalendarDays,
   History,
-  Banknote,
   TrendingUp,
   Star,
   MessageSquare,
