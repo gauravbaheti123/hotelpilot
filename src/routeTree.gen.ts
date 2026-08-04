@@ -53,7 +53,6 @@ import { Route as AuthenticatedReportsSalesRouteImport } from './routes/_authent
 import { Route as AuthenticatedReportsRoomWiseRouteImport } from './routes/_authenticated/reports.room-wise'
 import { Route as AuthenticatedReportsRoomShiftRouteImport } from './routes/_authenticated/reports.room-shift'
 import { Route as AuthenticatedReportsNightAuditRouteImport } from './routes/_authenticated/reports.night-audit'
-import { Route as AuthenticatedReportsMisRouteImport } from './routes/_authenticated/reports.mis'
 import { Route as AuthenticatedReportsKotActivityRouteImport } from './routes/_authenticated/reports.kot-activity'
 import { Route as AuthenticatedReportsGuestWiseRouteImport } from './routes/_authenticated/reports.guest-wise'
 import { Route as AuthenticatedReportsGstRouteImport } from './routes/_authenticated/reports.gst'
@@ -358,11 +357,6 @@ const AuthenticatedReportsNightAuditRoute =
     path: '/reports/night-audit',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedReportsMisRoute = AuthenticatedReportsMisRouteImport.update({
-  id: '/reports/mis',
-  path: '/reports/mis',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedReportsKotActivityRoute =
   AuthenticatedReportsKotActivityRouteImport.update({
     id: '/reports/kot-activity',
@@ -786,7 +780,6 @@ export interface FileRoutesByFullPath {
   '/reports/gst': typeof AuthenticatedReportsGstRoute
   '/reports/guest-wise': typeof AuthenticatedReportsGuestWiseRoute
   '/reports/kot-activity': typeof AuthenticatedReportsKotActivityRoute
-  '/reports/mis': typeof AuthenticatedReportsMisRoute
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
   '/reports/room-shift': typeof AuthenticatedReportsRoomShiftRoute
   '/reports/room-wise': typeof AuthenticatedReportsRoomWiseRoute
@@ -892,7 +885,6 @@ export interface FileRoutesByTo {
   '/reports/gst': typeof AuthenticatedReportsGstRoute
   '/reports/guest-wise': typeof AuthenticatedReportsGuestWiseRoute
   '/reports/kot-activity': typeof AuthenticatedReportsKotActivityRoute
-  '/reports/mis': typeof AuthenticatedReportsMisRoute
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
   '/reports/room-shift': typeof AuthenticatedReportsRoomShiftRoute
   '/reports/room-wise': typeof AuthenticatedReportsRoomWiseRoute
@@ -1000,7 +992,6 @@ export interface FileRoutesById {
   '/_authenticated/reports/gst': typeof AuthenticatedReportsGstRoute
   '/_authenticated/reports/guest-wise': typeof AuthenticatedReportsGuestWiseRoute
   '/_authenticated/reports/kot-activity': typeof AuthenticatedReportsKotActivityRoute
-  '/_authenticated/reports/mis': typeof AuthenticatedReportsMisRoute
   '/_authenticated/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
   '/_authenticated/reports/room-shift': typeof AuthenticatedReportsRoomShiftRoute
   '/_authenticated/reports/room-wise': typeof AuthenticatedReportsRoomWiseRoute
@@ -1108,7 +1099,6 @@ export interface FileRouteTypes {
     | '/reports/gst'
     | '/reports/guest-wise'
     | '/reports/kot-activity'
-    | '/reports/mis'
     | '/reports/night-audit'
     | '/reports/room-shift'
     | '/reports/room-wise'
@@ -1214,7 +1204,6 @@ export interface FileRouteTypes {
     | '/reports/gst'
     | '/reports/guest-wise'
     | '/reports/kot-activity'
-    | '/reports/mis'
     | '/reports/night-audit'
     | '/reports/room-shift'
     | '/reports/room-wise'
@@ -1321,7 +1310,6 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/gst'
     | '/_authenticated/reports/guest-wise'
     | '/_authenticated/reports/kot-activity'
-    | '/_authenticated/reports/mis'
     | '/_authenticated/reports/night-audit'
     | '/_authenticated/reports/room-shift'
     | '/_authenticated/reports/room-wise'
@@ -1684,13 +1672,6 @@ declare module '@tanstack/react-router' {
       path: '/reports/night-audit'
       fullPath: '/reports/night-audit'
       preLoaderRoute: typeof AuthenticatedReportsNightAuditRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/mis': {
-      id: '/_authenticated/reports/mis'
-      path: '/reports/mis'
-      fullPath: '/reports/mis'
-      preLoaderRoute: typeof AuthenticatedReportsMisRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/reports/kot-activity': {
@@ -2194,7 +2175,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsGstRoute: typeof AuthenticatedReportsGstRoute
   AuthenticatedReportsGuestWiseRoute: typeof AuthenticatedReportsGuestWiseRoute
   AuthenticatedReportsKotActivityRoute: typeof AuthenticatedReportsKotActivityRoute
-  AuthenticatedReportsMisRoute: typeof AuthenticatedReportsMisRoute
   AuthenticatedReportsNightAuditRoute: typeof AuthenticatedReportsNightAuditRoute
   AuthenticatedReportsRoomShiftRoute: typeof AuthenticatedReportsRoomShiftRoute
   AuthenticatedReportsRoomWiseRoute: typeof AuthenticatedReportsRoomWiseRoute
@@ -2293,7 +2273,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsGstRoute: AuthenticatedReportsGstRoute,
   AuthenticatedReportsGuestWiseRoute: AuthenticatedReportsGuestWiseRoute,
   AuthenticatedReportsKotActivityRoute: AuthenticatedReportsKotActivityRoute,
-  AuthenticatedReportsMisRoute: AuthenticatedReportsMisRoute,
   AuthenticatedReportsNightAuditRoute: AuthenticatedReportsNightAuditRoute,
   AuthenticatedReportsRoomShiftRoute: AuthenticatedReportsRoomShiftRoute,
   AuthenticatedReportsRoomWiseRoute: AuthenticatedReportsRoomWiseRoute,
@@ -2352,13 +2331,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
