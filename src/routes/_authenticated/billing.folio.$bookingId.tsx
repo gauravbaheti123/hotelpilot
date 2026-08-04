@@ -180,6 +180,11 @@ function FolioPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [foodBillNumber, setFoodBillNumber] = useState<string | null>(null);
+  // Display-only: restaurant direct charges for this booking, used to append
+  // their Bill No to the mirrored folio line item description.
+  const [restBills, setRestBills] = useState<Array<{
+    folio_charge_id: string | null; bill_no: string | null; amount: number;
+  }>>([]);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
   const [billingCompanies, setBillingCompanies] = useState<
     Array<{ id: string; name: string; gstin: string | null; address: string | null; phone: string | null; email: string | null; city?: string | null; state?: string | null; state_code?: string | null; nation?: string | null }>
@@ -429,6 +434,18 @@ function FolioPage() {
     setPayments(((p ?? []) as unknown as Payment[]));
 
     // Load the linked Food Bill number (FB-XXXX) if any food charge exists.
+    // Load restaurant direct charges for this booking (display-only bill no).
+    {
+      const { data: rdc } = await supabase
+        .from("restaurant_direct_charges" as any)
+        .select("folio_charge_id,bill_no,amount")
+        .eq("booking_id", bookingId);
+      setRestBills(((rdc ?? []) as any[]).map((r) => ({
+        folio_charge_id: r.folio_charge_id ?? null,
+        bill_no: r.bill_no ?? null,
+        amount: Number(r.amount ?? 0),
+      })));
+    }
     const hasFood = correctedCharges.some((c) => c.charge_type === "food");
     if (hasFood && bk?.id) {
       const { data: fb } = await supabase
