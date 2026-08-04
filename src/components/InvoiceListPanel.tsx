@@ -115,8 +115,15 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
         .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number)))" as any)
         .eq("property_id", propertyId);
       if (!audit) qb = qb.eq("is_deleted" as any, false);
-      const { data } = await qb.order("created_at", { ascending: false })
+      const { data, error } = await qb.order("created_at", { ascending: false })
         .limit(300);
+      // Surface PostgREST failures instead of silently rendering "No invoices."
+      if (error) {
+        console.error("[invoices] load failed", error);
+        toast.error(error.message || "Failed to load invoices");
+        setRows([]);
+        return;
+      }
       // Banquet event-block folios stay visible for 48h after the event ends,
       // then move to the Owner-only Banquet Billing report.
       const scope = await fetchBanquetScope(propertyId);
