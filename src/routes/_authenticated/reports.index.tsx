@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  BarChart3, FileSpreadsheet, FileText, Moon, History, ShieldAlert, ClipboardList, Wallet,
+  BarChart3, FileSpreadsheet, FileText, Moon, History, ClipboardList, Wallet,
 } from "lucide-react";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 
