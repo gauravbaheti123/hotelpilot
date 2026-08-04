@@ -6,6 +6,7 @@ import { Camera, Check, Loader2, Eye, Download, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { uploadFileToDrive, validateDriveImage, safeName, driveFileExtension, logDriveUploadFailure } from "@/lib/driveUpload";
+import { toastError } from "@/lib/errorMessage";
 
 const BUCKET = "kot-delivery-proofs";
 
@@ -43,7 +44,7 @@ export function DeliveryProof({ kotId, propertyId, proofUrl, takenAt, takenBy, o
 
   async function handleFile(file: File) {
     if (!propertyId) { toast.error("No property selected"); return; }
-    try { validateDriveImage(file); } catch (e: any) { toast.error(e.message); return; }
+    try { validateDriveImage(file); } catch (e: any) { toastError(e); return; }
     setSaving(true);
     try {
       const ts = Date.now();
@@ -59,7 +60,7 @@ export function DeliveryProof({ kotId, propertyId, proofUrl, takenAt, takenBy, o
       onSaved?.();
     } catch (e: any) {
       await logDriveUploadFailure(e, { stage: "persist", folderType: "kot_proof", file, extra: { kotId } });
-      toast.error(e.message ?? "Upload failed");
+      toastError(e, "Upload failed");
     } finally {
       setSaving(false);
     }

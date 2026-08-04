@@ -48,6 +48,7 @@ import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError, errorMessage } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/front-desk/new-legacy")({
   head: () => ({ meta: [{ title: "New Booking — HotelPilot" }] }),
   validateSearch: (s: Record<string, unknown>) => ({
@@ -794,7 +795,7 @@ function NewBookingPage() {
             file: idFile.file,
             extra: { bookingId: booking!.id, guestId },
           });
-          toast.error(`ID upload failed: ${e?.message ?? "unknown error"}`);
+          toast.error(errorMessage(e, "uploading the ID document"));
         }
       }
 
@@ -816,7 +817,7 @@ function NewBookingPage() {
       }
       router.navigate({ to: "/front-desk/booking/$id", params: { id: booking!.id } });
     } catch (e: any) {
-      toast.error(e.message ?? "Failed to save");
+      toastError(e, "Failed to save");
     } finally {
       setSaving(false);
     }

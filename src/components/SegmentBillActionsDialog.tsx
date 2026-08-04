@@ -18,6 +18,7 @@ import { inr } from "@/lib/billing";
 import { useAuth } from "@/hooks/use-auth";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export interface SegmentBillTarget {
   id: string;
@@ -129,7 +130,7 @@ export function SegmentBillEditDialog({
         .eq("segment_bill_id", bill.id)
         .order("created_at", { ascending: true });
       setLoading(false);
-      if (error) return toast.error(error.message);
+      if (error) return toastError(error);
       const rows = (data ?? []) as any as ItemRow[];
       setItems(rows.map((r) => ({ ...r })));
       setOriginal(rows.map((r) => ({ ...r })));
@@ -199,7 +200,7 @@ export function SegmentBillEditDialog({
       onSaved();
       onClose();
     } catch (e: any) {
-      toast.error(e?.message ?? "Update failed");
+      toastError(e, "Update failed");
     } finally {
       setBusy(false);
     }
@@ -316,7 +317,7 @@ export function SegmentBillDeleteDialog({
       onDeleted();
       onClose();
     } catch (e: any) {
-      toast.error(e?.message ?? "Delete failed");
+      toastError(e, "Delete failed");
     } finally {
       setBusy(false);
     }

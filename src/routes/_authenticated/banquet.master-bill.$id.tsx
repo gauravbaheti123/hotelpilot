@@ -12,6 +12,7 @@ import { fmtDate } from "@/lib/reportExports";
 import { RequirePermission } from "@/components/RequirePermission";
 import { resolveEventIds } from "@/lib/banquetEvent";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/banquet/master-bill/$id")({
   head: () => ({ meta: [{ title: "Banquet Master Bill — HotelPilot" }] }),
@@ -89,7 +90,7 @@ function MasterBillPage() {
       .eq("banquet_booking_id", legacyId)
       .maybeSingle();
     if (error) {
-      toast.error(error.message);
+      toastError(error);
       setLoading(false);
       return;
     }

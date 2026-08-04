@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/forgot-password")({
   head: () => ({
@@ -31,7 +32,7 @@ function ForgotPasswordPage() {
       setSent(true);
       toast.success("Reset link sent. Check your inbox.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong");
+      toastError(err, "Something went wrong");
     } finally {
       setLoading(false);
     }

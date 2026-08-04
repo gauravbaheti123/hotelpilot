@@ -23,6 +23,7 @@ import {
   deleteCustomRole,
 } from "@/lib/staff-users.functions";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/superadmin/roles/")({
   head: () => ({ meta: [{ title: "Roles & Permissions — HotelPilot" }] }),
@@ -84,7 +85,7 @@ function RolesPage() {
       .select("id,name,description,is_system,property_id")
       .order("is_system", { ascending: false })
       .order("name");
-    if (error) { toast.error(error.message); return; }
+    if (error) { toastError(error); return; }
     const ids = (data ?? []).map((r) => r.id);
     const counts: Record<string, number> = {};
     if (ids.length) {
@@ -121,7 +122,7 @@ function RolesPage() {
       toast.success("Role created");
       setName(""); setDesc(""); setCloneFrom(""); setShowNew(false);
       load();
-    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    } catch (e: any) { toastError(e, "Failed"); }
     finally { setBusy(false); }
   }
 
@@ -130,7 +131,7 @@ function RolesPage() {
       await updateRoleFn({ data: { role_id: id, description: descDraft || null } });
       setEditingDescId(null);
       load();
-    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    } catch (e: any) { toastError(e, "Failed"); }
   }
 
   async function saveName(id: string) {
@@ -140,7 +141,7 @@ function RolesPage() {
       await updateRoleFn({ data: { role_id: id, name: trimmed } });
       setRenamingId(null);
       load();
-    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    } catch (e: any) { toastError(e, "Failed"); }
   }
 
   async function confirmDelete() {
@@ -155,7 +156,7 @@ function RolesPage() {
       toast.success("Role deleted");
       setDeleteTarget(null);
       load();
-    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    } catch (e: any) { toastError(e, "Failed"); }
   }
 
   if (loading) return <AppShell title="Roles & Permissions"><div className="text-muted-foreground">Loading…</div></AppShell>;

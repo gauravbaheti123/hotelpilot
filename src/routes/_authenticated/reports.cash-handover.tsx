@@ -26,6 +26,7 @@ import { Plus, ChevronDown, ChevronRight, Printer, Trash2 } from "lucide-react";
 import { printHandover } from "@/lib/handoverPrint";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/reports/cash-handover")({
   head: () => ({ meta: [{ title: "Cash Handover Report — HotelPilot" }] }),
@@ -95,7 +96,7 @@ function Page() {
       _reason: deleteReason.trim(),
     } as any);
     setDeleting(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success("Handover deleted");
     setDeleteTarget(null);
     setDeleteReason("");

@@ -32,6 +32,7 @@ import { GuestSearchInput } from "@/components/GuestSearchInput";
 import { istDateISO, istToday } from "@/lib/date";
 import { createEventBooking, seedEventFolioCharges } from "@/lib/banquetEvent";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError, errorMessage } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/banquet/new")({
   head: () => ({ meta: [{ title: "New Banquet — HotelPilot" }] }),
@@ -422,7 +423,7 @@ function NewBanquetPage() {
 
       // Re-seed so any rooms assigned above also land on the event folio.
       await seedEventFolioCharges(created.bookingId).catch((e) =>
-        toast.error(`Event saved, but folio charges failed: ${e?.message ?? e}`),
+        toast.error(`Event saved, but the folio charges could not be added. ${errorMessage(e, "adding folio charges")}`),
       );
 
       const bn = created.banquetNumber;
@@ -433,7 +434,7 @@ function NewBanquetPage() {
       );
       router.navigate({ to: "/banquet/event/$id", params: { id: created.bookingId } });
     } catch (e: any) {
-      toast.error(e.message ?? "Failed");
+      toastError(e, "Failed");
     } finally {
       setSaving(false);
     }

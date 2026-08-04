@@ -23,6 +23,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { RequirePermission } from "@/components/RequirePermission";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/guests/")({
   head: () => ({ meta: [{ title: "Guests — HotelPilot" }] }),
   component: () => (<RequirePermission module="guest_crm"><GuestsListPage /></RequirePermission>),
@@ -134,7 +135,7 @@ function GuestsListPage() {
       setRows(data);
       setSelected(new Set());
     } catch (error: any) {
-      toast.error(error?.message ?? "Could not load guests");
+      toastError(error, "Could not load guests");
     }
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [propertyId]);
@@ -144,7 +145,7 @@ function GuestsListPage() {
     setDeleting(true);
     const { error } = await supabase.from("guests").delete().eq("id", toDelete.id);
     setDeleting(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toastError(error); return; }
     if (propertyId) {
       const { data: u } = await supabase.auth.getUser();
       logActivity({
@@ -171,7 +172,7 @@ function GuestsListPage() {
     const { error } = await supabase.from("guests").delete().in("id", ids);
     setBulkBusy(false);
     setBulkOpen(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     if (propertyId) {
       const { data: u } = await supabase.auth.getUser();
       for (const r of removed) {
@@ -202,7 +203,7 @@ function GuestsListPage() {
         true,
       );
     } catch (error: any) {
-      toast.error(error?.message ?? "Could not export guests");
+      toastError(error, "Could not export guests");
       return;
     }
     const ids = (data ?? []).map((g: any) => g.id).filter(Boolean);

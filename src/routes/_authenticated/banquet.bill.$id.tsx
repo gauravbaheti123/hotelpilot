@@ -48,6 +48,7 @@ import {
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/banquet/bill/$id")({
   head: () => ({ meta: [{ title: "Event Bill — HotelPilot" }] }),
   component: () => (
@@ -187,7 +188,7 @@ function BanquetBillPage() {
       setIds({ bookingId: ev.booking_id, legacyId: ev.legacy_id });
       bq = ev as unknown as Bq;
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to load event");
+      toastError(e, "Failed to load event");
       setLoading(false);
       return;
     }
@@ -421,7 +422,7 @@ function BanquetBillPage() {
       };
       const { error } = await persistBanquetDiscount(patch);
       if (error) {
-        toast.error(error.message);
+        toastError(error);
         return;
       }
       logActivity({
@@ -452,7 +453,7 @@ function BanquetBillPage() {
       else delete nextMap[discTarget.lineKey];
       const { error } = await persistBanquetDiscount({ line_discounts: nextMap });
       if (error) {
-        toast.error(error.message);
+        toastError(error);
         return;
       }
       logActivity({
@@ -511,7 +512,7 @@ function BanquetBillPage() {
         } as any)
         .eq("id", discTarget.rowId);
       if (eerr) {
-        toast.error(eerr.message);
+        toastError(eerr);
         return;
       }
       await persistBanquetDiscount({});
@@ -706,7 +707,7 @@ function BanquetBillPage() {
         rows: valid.map((r) => ({ mode: r.mode, amount: r.amount, reference: r.reference || null })),
       });
     } catch (e: any) {
-      return toast.error(e?.message ?? "Failed to record payment");
+      return toastError(e, "Failed to record payment");
     }
     toast.success("Payment recorded");
     setPayAmt("");

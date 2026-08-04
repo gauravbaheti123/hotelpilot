@@ -20,6 +20,7 @@ import {
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/staff/attendance")({
   head: () => ({ meta: [{ title: "Attendance — HotelPilot" }] }),
@@ -84,7 +85,7 @@ function AttendancePage() {
       ? await supabase.from("attendance").update(payload).eq("id", existing.id)
       : await supabase.from("attendance").insert(payload as never);
     setSaving(null);
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     else {
       logActivity({
         property_id: propertyId,
@@ -111,7 +112,7 @@ function AttendancePage() {
       status: "present", hours_worked: 8, marked_by: u.user?.id ?? null,
     }));
     const { error } = await supabase.from("attendance").insert(rows as never);
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     else {
       for (const t of targets) {
         logActivity({

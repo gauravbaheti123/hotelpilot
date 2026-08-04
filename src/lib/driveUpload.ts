@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { logClientError } from "@/lib/client-error-log";
+import { resolveEdgeError } from "@/lib/errorMessage";
 
 const ALLOWED_MIME = [
   "image/jpeg",
@@ -98,7 +99,7 @@ export async function uploadFileToDrive(
     body: form,
   });
   if (error) {
-    const err = new Error(`upload-to-drive invoke failed: ${error.message || "unknown error"}`);
+    const err = new Error((await resolveEdgeError(error, "uploading the file")).message);
     await logDriveUploadFailure(err, { stage: "upload", folderType, file, extra: { invokeError: error.message } });
     throw err;
   }

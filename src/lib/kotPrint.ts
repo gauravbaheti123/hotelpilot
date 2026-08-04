@@ -8,6 +8,7 @@ import {
 } from "./printStyles";
 import { isQZConnected, connectQZ, printToPrinter } from "./qzPrint";
 import { toast } from "sonner";
+import { errorMessage } from "@/lib/errorMessage";
 
 export type PrinterInfo = {
   id: string;
@@ -263,7 +264,7 @@ export async function printThermalHtml(args: {
       return;
     } catch (err: any) {
       console.error("[print/qz] failed", err);
-      toast.error(`Printer "${args.printerName}" unreachable: ${err?.message ?? err}`);
+      toast.error(`Printer "${args.printerName}" is unreachable. ${errorMessage(err, "printing the KOT")}`);
     }
   } else {
     toast.warning("Printer service (QZ Tray) not connected — using browser print dialog.");
@@ -298,7 +299,7 @@ export async function runKotPrintJobs(header: KotHeader, jobs: PrintJob[]): Prom
         await printToPrinter(job.printer.name, html, paperSize);
       } catch (err: any) {
         console.error("[kotPrint/qz] failed", err);
-        toast.error(`QZ print failed for ${job.printer.name}: ${err?.message ?? err}`);
+        toast.error(`Could not print on ${job.printer.name}. ${errorMessage(err, "printing")}`);
         anyFailed = true;
         break;
       }

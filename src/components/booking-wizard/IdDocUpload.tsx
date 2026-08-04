@@ -8,6 +8,7 @@ import { driveThumbnailUrl } from "@/lib/guestIdLookup";
 import {
   uploadFileToDrive, validateDriveImage, driveFileExtension, safeName, logDriveUploadFailure,
 } from "@/lib/driveUpload";
+import { errorMessage } from "@/lib/errorMessage";
 
 export interface UploadedIdDoc {
   fileId: string | null;
@@ -45,7 +46,7 @@ export function IdDocUpload({ value, onChange, guestName, disabled }: Props) {
       const res = await uploadFileToDrive(f, "id_doc", fileName);
       onChange({ fileId: res.fileId, viewUrl: res.viewUrl, name: f.name });
     } catch (e: any) {
-      setError(e?.message ?? "Upload failed");
+      setError(errorMessage(e, "uploading the ID document"));
     } finally {
       setBusy(false);
       if (cameraRef.current) cameraRef.current.value = "";

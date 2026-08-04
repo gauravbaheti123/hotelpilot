@@ -21,6 +21,7 @@ import {
   type PrinterInfo,
 } from "@/lib/kotPrint";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export type SegmentKind = "food" | "laundry";
 
@@ -150,7 +151,7 @@ export function KotHistoryDialog({
       }
       setPunches(Array.from(grouped.values()).sort((a, b) => b.at.localeCompare(a.at)));
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to load punches");
+      toastError(e, "Failed to load punches");
     } finally {
       setLoading(false);
     }
@@ -230,7 +231,7 @@ export function KotHistoryDialog({
       });
       toast.success(`${ticketWord} reprint sent${printer?.name ? ` to ${printer.name}` : ""}`);
     } catch (e: any) {
-      toast.error(e?.message ?? "Reprint failed");
+      toastError(e, "Reprint failed");
     }
   }
 
@@ -292,7 +293,7 @@ export function KotHistoryDialog({
       await load();
       onChanged?.();
     } catch (e: any) {
-      toast.error(e?.message ?? "Update failed");
+      toastError(e, "Update failed");
     } finally {
       setBusy(false);
     }
@@ -332,7 +333,7 @@ export function KotHistoryDialog({
       await load();
       onChanged?.();
     } catch (e: any) {
-      toast.error(e?.message ?? "Delete failed");
+      toastError(e, "Delete failed");
     } finally {
       setBusy(false);
     }

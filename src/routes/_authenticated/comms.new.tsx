@@ -19,6 +19,7 @@ import {
 import { ExternalLink, Send, Save } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/comms/new")({
   validateSearch: (s: Record<string, unknown>) => ({
     booking_id: typeof s.booking_id === "string" ? s.booking_id : undefined,
@@ -137,7 +138,7 @@ function NewCommPage() {
     };
     const { error } = await supabase.from("communications").insert(payload);
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toastError(error); return; }
     toast.success(status === "sent" ? "Logged as sent" : "Saved as draft");
     router.navigate({ to: "/comms" });
   }

@@ -27,6 +27,7 @@ import {
 } from "@/lib/staff-hr";
 import { istDateISO } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/staff/payroll")({
   head: () => ({ meta: [{ title: "Payroll — HotelPilot" }] }),
@@ -137,7 +138,7 @@ function PayrollPage() {
       net_pay: net,
       notes: editing.notes,
     }).eq("id", editing.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success("Saved");
     setEditing(null);
     load();
@@ -147,7 +148,7 @@ function PayrollPage() {
     const { error } = await supabase.from("payroll_runs").update({
       status: "paid", paid_at: new Date().toISOString(), paid_via: mode,
     }).eq("id", row.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success("Marked paid");
     load();
   }

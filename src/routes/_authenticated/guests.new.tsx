@@ -19,6 +19,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { lookupExistingGuestId } from "@/lib/guestIdLookup";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/guests/new")({
   head: () => ({ meta: [{ title: "New Guest — HotelPilot" }] }),
   component: () => (<RequirePermission module="guest_crm"><NewGuestPage /></RequirePermission>),
@@ -82,7 +83,7 @@ function NewGuestPage() {
       tags,
     }).select("id").single();
     setBusy(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toastError(error); return; }
     const { data: u } = await supabase.auth.getUser();
     logActivity({
       property_id: propertyId!,

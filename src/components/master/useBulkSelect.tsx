@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { toastError } from "@/lib/errorMessage";
 
 /**
  * Bulk select + delete for hand-rolled master tables, mirroring the behaviour
@@ -52,7 +53,7 @@ export function useBulkSelect<T extends { id: string }>(
     const ids = Array.from(selected);
     const { error } = await supabase.from(table as any).delete().in("id", ids);
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success(`Deleted ${ids.length} record${ids.length === 1 ? "" : "s"}`);
     setSelected(new Set());
     setOpen(false);

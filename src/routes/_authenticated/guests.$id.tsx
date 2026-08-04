@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/guests/$id")({
   head: () => ({ meta: [{ title: "Guest — HotelPilot" }] }),
   component: () => (<RequirePermission module="guest_crm"><GuestDetail /></RequirePermission>),
@@ -158,7 +159,7 @@ function GuestDetail() {
       });
       toast.success("Saved");
       await load();
-    } catch (e) { toast.error(e instanceof Error ? e.message : "Failed"); }
+    } catch (e) { toastError(e, "Failed"); }
     finally { setBusy(false); }
   }
 
@@ -166,7 +167,7 @@ function GuestDetail() {
     if (!g) return;
     const nextVal = !g.is_blacklisted;
     const { error } = await supabase.from("guests").update({ is_blacklisted: nextVal }).eq("id", g.id);
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     else {
       const { data: u } = await supabase.auth.getUser();
       logActivity({

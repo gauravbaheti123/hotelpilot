@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Eye, EyeOff, Wifi, MessageCircle, ShieldCheck } from "lucide-react";
 import { testAiSensy } from "@/lib/whatsapp";
 import { RequirePermission } from "@/components/RequirePermission";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/settings/whatsapp")({
   head: () => ({ meta: [{ title: "WhatsApp Settings — HotelPilot" }] }),
@@ -34,7 +35,7 @@ function WhatsAppSettingsPage() {
     supabase.rpc("get_property_secrets", { _property_id: propertyId })
       .then(({ data, error }) => {
         if (error) {
-          toast.error(error.message);
+          toastError(error);
           setLoaded(true);
           return;
         }
@@ -56,7 +57,7 @@ function WhatsAppSettingsPage() {
       _wifi_password: wifiPassword,
     });
     setSaving(false);
-    if (error) toast.error(error.message); else toast.success("WhatsApp settings saved");
+    if (error) toastError(error); else toast.success("WhatsApp settings saved");
   }
 
   async function test() {
@@ -64,7 +65,7 @@ function WhatsAppSettingsPage() {
     setTesting(true);
     const { data, error } = await testAiSensy(propertyId);
     setTesting(false);
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     else if (data?.ok) toast.success("Edge function reachable ✓");
     else toast.error(data?.error ?? "Test failed");
   }

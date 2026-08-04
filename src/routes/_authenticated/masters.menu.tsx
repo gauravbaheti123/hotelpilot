@@ -46,6 +46,7 @@ import {
 import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/masters/menu")({
   head: () => ({ meta: [{ title: "Menu — HotelPilot" }] }),
   component: () => (<RequirePermission module="master_data"><MenuPage /></RequirePermission>),
@@ -109,8 +110,8 @@ function MenuPage() {
         .in("type", ["kot", "both"])
         .order("name"),
     ]);
-    if (c.error) toast.error(c.error.message);
-    if (i.error) toast.error(i.error.message);
+    if (c.error) toastError(c.error);
+    if (i.error) toastError(i.error);
     setCats((c.data ?? []) as MenuCategory[]);
     setItems((i.data ?? []) as MenuItem[]);
     setPrinters((p.data ?? []) as PrinterOption[]);
@@ -135,7 +136,7 @@ function MenuPage() {
     const { error } = editingCat.id
       ? await supabase.from("menu_categories").update(payload).eq("id", editingCat.id)
       : await supabase.from("menu_categories").insert(payload);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     setCatOpen(false);
     setEditingCat(null);
     toast.success("Saved");
@@ -164,7 +165,7 @@ function MenuPage() {
     const { error } = editingItem.id
       ? await supabase.from("menu_items").update(payload).eq("id", editingItem.id)
       : await supabase.from("menu_items").insert(payload);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     setItemOpen(false);
     setEditingItem(null);
     toast.success("Saved");
@@ -174,13 +175,13 @@ function MenuPage() {
   async function removeCat(c: MenuCategory) {
     if (!confirm(`Delete "${c.name}"?`)) return;
     const { error } = await supabase.from("menu_categories").delete().eq("id", c.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     load();
   }
   async function removeItem(i: MenuItem) {
     if (!confirm(`Delete "${i.name}"?`)) return;
     const { error } = await supabase.from("menu_items").delete().eq("id", i.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     load();
   }
 

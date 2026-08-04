@@ -29,6 +29,7 @@ import {
 import { RequirePermission } from "@/components/RequirePermission";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 interface Row {
   id: string; invoice_number: string; gst_mode: string; status: string;
@@ -121,7 +122,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
       // Surface PostgREST failures instead of silently rendering "No invoices."
       if (error) {
         console.error("[invoices] load failed", error);
-        toast.error(error.message || "Failed to load invoices");
+        toastError(error, "Failed to load invoices");
         setRows([]);
         return;
       }
@@ -156,7 +157,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
         .order("created_at", { ascending: false })
         .limit(300);
       if (cancelled) return;
-      if (error) { toast.error(error.message); return; }
+      if (error) { toastError(error); return; }
       setSegRows((data ?? []) as any);
     })();
     return () => { cancelled = true; };
@@ -196,7 +197,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
       _force: Number(delTarget.paid_amount ?? 0) > 0,
     } as any);
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     logActivity({
       property_id: propertyId!,
       user_id: user?.id ?? "",
@@ -279,7 +280,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
       });
       // 5. Hard delete (folio_charges & payments cascade)
       const { error: dErr } = await supabase.from("folios").delete().eq("id", hardDelTarget.id);
-      if (dErr) { setBusy(false); return toast.error(dErr.message); }
+      if (dErr) { setBusy(false); return toastError(dErr); }
       toast.success(`Bill ${hardDelTarget.invoice_number} permanently deleted`);
       setHardDelTarget(null); setHardDelPwd(""); setHardDelReason(""); setHardDelStep(1);
       load();
@@ -318,7 +319,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
       .from("folios")
       .update({ invoice_number: trimmed } as any)
       .eq("id", numTarget.id);
-    if (error) { setBusy(false); return toast.error(error.message); }
+    if (error) { setBusy(false); return toastError(error); }
     await logActivity({
       property_id: propertyId,
       user_id: user?.id ?? "",
@@ -404,7 +405,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
         paymentMode: null,
       });
     } catch (e: any) {
-      toast.error(e?.message ?? "Print failed");
+      toastError(e, "Print failed");
     }
   }
 

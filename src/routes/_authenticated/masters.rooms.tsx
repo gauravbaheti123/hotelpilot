@@ -46,6 +46,7 @@ import {
 } from "@/components/master/useBulkSelect";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/masters/rooms")({
   head: () => ({ meta: [{ title: "Rooms & Categories — HotelPilot" }] }),
   component: () => (<RequirePermission module="master_data"><RoomsMasterPage /></RequirePermission>),
@@ -107,8 +108,8 @@ function RoomsMasterPage() {
         .eq("property_id", current.id)
         .order("room_number"),
     ]);
-    if (c.error) toast.error(c.error.message);
-    if (r.error) toast.error(r.error.message);
+    if (c.error) toastError(c.error);
+    if (r.error) toastError(r.error);
     setCats((c.data ?? []) as Category[]);
     setRooms((r.data ?? []) as Room[]);
     setLoading(false);
@@ -135,7 +136,7 @@ function RoomsMasterPage() {
       ? await supabase.from("room_categories").update(payload).eq("id", editingCat.id).select("id").maybeSingle()
       : await supabase.from("room_categories").insert(payload).select("id").maybeSingle();
     const { error } = res;
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     const recId = (res.data as { id?: string } | null)?.id ?? editingCat.id ?? null;
     const changed = isEdit && before
       ? (Object.keys(payload) as Array<keyof typeof payload>).filter(
@@ -175,7 +176,7 @@ function RoomsMasterPage() {
       ? await supabase.from("rooms").update(payload).eq("id", editingRoom.id).select("id").maybeSingle()
       : await supabase.from("rooms").insert(payload).select("id").maybeSingle();
     const { error } = res;
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     const recId = (res.data as { id?: string } | null)?.id ?? editingRoom.id ?? null;
     const changed = isEdit && before
       ? Object.keys(payload).filter(
@@ -201,7 +202,7 @@ function RoomsMasterPage() {
   async function removeCat(c: Category) {
     if (!confirm(`Delete category "${c.name}"?`)) return;
     const { error } = await supabase.from("room_categories").delete().eq("id", c.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     if (current) {
       logActivity({
         property_id: current.id,
@@ -219,7 +220,7 @@ function RoomsMasterPage() {
   async function removeRoom(r: Room) {
     if (!confirm(`Delete room ${r.room_number}?`)) return;
     const { error } = await supabase.from("rooms").delete().eq("id", r.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     if (current) {
       logActivity({
         property_id: current.id,

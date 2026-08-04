@@ -16,6 +16,7 @@ import { CheckoutDialog } from "@/components/CheckoutDialog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/rooms/$roomNumber")({
   head: () => ({ meta: [{ title: "Room Detail — HotelPilot" }] }),
   component: () => (<RequirePermission module="room_board"><RoomDetailPage /></RequirePermission>),
@@ -90,7 +91,7 @@ function RoomDetailPage() {
       .eq("property_id", currentId)
       .eq("room_number", roomNumber)
       .maybeSingle();
-    if (rErr) { toast.error(rErr.message); setLoading(false); return; }
+    if (rErr) { toastError(rErr); setLoading(false); return; }
     if (!r) { setRoom(null); setLoading(false); return; }
     setRoom(r as any);
 
@@ -200,7 +201,7 @@ function RoomDetailPage() {
   async function setRoomField(patch: Partial<Pick<RoomRow, "status" | "housekeeping_status">>) {
     if (!room) return;
     const { error } = await supabase.from("rooms").update(patch).eq("id", room.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success("Room updated");
     load();
   }

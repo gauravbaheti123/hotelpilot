@@ -24,6 +24,7 @@ import {
   fetchUnreconciledCashExpenses, fetchUnreconciledPetty, pettySign,
   type CashExpenseRow, type PettyCashEntry,
 } from "@/lib/pettyCash";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/handover/new")({
   head: () => ({ meta: [{ title: "Shift Handover — HotelPilot" }] }),
@@ -70,7 +71,7 @@ function StartHandoverPage() {
       const { data, error } = await supabase.rpc("last_handover_window_start" as any, {
         _property_id: propertyId,
       } as any);
-      if (error) { toast.error(error.message); return; }
+      if (error) { toastError(error); return; }
       setWindowStart(data as unknown as string);
     })();
   }, [propertyId]);
@@ -125,7 +126,7 @@ function StartHandoverPage() {
         _property_id: propertyId,
       } as any);
       if (cancelled) return;
-      if (error) { toast.error(error.message); return; }
+      if (error) { toastError(error); return; }
       const SELECTABLE = new Set(["manager", "receptionist", "owner", "superadmin"]);
       const byId = new Map<string, string>();
       for (const r of ((data ?? []) as any[])) {
@@ -155,7 +156,7 @@ function StartHandoverPage() {
         .gte("paid_at", windowStart);
       if (cancelled) return;
       setLoading(false);
-      if (error) { toast.error(error.message); return; }
+      if (error) { toastError(error); return; }
       const totals = new Map<string, number>();
       for (const p of ((data ?? []) as any[])) {
         const m = (p.mode ?? "").toString();
@@ -244,7 +245,7 @@ function StartHandoverPage() {
       } as any)
       .select("id")
       .maybeSingle();
-    if (error || !h) { setSaving(false); return toast.error(error?.message ?? "Failed to create handover"); }
+    if (error || !h) { setSaving(false); return toastError(error, "Failed to create handover"); }
 
     const lineRows = lines.map((l) => {
       const manual = Number(l.manual_entry);
@@ -259,7 +260,7 @@ function StartHandoverPage() {
       };
     });
     const { error: lErr } = await supabase.from("shift_handover_lines").insert(lineRows as any);
-    if (lErr) { setSaving(false); return toast.error(lErr.message); }
+    if (lErr) { setSaving(false); return toastError(lErr); }
 
     // Mark everything folded into this window as reconciled so the next shift
     // does not double-count it.
@@ -269,14 +270,14 @@ function StartHandoverPage() {
         .from("petty_cash_entries")
         .update({ handover_id: handoverId } as any)
         .in("id", petty.map((p) => p.id));
-      if (pErr) toast.error(`Petty cash not marked reconciled: ${pErr.message}`);
+      if (pErr) toastError(pErr, "Petty cash not marked reconciled");
     }
     if (cashExpenses.length > 0) {
       const { error: eErr } = await supabase
         .from("expenses")
         .update({ handover_id: handoverId } as any)
         .in("id", cashExpenses.map((e) => e.id));
-      if (eErr) toast.error(`Cash expenses not marked reconciled: ${eErr.message}`);
+      if (eErr) toastError(eErr, "Cash expenses not marked reconciled");
     }
     setSaving(false);
 

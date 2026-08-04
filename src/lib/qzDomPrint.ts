@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { isQZConnected, connectQZ, printToPrinter } from "./qzPrint";
 import { getPrintStyles, getPrintContainerStyle, getPrintSafetyCss } from "./printStyles";
 import { reportQueryError } from "@/lib/queryError";
+import { errorMessage } from "@/lib/errorMessage";
 
 // Properties to copy from computedStyle onto each cloned node as inline styles.
 // This snapshots the app's Tailwind/theme resolution into self-contained HTML
@@ -213,7 +214,7 @@ export async function printDomViaQZ(opts: {
     return true;
   } catch (err: any) {
     console.error("[qz] silent print failed, falling back", err);
-    toast.error(`Silent print failed: ${err?.message ?? err}. Falling back to browser dialog.`);
+    toast.error(`Silent printing isn't available right now — opening the browser print dialog instead. ${errorMessage(err, "printing")}`);
     opts.fallback();
     return false;
   }

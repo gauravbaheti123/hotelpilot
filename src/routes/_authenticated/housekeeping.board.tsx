@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { RequirePermission } from "@/components/RequirePermission";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/housekeeping/board")({
   head: () => ({ meta: [{ title: "Room Status Board — HotelPilot" }] }),
@@ -110,7 +111,7 @@ function BoardPage() {
   async function setHk(roomId: string, hk: HkStatus) {
     const prev = rooms.find((r) => r.id === roomId);
     const { error } = await supabase.from("rooms").update({ housekeeping_status: hk }).eq("id", roomId);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toastError(error); return; }
     toast.success("Updated");
     if (propertyId && user && prev) {
       logActivity({
@@ -135,7 +136,7 @@ function BoardPage() {
     const clean = text.trim();
     if (!clean) {
       const { error } = await supabase.from("housekeeping_room_notes" as never).delete().eq("room_id", roomId);
-      if (error) { toast.error(error.message); return false; }
+      if (error) { toastError(error); return false; }
       setNotes((m) => { const n = { ...m }; delete n[roomId]; return n; });
       toast.success("Note cleared");
       return true;
@@ -144,7 +145,7 @@ function BoardPage() {
       room_id: roomId, property_id: propertyId, note: clean,
       updated_by: user?.id ?? null, updated_at: new Date().toISOString(),
     } as any, { onConflict: "room_id" });
-    if (error) { toast.error(error.message); return false; }
+    if (error) { toastError(error); return false; }
     setNotes((m) => ({ ...m, [roomId]: clean }));
     toast.success("Note saved");
     return true;

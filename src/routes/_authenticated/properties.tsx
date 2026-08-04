@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import { createOwnerLogin } from "@/lib/admin-users.functions";
 import { useNavigate } from "@tanstack/react-router";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/properties")({
   ssr: false,
@@ -99,7 +100,7 @@ function PropertiesPage() {
       .from("properties")
       .select("*")
       .order("created_at", { ascending: true });
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     const list = (data ?? []) as PropertyRow[];
     setRows(list);
 
@@ -177,7 +178,7 @@ function PropertiesPage() {
       ({ error } = await supabase.from("properties").insert(payload as any));
     }
     if (error) {
-      toast.error(error.message);
+      toastError(error);
       return;
     }
     toast.success("Saved");
@@ -220,7 +221,7 @@ function PropertiesPage() {
       toast.success(`Login created for ${loginProp.name}`);
       setLoginOpen(false);
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to create login");
+      toastError(e, "Failed to create login");
     } finally {
       setCreatingLogin(false);
     }
@@ -234,7 +235,7 @@ function PropertiesPage() {
       .from("properties")
       .update({ status: next })
       .eq("id", p.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success(next === "paused" ? `${p.name} paused` : `${p.name} resumed`);
     load();
   }
@@ -266,7 +267,7 @@ function PropertiesPage() {
       setDeleteProp(null);
       load();
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to delete property");
+      toastError(e, "Failed to delete property");
     } finally {
       setDeletingProp(false);
     }

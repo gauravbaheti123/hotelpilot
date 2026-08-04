@@ -19,6 +19,7 @@ import { listEventBookings } from "@/lib/banquetEvent";
 import { fmtDate, fmtDateTime, fmtINR, firstOfMonthIso } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/reports/banquet-billing")({
   ssr: false,
@@ -268,7 +269,7 @@ function Page() {
       setEdit(null); setReason("");
       await load();
     } catch (e: any) {
-      toast.error(e?.message ?? "Update failed");
+      toastError(e, "Update failed");
     } finally { setBusy(false); }
   }
 
@@ -285,7 +286,7 @@ function Page() {
       setDel(null); setReason("");
       await load();
     } catch (e: any) {
-      toast.error(e?.message ?? "Delete failed");
+      toastError(e, "Delete failed");
     } finally { setBusy(false); }
   }
 

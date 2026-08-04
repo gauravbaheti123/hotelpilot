@@ -17,6 +17,7 @@ import { TASK_TYPES, TASK_PRIORITIES, type TaskType, type TaskPriority } from "@
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/housekeeping/new")({
   head: () => ({ meta: [{ title: "New Task — HotelPilot" }] }),
   component: () => (<RequirePermission module="tasks"><NewTaskPage /></RequirePermission>),
@@ -68,7 +69,7 @@ function NewTaskPage() {
       toast.success("Task created");
       router.navigate({ to: "/housekeeping/tasks" });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed");
+      toastError(e, "Failed");
     } finally { setBusy(false); }
   }
 

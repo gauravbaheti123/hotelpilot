@@ -22,6 +22,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { useAuth } from "@/hooks/use-auth";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/housekeeping/tasks")({
   head: () => ({ meta: [{ title: "Housekeeping Tasks — HotelPilot" }] }),
   component: () => (<RequirePermission module="tasks"><TasksPage /></RequirePermission>),
@@ -74,7 +75,7 @@ function TasksPage() {
       patch.completed_by = data.user?.id ?? null;
     }
     const { error } = await supabase.from("housekeeping_tasks").update(patch).eq("id", id);
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     else {
       toast.success("Updated");
       if (propertyId && user && prev) {

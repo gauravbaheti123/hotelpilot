@@ -19,6 +19,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { toast } from "sonner";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/masters/printers")({
   head: () => ({ meta: [{ title: "Printers — HotelPilot" }] }),
   component: () => (<RequirePermission module="master_data"><PrintersPage /></RequirePermission>),
@@ -78,7 +79,7 @@ function PrintersPage() {
       .eq("property_id", current.id)
       .order("sort_order", { ascending: true });
     if (error) {
-      toast.error(error.message);
+      toastError(error);
       return;
     }
     setRoles((data ?? []) as unknown as PrinterRole[]);
@@ -184,7 +185,7 @@ function ManageRolesDialog({
       .from("printer_roles" as any)
       .insert({ property_id: propertyId, name, sort_order: maxSort + 1, active: true } as any);
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     setNewName("");
     onChanged();
   }
@@ -196,7 +197,7 @@ function ManageRolesDialog({
       .from("printer_roles" as any)
       .update({ name: trimmed } as any)
       .eq("id", role.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     onChanged();
   }
 
@@ -205,7 +206,7 @@ function ManageRolesDialog({
       .from("printer_roles" as any)
       .update({ active } as any)
       .eq("id", role.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     onChanged();
   }
 
@@ -224,7 +225,7 @@ function ManageRolesDialog({
       .eq("id", swap.id);
     const [r1, r2] = await Promise.all([a, b]);
     if (r1.error || r2.error) {
-      toast.error(r1.error?.message ?? r2.error?.message ?? "Failed to reorder");
+      toastError(r1.error ?? r2.error, "reordering printers");
       return;
     }
     onChanged();
@@ -237,14 +238,14 @@ function ManageRolesDialog({
       .select("id", { count: "exact", head: true })
       .eq("property_id", propertyId)
       .eq("printer_role", role.name);
-    if (ce) return toast.error(ce.message);
+    if (ce) return toastError(ce);
     if ((count ?? 0) > 0) {
       toast.error(`Cannot delete — ${count} printer(s) still use this role.`);
       return;
     }
     if (!confirm(`Delete role "${role.name}"?`)) return;
     const { error } = await supabase.from("printer_roles" as any).delete().eq("id", role.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     onChanged();
   }
 

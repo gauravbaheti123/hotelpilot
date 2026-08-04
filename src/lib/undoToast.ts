@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { errorMessage } from "@/lib/errorMessage";
 
 /**
  * Phase 73 — 10-second "Undo" toast for reversible (status-only) actions:
@@ -20,7 +21,7 @@ export function toastWithUndo(
             await undo();
             toast.success(opts?.undoneMessage ?? "Action undone", { id });
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Undo failed", { id });
+            toast.error(errorMessage(e, "undoing that action"), { id });
           }
         })();
       },

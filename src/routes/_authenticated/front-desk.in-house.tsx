@@ -27,6 +27,7 @@ import { RequirePermission } from "@/components/RequirePermission";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { istToday } from "@/lib/date";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/front-desk/in-house")({
   head: () => ({ meta: [{ title: "In-house — HotelPilot" }] }),
   component: () => (<RequirePermission module="inhouse"><InHousePage /></RequirePermission>),
@@ -61,7 +62,7 @@ function InHousePage() {
       .eq("property_id", current.id)
       .eq("status", "checked_in")
       .order("check_out", { ascending: true });
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     setRows((data ?? []) as unknown as InHouseRow[]);
     setLoading(false);
   }
@@ -161,7 +162,7 @@ function InHousePage() {
                                   const { error } = await supabase.from("bookings")
                                     .update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancelled_reason: "Manual cancel — incomplete booking" } as any)
                                     .eq("id", r.id);
-                                  if (error) return toast.error(error.message);
+                                  if (error) return toastError(error);
                                   toast.success("Booking cancelled");
                                   load();
                                 }}
@@ -248,7 +249,7 @@ function AssignGuestDialog({
     setBusy(true);
     const { error } = await supabase.from("bookings").update({ guest_id: guestId } as any).eq("id", bookingId);
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success("Guest assigned");
     onDone();
   };
@@ -260,7 +261,7 @@ function AssignGuestDialog({
     const { data, error } = await supabase.from("guests")
       .insert({ property_id: propertyId, name: newName.trim(), mobile: newMobile.trim() } as any)
       .select("id").single();
-    if (error || !data) { setBusy(false); return toast.error(error?.message ?? "Failed"); }
+    if (error || !data) { setBusy(false); return toastError(error, "Failed"); }
     await assign(data.id);
   };
 
@@ -331,7 +332,7 @@ function AssignRoomDialog({
     const { error: brErr } = await supabase.from("booking_rooms").insert({
       booking_id: bookingId, property_id: propertyId, room_id: picked, rate, status: "active",
     } as any);
-    if (brErr) { setBusy(false); return toast.error(brErr.message); }
+    if (brErr) { setBusy(false); return toastError(brErr); }
     await supabase.from("rooms").update({ status: "occupied" } as any).eq("id", picked);
     const { data: u } = await supabase.auth.getUser();
     logActivity({

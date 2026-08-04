@@ -27,6 +27,7 @@ import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment
 import { ArrowLeft, ArrowRight, Loader2, SplitSquareHorizontal, Plus, Trash2 } from "lucide-react";
 import { Percent } from "lucide-react";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 interface Charge {
   id: string; charge_type: string; description: string;
@@ -585,7 +586,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       setStep(4);
       onDone?.(newFolioIds);
     } catch (e: any) {
-      toast.error(e.message ?? "Could not split bill");
+      toastError(e, "Could not split bill");
     } finally {
       setBusy(false);
     }
@@ -779,7 +780,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       setStep(4);
       onDone?.(newFolioIds);
     } catch (e: any) {
-      toast.error(e.message ?? "Could not split bill");
+      toastError(e, "Could not split bill");
     } finally {
       setBusy(false);
     }
@@ -847,7 +848,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       toast.success("Split checkout complete");
       onOpenChange(false);
     } catch (e: any) {
-      toast.error(e.message ?? "Could not complete checkout");
+      toastError(e, "Could not complete checkout");
     } finally {
       setBusy(false);
     }
@@ -874,7 +875,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       ...totals,
       balance_amount: totals.total_amount,
     } as any).eq("id", target.folio_id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toastError(error); return; }
     // Update local state so the summary reflects the new total
     setCreatedBills((arr) => arr.map((cb, idx) => idx === discBillIdx
       ? { ...cb, total: Number(totals.total_amount) } : cb));

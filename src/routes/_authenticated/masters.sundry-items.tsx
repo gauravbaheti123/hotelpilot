@@ -13,6 +13,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Trash2, Loader2 } from "lucide-react";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/masters/sundry-items")({
   head: () => ({ meta: [{ title: "Sundry Items — HotelPilot" }] }),
@@ -100,7 +101,7 @@ function SundryItemsPage() {
       .select("id,name,is_active")
       .eq("property_id", current.id)
       .order("name", { ascending: true });
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     setCats((data ?? []) as any);
     setCatLoading(false);
   }
@@ -117,7 +118,7 @@ function SundryItemsPage() {
       .from("pos_categories")
       .insert({ property_id: current.id, name: newCat.trim(), is_active: true } as any);
     setSavingCat(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     setNewCat("");
     toast.success("Category added");
     await loadCats();
@@ -125,14 +126,14 @@ function SundryItemsPage() {
   }
   async function toggleCat(id: string, next: boolean) {
     const { error } = await supabase.from("pos_categories").update({ is_active: next } as any).eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     await loadCats();
     setReloadKey((k) => k + 1);
   }
   async function removeCat(id: string) {
     if (!confirm("Delete this category? Items assigned to it will keep the name but lose the link.")) return;
     const { error } = await supabase.from("pos_categories").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     await loadCats();
     setReloadKey((k) => k + 1);
   }

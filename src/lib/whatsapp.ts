@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { resolveEdgeError } from "@/lib/errorMessage";
 
 export type TriggerEvent =
   | "booking_confirm"
@@ -46,7 +47,7 @@ export async function sendWhatsApp(opts: SendWhatsAppOpts) {
   const { data, error } = await supabase.functions.invoke("send-whatsapp", {
     body: { ...opts, destination: dest },
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: (await resolveEdgeError(error, "sending the WhatsApp message")).message };
   return data ?? { ok: true };
 }
 

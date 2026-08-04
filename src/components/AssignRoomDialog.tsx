@@ -14,6 +14,7 @@ import { fetchTariffPlans, pickTariffPlan, type TariffPlan } from "@/lib/tariff"
 import { Loader2, BedDouble, Sparkles } from "lucide-react";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 interface RoomOption {
   id: string;
@@ -77,7 +78,7 @@ export function AssignRoomDialog({
         .eq("is_active", true)
         .eq("status", "vacant")
         .order("room_number");
-      if (error) toast.error(error.message);
+      if (error) toastError(error);
       // Exclude rooms already booked for the same date window.
       const roomIds = (data ?? []).map((r: any) => r.id);
       let busyIds = new Set<string>();
@@ -189,7 +190,7 @@ export function AssignRoomDialog({
       onOpenChange(false);
       onDone?.();
     } catch (e: any) {
-      toast.error(e.message ?? "Could not assign room");
+      toastError(e, "Could not assign room");
     } finally {
       setBusy(false);
     }
