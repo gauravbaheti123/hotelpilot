@@ -318,7 +318,6 @@ export async function submitBanquetWizard(opts: {
     balance_amount: Math.max(0, t.grandTotal - advance),
     total_room_charges: totalRoomCharges,
     notes: s.payment.notes.trim() || null,
-    custom_remark: s.customRemark.trim() || null,
     billing_company_id: billingCompanyId,
     advance_payment_mode: advance > 0 ? s.payment.mode : null,
     payment_ref: s.payment.reference.trim() || null,
@@ -364,7 +363,7 @@ export async function submitBanquetWizard(opts: {
 
   return {
     bookingId: created.bookingId,
-    bookingNumber: (created as { bookingNumber?: string | null }).bookingNumber ?? null,
+    bookingNumber: created.bookingNumber,
     roomsBlocked,
     warnings,
   };
