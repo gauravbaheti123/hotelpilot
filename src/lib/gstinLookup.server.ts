@@ -4,7 +4,8 @@ import { GSTIN_REGEX } from "@/lib/gstin";
 const NO_RETRY = new Set([400, 401, 402, 403, 404]);
 const RETRY = new Set([429, 502]);
 
-export type JsonBody = Record<string, unknown> | null;
+export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+export type JsonBody = { [key: string]: Json } | null;
 
 export interface GstinLookupResult {
   status: number;
