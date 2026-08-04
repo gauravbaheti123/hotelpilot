@@ -81,6 +81,7 @@ export const Route = createFileRoute("/_authenticated/banquet/event/$id")({
 
 interface Bq {
   id: string;
+  booking_id: string;
   property_id: string;
   banquet_number: string;
   function_type: string;
