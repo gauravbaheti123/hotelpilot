@@ -8,7 +8,6 @@ const MODULE_ROUTES: Array<{ module: string; to: string }> = [
   { module: "inhouse", to: "/front-desk/in-house" },
   { module: "restaurant_billing", to: "/restaurant" },
   { module: "invoices", to: "/billing/invoices" },
-  { module: "mis_ac", to: "/billing/mis" },
   { module: "reports", to: "/reports" },
   { module: "day_close", to: "/reports/night-audit" },
   { module: "room_board", to: "/housekeeping/board" },
