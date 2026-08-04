@@ -2171,9 +2171,12 @@ function FolioPage() {
                 </div>
                 <div className="invoice-header-right shrink-0" style={{ textAlign: "right", color: "#ffffff", flex: "0 0 auto", minWidth: 205, whiteSpace: "nowrap" }}>
                   <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 2, lineHeight: 1, whiteSpace: "nowrap" }}>
-                    {draftMode ? "DRAFT BILL" : (isGst ? "TAX INVOICE" : "CASH BILL")}
+                    {isProvisional ? "PROVISIONAL BILL" : draftMode ? "DRAFT BILL" : (isGst ? "TAX INVOICE" : "CASH BILL")}
                   </div>
-                  <div style={{ fontSize: 13, marginTop: 8, fontWeight: 700 }}>Bill No: <span style={{ fontWeight: 700 }}>{draftMode ? "—" : billNo(folio.invoice_number, "—")}</span></div>
+                  {isProvisional && (
+                    <div style={{ fontSize: 11, marginTop: 4, fontWeight: 700, letterSpacing: 0.4 }}>{PROVISIONAL_DOC_TITLE}</div>
+                  )}
+                  <div style={{ fontSize: 13, marginTop: 8, fontWeight: 700 }}>Bill No: <span style={{ fontWeight: 700 }}>{isProvisional ? provisionalRef : draftMode ? "—" : billNo(folio.invoice_number, "—")}</span></div>
                   <div style={{ fontSize: 12 }}>Date: <b>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b></div>
                   <div style={{ fontSize: 12 }}>Booking: <b>{booking.booking_number}</b></div>
                 </div>
