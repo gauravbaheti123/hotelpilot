@@ -45,7 +45,11 @@ interface Row {
   is_deleted?: boolean;
   deleted_at?: string | null;
   deleted_by?: string | null;
-  bookings: { booking_number: string; guests: { name: string } | null } | null;
+  bookings: {
+    booking_number: string;
+    guests: { name: string } | null;
+    booking_rooms?: Array<{ rooms: { room_number: string } | null }> | null;
+  } | null;
 }
 
 function InvoicesPage() {
@@ -101,7 +105,7 @@ function InvoicesPage() {
     if (!propertyId) return;
     (async () => {
       let qb = supabase.from("folios")
-        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name))" as any)
+        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms(rooms(room_number)))" as any)
         .eq("property_id", propertyId);
       if (!audit) qb = qb.eq("is_deleted" as any, false);
       const { data } = await qb.order("created_at", { ascending: false })
@@ -422,7 +426,7 @@ function InvoicesPage() {
                     <Badge variant="outline" className="text-[10px] uppercase">{r.gst_mode}</Badge>
                   </div>
                   <div className="text-xs text-muted-foreground truncate">
-                    {r.bookings?.booking_number} · {r.bookings?.guests?.name ?? "—"}
+                    {roomLabel(r)} · {r.bookings?.guests?.name ?? "—"}
                     {voided && r.deleted_at && (
                       <span className="ml-2 text-rose-600">Voided on {new Date(r.deleted_at).toLocaleDateString("en-IN")}</span>
                     )}
