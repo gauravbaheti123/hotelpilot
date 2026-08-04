@@ -30,6 +30,7 @@ import { PlusCircle, FileText } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { istDateISO } from "@/lib/date";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/front-desk/bookings")({
   head: () => ({ meta: [{ title: "Bookings — HotelPilot" }] }),
   component: () => (<RequirePermission module="bookings"><BookingsPage /></RequirePermission>),
@@ -66,7 +67,7 @@ function BookingsPage() {
       .limit(200);
     if (status !== "all") q = q.eq("status", status as any);
     const { data, error } = await q;
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     // Banquet event-block stays stay listed for 48h after the event ends.
     const scope = await fetchBanquetScope(current.id);
     setRows(((data ?? []) as any[]).filter(

@@ -22,6 +22,7 @@ import {
 } from "@/lib/printStyles";
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export type SegmentKind = "food" | "laundry";
 
@@ -203,7 +204,7 @@ export function PunchChargeDialog({
     if (!bookingId) return null;
     const { data, error } = await supabase.rpc("get_or_create_folio", { _booking_id: bookingId });
     if (error) {
-      toast.error(error.message);
+      toastError(error);
       return null;
     }
     return (data as string) ?? null;
@@ -339,13 +340,13 @@ export function PunchChargeDialog({
       try {
         await printKitchenTicket(bill.bill_number, clean);
       } catch (pe: any) {
-        toast.error(pe?.message ?? "Kitchen print failed");
+        toastError(pe, "Kitchen print failed");
       }
       toast.success(`Added to ${bill.bill_number} — ticket sent`);
       onSaved?.();
       onClose();
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to punch order");
+      toastError(e, "Failed to punch order");
     } finally {
       setBusy(null);
       inFlight.current = false;
@@ -405,7 +406,7 @@ export function PunchChargeDialog({
       onSaved?.();
       onClose();
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to print bill");
+      toastError(e, "Failed to print bill");
     } finally {
       setBusy(null);
       inFlight.current = false;
@@ -489,7 +490,7 @@ export function PunchChargeDialog({
       try {
         await printKitchenTicket(billNumber, clean);
       } catch (pe: any) {
-        toast.error(pe?.message ?? "Kitchen print failed");
+        toastError(pe, "Kitchen print failed");
       }
       printSegmentBill({
         billNumber, segment, propertyName: propertyName ?? "", propertyId,
@@ -505,7 +506,7 @@ export function PunchChargeDialog({
       onSaved?.();
       onClose();
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to save");
+      toastError(e, "Failed to save");
     } finally {
       setBusy(null);
       inFlight.current = false;

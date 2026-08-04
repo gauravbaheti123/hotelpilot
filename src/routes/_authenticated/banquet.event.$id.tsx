@@ -69,6 +69,7 @@ import {
 } from "@/lib/banquetEvent";
 import { Input as TextInput } from "@/components/ui/input";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/banquet/event/$id")({
   head: () => ({ meta: [{ title: "Banquet Event — HotelPilot" }] }),
   component: () => (
@@ -207,7 +208,7 @@ function BanquetEventPage() {
         .catch(() => setFin(null));
       bq = ev as unknown as Bq;
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to load event");
+      toastError(e, "Failed to load event");
       setLoading(false);
       return;
     }
@@ -300,7 +301,7 @@ function BanquetEventPage() {
       special_rate: Number(addRate) || 0,
       status: "blocked",
     } as any);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     await supabase
       .from("rooms")
       .update({ status: "blocked" } as any)
@@ -336,7 +337,7 @@ function BanquetEventPage() {
         guest_mobile: block.guest_mobile?.trim() || null,
       } as any)
       .eq("id", block.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success("Guest info saved");
     load();
   }
@@ -363,7 +364,7 @@ function BanquetEventPage() {
         checkout_time: cot,
       } as any)
       .eq("id", block.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success(`Room ${block.room_number} stay updated`);
   }
 
@@ -385,7 +386,7 @@ function BanquetEventPage() {
         status: "blocked",
       } as any)
       .eq("id", assignBlock.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     setAssignOpen(false);
     toast.success("Guest assigned");
     load();
@@ -403,7 +404,7 @@ function BanquetEventPage() {
       toast.success(`Room ${block.room_number} checked in`);
       load();
     } catch (e: any) {
-      toast.error(e?.message ?? "Check-in failed");
+      toastError(e, "Check-in failed");
     }
   }
 
@@ -476,7 +477,7 @@ function BanquetEventPage() {
       toast.success("Host details saved");
       load();
     } catch (e: any) {
-      toast.error(e?.message ?? "Save failed");
+      toastError(e, "Save failed");
     } finally {
       setSavingHost(false);
     }
@@ -502,7 +503,7 @@ function BanquetEventPage() {
       });
       await seedEventFolioCharges(ids.bookingId).catch(() => {});
     } catch (e: any) {
-      return toast.error(e?.message ?? "Update failed");
+      return toastError(e, "Update failed");
     }
     setMetaOpen(false);
     toast.success("Event updated");
@@ -557,7 +558,7 @@ function BanquetEventPage() {
         .then(setFin)
         .catch(() => {});
     } catch (e: any) {
-      return toast.error(e?.message ?? "Update failed");
+      return toastError(e, "Update failed");
     }
     setB({ ...merged, total_amount: total, balance_amount: balance });
   }
@@ -656,7 +657,7 @@ function BanquetEventPage() {
       toast.success(`Event ${b.banquet_number} permanently deleted`);
       router.navigate({ to: "/banquet/bookings" });
     } catch (e: any) {
-      toast.error(e?.message ?? "Delete failed");
+      toastError(e, "Delete failed");
     } finally {
       setDelBusy(false);
       setDelOpen(false);

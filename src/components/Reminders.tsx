@@ -16,6 +16,7 @@ import {
 import { Bell, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export interface Reminder {
   id: string;
@@ -191,7 +192,7 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
       notes: notes.trim() || null,
       type: "manual",
     } as any);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toastError(error); return; }
     toast.success("Reminder added");
     setTitle(""); setWhen(""); setNotes("");
     setAddOpen(false);
@@ -336,7 +337,7 @@ export function RemindersSection({ propertyId, userId }: { propertyId: string | 
       reminder_datetime: new Date(when).toISOString(),
       notes: notes.trim() || null,
     } as any);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toastError(error); return; }
     toast.success("Reminder added");
     setTitle(""); setWhen(""); setNotes("");
     setAddOpen(false);

@@ -13,6 +13,7 @@ import { TARIFF_PLAN_SELECT, pickTariffPlan, type TariffPlan } from "@/lib/tarif
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/front-desk/rate-calendar")({
   head: () => ({ meta: [{ title: "Rate Calendar — HotelPilot" }] }),
   component: () => (<RequirePermission module="calendar"><RateCalendarPage /></RequirePermission>),
@@ -51,9 +52,9 @@ function RateCalendarPage() {
       supabase.from("tariff_plans").select(TARIFF_PLAN_SELECT).eq("property_id", current.id).eq("is_active", true),
       supabase.from("rate_seasons").select("id,name,season_type,start_date,end_date,multiplier,priority,color,is_active,applies_to_category_id").eq("property_id", current.id).lte("start_date", rangeEnd).gte("end_date", start),
     ]);
-    if (c.error) toast.error(c.error.message);
-    if (t.error) toast.error(t.error.message);
-    if (s.error) toast.error(s.error.message);
+    if (c.error) toastError(c.error);
+    if (t.error) toastError(t.error);
+    if (s.error) toastError(s.error);
     setCats((c.data ?? []) as Cat[]);
     setTariffs((t.data ?? []) as unknown as TariffPlan[]);
     setSeasons((s.data ?? []) as RateSeason[]);

@@ -46,6 +46,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
+import { toastError } from "@/lib/errorMessage";
 
 export type FieldType =
   | "text"
@@ -156,7 +157,7 @@ export function CrudPage<T extends { id: string }>({
     const ids = Array.from(selected);
     const { error } = await supabase.from(table as any).delete().in("id", ids);
     setBulkBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success(`Deleted ${ids.length} record${ids.length === 1 ? "" : "s"}`);
     setSelected(new Set());
     setBulkOpen(false);
@@ -176,7 +177,7 @@ export function CrudPage<T extends { id: string }>({
     const { data, error } = await q.order(order.column, {
       ascending: order.ascending ?? true,
     });
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     setRows(((data ?? []) as unknown) as T[]);
     setSelected(new Set());
     setLoading(false);
@@ -250,7 +251,7 @@ export function CrudPage<T extends { id: string }>({
       ({ error } = await supabase.from(table as any).insert(payload as any));
     }
     if (error) {
-      toast.error(error.message);
+      toastError(error);
       return;
     }
     toast.success("Saved");
@@ -262,7 +263,7 @@ export function CrudPage<T extends { id: string }>({
   async function remove(row: T) {
     if (!confirm("Delete this row?")) return;
     const { error } = await supabase.from(table as any).delete().eq("id", row.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success("Deleted");
     load();
   }

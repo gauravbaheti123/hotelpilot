@@ -19,6 +19,7 @@ import { Download, Upload, FileSpreadsheet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { istToday } from "@/lib/date";
+import { toastError } from "@/lib/errorMessage";
 
 export interface CsvColumn {
   /** CSV header name (case-insensitive on import) */
@@ -122,7 +123,7 @@ export function BulkCsvButtons(props: BulkCsvButtonsProps) {
       for (const [k, v] of Object.entries(props.exportFilter)) q = q.eq(k, v);
     }
     const { data, error } = await q;
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     const lines = [props.columns.map((c) => csvEscape(c.header)).join(",")];
     for (const row of ((data ?? []) as unknown) as Record<string, unknown>[]) {
       const cells = props.columns.map((c) => {

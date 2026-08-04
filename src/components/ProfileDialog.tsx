@@ -9,6 +9,7 @@ import {
 import { toast } from "sonner";
 import { UserCircle2 } from "lucide-react";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export function ProfileDialog({
   open,
@@ -68,7 +69,7 @@ export function ProfileDialog({
       toast.success("Profile updated");
       onOpenChange(false);
     } catch (e: any) {
-      toast.error(e.message ?? "Failed to update profile");
+      toastError(e, "Failed to update profile");
     } finally {
       setSaving(false);
     }

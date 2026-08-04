@@ -23,6 +23,7 @@ import {
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { useAuth } from "@/hooks/use-auth";
 import { istDateISO, istToday } from "@/lib/date";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/expenses/")({
   head: () => ({ meta: [{ title: "Expenses — HotelPilot" }] }),
@@ -68,7 +69,7 @@ function ExpensesPage() {
       .limit(500);
     if (mode !== "all") qy = qy.eq("payment_mode", mode);
     const { data, error } = await qy;
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     setRows((data ?? []) as unknown as ExpenseRow[]);
   }, [propertyId, from, to, mode]);
 
@@ -95,7 +96,7 @@ function ExpensesPage() {
     if (!confirm("Delete this expense?")) return;
     const prev = rows.find((r) => r.id === id);
     const { error } = await supabase.from("expenses").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     if (propertyId && user && prev) {
       logActivity({
         property_id: propertyId,

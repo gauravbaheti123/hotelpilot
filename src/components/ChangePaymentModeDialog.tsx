@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 import { logActivity, userDisplayName, ACTIVITY } from "@/lib/activityLog";
+import { toastError } from "@/lib/errorMessage";
 
 export interface ChangePaymentModeFolio {
   id: string;
@@ -66,7 +67,7 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
         .order("paid_at", { ascending: true });
       if (cancelled) return;
       setLoading(false);
-      if (error) return toast.error(error.message);
+      if (error) return toastError(error);
       const rows = (data ?? []) as unknown as PaymentRow[];
       setPayments(rows);
       const initial: Record<string, string> = {};
@@ -107,7 +108,7 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
           .from("payments")
           .update({ mode: next })
           .eq("id", p.id);
-        if (error) { toast.error(error.message); setSaving(false); return; }
+        if (error) { toastError(error); setSaving(false); return; }
 
         // Locked bills: route through owner override for consistent audit
         if (locked) {

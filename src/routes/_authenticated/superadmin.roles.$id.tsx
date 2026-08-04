@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { upsertRolePermissions } from "@/lib/staff-users.functions";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/superadmin/roles/$id")({
   head: () => ({ meta: [{ title: "Edit Permissions — HotelPilot" }] }),
@@ -284,7 +285,7 @@ function EditRolePage() {
       setSavedMaxDiscountType(maxDiscountType);
       setSavedMaxDiscountAmount(maxDiscountAmount);
       toast.success("Permissions saved");
-    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    } catch (e: any) { toastError(e, "Failed"); }
     finally { setSaving(false); }
   }
 

@@ -42,6 +42,7 @@ import {
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — HotelPilot" }] }),
   component: () => (<RequirePermission module="dashboard"><DashboardRouter /></RequirePermission>),
@@ -591,7 +592,7 @@ function OwnerDashboard({
       toast.success(`Added ${bills.length} food bill(s) to room bill`);
       reload();
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to add to bill");
+      toastError(e, "Failed to add to bill");
     }
   }
 
@@ -806,7 +807,7 @@ function OwnerDashboard({
                     toast.success(`Room ${blk.room_number} checked in`);
                     reload();
                   } catch (e: any) {
-                    toast.error(e?.message ?? "Check-in failed");
+                    toastError(e, "Check-in failed");
                   }
                 }}
               />
@@ -1750,7 +1751,7 @@ function RoomStatusModal({
       await onChanged();
       onClose();
     } catch (e: any) {
-      toast.error(e.message ?? "Failed to update room");
+      toastError(e, "Failed to update room");
     } finally {
       setBusy(false);
     }
@@ -1931,7 +1932,7 @@ function BulkCheckinDialog({
       toast.success(`${n} rooms checked in for ${event.event_name}`);
       onDone();
     } catch (e: any) {
-      toast.error(e.message ?? "Failed");
+      toastError(e, "Failed");
     } finally { setBusy(false); }
   };
   return (
@@ -2040,7 +2041,7 @@ function AssignGuestDialog({
       guest_name: name.trim() || null, guest_mobile: mobile.trim() || null,
     } as any).eq("id", block.id);
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success("Guest assigned");
     onDone();
   };
@@ -2051,7 +2052,7 @@ function AssignGuestDialog({
     const { error: upErr } = await supabase.from("event_room_blocks").update({
       guest_name: name.trim(), guest_mobile: mobile.trim(),
     } as any).eq("id", block.id);
-    if (upErr) { setBusy(false); return toast.error(upErr.message); }
+    if (upErr) { setBusy(false); return toastError(upErr); }
     try {
       await checkInBlock({
         propertyId,
@@ -2061,7 +2062,7 @@ function AssignGuestDialog({
       toast.success(`Room ${block.room_number} checked in`);
       onDone();
     } catch (e: any) {
-      toast.error(e?.message ?? "Check-in failed");
+      toastError(e, "Check-in failed");
     } finally {
       setBusy(false);
     }

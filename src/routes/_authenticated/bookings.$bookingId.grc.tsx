@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { Printer, Save, ArrowLeft } from "lucide-react";
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 function fmtDateTime(value: string | null | undefined, fallbackTime?: string | null): string {
   if (!value) return "—";
@@ -93,7 +94,7 @@ function GrcPage() {
                  booking_rooms!booking_rooms_booking_id_fkey(rate, meal_plan, actual_check_in, actual_check_out, rooms!booking_rooms_room_id_fkey(room_number), room_categories(name))`)
         .eq("id", bookingId)
         .maybeSingle();
-      if (error || !b) { toast.error(error?.message ?? "Booking not found"); setLoading(false); return; }
+      if (error || !b) { toastError(error, "Booking not found"); setLoading(false); return; }
       setBooking(b);
 
       const { data: p, error: __qe1 } = await supabase
@@ -187,10 +188,10 @@ function GrcPage() {
     let number = grc.grc_number;
     if (grc.id) {
       const { error } = await supabase.from("grc_records").update(payload).eq("id", grc.id);
-      if (error) { toast.error(error.message); setSaving(false); return null; }
+      if (error) { toastError(error); setSaving(false); return null; }
     } else {
       const { data, error } = await supabase.from("grc_records").insert(payload).select("id, grc_number").single();
-      if (error) { toast.error(error.message); setSaving(false); return null; }
+      if (error) { toastError(error); setSaving(false); return null; }
       number = data.grc_number;
       setGrc((s) => ({ ...s, id: data.id, grc_number: data.grc_number }));
     }

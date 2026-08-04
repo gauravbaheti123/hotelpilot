@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { generateTotpSecret, verifyAndEnableTotp } from "@/lib/totp";
 import { Copy, ShieldCheck } from "lucide-react";
+import { toastError } from "@/lib/errorMessage";
 
 interface UserProps {
   userId: string;
@@ -35,7 +36,7 @@ export function Manage2FADialog({ user, onClose }: { user: UserProps; onClose: (
       setCode("");
       setPhase("setup");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to generate secret");
+      toastError(e, "Failed to generate secret");
     } finally { setBusy(false); }
   }
 
@@ -48,7 +49,7 @@ export function Manage2FADialog({ user, onClose }: { user: UserProps; onClose: (
       toast.success("2FA activated");
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Verification failed");
+      toastError(e, "Verification failed");
     } finally { setBusy(false); }
   }
 
@@ -63,7 +64,7 @@ export function Manage2FADialog({ user, onClose }: { user: UserProps; onClose: (
       toast.success("2FA disabled");
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to disable");
+      toastError(e, "Failed to disable");
     } finally { setBusy(false); }
   }
 
@@ -77,7 +78,7 @@ export function Manage2FADialog({ user, onClose }: { user: UserProps; onClose: (
       toast.success("Unlocked");
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to unlock");
+      toastError(e, "Failed to unlock");
     } finally { setBusy(false); }
   }
 

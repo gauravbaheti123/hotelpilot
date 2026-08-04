@@ -35,6 +35,7 @@ import {
   type WizardGuest, type WizardState, type WizardExtraGuest, type WizardRoom,
   type WizardBillTo, type WizardPayment,
 } from "@/lib/bookingWizard";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/front-desk/new")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -253,7 +254,7 @@ function NewBookingWizardPage() {
       toast.success(`Booking ${res.booking_number ?? ""} created`);
     } catch (e: any) {
       // Draft is deliberately kept on failure so nothing typed is lost.
-      toast.error(e?.message ?? "Failed to save booking");
+      toastError(e, "Failed to save booking");
     } finally {
       setSaving(false);
     }

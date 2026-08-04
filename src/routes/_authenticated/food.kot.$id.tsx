@@ -21,6 +21,7 @@ import { DeliveryProof } from "@/components/DeliveryProof";
 import { Printer, Check, Ban, ArrowLeft } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/food/kot/$id")({
   head: () => ({ meta: [{ title: "KOT — HotelPilot" }] }),
   component: () => (<RequirePermission module="all_kots"><KotDetailPage /></RequirePermission>),
@@ -71,7 +72,7 @@ function KotDetailPage() {
         kot_items(id,item_name,qty,rate,amount,gst_rate,kot_station,notes,is_void,
           menu_items(kitchen_printer_id,category_id,menu_categories(kot_printer_id)))`)
       .eq("id", id).single();
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     setK((data ?? null) as unknown as Kot);
     setLoading(false);
   }
@@ -113,7 +114,7 @@ function KotDetailPage() {
     if (next === "served") patch.served_at = stamp;
     if (next === "billed") patch.billed_at = stamp;
     const { error } = await supabase.from("kot_orders").update(patch).eq("id", k.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success(`Marked ${next}`);
     load();
   }
@@ -125,7 +126,7 @@ function KotDetailPage() {
       // voided_at is stamped with server now() by trg_force_server_time_kot
       status: "void", void_reason: voidReason,
     }).eq("id", k.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     const kotId = k.id;
     const priorStatus = k.status;
     const priorReason = (k as any).void_reason ?? null;

@@ -32,6 +32,7 @@ import { GuestSearchInput } from "@/components/GuestSearchInput";
 import { istDateISO, istToday } from "@/lib/date";
 import { createEventBooking, seedEventFolioCharges } from "@/lib/banquetEvent";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/banquet/new")({
   head: () => ({ meta: [{ title: "New Banquet — HotelPilot" }] }),
@@ -433,7 +434,7 @@ function NewBanquetPage() {
       );
       router.navigate({ to: "/banquet/event/$id", params: { id: created.bookingId } });
     } catch (e: any) {
-      toast.error(e.message ?? "Failed");
+      toastError(e, "Failed");
     } finally {
       setSaving(false);
     }

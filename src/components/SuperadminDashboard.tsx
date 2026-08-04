@@ -23,6 +23,7 @@ import { deleteProperty } from "@/lib/admin-properties.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { enterViewMode } from "@/lib/superadmin-view";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 type Prop = {
   id: string;
@@ -164,7 +165,7 @@ export function SuperadminDashboard() {
       .eq("id", p.id);
     setBusyId(null);
     if (error) {
-      toast.error(error.message);
+      toastError(error);
       return;
     }
     toast.success(next === "paused" ? "Property paused" : "Property resumed");

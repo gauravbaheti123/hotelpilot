@@ -52,6 +52,7 @@ import { printIsolated, withPrintStyles } from "@/lib/printStyles";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
   head: () => ({ meta: [{ title: "Folio — HotelPilot" }] }),
   validateSearch: (search: Record<string, unknown>): { folio?: string } => {
@@ -316,7 +317,7 @@ function FolioPage() {
         guests(name,mobile,gst_number,company,address,city,state,state_code,country,id_proof_type,id_proof_number,nationality),
         booking_rooms!booking_rooms_booking_id_fkey(id,rate,check_in,check_out,actual_check_in,actual_check_out,rooms!booking_rooms_room_id_fkey(room_number),room_categories(name,gst_rate))`)
       .eq("id", bookingId).single();
-    if (be) { toast.error(be.message); setLoading(false); return; }
+    if (be) { toastError(be); setLoading(false); return; }
     const bk = b as unknown as BookingCtx;
     setBooking(bk);
 
@@ -372,7 +373,7 @@ function FolioPage() {
     if (!fId) {
       const { data: folioId, error: fe } = await supabase
         .rpc("get_or_create_folio", { _booking_id: bookingId });
-      if (fe) { toast.error(fe.message); setLoading(false); return; }
+      if (fe) { toastError(fe); setLoading(false); return; }
       fId = folioId as unknown as string;
     }
 
@@ -619,7 +620,7 @@ function FolioPage() {
       created_by: user?.id ?? null,
     }));
     const { error } = await supabase.from("folio_charges").insert(rows as any);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     await supabase.from("kot_orders").update({ status: "billed", billed_at: new Date().toISOString() })
       .in("id", toAdd.map((k: any) => k.id));
     toast.success(`Pulled ${toAdd.length} KOT(s)`);
@@ -697,7 +698,7 @@ function FolioPage() {
           : (booking?.guests?.gst_number ?? null),
     };
     const { error } = await supabase.from("folios").update(patch as any).eq("id", folio.id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toastError(error); return; }
     if (booking?.id) {
       await supabase.from("bookings").update({ billing_company_id: companyId } as any).eq("id", booking.id);
     }
@@ -757,7 +758,7 @@ function FolioPage() {
       gst_amount: Math.round(amt * gstR) / 100,
       created_by: user?.id ?? null,
     } as any);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     setAddOpen(false);
     setAddDesc(""); setAddQty("1"); setAddRate("0"); setAddGst("0"); setAddType("extra");
     const next = await refetchCharges();
@@ -801,7 +802,7 @@ function FolioPage() {
       .from("folio_charges")
       .update({ is_wiped: true, wiped_at: new Date().toISOString() } as any)
       .eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     const next = await refetchCharges();
     const prevTotal = Number(folio.total_amount);
     await persistTotals(next, payments);
@@ -860,7 +861,7 @@ function FolioPage() {
       .from("folio_charges")
       .update({ description: desc, qty, rate, amount: amt, gst_rate: gstR, gst_amount: gstAmt } as any)
       .eq("id", editId);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     setEditOpen(false); setEditId(null);
     const next = await refetchCharges();
     const prevTotal = Number(folio.total_amount);
@@ -929,7 +930,7 @@ function FolioPage() {
         _night: night,
         _new_rate: newRate,
       });
-      if (error) { toast.error(error.message); return; }
+      if (error) { toastError(error); return; }
       const next = await refetchCharges();
       const prevTotal = Number(folio.total_amount);
       await persistTotals(next, payments);
@@ -997,7 +998,7 @@ function FolioPage() {
         .from("folio_charges")
         .update({ rate: newRate, amount: newAmount, gst_rate: gstR, gst_amount: gstAmt } as any)
         .eq("id", tariffTarget.id);
-      if (error) { toast.error(error.message); return; }
+      if (error) { toastError(error); return; }
       // Keep the source segment in sync so the seed/self-heal path in load()
       // doesn't re-post the old rate.
       if (tariffTarget.source_table === "booking_rooms" && tariffTarget.source_id) {
@@ -1101,7 +1102,7 @@ function FolioPage() {
         discount_type: val > 0 ? discType : null,
         discount_value: val > 0 ? val : 0,
       } as any).eq("id", folio.id);
-      if (error) return toast.error(error.message);
+      if (error) return toastError(error);
       await persistTotals(charges, payments, {
         discount_type: val > 0 ? discType : undefined,
         discount_value: val > 0 ? val : 0,
@@ -1137,7 +1138,7 @@ function FolioPage() {
         discount_value: val > 0 ? val : 0,
         discount_amount: round2(rupees),
       } as any).eq("id", discTarget.chargeId);
-      if (error) return toast.error(error.message);
+      if (error) return toastError(error);
       const next = await refetchCharges();
       await persistTotals(next, payments);
       logActivity({
@@ -1180,7 +1181,7 @@ function FolioPage() {
       notes: payNote || null,
       created_by: user?.id ?? null,
     } as any);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     setPayOpen(false);
     setPayAmount(""); setPayRef(""); setPayNote(""); setPayMode("cash");
     const { data, error: __qe15 } = await supabase.from("payments").select("*").eq("folio_id", folio.id);
@@ -1269,7 +1270,7 @@ function FolioPage() {
       .from("payments")
       .update({ mode: newMode })
       .eq("id", payEditTarget.id);
-    if (error) { setPayEditSaving(false); return toast.error(error.message); }
+    if (error) { setPayEditSaving(false); return toastError(error); }
     if (locked) {
       await supabase.rpc("log_owner_override" as any, {
         _property_id: booking.property_id,
@@ -1320,7 +1321,7 @@ function FolioPage() {
     const { error: fErr } = await supabase.from("folios").update({
       status: "settled", settled_at: now,
     }).eq("id", folio.id);
-    if (fErr) return toast.error(fErr.message);
+    if (fErr) return toastError(fErr);
 
     if (booking) {
       // 2. Mark booking checked_out (if still active)
@@ -1392,7 +1393,7 @@ function FolioPage() {
       _user_id: user?.id ?? null,
       _force: Number((folio as any).paid_amount ?? 0) > 0,
     } as any);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     setVoidOpen(false);
     const voidedId = folio.id;
     const priorStatus = (folio as any).status ?? "open";
@@ -1460,7 +1461,7 @@ function FolioPage() {
     if (ids.length === 0) return;
     const { error } = await supabase.from("kot_orders")
       .update({ status: "served" }).in("id", ids);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success(`Marked ${ids.length} KOT(s) as served`);
     load();
   }
@@ -1471,7 +1472,7 @@ function FolioPage() {
     const { error } = await supabase.from("kot_orders")
       .update({ status: "cancelled", notes: `Cancelled at checkout: ${cancelReason}` })
       .in("id", ids);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     setCancelOpen(false); setCancelReason("");
     toast.success("Pending orders cancelled");
     load();
@@ -1618,7 +1619,7 @@ function FolioPage() {
     const { error } = await supabase.rpc("undo_checkout" as any, { _booking_id: booking.id });
     setUndoBusy(false);
     if (error) {
-      toast.error(error.message || "Unable to undo checkout");
+      toastError(error, "Unable to undo checkout");
       return;
     }
     setUndoOpen(false);
@@ -1663,7 +1664,7 @@ function FolioPage() {
         } as any)
         .select("id")
         .single();
-      if (cErr) return toast.error(cErr.message);
+      if (cErr) return toastError(cErr);
       await supabase.from("pos_charges")
         .update({ status: "billed", folio_charge_id: (inserted as any).id, billed_at: new Date().toISOString() } as any)
         .eq("id", pc.id);

@@ -27,6 +27,7 @@ import {
   type MovementType,
 } from "@/lib/inventory";
 import { istToday } from "@/lib/date";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/inventory/movements")({
   head: () => ({ meta: [{ title: "Stock Movements — HotelPilot" }] }),
@@ -134,7 +135,7 @@ function MovementsPage() {
       created_by: u.user?.id ?? null,
     };
     const { error } = await supabase.from("stock_movements").insert(payload as never);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success("Movement saved");
     setOpen(false);
     setForm((f) => ({ ...f, quantity: "", rate: "", reference: "", reason: "" }));

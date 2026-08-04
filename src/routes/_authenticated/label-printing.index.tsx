@@ -44,6 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { guardQuery } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/label-printing/")({
   head: () => ({ meta: [{ title: "Label Printing — HotelPilot" }] }),
@@ -155,7 +156,7 @@ function useNutrients(propertyId: string | null | undefined, opts?: { activeOnly
       .order("display_order", { ascending: true });
     if (activeOnly) q = q.eq("is_active", true);
     const { data, error } = await q;
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     setRows(((data ?? []) as unknown) as NutrientMaster[]);
     setLoading(false);
   }, [propertyId, activeOnly]);
@@ -270,7 +271,7 @@ function ProductsTab() {
       .eq("property_id", current.id)
       .order("name");
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     setRows((data ?? []) as any);
   }
   useEffect(() => {
@@ -281,7 +282,7 @@ function ProductsTab() {
   async function remove(id: string) {
     if (!confirm("Delete this product?")) return;
     const { error } = await supabase.from("label_products" as any).delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success("Deleted");
     load();
   }
@@ -412,7 +413,7 @@ function NutrientMasterTab() {
       .from("label_nutrient_master" as any)
       .update({ is_active: !row.is_active })
       .eq("id", row.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success(row.is_active ? "Deactivated" : "Reactivated");
     reload();
   }
@@ -561,7 +562,7 @@ function NutrientDialog({
         .insert({ ...payload, display_order: nextOrder, is_active: true }));
     }
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success(initial ? "Nutrient updated" : "Nutrient added — propagated to all products");
     onSaved();
   }
@@ -773,7 +774,7 @@ function CompanySettingsTab() {
       .from("label_company_settings" as any)
       .upsert(payload, { onConflict: "property_id" });
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success("Company details saved");
   }
 
@@ -927,7 +928,7 @@ function ProductDialog({
       : supabase.from("label_products" as any).insert(payload);
     const { error } = await q;
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success(initial ? "Product updated" : "Product created");
     onSaved();
   }
@@ -1207,7 +1208,7 @@ function PrintLabelTab() {
       .eq("is_active", true)
       .order("name")
       .then(({ data, error }) => {
-        if (error) return toast.error(error.message);
+        if (error) return toastError(error);
         setProducts((data ?? []) as any);
       });
     supabase
@@ -1254,7 +1255,7 @@ function PrintLabelTab() {
       template_used: template,
     });
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success(`Logged ${quantity} label(s)`);
     doPrint();
   }
@@ -1552,7 +1553,7 @@ function HistoryTab() {
       .limit(200)
       .then(({ data, error }) => {
         setLoading(false);
-        if (error) return toast.error(error.message);
+        if (error) return toastError(error);
         setRows((data ?? []) as any);
       });
   }, [current?.id]);

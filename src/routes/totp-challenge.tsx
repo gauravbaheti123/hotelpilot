@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { verifyTotpLogin, markTotpVerified, clearTotpVerified } from "@/lib/totp";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/totp-challenge")({
   head: () => ({ meta: [{ title: "Two-factor sign-in — HotelPilot" }] }),
@@ -52,7 +53,7 @@ function TotpChallengePage() {
       toast.error(msg);
       setCode("");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Verification failed");
+      toastError(e, "Verification failed");
     } finally {
       setBusy(false);
       submittedRef.current = false;

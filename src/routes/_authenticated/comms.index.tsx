@@ -14,6 +14,7 @@ import { CHANNELS, STATUSES, STATUS_TONE, CHANNEL_TONE } from "@/lib/comms";
 import { PlusCircle, MessageSquare, Phone, Mail, Smartphone } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/comms/")({
   head: () => ({ meta: [{ title: "Guest Communications — HotelPilot" }] }),
   component: () => (<RequirePermission module="communications"><CommsIndexPage /></RequirePermission>),
@@ -60,7 +61,7 @@ function CommsIndexPage() {
       .eq("property_id", current.id)
       .order("created_at", { ascending: false })
       .limit(200);
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     setRows((data ?? []) as unknown as Row[]);
     setLoading(false);
   }
@@ -90,7 +91,7 @@ function CommsIndexPage() {
       .from("communications")
       .update({ status: "sent", sent_at: new Date().toISOString() })
       .eq("id", id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toastError(error); return; }
     toast.success("Marked as sent");
     load();
   }

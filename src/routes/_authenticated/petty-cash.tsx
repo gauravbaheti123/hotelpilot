@@ -23,6 +23,7 @@ import {
   PETTY_TYPE_LABEL, pettySign, type PettyCashEntry, type PettyCashType,
 } from "@/lib/pettyCash";
 import { ArrowDownLeft, ArrowUpRight, Trash2, Wallet } from "lucide-react";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/petty-cash")({
   head: () => ({
@@ -69,7 +70,7 @@ function PettyCashPage() {
       .order("created_at", { ascending: false })
       .limit(200);
     setLoading(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toastError(error); return; }
     const mapped = ((data ?? []) as unknown[]).map((r) => {
       const e = r as Record<string, unknown>;
       return {
@@ -116,7 +117,7 @@ function PettyCashPage() {
       created_by_name: userDisplayName(user as never),
     } as never);
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success(`${PETTY_TYPE_LABEL[dialogType]} recorded`);
     setDialogType(null);
     load();
@@ -128,7 +129,7 @@ function PettyCashPage() {
       .from("petty_cash_entries")
       .update({ is_deleted: true, deleted_by: user.id, deleted_at: new Date().toISOString() } as never)
       .eq("id", deleteTarget.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     toast.success("Entry removed");
     setDeleteTarget(null);
     load();

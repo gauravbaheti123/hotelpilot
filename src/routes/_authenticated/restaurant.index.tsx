@@ -23,6 +23,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { RequirePermission } from "@/components/RequirePermission";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/restaurant/")({
   head: () => ({ meta: [{ title: "Restaurant Billing — HotelPilot" }] }),
   component: () => (<RequirePermission module="restaurant_billing"><RestaurantPage /></RequirePermission>),
@@ -248,7 +249,7 @@ function RestaurantPage() {
       setEditCharge(null);
       await loadDirect();
     } catch (e: any) {
-      toast.error(e?.message ?? "Update failed");
+      toastError(e, "Update failed");
     } finally { setBusyRow(false); }
   }
 
@@ -303,7 +304,7 @@ function RestaurantPage() {
       setDelCharge(null); setDelReason("");
       await loadDirect();
     } catch (e: any) {
-      toast.error(e?.message ?? "Delete failed");
+      toastError(e, "Delete failed");
     } finally { setBusyRow(false); }
   }
 
@@ -430,7 +431,7 @@ function RestaurantPage() {
       setPcAmount(""); setPcDesc("Restaurant Charge"); setPcBooking(""); setPcOutlet(""); setPcBillNo("");
       await loadDirect();
     } catch (e: any) {
-      toast.error(e.message ?? "Failed to post charge");
+      toastError(e, "Failed to post charge");
     } finally { setPosting(false); }
   }
 
@@ -489,7 +490,7 @@ function RestaurantPage() {
       settlement_date: settleDate,
       settlement_notes: settleNotes || null,
     }).in("id", settleIds);
-    if (upd.error) return toast.error(upd.error.message);
+    if (upd.error) return toastError(upd.error);
     toast.success(`Marked ${settleIds.length} payables settled`);
     setSettleOpen(false); setSettleIds([]); setSettleNotes("");
     await loadDirect();
@@ -552,7 +553,7 @@ function RestaurantPage() {
       .select("id,date,amount,description,is_settled,kot_order_id,booking_id,room_id")
       .eq("property_id", current.id)
       .order("date", { ascending: false });
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     const rows = (data ?? []) as CreditRow[];
     setCredits(rows);
 
@@ -682,7 +683,7 @@ function RestaurantPage() {
       toast.success(`Settled ${ids.length} credits`);
       await load();
     } catch (e: any) {
-      toast.error(e.message ?? "Settlement failed");
+      toastError(e, "Settlement failed");
     } finally { setSettling(false); }
   }
 
@@ -705,7 +706,7 @@ function RestaurantPage() {
       toast.success("Credit settled");
       await load();
     } catch (e: any) {
-      toast.error(e.message ?? "Failed");
+      toastError(e, "Failed");
     }
   }
 

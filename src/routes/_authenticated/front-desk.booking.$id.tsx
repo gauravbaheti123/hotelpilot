@@ -56,6 +56,7 @@ import {
 } from "lucide-react";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/front-desk/booking/$id")({
   head: () => ({ meta: [{ title: "Booking — HotelPilot" }] }),
@@ -187,7 +188,7 @@ function BookingDetailPage() {
       `)
       .eq("id", id)
       .single();
-    if (error) { toast.error(error.message); setLoading(false); return; }
+    if (error) { toastError(error); setLoading(false); return; }
     const detail = data as unknown as BookingDetail;
     setB(detail);
     if (detail) {
@@ -258,7 +259,7 @@ function BookingDetailPage() {
       checked_in_at: now,
       checked_in_by: user?.id ?? null,
     }).eq("id", b.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     // mark each room occupied & stamp actual_check_in
     for (const br of b.booking_rooms) {
       if (br.room_id) {
@@ -367,7 +368,7 @@ function BookingDetailPage() {
       _reason: shiftReason,
       _shifted_by: user?.id ?? null,
     });
-    if (shiftErr) { setShiftBusy(false); return toast.error(shiftErr.message); }
+    if (shiftErr) { setShiftBusy(false); return toastError(shiftErr); }
 
     // Recompute folio totals at new rate for any still-unposted future nights (existing historical charges remain).
     try {
@@ -457,7 +458,7 @@ function BookingDetailPage() {
       total_amount: newTotal,
       balance_amount: newBalance,
     }).eq("id", b.id);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     logActivity({
       property_id: b.property_id,
       user_id: user?.id ?? "",
@@ -529,7 +530,7 @@ function BookingDetailPage() {
       cancelled_at: new Date().toISOString(),
       cancelled_reason: cancelReason || null,
     }).eq("id", bookingId);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     setCancelOpen(false);
     toastWithUndo(
       "Booking cancelled",
@@ -1084,7 +1085,7 @@ function CustomRemarkCard({
       .update({ custom_remark: trimmed || null } as any)
       .eq("id", bookingId);
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     onSaved(trimmed);
     toast.success("Custom remark saved");
   }

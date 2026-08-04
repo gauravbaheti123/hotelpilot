@@ -22,6 +22,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { istToday } from "@/lib/date";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/expenses/new")({
   head: () => ({ meta: [{ title: "New Expense — HotelPilot" }] }),
   component: () => (<RequirePermission module="expenses"><NewExpensePage /></RequirePermission>),
@@ -135,7 +136,7 @@ function NewExpensePage() {
       if (r.data) setStaff((p) => [...p, r.data as Opt].sort((a, b) => a.name.localeCompare(b.name)));
     }
     setAddSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     if (id) {
       if (addKind === "category") setForm((f) => ({ ...f, category_id: id! }));
       else if (addKind === "vendor") setForm((f) => ({ ...f, vendor_id: id!, paid_to_staff_id: "" }));
@@ -171,7 +172,7 @@ function NewExpensePage() {
     const { data: inserted, error } = await supabase.from("expenses")
       .insert(payload as never).select("id").maybeSingle();
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) return toastError(error);
     const catName = cats.find((c) => c.id === form.category_id)?.name ?? null;
     logActivity({
       property_id: propertyId,

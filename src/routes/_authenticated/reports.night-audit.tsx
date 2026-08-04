@@ -23,6 +23,7 @@ import { AlertTriangle, CheckCircle2, Lock, Printer, FileText } from "lucide-rea
 import { RequirePermission } from "@/components/RequirePermission";
 import { istDateISO } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/reports/night-audit")({
   head: () => ({ meta: [{ title: "Night Audit — HotelPilot" }] }),
   component: () => (<RequirePermission module="day_close"><NightAuditPage /></RequirePermission>),
@@ -345,7 +346,7 @@ function NightAuditPage() {
       setNotes(""); setActualCash("");
       await refresh();
     } catch (e: any) {
-      toast.error(e.message ?? "Failed to close day");
+      toastError(e, "Failed to close day");
     } finally { setBusy(false); }
   }
 
@@ -353,7 +354,7 @@ function NightAuditPage() {
     if (!isOwner) { toast.error("Only owners can override a closed day"); return; }
     if (!confirm("Override and delete this day's audit?")) return;
     const { error } = await supabase.rpc("delete_night_audit", { _id: id });
-    if (error) { toast.error(error.message); return; }
+    if (error) { toastError(error); return; }
     toast.success("Audit removed — day unlocked");
     refresh();
   }

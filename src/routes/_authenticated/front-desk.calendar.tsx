@@ -11,6 +11,7 @@ import { addDaysIso, todayIso, BOOKING_STATUS_TONE } from "@/lib/front-desk";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/front-desk/calendar")({
   head: () => ({ meta: [{ title: "Reservation Calendar — HotelPilot" }] }),
   component: () => (<RequirePermission module="calendar"><CalendarPage /></RequirePermission>),
@@ -95,9 +96,9 @@ function CalendarPage() {
         .lt("checkin_date", rangeEnd)
         .gt("checkout_date", start),
     ]);
-    if (roomsRes.error) toast.error(roomsRes.error.message);
-    if (brRes.error) toast.error(brRes.error.message);
-    if (evRes.error) toast.error(evRes.error.message);
+    if (roomsRes.error) toastError(roomsRes.error);
+    if (brRes.error) toastError(brRes.error);
+    if (evRes.error) toastError(evRes.error);
     setRooms((roomsRes.data ?? []) as unknown as RoomRow[]);
     setBrs((brRes.data ?? []) as unknown as BRRow[]);
     setEvents((evRes.data ?? []) as unknown as EventBlockRow[]);

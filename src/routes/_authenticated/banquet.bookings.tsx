@@ -22,6 +22,7 @@ import { listEventBookings, deleteEventBooking, type EventRow } from "@/lib/banq
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/banquet/bookings")({
   head: () => ({ meta: [{ title: "Banquet Events — HotelPilot" }] }),
   component: () => (<RequirePermission module="banquet"><BanquetBookingsPage /></RequirePermission>),
@@ -48,7 +49,7 @@ function BanquetBookingsPage() {
       try {
         setRows(await listEventBookings(propertyId, { limit: 200 }));
       } catch (e: any) {
-        toast.error(e?.message ?? "Failed to load events");
+        toastError(e, "Failed to load events");
       }
     })();
   };
@@ -137,7 +138,7 @@ function BanquetBookingsPage() {
       await deleteEventBooking({ bookingId: delTarget.booking_id, legacyId: delTarget.legacy_id });
     } catch (e: any) {
       setBusy(false);
-      return toast.error(e?.message ?? "Delete failed");
+      return toastError(e, "Delete failed");
     }
     setBusy(false);
     // Reset rooms still stuck at 'blocked' (skip rooms already occupied by

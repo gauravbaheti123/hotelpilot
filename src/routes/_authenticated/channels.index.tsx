@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { Cloud, Radio, RefreshCw, Plus, Trash2 } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/channels/")({
   head: () => ({ meta: [{ title: "Channel Manager — HotelPilot" }] }),
   component: () => (<RequirePermission module="channel_manager"><ChannelManagerPage /></RequirePermission>),
@@ -82,7 +83,7 @@ function ChannelManagerPage() {
       payload,
     });
     setSyncing(null);
-    if (error) toast.error(error.message);
+    if (error) toastError(error);
     else { toast.success(`${type} pushed to ${channel.name}`); load(); }
   }
 
@@ -271,7 +272,7 @@ function MappingDialog({ propertyId, channels, categories, tariffs, onSaved }: {
       is_active: active,
     });
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toastError(error); return; }
     toast.success("Mapping added");
     setOpen(false);
     setChannelId(""); setCategoryId(""); setTariffId(""); setRoomCode(""); setRateCode(""); setOffset(0); setActive(true);

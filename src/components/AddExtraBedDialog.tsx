@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { todayIso } from "@/lib/front-desk";
 import { extraBedRateFor, resolveTariffForCategory } from "@/lib/tariff";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 interface Props {
   bookingId: string | null;
@@ -100,7 +101,7 @@ export function AddExtraBedDialog({ bookingId, open, onOpenChange, onDone }: Pro
       onDone?.();
       onOpenChange(false);
     } catch (e: any) {
-      toast.error(e.message ?? "Failed to add extra bed");
+      toastError(e, "Failed to add extra bed");
     } finally {
       setSaving(false);
     }

@@ -32,6 +32,7 @@ import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 interface Props {
   bookingId: string | null;
@@ -177,7 +178,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       .eq("id", bookingId)
       .single();
     if (error) {
-      toast.error(error.message);
+      toastError(error);
       setLoading(false);
       return;
     }
@@ -213,7 +214,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       .eq("is_deleted", false)
       .not("status", "in", "(void,refunded)");
     if (liveFoliosErr) {
-      toast.error(liveFoliosErr.message);
+      toastError(liveFoliosErr);
       setLoading(false);
       return;
     }
@@ -224,7 +225,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         _booking_id: bookingId,
       });
       if (fErr) {
-        toast.error(fErr.message);
+        toastError(fErr);
         setLoading(false);
         return;
       }
@@ -234,7 +235,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         .eq("id", folioId as any)
         .single();
       if (createdFolioErr) {
-        toast.error(createdFolioErr.message);
+        toastError(createdFolioErr);
         setLoading(false);
         return;
       }
@@ -338,7 +339,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       const seedErr = results.find((result: any) => result.error)?.error;
       if (seedErr) {
         console.error("[CheckoutDialog] room charge seed failed", seedErr);
-        toast.error(`Room charge could not be added: ${seedErr.message}`);
+        toastError(seedErr, "Room charge could not be added");
         return;
       }
       // Only mark seeded after a successful insert so transient failures
@@ -500,7 +501,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       const { error } = await supabase.from("folio_charges").insert(rows as any);
       if (error) {
         setBusy(false);
-        return toast.error(error.message);
+        return toastError(error);
       }
     }
     await supabase
@@ -533,7 +534,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         } as any)
         .select("id")
         .single();
-      if (cErr) { setBusy(false); return toast.error(cErr.message); }
+      if (cErr) { setBusy(false); return toastError(cErr); }
       await supabase.from("pos_charges")
         .update({ status: "billed", folio_charge_id: (inserted as any).id, billed_at: new Date().toISOString() } as any)
         .eq("id", pc.id);
@@ -615,7 +616,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       toast.success(`${bill.bill_number} added to room bill`);
       await load();
     } catch (e: any) {
-      toast.error(e?.message ?? "Failed to transfer segment bill");
+      toastError(e, "Failed to transfer segment bill");
     } finally {
       setBusy(false);
     }
@@ -679,7 +680,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       );
       if (payErr) {
         setBusy(false);
-        return toast.error(payErr.message);
+        return toastError(payErr);
       }
       for (const r of rows) {
         logActivity({
@@ -709,7 +710,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       .select("id,total_amount,paid_amount,balance_amount,status")
       .eq("id", folio.id)
       .single();
-    if (refErr) { setBusy(false); return toast.error(refErr.message); }
+    if (refErr) { setBusy(false); return toastError(refErr); }
     const liveBalance = Number((freshFolio as any)?.balance_amount ?? 0);
     if (liveBalance > 0.01) {
       setBusy(false);
@@ -730,7 +731,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       if (bkErr) {
         setBusy(false);
         console.error("[CheckoutDialog] booking status update failed", bkErr);
-        return toast.error(`Checkout failed: ${bkErr.message}`);
+        return toastError(bkErr, "Checkout failed");
       }
     }
 
@@ -762,7 +763,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       if (rmErr) {
         setBusy(false);
         console.error("[CheckoutDialog] rooms status update failed", rmErr);
-        return toast.error(`Checkout partial: room status not updated — ${rmErr.message}`);
+        return toastError(rmErr, "Checkout partial: room status not updated —");
       }
       for (const p of priorStatuses) {
         logActivity({
@@ -892,7 +893,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         if (error) {
           setEarlyBusy(false);
           setEarlyChoice(null);
-          return toast.error(`Could not shorten stay: ${error.message}`);
+          return toastError(error, "Could not shorten stay");
         }
       }
       const { error: bkErr } = await supabase
@@ -902,7 +903,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       if (bkErr) {
         setEarlyBusy(false);
         setEarlyChoice(null);
-        return toast.error(`Could not shorten stay: ${bkErr.message}`);
+        return toastError(bkErr, "Could not shorten stay");
       }
       // Reload so folio totals / balance reflect the reduced amount before payment.
       await load();

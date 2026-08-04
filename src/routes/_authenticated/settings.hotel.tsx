@@ -69,6 +69,7 @@ const INDIAN_STATES: Array<{ name: string; code: string }> = [
 
 import { GSTIN_REGEX as GSTIN_RE, GSTIN_ERROR, isValidOrEmptyGSTIN } from "@/lib/gstin";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
 const PIN_RE = /^[0-9]{6}$/;
 const PHONE_RE = /^[0-9]{10}$/;
@@ -128,7 +129,7 @@ function HotelSettingsForm({
         .select("*")
         .eq("id", propertyId)
         .maybeSingle();
-      if (error) { toast.error(error.message); setLoaded(true); return; }
+      if (error) { toastError(error); setLoaded(true); return; }
       setForm(data ?? {});
       if (data?.logo_url) refreshLogoSignedUrl(data.logo_url);
 
@@ -190,7 +191,7 @@ function HotelSettingsForm({
       await refreshLogoSignedUrl(path);
       toast.success("Logo uploaded");
       reloadProps();
-    } catch (e: any) { toast.error(e.message ?? "Upload failed"); }
+    } catch (e: any) { toastError(e, "Upload failed"); }
     finally { setUploading(false); }
   }
 
@@ -282,7 +283,7 @@ function HotelSettingsForm({
 
       toast.success("Settings saved successfully");
       reloadProps();
-    } catch (e: any) { toast.error(e.message ?? "Save failed"); }
+    } catch (e: any) { toastError(e, "Save failed"); }
     finally { setSaving(false); }
   }
 

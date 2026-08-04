@@ -24,6 +24,7 @@ import {
 } from "@/lib/staff-users.functions";
 import { Manage2FADialog } from "@/components/Manage2FADialog";
 import { reportQueryError } from "@/lib/queryError";
+import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/superadmin/users")({
   head: () => ({ meta: [{ title: "User Management — HotelPilot" }] }),
@@ -195,7 +196,7 @@ function UsersPage() {
       const r = rows.find((x) => x.ur_id === ur_id);
       toast.success(`Role updated${r?.name ? ` for ${r.name}` : ""}`);
       load();
-    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    } catch (e: any) { toastError(e, "Failed"); }
   }
 
   async function toggleActive(r: AssignRow) {
@@ -203,7 +204,7 @@ function UsersPage() {
       await setActiveFn({ data: { user_id: r.user_id, active: !r.is_active } });
       toast.success(!r.is_active ? "User activated" : "User deactivated");
       load();
-    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    } catch (e: any) { toastError(e, "Failed"); }
   }
 
   async function onCreate() {
@@ -223,7 +224,7 @@ function UsersPage() {
       setShowNew(false);
       setForm({ name: "", email: "", password: randomPassword(), role_id: "" });
       load();
-    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    } catch (e: any) { toastError(e, "Failed"); }
     finally { setBusy(false); }
   }
 
@@ -234,7 +235,7 @@ function UsersPage() {
       await resetFn({ data: { user_id: resetTarget.user_id, password: resetPw } });
       toast.success("Password reset");
       setResetTarget(null); setResetPw("");
-    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    } catch (e: any) { toastError(e, "Failed"); }
   }
 
   async function onDelete(r: AssignRow) {
@@ -243,7 +244,7 @@ function UsersPage() {
       await deleteFn({ data: { user_id: r.user_id } });
       toast.success("User deleted");
       load();
-    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    } catch (e: any) { toastError(e, "Failed"); }
   }
 
   if (loading) return <AppShell title="User Management"><div className="text-muted-foreground">Loading…</div></AppShell>;
