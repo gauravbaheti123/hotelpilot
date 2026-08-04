@@ -72,6 +72,7 @@ function InvoicesPage() {
   }>>([]);
   const [audit, setAudit] = useState(false);
   const [delTarget, setDelTarget] = useState<Row | null>(null);
+  const [delReason, setDelReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [segRefresh, setSegRefresh] = useState(0);
   // Hard-delete of a voided bill (owner-only, password re-entry)
@@ -164,14 +165,15 @@ function InvoicesPage() {
 
   async function confirmDelete() {
     if (!delTarget) return;
+    if (!delReason.trim()) return toast.error("Reason is required to void a bill");
     setBusy(true);
-    const { error } = await supabase.from("folios").update({
-      is_deleted: true,
-      deleted_by: user?.id ?? null,
-      deleted_at: new Date().toISOString(),
-      status: "void",
-      voided_at: new Date().toISOString(),
-    } as any).eq("id", delTarget.id);
+    // Server-side RPC stamps voided_at/deleted_at with now() — never the client clock.
+    const { error } = await supabase.rpc("void_folio_safe" as any, {
+      _folio_id: delTarget.id,
+      _reason: delReason.trim(),
+      _user_id: user?.id ?? null,
+      _force: Number(delTarget.paid_amount ?? 0) > 0,
+    } as any);
     setBusy(false);
     if (error) return toast.error(error.message);
     logActivity({
@@ -182,10 +184,14 @@ function InvoicesPage() {
       module: "Billing",
       reference_id: delTarget.id,
       reference_label: `${delTarget.invoice_number} — ${delTarget.bookings?.guests?.name ?? ""}`,
-      details: { bill_number: delTarget.invoice_number, amount: delTarget.total_amount },
+      details: {
+        bill_number: delTarget.invoice_number, amount: delTarget.total_amount,
+        reason: delReason.trim(), paid_amount: delTarget.paid_amount ?? 0,
+      },
     });
     toast.success(`Bill ${delTarget.invoice_number} voided`);
     setDelTarget(null);
+    setDelReason("");
     load();
   }
 
@@ -599,18 +605,31 @@ function InvoicesPage() {
         </Card>
       )}
 
-      <Dialog open={!!delTarget} onOpenChange={(o) => !o && setDelTarget(null)}>
+      <Dialog open={!!delTarget} onOpenChange={(o) => { if (!o) { setDelTarget(null); setDelReason(""); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Void bill?</DialogTitle></DialogHeader>
           {delTarget && (
-            <p className="text-sm text-muted-foreground">
-              Void bill <b>{delTarget.invoice_number}</b>? This bill will be voided but the bill number
-              will be retained for audit continuity.
-            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Void bill <b>{delTarget.invoice_number}</b>? This bill will be voided but the bill number
+                will be retained for audit continuity.
+              </p>
+              {Number(delTarget.paid_amount ?? 0) > 0 && (
+                <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">
+                  This bill has payments of {inr(Number(delTarget.paid_amount))} recorded. Voiding it will
+                  leave those payments unattached — reattach or refund them afterwards.
+                </p>
+              )}
+              <div className="space-y-1">
+                <Label>Reason (required)</Label>
+                <Input value={delReason} onChange={(e) => setDelReason(e.target.value)}
+                  placeholder="Why is this bill being voided?" />
+              </div>
+            </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDelTarget(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={busy}>
+            <Button variant="outline" onClick={() => { setDelTarget(null); setDelReason(""); }}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete} disabled={busy || !delReason.trim()}>
               {busy ? "Voiding…" : "Void Bill"}
             </Button>
           </DialogFooter>

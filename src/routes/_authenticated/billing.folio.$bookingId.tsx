@@ -1378,9 +1378,14 @@ function FolioPage() {
   async function voidFolio() {
     if (!folio) return;
     if (!voidReason.trim()) return toast.error("Reason required");
-    await supabase.from("folios").update({
-      status: "void", voided_at: new Date().toISOString(), void_reason: voidReason,
-    }).eq("id", folio.id);
+    // Server-side RPC stamps voided_at with now() — never the client clock.
+    const { error } = await supabase.rpc("void_folio_safe" as any, {
+      _folio_id: folio.id,
+      _reason: voidReason.trim(),
+      _user_id: user?.id ?? null,
+      _force: Number((folio as any).paid_amount ?? 0) > 0,
+    } as any);
+    if (error) return toast.error(error.message);
     setVoidOpen(false);
     toast.success("Folio voided");
     load();
