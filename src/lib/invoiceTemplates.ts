@@ -4,6 +4,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { consolidateSegmentCharges, expandRoomNights, inr } from "@/lib/billing";
 import { resolveTaxType, splitGst } from "@/lib/gst";
+import { billNo } from "@/lib/billNumber";
 
 export interface InvoiceProperty {
   name: string;
@@ -249,7 +250,7 @@ function metaBlock(ctx: InvoiceContext): string {
   const ns = nights(booking.check_in, booking.check_out);
   const billNo = draft
     ? `<span style="color:#9ca3af;letter-spacing:4px">- - - - -</span>`
-    : esc(folio.invoice_number);
+    : esc(billNo(folio.invoice_number));
 
   // OTA / third-party channel name for "Company To" (priority: mapped OTA channel → manual partner name → generic "OTA")
   const otaName =
@@ -453,7 +454,7 @@ export function renderInvoiceHtml(ctx: InvoiceContext): string {
   const watermark = draft
     ? `<div class="draft-watermark">DRAFT</div>` : "";
   return `<!doctype html><html><head><meta charset="utf-8"/>
-    <title>${esc(ctx.folio.invoice_number)}</title>
+    <title>${esc(billNo(ctx.folio.invoice_number))}</title>
     <style>${commonStyles(color, draft)}</style>
     </head><body><div class="invoice">
       ${watermark}
