@@ -124,6 +124,11 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
   const [booking, setBooking] = useState<any>(null);
   const [folio, setFolio] = useState<any>(null);
   const [charges, setCharges] = useState<any[]>([]);
+  // Separate flag: does a late-checkout charge row exist on this folio,
+  // INCLUDING soft-deleted (wiped) ones? `charges` only holds live rows, so
+  // the auto-late-fee guard must not use it — otherwise a staff-deleted late
+  // fee would silently be re-added on every reopen.
+  const [hasAnyLateChargeRow, setHasAnyLateChargeRow] = useState(false);
   const [payments, setPayments] = useState<any[]>([]);
   const [pendingKots, setPendingKots] = useState<PendingKot[]>([]);
   const [pendingPos, setPendingPos] = useState<PendingPosCharge[]>([]);
@@ -236,7 +241,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     const folioId = selectedFolio.id;
 
     const [{ data: c }, { data: p }, { data: pk }, { data: pos }] = await Promise.all([
-      supabase.from("folio_charges").select("*").eq("folio_id", folioId as any),
+      supabase.from("folio_charges").select("*").eq("folio_id", folioId as any).eq("is_wiped", false),
       supabase.from("payments").select("*").eq("folio_id", folioId as any),
       supabase
         .from("kot_orders")
@@ -253,6 +258,18 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     ]);
     setFolio(selectedFolio);
     setCharges(c ?? []);
+    // Unfiltered lookup (wiped rows included) purely for the late-fee guard.
+    const { data: lateRows } = await supabase
+      .from("folio_charges")
+      .select("id,description,charge_type,source_table")
+      .eq("folio_id", folioId as any);
+    setHasAnyLateChargeRow(
+      ((lateRows ?? []) as any[]).some(
+        (c: any) =>
+          c.source_table === "late_checkout" ||
+          (typeof c.description === "string" && /late\s*checkout/i.test(c.description)),
+      ),
+    );
     setPayments(p ?? []);
     setPendingKots((pk ?? []) as unknown as PendingKot[]);
     setPendingPos((pos ?? []) as unknown as PendingPosCharge[]);
@@ -285,6 +302,11 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
   useEffect(() => {
     if (!open || loading || !folio || !booking) return;
     if (didSeedRoomCharges.current) return;
+    // A settled folio is final — never re-derive or re-seed charges on it.
+    if (folio.status === "settled" || folio.status === "void") {
+      didSeedRoomCharges.current = true;
+      return;
+    }
     if (!booking.booking_rooms?.length) return;
     const existingRoomSourceIds = new Set(
       charges
@@ -343,10 +365,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       return;
     }
 
-    const alreadyLate = charges.some(
-      (c: any) => c.charge_type === "room" && typeof c.description === "string" && /late\s*checkout/i.test(c.description),
-    );
-    if (alreadyLate) {
+    // Includes soft-deleted rows: a late fee staff explicitly removed must
+    // never be re-inserted.
+    if (hasAnyLateChargeRow) {
       didLateChargeCheck.current = true;
       return;
     }
@@ -392,7 +413,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       load();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, loading, folio?.id, booking?.id, property?.checkout_grace_time]);
+  }, [open, loading, folio?.id, booking?.id, property?.checkout_grace_time, hasAnyLateChargeRow]);
 
   const totals = useMemo(() => {
     const rooms: SummaryRow[] = [];
@@ -415,6 +436,11 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     const balance = Math.max(0, grand - paid);
     return { rooms, food, other, roomTotal, foodTotal, otherTotal, grand, paid, balance };
   }, [charges, payments, folio?.gst_mode]);
+
+  // Settled folio with zero balance: trust folios.balance_amount as the source
+  // of truth and skip the client-side charge re-derivation entirely.
+  const settledZero =
+    !!folio && folio.status === "settled" && Number(folio.balance_amount ?? 0) <= 0.01;
 
   // Pre-fill single amount once balance computed
   useEffect(() => {
@@ -983,6 +1009,38 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
                   {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Add POS to Bill
                 </Button>
               )}
+            </DialogFooter>
+          </div>
+        ) : settledZero ? (
+          <div className="space-y-4 text-sm">
+            <div className="rounded border p-3 bg-muted/30">
+              <div className="font-medium">
+                Room {roomNumbers} · {booking.guests?.name ?? "—"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Check-in: {booking.check_in} · Check-out: {booking.check_out} · {nights} Night{nights > 1 ? "s" : ""}
+              </div>
+            </div>
+            <div className="rounded-md border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 p-4">
+              <div className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                Bill settled
+              </div>
+              <div className="mt-1 text-lg font-semibold text-emerald-700 dark:text-emerald-300">
+                ₹0 due — ready to close
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-1">
+                Invoice {folio.invoice_number ?? "—"} · Total {inrRound(Number(folio.total_amount ?? 0))} · Paid{" "}
+                {inrRound(Number(folio.paid_amount ?? 0))}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+                Cancel
+              </Button>
+              <Button onClick={collectAndCheckout} disabled={busy}>
+                {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                Confirm Checkout
+              </Button>
             </DialogFooter>
           </div>
         ) : (
