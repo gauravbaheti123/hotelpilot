@@ -60,8 +60,11 @@ function dayOfWeek(iso: string) {
 
 function CalendarPage() {
   const { current, loading: propLoading } = useCurrentProperty();
+  // Shared cache — the room grid rows come from the same list every other
+  // screen uses instead of a per-load fetch.
+  const { rooms: sharedRooms } = useRooms(current?.id ?? null);
   const [start, setStart] = useState<string>(todayIso());
-  const [rooms, setRooms] = useState<RoomRow[]>([]);
+  const rooms = useMemo(() => sharedRooms as unknown as RoomRow[], [sharedRooms]);
   const [brs, setBrs] = useState<BRRow[]>([]);
   const [events, setEvents] = useState<EventBlockRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,12 +78,7 @@ function CalendarPage() {
   async function load() {
     if (!current) return;
     setLoading(true);
-    const [roomsRes, brRes, evRes] = await Promise.all([
-      supabase
-        .from("rooms")
-        .select("id,room_number,room_categories(name)")
-        .eq("property_id", current.id)
-        .order("room_number"),
+    const [brRes, evRes] = await Promise.all([
       supabase
         .from("booking_rooms")
         .select("id,booking_id,room_id,check_in,check_out,bookings!booking_rooms_booking_id_fkey!inner(booking_number,status,property_id,guests(name))")
@@ -95,10 +93,8 @@ function CalendarPage() {
         .lt("checkin_date", rangeEnd)
         .gt("checkout_date", start),
     ]);
-    if (roomsRes.error) toastError(roomsRes.error);
     if (brRes.error) toastError(brRes.error);
     if (evRes.error) toastError(evRes.error);
-    setRooms((roomsRes.data ?? []) as unknown as RoomRow[]);
     setBrs((brRes.data ?? []) as unknown as BRRow[]);
     setEvents((evRes.data ?? []) as unknown as EventBlockRow[]);
     setLoading(false);
