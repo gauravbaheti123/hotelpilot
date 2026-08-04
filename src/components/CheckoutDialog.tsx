@@ -625,7 +625,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
 
     // Build payment rows
     const rows: { amount: number; mode: string; reference_no: string | null }[] = [];
-    if (totals.balance > 0.01) {
+    // When the folio is already settled per the DB (settledZero), skip the
+    // client-derived balance gate entirely and rely on the DB refresh below.
+    if (!settledZero && totals.balance > 0.01) {
       if (splitMode) {
         for (const s of splits) {
           const a = Number(s.amount);
