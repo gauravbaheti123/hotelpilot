@@ -139,7 +139,7 @@ function Page() {
   return (
     <ReportShell
       title="Bill-Wise Report"
-      filters={<Filters {...{ from, to, setFrom, setTo, billType, setBillType, payMode, setPayMode, status, setStatus, paymentMethods }} />}
+      filters={<Filters {...{ from, to, setFrom, setTo, payMode, setPayMode, status, setStatus, paymentMethods }} />}
       onExcel={() => exportExcel(derived, columns, meta)}
       onPdf={() => exportPdf(derived, columns, meta)}
       onTally={tallyXml}
@@ -179,7 +179,6 @@ function Page() {
 
 function Filters(p: {
   from: string; to: string; setFrom: (v: string)=>void; setTo: (v: string)=>void;
-  billType: string; setBillType: (v: string)=>void;
   payMode: string; setPayMode: (v: string)=>void;
   status: string; setStatus: (v: string)=>void;
   paymentMethods?: { id: string; name: string }[];
@@ -187,16 +186,6 @@ function Filters(p: {
   return (<>
     <div><Label>From</Label><Input type="date" value={p.from} onChange={(e) => p.setFrom(e.target.value)} className="w-40" /></div>
     <div><Label>To</Label><Input type="date" value={p.to} onChange={(e) => p.setTo(e.target.value)} className="w-40" /></div>
-    <div><Label>Bill Type</Label>
-      <Select value={p.billType} onValueChange={p.setBillType}>
-        <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All</SelectItem>
-          <SelectItem value="gst_invoice">GST Invoice</SelectItem>
-          <SelectItem value="cash_bill">Cash Bill</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
     <div><Label>Payment Mode</Label>
       <Select value={p.payMode} onValueChange={p.setPayMode}>
         <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
