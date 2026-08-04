@@ -29,6 +29,7 @@ interface Row {
   total_amount: number; discount: number; net_amount: number;
   payment_mode: string; bill_type: string; status: string;
   gst_amount: number; sub_total: number;
+  gst_mode: string;
   _id: string;
 }
 
@@ -39,7 +40,6 @@ function Page() {
   const today = istToday();
   const [from, setFrom] = useState(firstOfMonthIso());
   const [to, setTo] = useState(today);
-  const [billType, setBillType] = useState<string>("all");
   const [payMode, setPayMode] = useState<string>("all");
   const [status, setStatus] = useState<string>("all");
   const [rows, setRows] = useState<Row[]>([]);
@@ -52,11 +52,10 @@ function Page() {
     const fromIso = `${from}T00:00:00`;
     const toIso = `${to}T23:59:59`;
     let q = supabase.from("folios").select(`
-      id,booking_id,invoice_number,created_at,sub_total,gst_amount,discount_amount,total_amount,bill_type,status,
+      id,booking_id,invoice_number,created_at,sub_total,gst_amount,discount_amount,total_amount,bill_type,gst_mode,status,
       bookings(booking_rooms(rooms!booking_rooms_room_id_fkey(room_number)),guests(name))
     `).eq("property_id", propertyId).gte("created_at", fromIso).lte("created_at", toIso)
       .order("created_at", { ascending: false });
-    if (billType !== "all") q = q.eq("bill_type", billType);
     if (status !== "all") q = q.eq("status", status === "active" ? "settled" : "voided");
     const [{ data: allFolios }, scope] = await Promise.all([q, fetchBanquetScope(propertyId)]);
     // Banquet event-block folios are excluded here — they live in the Owner-only Banquet Billing report.
@@ -92,7 +91,8 @@ function Page() {
         total_amount: Number(f.sub_total ?? 0), discount: Number(f.discount_amount ?? 0),
         net_amount: Number(f.total_amount ?? 0),
         payment_mode: payMap.get(f.id) ?? "",
-        bill_type: f.bill_type ?? "cash_bill", status: f.status,
+        bill_type: f.bill_type ?? "gst_invoice", status: f.status,
+        gst_mode: f.gst_mode ?? "gst",
         gst_amount: Number(f.gst_amount ?? 0),
         sub_total: Number(f.sub_total ?? 0),
       };
@@ -100,7 +100,7 @@ function Page() {
     if (payMode !== "all") out = out.filter((r) => r.payment_mode === payMode);
     setRows(out);
     setLoading(false);
-  }, [propertyId, from, to, billType, payMode, status]);
+  }, [propertyId, from, to, payMode, status]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -116,7 +116,7 @@ function Page() {
     { key: "discount", header: "Discount", get: (r) => r.discount, currency: true, sortValue: (r) => r.discount },
     { key: "net_amount", header: "Net Amount", get: (r) => r.net_amount, currency: true, sortValue: (r) => r.net_amount },
     { key: "payment_mode", header: "Payment Mode", get: (r) => r.payment_mode, type: "enum" },
-    { key: "bill_type", header: "Bill Type", get: (r) => r.bill_type === "gst_invoice" ? "GST Invoice" : "Cash Bill", type: "enum" },
+    { key: "bill_type", header: "Bill Type", get: (r) => (r.bill_type === "gst_invoice" || r.gst_mode === "gst") ? "GST Invoice" : "Cash Bill", type: "enum" },
     { key: "status", header: "Status", get: (r) => r.status, type: "enum" },
   ], []);
 
@@ -125,7 +125,9 @@ function Page() {
     totals: [["Total bills", derived.length], ["Grand total", fmtINR(grandDerived)]] as [string, string|number][] };
 
   function tallyXml() {
-    const gstOnly = derived.filter((r) => r.bill_type === "gst_invoice");
+    // Key off gst_mode (the field that actually drives GST calculation) so a
+    // stale/incorrect bill_type label can never drop a real GST invoice again.
+    const gstOnly = derived.filter((r) => r.gst_mode === "gst" || r.bill_type === "gst_invoice");
     const xml = buildTallySalesXml(gstOnly.map((r) => ({
       date: r.date, voucher_number: r.bill_no, guest_name: r.guest_name,
       taxable_amount: r.sub_total - r.discount,
