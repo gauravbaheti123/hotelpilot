@@ -367,9 +367,12 @@ function BookingDetailPage() {
       const { data: folioId } = await supabase.rpc("get_or_create_folio", { _booking_id: b.id });
       const fId = folioId as unknown as string;
       const { data: allCharges } = await supabase.from("folio_charges").select("*").eq("folio_id", fId);
-      const { data: folio } = await supabase.from("folios").select("gst_mode,paid_amount").eq("id", fId).single();
+      const { data: folio } = await supabase.from("folios").select("gst_mode,paid_amount,discount_type,discount_value").eq("id", fId).single();
       const mode = ((folio as any)?.gst_mode ?? "cash") as "cash" | "gst";
-      const t = recomputeFolio((allCharges ?? []) as any, mode);
+      const billDisc = (folio as any)?.discount_type && Number((folio as any)?.discount_value) > 0
+        ? { type: (folio as any).discount_type as "percent" | "amount", value: Number((folio as any).discount_value) }
+        : null;
+      const t = recomputeFolio((allCharges ?? []) as any, mode, billDisc);
       const paid = Number((folio as any)?.paid_amount ?? 0);
       await supabase.from("folios").update({
         ...t, balance_amount: Math.max(0, t.total_amount - paid),
@@ -510,9 +513,12 @@ function BookingDetailPage() {
       }
       // Recompute folio totals
       const { data: allCharges } = await supabase.from("folio_charges").select("*").eq("folio_id", fId);
-      const { data: folio } = await supabase.from("folios").select("gst_mode,paid_amount").eq("id", fId).single();
+      const { data: folio } = await supabase.from("folios").select("gst_mode,paid_amount,discount_type,discount_value").eq("id", fId).single();
       const mode = ((folio as any)?.gst_mode ?? "cash") as "cash" | "gst";
-      const t = recomputeFolio((allCharges ?? []) as any, mode);
+      const billDisc = (folio as any)?.discount_type && Number((folio as any)?.discount_value) > 0
+        ? { type: (folio as any).discount_type as "percent" | "amount", value: Number((folio as any).discount_value) }
+        : null;
+      const t = recomputeFolio((allCharges ?? []) as any, mode, billDisc);
       const paid = Number((folio as any)?.paid_amount ?? 0);
       await supabase.from("folios").update({
         ...t, balance_amount: Math.max(0, t.total_amount - paid),

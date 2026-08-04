@@ -82,6 +82,12 @@ interface Folio {
   billing_guest_id?: string | null;
 }
 /** Another individual guest picked as the Bill-To party. */
+/** Bill-level discount stored on the folio (not materialised as a charge line). */
+function folioBillDiscount(f: Folio | null | undefined): BillDiscount | null {
+  return f?.discount_type && Number(f?.discount_value) > 0
+    ? { type: f.discount_type, value: Number(f.discount_value) }
+    : null;
+}
 interface BillToGuest {
   id: string;
   name: string;
@@ -738,7 +744,7 @@ function FolioPage() {
         details: {
           bill_number: folio.invoice_number,
           previous_amount: prevTotal,
-          new_amount: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst")).total_amount,
+          new_amount: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst"), folioBillDiscount(folio)).total_amount,
           edited_by: userDisplayName(user as any),
           previous_status: folio.status,
         },
@@ -779,7 +785,7 @@ function FolioPage() {
         details: {
           bill_number: folio.invoice_number,
           previous_amount: prevTotal,
-          new_amount: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst")).total_amount,
+          new_amount: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst"), folioBillDiscount(folio)).total_amount,
           edited_by: userDisplayName(user as any),
           previous_status: folio.status,
         },
@@ -839,7 +845,7 @@ function FolioPage() {
         details: {
           bill_number: folio.invoice_number,
           previous_amount: prevTotal,
-          new_amount: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst")).total_amount,
+          new_amount: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst"), folioBillDiscount(folio)).total_amount,
           edited_by: userDisplayName(user as any),
           previous_status: folio.status,
           charge_id: editId,
@@ -914,7 +920,7 @@ function FolioPage() {
           new_rate: newRate,
           segment_split: true,
           previous_bill_total: prevTotal,
-          new_bill_total: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst")).total_amount,
+          new_bill_total: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst"), folioBillDiscount(folio)).total_amount,
           edited_by: userDisplayName(user as any),
         },
       });
@@ -992,7 +998,7 @@ function FolioPage() {
           new_amount: newAmount,
           gst_rate: gstR,
           previous_bill_total: prevTotal,
-          new_bill_total: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst")).total_amount,
+          new_bill_total: recomputeFolio(next as any, (folio.gst_mode as "cash" | "gst"), folioBillDiscount(folio)).total_amount,
           edited_by: userDisplayName(user as any),
         },
       });
