@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
+import { useRooms } from "@/hooks/use-rooms";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { TASK_TYPES, TASK_PRIORITIES, type TaskType, type TaskPriority } from "@/lib/housekeeping";
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/_authenticated/housekeeping/new")({
 function NewTaskPage() {
   const router = useRouter();
   const { currentId: propertyId } = useCurrentProperty();
+  const { rooms: sharedRooms } = useRooms(propertyId);
   const [rooms, setRooms] = useState<{ id: string; room_number: string }[]>([]);
   const [staff, setStaff] = useState<{ id: string; name: string }[]>([]);
   const [roomId, setRoomId] = useState<string>("");
