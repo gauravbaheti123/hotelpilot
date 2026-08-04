@@ -1261,7 +1261,7 @@ function FolioPage() {
     const active = payMethods.filter((m) => m.is_active).map((m) => m.name);
     if (!active.includes(newMode)) return toast.error("Select an active payment method");
     if (newMode === oldMode) { setPayEditOpen(false); return; }
-    const locked = (folio as any).status === "settled" || (folio as any).status === "void" || (folio as any).is_deleted === true;
+    const locked = (folio as any).status === "settled" || (folio as any).status === "due" || (folio as any).status === "void" || (folio as any).is_deleted === true;
     const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
     if (locked && !isOwner) {
       return toast.error("Bill is locked — only Owner/Superadmin can change payment mode");
