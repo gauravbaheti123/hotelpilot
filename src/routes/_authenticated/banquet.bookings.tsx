@@ -66,13 +66,12 @@ function BanquetBookingsPage() {
   /** Load counts of records that will be removed / detached by the delete. */
   async function openDelete(r: Row) {
     setDelTarget(r); setDelStep(1); setPwd(""); setImpact(null);
-    const legacyId = r.legacy_id ?? "00000000-0000-0000-0000-000000000000";
     const [blocks, pays, extras, mbills, bkgs] = await Promise.all([
       supabase.from("event_room_blocks").select("id", { count: "exact", head: true }).eq("event_booking_id", r.booking_id),
       supabase.from("payments").select("id", { count: "exact", head: true }).eq("booking_id", r.booking_id),
-      supabase.from("banquet_extra_charges").select("id", { count: "exact", head: true }).eq("banquet_booking_id", legacyId),
-      supabase.from("banquet_master_bills").select("id", { count: "exact", head: true }).eq("banquet_booking_id", legacyId),
-      supabase.from("bookings").select("id", { count: "exact", head: true }).eq("event_id", legacyId),
+      supabase.from("banquet_extra_charges").select("id", { count: "exact", head: true }).eq("booking_id", r.booking_id),
+      supabase.from("banquet_master_bills").select("id", { count: "exact", head: true }).eq("booking_id", r.booking_id),
+      supabase.from("bookings").select("id", { count: "exact", head: true }).eq("event_id", r.booking_id),
     ]);
     setImpact({
       "Room blocks": blocks.count ?? 0,
