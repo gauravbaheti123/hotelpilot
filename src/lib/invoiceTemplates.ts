@@ -4,7 +4,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { consolidateSegmentCharges, expandRoomNights, inr } from "@/lib/billing";
 import { resolveTaxType, splitGst } from "@/lib/gst";
-import { billNo, hasBillNumber, PROVISIONAL_DOC_TITLE } from "@/lib/billNumber";
+import { billNo, isProvisional as isProvisionalDoc, PROVISIONAL_DOC_TITLE } from "@/lib/billNumber";
 
 export interface InvoiceProperty {
   name: string;
@@ -245,8 +245,9 @@ function headerBlock(ctx: InvoiceContext): string {
 function metaBlock(ctx: InvoiceContext): string {
   const { booking, folio, property, draft } = ctx;
   const isGst = isGstBill(folio);
-  // P1 — a folio without a number is not yet an invoice: print it as a proforma.
-  const provisional = !hasBillNumber(folio.invoice_number);
+  // P1/P3 — finality is decided by status: an `open` folio prints as a proforma
+  // even when a legacy number was already stamped on it.
+  const provisional = isProvisionalDoc(folio.invoice_number, folio.status);
   const docTitle = provisional
     ? PROVISIONAL_DOC_TITLE
     : draft ? "DRAFT BILL" : isGst ? "TAX INVOICE" : "BILL OF SUPPLY";
@@ -457,7 +458,7 @@ function footerBlock(ctx: InvoiceContext): string {
 
 export function renderInvoiceHtml(ctx: InvoiceContext): string {
   const color = ctx.property.invoice_primary_color || "#1D9E75";
-  const provisional = !hasBillNumber(ctx.folio.invoice_number);
+  const provisional = isProvisionalDoc(ctx.folio.invoice_number, ctx.folio.status);
   const draft = !!ctx.draft || provisional;
   const watermark = provisional
     ? `<div class="draft-watermark" style="font-size:64px;letter-spacing:4px">PROVISIONAL</div>`

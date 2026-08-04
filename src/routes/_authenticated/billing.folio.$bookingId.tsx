@@ -15,7 +15,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { billNo, hasBillNumber, PROVISIONAL_DOC_TITLE } from "@/lib/billNumber";
+import { billNo, isProvisional as isProvisionalDoc, PROVISIONAL_DOC_TITLE } from "@/lib/billNumber";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
@@ -1506,7 +1506,7 @@ function FolioPage() {
 
   const isGst = folio.gst_mode === "gst";
   // P1 — until the folio is settled it carries no number: show a proforma.
-  const isProvisional = !hasBillNumber(folio.invoice_number);
+  const isProvisional = isProvisionalDoc(folio.invoice_number, folio.status);
   const provisionalRef = `Ref: ${booking.booking_number} (provisional)`;
   const propAddrLine = [property?.address, property?.city, property?.state, property?.pincode]
     .filter(Boolean).join(", ");
@@ -2248,10 +2248,6 @@ function FolioPage() {
                       {(linkedCo?.phone || linkedGuest?.mobile) && (
                         <div className="text-xs text-gray-700">Ph: {linkedCo?.phone || linkedGuest?.mobile}</div>
                       )}
-                      <div className="mt-3 text-xs text-gray-700">
-                        <span className="font-semibold">Guest Stayed:</span> {booking.guests?.name ?? "—"}
-                        {booking.guests?.mobile ? ` · ${booking.guests.mobile}` : ""}
-                      </div>
                       {otaName && (
                         <div className="text-[11px] text-gray-500 mt-1">Booking via: {otaName}</div>
                       )}

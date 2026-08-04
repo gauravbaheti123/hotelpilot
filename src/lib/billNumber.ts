@@ -41,8 +41,17 @@ export function isClosedFolioStatus(status?: string | null): boolean {
  */
 export const PROVISIONAL_DOC_TITLE = "PROVISIONAL — NOT A TAX INVOICE";
 
-/** True when the document must be printed/displayed as a proforma. */
-export function isProvisional(invoiceOrEventNumber?: string | null): boolean {
+/**
+ * True when the document must be printed/displayed as a proforma.
+ * Finality is decided by STATUS, not by number presence: an `open` folio is
+ * provisional even if it carries a legacy number stamped before the P1
+ * trigger-timing change.
+ */
+export function isProvisional(
+  invoiceOrEventNumber?: string | null,
+  status?: string | null,
+): boolean {
+  if (status === "open") return true;
   return !hasBillNumber(invoiceOrEventNumber);
 }
 
