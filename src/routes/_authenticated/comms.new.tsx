@@ -66,7 +66,7 @@ function NewCommPage() {
     if (!current) return;
     Promise.all([
       supabase.from("message_templates").select("id,name,channel,subject,body").eq("property_id", current.id).eq("is_active", true).order("name"),
-      supabase.from("bookings").select("id,booking_number,check_in,check_out,balance_amount,guests(id,name,mobile,email),booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))").eq("property_id", current.id).in("status", ["reserved", "checked_in", "checked_out"]).order("check_in", { ascending: false }).limit(80),
+      supabase.from("bookings").select("id,booking_number,check_in,check_out,balance_amount,guests(id,name,mobile,email),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number))").eq("property_id", current.id).in("status", ["reserved", "checked_in", "checked_out"]).order("check_in", { ascending: false }).limit(80),
       supabase.from("guests").select("id,name,mobile,email").eq("property_id", current.id).order("name").limit(200),
     ]).then(async ([t, b, g]) => {
       setTemplates((t.data ?? []) as Tpl[]);

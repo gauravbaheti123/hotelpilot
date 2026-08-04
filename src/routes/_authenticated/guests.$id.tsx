@@ -75,7 +75,7 @@ function GuestDetail() {
     setG((data as Guest | null) ?? null);
     setTagsInput((data?.tags ?? []).join(", "));
     const { data: b } = await supabase.from("bookings")
-      .select("id,booking_number,status,check_in,check_out,total_amount,booking_rooms(rooms!booking_rooms_room_id_fkey(room_number),room_categories(name))")
+      .select("id,booking_number,status,check_in,check_out,total_amount,booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number),room_categories(name))")
       .eq("guest_id", id).order("check_in", { ascending: false }).limit(50);
     // Hide banquet event-block stays once their 48h window has lapsed.
     const scope = await fetchBanquetScope(null);

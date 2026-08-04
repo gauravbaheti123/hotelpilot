@@ -180,7 +180,7 @@ function BookingDetailPage() {
         id,booking_number,status,source,check_in,check_out,adults,children,
         total_amount,advance_amount,balance_amount,notes,custom_remark,checked_in_at,checked_out_at,property_id,
         guests(id,name,mobile,email,address,id_proof_type,id_proof_number),
-        booking_rooms(id,room_id,category_id,rate,meal_plan,adults,children,check_in,check_out,actual_check_in,actual_check_out,
+        booking_rooms!booking_rooms_booking_id_fkey(id,room_id,category_id,rate,meal_plan,adults,children,check_in,check_out,actual_check_in,actual_check_out,
           rooms!booking_rooms_room_id_fkey(room_number),
           room_categories(name))
       `)
