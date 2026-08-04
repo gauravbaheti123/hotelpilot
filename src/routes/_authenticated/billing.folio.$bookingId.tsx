@@ -471,7 +471,7 @@ function FolioPage() {
     setPendingPos((pos ?? []) as any);
 
     setLoading(false);
-  }, [bookingId]);
+  }, [bookingId, folioParam]);
 
   useEffect(() => { load(); }, [load]);
 
