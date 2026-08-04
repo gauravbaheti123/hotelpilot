@@ -113,9 +113,9 @@ function UsersPage() {
       roleQuery,
       urQuery,
     ]);
-    if (__qp1) reportQueryError("props", __qp1);
-    if (__qp2) reportQueryError("rs", __qp2);
-    if (__qp3) reportQueryError("urs", __qp3);
+    if (__qp1) reportQueryError("properties", __qp1);
+    if (__qp2) reportQueryError("roles", __qp2);
+    if (__qp3) reportQueryError("user roles", __qp3);
     setProperties((props ?? []) as Property[]);
     // Every role template visible to this admin (system + custom).
     setAllRoles(((rs ?? []) as RoleOption[]).filter(

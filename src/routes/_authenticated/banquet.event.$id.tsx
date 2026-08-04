@@ -252,9 +252,9 @@ function BanquetEventPage() {
         .eq("is_active", true)
         .order("name"),
     ]);
-    if (__qp1) reportQueryError("rs", __qp1);
-    if (__qp2) reportQueryError("cs", __qp2);
-    if (__qp3) reportQueryError("hs", __qp3);
+    if (__qp1) reportQueryError("room blocks", __qp1);
+    if (__qp2) reportQueryError("extra charges", __qp2);
+    if (__qp3) reportQueryError("halls", __qp3);
     setRooms((rs ?? []) as Room[]);
     setCats((cs ?? []) as Cat[]);
     setHalls((hs ?? []) as Hall[]);

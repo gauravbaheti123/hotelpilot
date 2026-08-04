@@ -68,7 +68,7 @@ function Page() {
       ids.length ? supabase.from("payments").select("folio_id,mode,paid_at").in("folio_id", ids) : Promise.resolve({ data: [] as any[], error: null }),
     ]);
     if (__qp2) reportQueryError("charges", __qp2);
-    if (__qp3) reportQueryError("pays", __qp3);
+    if (__qp3) reportQueryError("payments", __qp3);
     const chargeMap = new Map<string, { room: number; food: number; other: number }>();
     for (const c of (charges ?? []) as any[]) {
       const m = chargeMap.get(c.folio_id) ?? { room: 0, food: 0, other: 0 };

@@ -259,10 +259,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         .eq("booking_id", bookingId)
         .eq("status", "pending"),
     ]);
-    if (__qp1) reportQueryError("c", __qp1);
-    if (__qp2) reportQueryError("p", __qp2);
-    if (__qp3) reportQueryError("pk", __qp3);
-    if (__qp4) reportQueryError("pos", __qp4);
+    if (__qp1) reportQueryError("folio charges", __qp1);
+    if (__qp2) reportQueryError("payments", __qp2);
+    if (__qp3) reportQueryError("payment methods", __qp3);
+    if (__qp4) reportQueryError("POS charges", __qp4);
     setFolio(selectedFolio);
     setCharges(c ?? []);
     // Unfiltered lookup (wiped rows included) purely for the late-fee guard.

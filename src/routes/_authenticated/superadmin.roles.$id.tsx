@@ -122,9 +122,9 @@ function EditRolePage() {
       supabase.from("permissions").select("id,module,action"),
       supabase.from("role_permissions").select("permission_id,allowed").eq("role_id", id),
     ]);
-    if (__qp1) reportQueryError("r", __qp1);
-    if (__qp2) reportQueryError("ps", __qp2);
-    if (__qp3) reportQueryError("rps", __qp3);
+    if (__qp1) reportQueryError("role", __qp1);
+    if (__qp2) reportQueryError("permissions", __qp2);
+    if (__qp3) reportQueryError("role permissions", __qp3);
     const roleRow = (r as any) ?? null;
     if (roleRow && !isSuperadmin && /^(owner|superadmin)$/i.test(roleRow.name)) {
       toast.error("Access denied");

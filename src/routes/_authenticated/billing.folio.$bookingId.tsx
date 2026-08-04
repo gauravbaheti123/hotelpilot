@@ -381,9 +381,9 @@ function FolioPage() {
       supabase.from("folio_charges").select("*").eq("folio_id", fId).eq("is_wiped", false).order("charged_on").order("created_at"),
       supabase.from("payments").select("*").eq("folio_id", fId).order("paid_at", { ascending: false }),
     ]);
-    if (__qp1) reportQueryError("f", __qp1);
-    if (__qp2) reportQueryError("c", __qp2);
-    if (__qp3) reportQueryError("p", __qp3);
+    if (__qp1) reportQueryError("folio", __qp1);
+    if (__qp2) reportQueryError("folio charges", __qp2);
+    if (__qp3) reportQueryError("payments", __qp3);
     setFolio((f ?? null) as unknown as Folio);
     // Hydrate the Bill-To guest (when the folio bills to another individual).
     const billGuestId = (f as any)?.billing_guest_id ?? null;

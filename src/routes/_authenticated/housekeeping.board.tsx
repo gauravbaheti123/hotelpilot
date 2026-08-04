@@ -80,8 +80,8 @@ function BoardPage() {
         .order("floor", { ascending: true }).order("room_number", { ascending: true }),
       supabase.from("housekeeping_room_notes" as never).select("room_id,note").eq("property_id", propertyId),
     ]);
-    if (__qp1) reportQueryError("rms", __qp1);
-    if (__qp2) reportQueryError("nts", __qp2);
+    if (__qp1) reportQueryError("rooms", __qp1);
+    if (__qp2) reportQueryError("room notes", __qp2);
     setRooms((rms ?? []) as unknown as RoomRow[]);
     const map: Record<string, string> = {};
     for (const n of (nts ?? []) as any[]) map[n.room_id] = n.note ?? "";

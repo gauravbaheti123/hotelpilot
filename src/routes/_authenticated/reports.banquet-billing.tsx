@@ -109,7 +109,7 @@ function Page() {
           .in("id", bookingIds),
         listEventBookings(propertyId),
       ]);
-      if (__qp1) reportQueryError("bks", __qp1);
+      if (__qp1) reportQueryError("banquet bookings", __qp1);
       const meta = new Map<string, { room: string; guest: string }>();
       for (const b of (bks ?? []) as any[]) {
         meta.set(b.id, {
@@ -146,7 +146,7 @@ function Page() {
           .gte("created_at", fromIso).lte("created_at", toIso),
       ]);
       if (__qp2) reportQueryError("folios", __qp2);
-      if (__qp3) reportQueryError("segs", __qp3);
+      if (__qp3) reportQueryError("segment bills", __qp3);
       if (__qp4) reportQueryError("masters", __qp4);
 
       const folioIds = ((folios ?? []) as any[]).map((f) => f.id as string);
@@ -164,7 +164,7 @@ function Page() {
           : Promise.resolve({ data: [] as any[] } as any),
       ]);
       if (__qp5) reportQueryError("charges", __qp5);
-      if (__qp6) reportQueryError("items", __qp6);
+      if (__qp6) reportQueryError("bill items", __qp6);
       const chargesByFolio = new Map<string, ChargeRow[]>();
       for (const c of (charges ?? []) as any[]) {
         const list = chargesByFolio.get(c.folio_id) ?? [];

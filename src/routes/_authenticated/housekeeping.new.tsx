@@ -42,8 +42,8 @@ function NewTaskPage() {
         supabase.from("rooms").select("id,room_number").eq("property_id", propertyId).eq("is_active", true).order("room_number"),
         supabase.from("staff").select("id,name").eq("property_id", propertyId).eq("is_active", true).order("name"),
       ]);
-      if (__qp1) reportQueryError("r", __qp1);
-      if (__qp2) reportQueryError("s", __qp2);
+      if (__qp1) reportQueryError("rooms", __qp1);
+      if (__qp2) reportQueryError("staff", __qp2);
       setRooms((r ?? []) as typeof rooms);
       setStaff((s ?? []) as typeof staff);
     })();

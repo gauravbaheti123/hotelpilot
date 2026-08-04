@@ -126,8 +126,8 @@ function RoomDetailPage() {
           supabase.from("folio_charges").select("id, charge_type, description, amount, charged_on").eq("folio_id", f.id).order("charged_on"),
           supabase.from("payments").select("amount").eq("folio_id", f.id),
         ]);
-        if (__qp1) reportQueryError("ch", __qp1);
-        if (__qp2) reportQueryError("pays", __qp2);
+        if (__qp1) reportQueryError("folio charges", __qp1);
+        if (__qp2) reportQueryError("payments", __qp2);
         setCharges((ch ?? []) as any);
         setPaid((pays ?? []).reduce((a: number, x: any) => a + Number(x.amount || 0), 0));
       } else {

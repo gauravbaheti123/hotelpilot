@@ -113,7 +113,7 @@ export async function fetchOccupancy(propertyId: string, date: string): Promise<
       .in("bookings.status", ["checked_in", "reserved"]),
   ]);
   if (__qp3) reportQueryError("rooms total", __qp3);
-  if (__qp4) reportQueryError("br", __qp4);
+  if (__qp4) reportQueryError("occupancy data", __qp4);
   const occupied = br?.length ?? 0;
   const total = roomsTotal ?? 0;
   return {

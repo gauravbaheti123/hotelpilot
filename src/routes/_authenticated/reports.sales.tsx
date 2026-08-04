@@ -52,8 +52,8 @@ function SalesReportPage() {
           .eq("property_id", propertyId).gte("paid_at", start).lt("paid_at", end),
         fetchBanquetScope(propertyId),
       ]);
-      if (__qp1) reportQueryError("f", __qp1);
-      if (__qp2) reportQueryError("p", __qp2);
+      if (__qp1) reportQueryError("folios", __qp1);
+      if (__qp2) reportQueryError("payments", __qp2);
       // Banquet event-block folios/payments are excluded from operational sales.
       setFolios(((f ?? []) as any[]).filter(
         (row) => !isBanquetRecord(scope, { booking_id: row.booking_id, folio_id: row.id }),

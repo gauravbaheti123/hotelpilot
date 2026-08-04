@@ -201,7 +201,7 @@ function BanquetBillPage() {
         .eq("id", bq.property_id)
         .single(),
     ]);
-    if (__qp1) reportQueryError("p", __qp1);
+    if (__qp1) reportQueryError("payments", __qp1);
     // Bulk room rows were retired in Part 5 — event rooms live on
     // event_room_blocks / booking_rooms in the unified model.
     setBulk([]);

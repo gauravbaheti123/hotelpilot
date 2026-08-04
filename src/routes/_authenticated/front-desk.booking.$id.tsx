@@ -215,10 +215,10 @@ function BookingDetailPage() {
           .eq("booking_id", detail.id)
           .order("is_primary", { ascending: false }),
       ]);
-      if (__qp1) reportQueryError("rs", __qp1);
-      if (__qp2) reportQueryError("sh", __qp2);
-      if (__qp3) reportQueryError("kt", __qp3);
-      if (__qp4) reportQueryError("bg", __qp4);
+      if (__qp1) reportQueryError("booking rooms", __qp1);
+      if (__qp2) reportQueryError("room shifts", __qp2);
+      if (__qp3) reportQueryError("KOT orders", __qp3);
+      if (__qp4) reportQueryError("booking guests", __qp4);
       setRooms((rs ?? []) as Room[]);
       // Phase 27b — tariff plans drive every rate decision in the shift flow.
       setTariffPlans(await fetchTariffPlans(detail.property_id).catch(() => []));
