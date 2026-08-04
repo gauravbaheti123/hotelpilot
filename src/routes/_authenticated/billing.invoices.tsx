@@ -112,7 +112,7 @@ function InvoicesPage() {
     if (!propertyId) return;
     (async () => {
       let qb = supabase.from("folios")
-        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms(rooms(room_number)))" as any)
+        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms(rooms!booking_rooms_room_id_fkey(room_number)))" as any)
         .eq("property_id", propertyId);
       if (!audit) qb = qb.eq("is_deleted" as any, false);
       const { data } = await qb.order("created_at", { ascending: false })
