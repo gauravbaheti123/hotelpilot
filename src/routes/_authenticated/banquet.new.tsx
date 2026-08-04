@@ -137,34 +137,30 @@ function NewBanquetPage() {
         .order("name");
       if (__qe1) reportQueryError("halls", __qe1);
       setHalls((data ?? []) as Hall[]);
-      const { data: cs, error: __qe2 } = await supabase
-        .from("room_categories")
-        .select("id, name")
-        .eq("property_id", propertyId)
-        .order("name");
-      if (__qe2) reportQueryError("room categories", __qe2);
-      setCats((cs ?? []) as Cat[]);
-      // Phase 27b — room pricing for banquet blocks comes from Tariff Plans.
-      setTariffPlans(await fetchTariffPlans(propertyId).catch(() => []));
-      const { data: rs, error: __qe3 } = await supabase
-        .from("rooms")
-        .select("id,room_number,category_id,status,room_categories(name)")
-        .eq("property_id", propertyId)
-        .eq("is_active", true)
-        .eq("status", "vacant")
-        .order("room_number");
-      if (__qe3) reportQueryError("rooms", __qe3);
-      setAllRooms(
-        ((rs ?? []) as any[]).map((r) => ({
+    })();
+  }, [propertyId]);
+
+  // Categories, tariff plans and rooms come from the shared caches
+  // (see use-rooms.ts) instead of three per-mount queries.
+  useEffect(() => {
+    setCats(sharedCats as unknown as Cat[]);
+  }, [sharedCats]);
+  useEffect(() => {
+    setTariffPlans(sharedPlans);
+  }, [sharedPlans]);
+  useEffect(() => {
+    setAllRooms(
+      sharedRooms
+        .filter((r) => r.status === "vacant")
+        .map((r) => ({
           id: r.id,
           room_number: r.room_number,
           category_id: r.category_id,
           status: r.status,
-          category_name: r.room_categories?.name ?? null,
-        })),
-      );
-    })();
-  }, [propertyId]);
+          category_name: r.category_name,
+        })) as RoomOpt[],
+    );
+  }, [sharedRooms]);
 
   const extrasTotal = useMemo(
     () => extras.reduce((s, x) => s + (Number(x.amount) || 0), 0),
