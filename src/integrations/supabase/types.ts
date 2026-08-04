@@ -829,6 +829,8 @@ export type Database = {
           children: number
           created_at: string
           end_date: string | null
+          event_block_id: string | null
+          event_booking_id: string | null
           extra_beds: number
           id: string
           meal_plan: Database["public"]["Enums"]["meal_plan"]
@@ -856,6 +858,8 @@ export type Database = {
           children?: number
           created_at?: string
           end_date?: string | null
+          event_block_id?: string | null
+          event_booking_id?: string | null
           extra_beds?: number
           id?: string
           meal_plan?: Database["public"]["Enums"]["meal_plan"]
@@ -883,6 +887,8 @@ export type Database = {
           children?: number
           created_at?: string
           end_date?: string | null
+          event_block_id?: string | null
+          event_booking_id?: string | null
           extra_beds?: number
           id?: string
           meal_plan?: Database["public"]["Enums"]["meal_plan"]
@@ -917,6 +923,27 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "room_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_rooms_event_block_id_fkey"
+            columns: ["event_block_id"]
+            isOneToOne: false
+            referencedRelation: "event_room_blocks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_rooms_event_booking_id_fkey"
+            columns: ["event_booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_rooms_event_booking_id_fkey"
+            columns: ["event_booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
           {
@@ -6317,6 +6344,10 @@ export type Database = {
         Args: { _id: string; _reason: string }
         Returns: Json
       }
+      ensure_event_booking: {
+        Args: { _banquet_booking_id: string }
+        Returns: string
+      }
       event_gst_rate: {
         Args: { _amount: number; _property_id: string }
         Returns: number
@@ -6508,6 +6539,10 @@ export type Database = {
       sync_booking_balance: {
         Args: { _booking_id: string }
         Returns: undefined
+      }
+      sync_event_block_booking_room: {
+        Args: { _block_id: string }
+        Returns: string
       }
       undo_checkout: { Args: { _booking_id: string }; Returns: Json }
       user_discount_limit: {
