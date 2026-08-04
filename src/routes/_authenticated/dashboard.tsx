@@ -342,7 +342,7 @@ function OwnerDashboard({
           // overdue checked-in booking still holds its room.
           const { data: stillActive } = await supabase
             .from("booking_rooms")
-            .select("room_id, actual_check_out, bookings!inner(status,property_id)")
+            .select("room_id, actual_check_out, bookings!booking_rooms_booking_id_fkey!inner(status,property_id)")
             .eq("bookings.property_id", propertyId)
             .in("bookings.status", ["reserved", "checked_in"])
             .in("room_id", potentialGhosts);

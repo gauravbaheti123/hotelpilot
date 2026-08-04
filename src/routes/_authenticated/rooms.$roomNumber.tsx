@@ -96,7 +96,7 @@ function RoomDetailPage() {
     // current booking via booking_rooms
     const { data: brRows } = await supabase
       .from("booking_rooms")
-      .select("rate, check_in, check_out, tariff:tariff_plans(name), booking:bookings!inner(id, booking_number, source, status, check_in, check_out, checked_in_at, adults, children, total_amount, advance_amount, balance_amount, guest:guests(name, mobile, id_proof_type, id_proof_number))")
+      .select("rate, check_in, check_out, tariff:tariff_plans(name), booking:bookings!booking_rooms_booking_id_fkey!inner(id, booking_number, source, status, check_in, check_out, checked_in_at, adults, children, total_amount, advance_amount, balance_amount, guest:guests(name, mobile, id_proof_type, id_proof_number))")
       .eq("room_id", (r as any).id)
       .in("booking.status", ["checked_in"])
       .order("check_in", { ascending: false })
@@ -165,7 +165,7 @@ function RoomDetailPage() {
     // booking history (last 5, any status, scoped to this room)
     const { data: histBr } = await supabase
       .from("booking_rooms")
-      .select("booking:bookings(id, booking_number, check_in, check_out, total_amount, advance_amount, guest:guests(name))")
+      .select("booking:bookings!booking_rooms_booking_id_fkey(id, booking_number, check_in, check_out, total_amount, advance_amount, guest:guests(name))")
       .eq("room_id", (r as any).id)
       .order("check_in", { ascending: false })
       .limit(8);

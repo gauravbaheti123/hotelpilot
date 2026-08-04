@@ -44,7 +44,7 @@ export async function fetchAnalytics(propertyId: string, from: string, to: strin
       .eq("property_id", propertyId)
       .eq("is_active", true),
     supabase.from("booking_rooms")
-      .select("check_in,check_out,rate,bookings!inner(property_id,status)")
+      .select("check_in,check_out,rate,bookings!booking_rooms_booking_id_fkey!inner(property_id,status)")
       .eq("bookings.property_id", propertyId)
       .in("bookings.status", ["reserved", "checked_in", "checked_out"])
       .lt("check_in", to)

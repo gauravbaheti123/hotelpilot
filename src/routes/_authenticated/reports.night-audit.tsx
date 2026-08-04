@@ -120,7 +120,7 @@ function NightAuditPage() {
     // Occupied rooms (spans selected date)
     const occ = await supabase
       .from("booking_rooms")
-      .select("booking_id, room_id, rate, rooms:room_id(room_number, category_id), bookings!inner(check_in, check_out, status, property_id, guests(name))")
+      .select("booking_id, room_id, rate, rooms:room_id(room_number, category_id), bookings!booking_rooms_booking_id_fkey!inner(check_in, check_out, status, property_id, guests(name))")
       .eq("property_id", propertyId)
       .lte("bookings.check_in", date)
       .gt("bookings.check_out", date)
