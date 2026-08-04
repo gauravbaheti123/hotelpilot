@@ -5,6 +5,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { createBooking, type CreateBookingPayload, type CreateBookingResult } from "@/lib/bookingCreate";
 import { roomsTotal, stayRange, type WizardState } from "@/lib/bookingWizard";
 
+/**
+ * Banquet → front-desk handoff context, carried in the URL as
+ * ?eventId=…&blockId=…&eventName=…. The RPC links the booking to the event
+ * and syncs the originating `event_room_blocks` row.
+ */
+export interface WizardEventContext {
+  eventId?: string | null;
+  blockId?: string | null;
+  eventName?: string | null;
+}
+
 /** Creates (or reuses) the billing company row selected in Step 4. */
 export async function resolveBillingCompanyId(
   propertyId: string,
@@ -39,12 +50,17 @@ export function buildBookingPayload(opts: {
   checkInNow: boolean;
   billingCompanyId: string | null;
   actorName: string | null;
+  event?: WizardEventContext;
 }): CreateBookingPayload {
-  const { propertyId, state: s, checkInNow, billingCompanyId, actorName } = opts;
+  const { propertyId, state: s, checkInNow, billingCompanyId, actorName, event } = opts;
   const range = stayRange(s.rooms);
   const total = roomsTotal(s.rooms);
   const advance = Number(s.payment.advance) || 0;
   const g = s.guest;
+  const baseNotes = s.payment.notes.trim() || null;
+  const notes = event?.eventName
+    ? `Event: ${event.eventName}${baseNotes ? "\n" + baseNotes : ""}`
+    : baseNotes;
 
   return {
     property_id: propertyId,
@@ -90,7 +106,9 @@ export function buildBookingPayload(opts: {
         ? s.otaPartnerName.trim()
         : null,
     billing_company_id: billingCompanyId,
-    notes: s.payment.notes.trim() || null,
+    notes,
+    event_id: event?.eventId ?? null,
+    block_id: event?.blockId ?? null,
     custom_remark: s.customRemark.trim() || null,
     extra_guests: s.extraGuests
       .filter((x) => x.name.trim())
@@ -199,6 +217,7 @@ export async function submitWizard(opts: {
   state: WizardState;
   checkInNow: boolean;
   actorName: string | null;
+  event?: WizardEventContext;
 }): Promise<CreateBookingResult> {
   const billingCompanyId = await resolveBillingCompanyId(opts.propertyId, opts.state);
   const payload = buildBookingPayload({ ...opts, billingCompanyId });
