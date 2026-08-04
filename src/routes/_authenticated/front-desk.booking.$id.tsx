@@ -37,7 +37,6 @@ import {
 import { fireTrigger } from "@/lib/whatsapp";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { recomputeFolio } from "@/lib/billing";
-import { resolveGstRate } from "@/lib/gst";
 import { fetchTariffPlans, pickTariffPlan, type TariffPlan } from "@/lib/tariff";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { RequirePermission } from "@/components/RequirePermission";
