@@ -20,6 +20,7 @@ import { Download, MessageCircle, FileSpreadsheet, AlertTriangle, CheckCircle2, 
 import { useAuth } from "@/hooks/use-auth";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { istToday } from "@/lib/date";
 export const Route = createFileRoute("/_authenticated/restaurant/")({
   head: () => ({ meta: [{ title: "Restaurant Billing — HotelPilot" }] }),
   component: () => (<RequirePermission module="restaurant_billing"><RestaurantPage /></RequirePermission>),
@@ -101,12 +102,12 @@ function RestaurantPage() {
   const [pcAmount, setPcAmount] = useState<string>("");
   const [pcBillNo, setPcBillNo] = useState<string>("");
   const [pcDesc, setPcDesc] = useState("Restaurant Charge");
-  const [pcDate, setPcDate] = useState(new Date().toISOString().slice(0, 10));
+  const [pcDate, setPcDate] = useState(istToday());
   const [posting, setPosting] = useState(false);
 
   const [settleOpen, setSettleOpen] = useState(false);
   const [settleIds, setSettleIds] = useState<string[]>([]);
-  const [settleDate, setSettleDate] = useState(new Date().toISOString().slice(0, 10));
+  const [settleDate, setSettleDate] = useState(istToday());
   const [settleNotes, setSettleNotes] = useState("");
 
   async function loadDirect() {

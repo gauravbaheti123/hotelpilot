@@ -18,6 +18,7 @@ import {
   type AttendanceStatus,
 } from "@/lib/staff-hr";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
+import { istToday } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/staff/attendance")({
   head: () => ({ meta: [{ title: "Attendance — HotelPilot" }] }),
@@ -31,7 +32,7 @@ interface AttRow {
   hours_worked: number; notes: string | null;
 }
 
-function today() { return new Date().toISOString().slice(0, 10); }
+function today() { return istToday(); }
 
 function AttendancePage() {
   const { currentId: propertyId } = useCurrentProperty();

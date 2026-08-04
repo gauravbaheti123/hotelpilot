@@ -13,6 +13,7 @@ import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
   buildTallyPaymentXml, downloadXml, buildFileName,
 } from "@/lib/reportExports";
+import { istToday } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/reports/expenses")({
   head: () => ({ meta: [{ title: "Expense Report — HotelPilot" }] }),
@@ -27,7 +28,7 @@ interface Row {
 function Page() {
   const { current } = useCurrentProperty();
   const propertyId = current?.id ?? null;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istToday();
   const [from, setFrom] = useState(firstOfMonthIso());
   const [to, setTo] = useState(today);
   const [catId, setCatId] = useState("all");

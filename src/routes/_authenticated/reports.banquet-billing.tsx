@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { Pencil, Trash2 } from "lucide-react";
 import { fetchBanquetVisibility, type BanquetVisibilityRow } from "@/lib/banquetScope";
 import { fmtDate, fmtDateTime, fmtINR, firstOfMonthIso } from "@/lib/reportExports";
+import { istToday } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/reports/banquet-billing")({
   ssr: false,
@@ -77,7 +78,7 @@ function Page() {
   const { current } = useCurrentProperty();
   const propertyId = current?.id ?? null;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istToday();
   const [from, setFrom] = useState(firstOfMonthIso());
   const [to, setTo] = useState(today);
   const [groups, setGroups] = useState<EventGroup[]>([]);

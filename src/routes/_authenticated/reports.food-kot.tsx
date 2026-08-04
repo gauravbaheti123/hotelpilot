@@ -14,6 +14,7 @@ import { ReportDataTable } from "@/components/ReportDataTable";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
+import { istToday } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/reports/food-kot")({
   head: () => ({ meta: [{ title: "Food / KOT Report — HotelPilot" }] }),
@@ -32,7 +33,7 @@ interface ItemRow {
 function Page() {
   const { current } = useCurrentProperty();
   const propertyId = current?.id ?? null;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istToday();
   const [from, setFrom] = useState(firstOfMonthIso());
   const [to, setTo] = useState(today);
   const [kitchen, setKitchen] = useState("all");

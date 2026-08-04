@@ -13,6 +13,7 @@ import { ReportDataTable } from "@/components/ReportDataTable";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtDateTime, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
+import { istToday } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/reports/cash-collection")({
   head: () => ({ meta: [{ title: "Cash Collection — HotelPilot" }] }),
@@ -27,7 +28,7 @@ interface Row {
 function Page() {
   const { current } = useCurrentProperty();
   const propertyId = current?.id ?? null;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istToday();
   const [from, setFrom] = useState(firstOfMonthIso());
   const [to, setTo] = useState(today);
   const [mode, setMode] = useState("all");

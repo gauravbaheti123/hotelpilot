@@ -11,6 +11,7 @@ import { ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso 
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { ReportDataTable } from "@/components/ReportDataTable";
+import { istToday } from "@/lib/date";
 export const Route = createFileRoute("/_authenticated/reports/banquet")({
   head: () => ({ meta: [{ title: "Banquet Report — HotelPilot" }] }),
   component: () => (<RequirePermission module="reports"><Page /></RequirePermission>),
@@ -26,7 +27,7 @@ interface Row {
 function Page() {
   const { current } = useCurrentProperty();
   const propertyId = current?.id ?? null;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istToday();
   const [from, setFrom] = useState(firstOfMonthIso());
   const [to, setTo] = useState(today);
   const [func, setFunc] = useState("all");

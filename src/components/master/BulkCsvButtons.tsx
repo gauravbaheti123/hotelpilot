@@ -18,6 +18,7 @@ import {
 import { Download, Upload, FileSpreadsheet } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { istToday } from "@/lib/date";
 
 export interface CsvColumn {
   /** CSV header name (case-insensitive on import) */
@@ -106,7 +107,7 @@ export function BulkCsvButtons(props: BulkCsvButtonsProps) {
   const [rowErrors, setRowErrors] = useState<(string | null)[]>([]);
   const [importing, setImporting] = useState(false);
 
-  const dateStr = new Date().toISOString().slice(0, 10);
+  const dateStr = istToday();
   const baseName = `${slug(props.module)}-${slug(props.hotelName)}-${dateStr}`;
 
   function downloadSample() {

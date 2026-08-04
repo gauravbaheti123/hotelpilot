@@ -16,6 +16,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { istDaysAgo, istToday } from "@/lib/date";
 export const Route = createFileRoute("/_authenticated/reports/activity")({
   head: () => ({ meta: [{ title: "Activity Log — HotelPilot" }] }),
   component: () => (<RequirePermission module="reports"><ActivityLogPage /></RequirePermission>),
@@ -41,8 +42,8 @@ const ALL = "__all__";
 function ActivityLogPage() {
   const { current, loading: propLoading } = useCurrentProperty();
 
-  const today = new Date().toISOString().slice(0, 10);
-  const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const today = istToday();
+  const monthAgo = istDaysAgo(30);
 
   const [from, setFrom] = useState(monthAgo);
   const [to, setTo] = useState(today);

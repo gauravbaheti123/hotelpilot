@@ -25,6 +25,7 @@ import {
   ATTENDANCE_WEIGHT, daysInMonth, formatMonth, monthStart,
   type AttendanceStatus,
 } from "@/lib/staff-hr";
+import { istDateISO } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/staff/payroll")({
   head: () => ({ meta: [{ title: "Payroll — HotelPilot" }] }),
@@ -69,7 +70,7 @@ function PayrollPage() {
       monthEnd.setMonth(monthEnd.getMonth() + 1);
       monthEnd.setDate(0);
       const fromStr = period;
-      const toStr = monthEnd.toISOString().slice(0, 10);
+      const toStr = istDateISO(monthEnd);
 
       const { data: staff } = await supabase.from("staff")
         .select("id,name,designation,salary")

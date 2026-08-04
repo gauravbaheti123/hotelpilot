@@ -13,6 +13,7 @@ import { ReportDataTable } from "@/components/ReportDataTable";
 import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
+import { istToday } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/reports/mis")({
   head: () => ({ meta: [{ title: "MIS Report — HotelPilot" }] }),
@@ -29,7 +30,7 @@ function Page() {
   const propertyId = current?.id ?? null;
   const { roles } = useAuth();
   const isOwner = roles.includes("owner") || roles.includes("superadmin");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istToday();
   const [from, setFrom] = useState(firstOfMonthIso());
   const [to, setTo] = useState(today);
   const [staffFilter, setStaffFilter] = useState("all");

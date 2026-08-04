@@ -25,6 +25,7 @@ import { toast } from "sonner";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
+import { istToday } from "@/lib/date";
 export const Route = createFileRoute("/_authenticated/front-desk/in-house")({
   head: () => ({ meta: [{ title: "In-house — HotelPilot" }] }),
   component: () => (<RequirePermission module="inhouse"><InHousePage /></RequirePermission>),
@@ -69,7 +70,7 @@ function InHousePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id]);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istToday();
 
   if (propLoading) return <AppShell title="In-house"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
   if (!current) return <AppShell title="In-house"><EmptyPropertyState /></AppShell>;

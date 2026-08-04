@@ -1,3 +1,4 @@
+import { istDateISO, istMonthStart, istMonthEnd } from "@/lib/date";
 export const ATTENDANCE_STATUSES = [
   "present", "absent", "half_day", "leave", "week_off",
 ] as const;
@@ -29,11 +30,11 @@ export const ATTENDANCE_WEIGHT: Record<AttendanceStatus, number> = {
 };
 
 export function monthStart(d = new Date()): string {
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+  return istMonthStart(istDateISO(d));
 }
 
 export function monthEnd(d = new Date()): string {
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+  return istMonthEnd(istDateISO(d));
 }
 
 export function daysInMonth(periodStart: string): number {

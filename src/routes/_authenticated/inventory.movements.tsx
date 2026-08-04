@@ -26,6 +26,7 @@ import {
   MOVEMENT_TYPES, MOVEMENT_LABEL, MOVEMENT_TONE, DEPARTMENTS,
   type MovementType,
 } from "@/lib/inventory";
+import { istToday } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/inventory/movements")({
   head: () => ({ meta: [{ title: "Stock Movements — HotelPilot" }] }),
@@ -67,7 +68,7 @@ function MovementsPage() {
     department: "",
     reference: "",
     reason: "",
-    movement_date: new Date().toISOString().slice(0, 10),
+    movement_date: istToday(),
   });
 
   const load = useCallback(async () => {

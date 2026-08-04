@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { fetchTariffPlans, pickTariffPlan, type TariffPlan } from "@/lib/tariff";
 import { Loader2, BedDouble, Sparkles } from "lucide-react";
+import { istToday } from "@/lib/date";
 
 interface RoomOption {
   id: string;
@@ -380,7 +381,7 @@ export interface UnassignedReservation {
 export async function loadUnassignedReservations(
   propertyId: string,
 ): Promise<UnassignedReservation[]> {
-  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayIso = istToday();
   const { data, error } = await supabase
     .from("booking_rooms")
     .select(

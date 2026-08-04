@@ -19,6 +19,7 @@ import { inr } from "@/lib/billing";
 import { AlertTriangle, CheckCircle2, Lock, Printer, FileText } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { istDateISO } from "@/lib/date";
 export const Route = createFileRoute("/_authenticated/reports/night-audit")({
   head: () => ({ meta: [{ title: "Night Audit — HotelPilot" }] }),
   component: () => (<RequirePermission module="day_close"><NightAuditPage /></RequirePermission>),
@@ -243,7 +244,7 @@ function NightAuditPage() {
 
     // Opening cash = previous day's closing_cash_actual, fallback 0
     const prevD = new Date(`${date}T00:00:00`); prevD.setDate(prevD.getDate() - 1);
-    const prevIso = prevD.toISOString().slice(0, 10);
+    const prevIso = istDateISO(prevD);
     const { data: prev } = await supabase
       .from("night_audit_reports").select("closing_cash_actual")
       .eq("property_id", propertyId).eq("audit_date", prevIso).maybeSingle();
