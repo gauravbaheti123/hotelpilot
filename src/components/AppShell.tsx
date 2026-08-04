@@ -331,6 +331,8 @@ function AppShellInner({
 
   // Profile dialog + display name/photo
   const [profileOpen, setProfileOpen] = useState(false);
+  const [qzMounted, setQzMounted] = useState(false);
+  useEffect(() => { setQzMounted(true); }, []);
   const [displayName, setDisplayName] = useState<string>("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   useEffect(() => {
@@ -534,9 +536,13 @@ function AppShellInner({
             {titleSlot}
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <Suspense fallback={null}>
-              <QZStatusIndicator />
-            </Suspense>
+            {qzMounted ? (
+              <Suspense fallback={<span className="inline-block h-8 w-8" />}>
+                <QZStatusIndicator />
+              </Suspense>
+            ) : (
+              <span className="inline-block h-8 w-8" />
+            )}
             {(isOwner ||
               permSuper ||
               permsLoading ||
