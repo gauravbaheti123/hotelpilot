@@ -4,7 +4,6 @@ import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ArrowLeft, Printer, Download, MessageCircle, Plus, Trash2, Percent } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,8 +76,6 @@ function BanquetBillPage() {
   const { id } = Route.useParams();
   const router = useRouter();
   const { user, roles } = useAuth();
-  // Cash Bill toggle is strictly owner-only (superadmin excluded).
-  const isOwnerStrict = roles.includes("owner") && !roles.includes("superadmin");
   const { can } = usePermissions();
   const [b, setB] = useState<Bq | null>(null);
   const [bulk, setBulk] = useState<Bulk[]>([]);
@@ -120,7 +117,7 @@ function BanquetBillPage() {
     if (error) { toast.error(error.message); setLoading(false); return; }
     const bq = data as unknown as Bq;
     setB(bq);
-    setBillType((bq.bill_type as "gst_invoice" | "cash_bill") ?? "gst_invoice");
+    setBillType((bq.bill_type as "gst_invoice" | "cash_bill") ?? "gst_invoice"); // historical only; no UI toggle
 
     const [{ data: br }, { data: p }] = await Promise.all([
       supabase.from("banquet_bulk_rooms")
@@ -162,33 +159,6 @@ function BanquetBillPage() {
       setMaxDiscPct(Number.isFinite(n) ? n : 0);
     })();
   }, [user?.id, b?.property_id]);
-
-  async function saveBillType(next: "gst_invoice" | "cash_bill") {
-    if (!b) return;
-    if (next === "cash_bill" && !isOwnerStrict) {
-      toast.error("Only the property owner can generate a Cash Bill");
-      return;
-    }
-    setBillType(next);
-    await supabase.from("banquet_bookings").update({ bill_type: next }).eq("id", b.id);
-    if (next === "cash_bill" && user) {
-      logActivity({
-        property_id: b.property_id,
-        user_id: user.id,
-        user_name: userDisplayName(user as any),
-        action_type: "CASH_BILL_GENERATED",
-        module: "Banquet",
-        reference_id: b.id,
-        reference_label: b.banquet_number,
-        details: {
-          bill_number: b.banquet_number,
-          amount: Number(b.total_amount ?? 0),
-          party_name: b.host_name ?? b.guests?.name ?? b.event_name ?? null,
-          generated_by: user.id,
-        },
-      });
-    }
-  }
 
   if (loading) return <AppShell title="Event Bill"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
   if (!b) return <AppShell title="Event Bill"><p className="text-sm text-muted-foreground">Not found.</p></AppShell>;
@@ -586,15 +556,6 @@ function BanquetBillPage() {
           <div className="text-sm text-muted-foreground">
             {b.event_name ?? b.function_type} · {fmtDate(b.event_date)}
           </div>
-          {isOwnerStrict && (
-            <div className="ml-4 flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Bill Type:</span>
-              <ToggleGroup type="single" value={billType} onValueChange={(v) => v && saveBillType(v as any)}>
-                <ToggleGroupItem value="cash_bill" size="sm">Cash Bill</ToggleGroupItem>
-                <ToggleGroupItem value="gst_invoice" size="sm">GST Invoice</ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-          )}
           <div className="ml-auto flex flex-wrap gap-2">
             <Button variant="outline" size="sm" onClick={printDraft}>
               <Printer className="h-4 w-4 mr-1" /> Print Draft
