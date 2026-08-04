@@ -38,7 +38,7 @@ function dayRange(date: string) {
 export async function fetchDailySummary(propertyId: string, date: string): Promise<DailySummary> {
   const { startIso, endIso } = dayRange(date);
 
-  const [{ data: folioRows }, { data: payRows }, scope] = await Promise.all([
+  const [{ data: folioRows, error: __qp1 }, { data: payRows, error: __qp2 }, scope] = await Promise.all([
     supabase.from("folios")
       .select("id,booking_id,status,sub_total,gst_amount,total_amount,created_at,settled_at,gst_mode,bill_type")
       .eq("property_id", propertyId)
@@ -51,6 +51,8 @@ export async function fetchDailySummary(propertyId: string, date: string): Promi
       .lt("paid_at", endIso),
     fetchBanquetScope(propertyId),
   ]);
+  if (__qp1) reportQueryError("folio rows", __qp1);
+  if (__qp2) reportQueryError("pay rows", __qp2);
   // Banquet-origin (event_block) folios/payments are excluded from operational totals.
   const folios = (folioRows ?? []).filter(
     (f) => !isBanquetRecord(scope, { booking_id: (f as { booking_id?: string | null }).booking_id, folio_id: (f as { id: string }).id }),
@@ -98,7 +100,7 @@ export interface OccupancySnapshot {
 }
 
 export async function fetchOccupancy(propertyId: string, date: string): Promise<OccupancySnapshot> {
-  const [{ count: roomsTotal }, { data: br }] = await Promise.all([
+  const [{ count: roomsTotal, error: __qp3 }, { data: br, error: __qp4 }] = await Promise.all([
     supabase.from("rooms")
       .select("id", { count: "exact", head: true })
       .eq("property_id", propertyId)
@@ -110,6 +112,8 @@ export async function fetchOccupancy(propertyId: string, date: string): Promise<
       .gt("bookings.check_out", date)
       .in("bookings.status", ["checked_in", "reserved"]),
   ]);
+  if (__qp3) reportQueryError("rooms total", __qp3);
+  if (__qp4) reportQueryError("br", __qp4);
   const occupied = br?.length ?? 0;
   const total = roomsTotal ?? 0;
   return {
@@ -213,11 +217,13 @@ export async function fetchGstInvoiceSlabs(
     .order("created_at", { ascending: false });
   if (__qe2) reportQueryError("folios", __qe2);
   // Place of supply compares GST state codes (GSTIN → state_code → state name).
-  const [{ data: propRow }, { data: coRows }, scope] = await Promise.all([
+  const [{ data: propRow, error: __qp5 }, { data: coRows, error: __qp6 }, scope] = await Promise.all([
     supabase.from("properties").select("state,state_code,gstin").eq("id", propertyId).maybeSingle(),
     supabase.from("billing_companies").select("id,state,state_code,gstin").eq("property_id", propertyId),
     fetchBanquetScope(propertyId),
   ]);
+  if (__qp5) reportQueryError("prop row", __qp5);
+  if (__qp6) reportQueryError("co rows", __qp6);
   const propParty = (propRow ?? null) as
     { state?: string | null; state_code?: string | null; gstin?: string | null } | null;
   type CoRow = { id: string; state: string | null; state_code: string | null; gstin: string | null };

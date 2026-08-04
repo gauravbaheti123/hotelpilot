@@ -103,12 +103,13 @@ function Page() {
       if (bookingIds.length === 0) { setGroups([]); return; }
       const visByBooking = new Map(vis.map((v) => [v.booking_id, v]));
 
-      const [{ data: bks }, events] = await Promise.all([
+      const [{ data: bks, error: __qp1 }, events] = await Promise.all([
         supabase.from("bookings")
           .select("id,booking_number,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number))")
           .in("id", bookingIds),
         listEventBookings(propertyId),
       ]);
+      if (__qp1) reportQueryError("bks", __qp1);
       const meta = new Map<string, { room: string; guest: string }>();
       for (const b of (bks ?? []) as any[]) {
         meta.set(b.id, {
@@ -128,7 +129,7 @@ function Page() {
         if (e.legacy_id) eventMeta.set(e.legacy_id, m);
       }
 
-      const [{ data: folios }, { data: segs }, { data: masters }] = await Promise.all([
+      const [{ data: folios, error: __qp2 }, { data: segs, error: __qp3 }, { data: masters, error: __qp4 }] = await Promise.all([
         supabase.from("folios")
           .select("id,booking_id,invoice_number,created_at,status,guest_company,guest_gstin,notes,total_amount,paid_amount")
           .in("booking_id", bookingIds)
@@ -144,10 +145,13 @@ function Page() {
           .eq("property_id", propertyId)
           .gte("created_at", fromIso).lte("created_at", toIso),
       ]);
+      if (__qp2) reportQueryError("folios", __qp2);
+      if (__qp3) reportQueryError("segs", __qp3);
+      if (__qp4) reportQueryError("masters", __qp4);
 
       const folioIds = ((folios ?? []) as any[]).map((f) => f.id as string);
       const billIds = ((segs ?? []) as any[]).map((s) => s.id as string);
-      const [{ data: charges }, { data: items }] = await Promise.all([
+      const [{ data: charges, error: __qp5 }, { data: items, error: __qp6 }] = await Promise.all([
         folioIds.length
           ? supabase.from("folio_charges")
               .select("id,folio_id,description,qty,rate,amount,gst_rate,gst_amount,charged_on")
@@ -159,6 +163,8 @@ function Page() {
               .in("segment_bill_id", billIds)
           : Promise.resolve({ data: [] as any[] } as any),
       ]);
+      if (__qp5) reportQueryError("charges", __qp5);
+      if (__qp6) reportQueryError("items", __qp6);
       const chargesByFolio = new Map<string, ChargeRow[]>();
       for (const c of (charges ?? []) as any[]) {
         const list = chargesByFolio.get(c.folio_id) ?? [];

@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { TASK_TYPES, TASK_PRIORITIES, type TaskType, type TaskPriority } from "@/lib/housekeeping";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/housekeeping/new")({
   head: () => ({ meta: [{ title: "New Task — HotelPilot" }] }),
   component: () => (<RequirePermission module="tasks"><NewTaskPage /></RequirePermission>),
@@ -37,10 +38,12 @@ function NewTaskPage() {
   useEffect(() => {
     if (!propertyId) return;
     (async () => {
-      const [{ data: r }, { data: s }] = await Promise.all([
+      const [{ data: r, error: __qp1 }, { data: s, error: __qp2 }] = await Promise.all([
         supabase.from("rooms").select("id,room_number").eq("property_id", propertyId).eq("is_active", true).order("room_number"),
         supabase.from("staff").select("id,name").eq("property_id", propertyId).eq("is_active", true).order("name"),
       ]);
+      if (__qp1) reportQueryError("r", __qp1);
+      if (__qp2) reportQueryError("s", __qp2);
       setRooms((r ?? []) as typeof rooms);
       setStaff((s ?? []) as typeof staff);
     })();

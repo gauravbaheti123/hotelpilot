@@ -117,11 +117,14 @@ function EditRolePage() {
   }, [loading, canAccess, navigate]);
 
   async function loadAll() {
-    const [{ data: r }, { data: ps }, { data: rps }] = await Promise.all([
+    const [{ data: r, error: __qp1 }, { data: ps, error: __qp2 }, { data: rps, error: __qp3 }] = await Promise.all([
       supabase.from("roles").select("id,name,description,is_system,max_discount_pct,max_discount_type,max_discount_amount").eq("id", id).maybeSingle(),
       supabase.from("permissions").select("id,module,action"),
       supabase.from("role_permissions").select("permission_id,allowed").eq("role_id", id),
     ]);
+    if (__qp1) reportQueryError("r", __qp1);
+    if (__qp2) reportQueryError("ps", __qp2);
+    if (__qp3) reportQueryError("rps", __qp3);
     const roleRow = (r as any) ?? null;
     if (roleRow && !isSuperadmin && /^(owner|superadmin)$/i.test(roleRow.name)) {
       toast.error("Access denied");

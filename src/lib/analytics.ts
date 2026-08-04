@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { istDateISO } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 
 export interface DayMetric {
   date: string;
@@ -38,7 +39,7 @@ function eachDay(from: string, to: string): string[] {
 
 export async function fetchAnalytics(propertyId: string, from: string, to: string): Promise<AnalyticsRange> {
   const dates = eachDay(from, to);
-  const [{ count: roomsTotal }, { data: br }] = await Promise.all([
+  const [{ count: roomsTotal, error: __qp1 }, { data: br, error: __qp2 }] = await Promise.all([
     supabase.from("rooms")
       .select("id", { count: "exact", head: true })
       .eq("property_id", propertyId)
@@ -50,6 +51,8 @@ export async function fetchAnalytics(propertyId: string, from: string, to: strin
       .lt("check_in", to)
       .gt("check_out", from),
   ]);
+  if (__qp1) reportQueryError("rooms total", __qp1);
+  if (__qp2) reportQueryError("br", __qp2);
 
   const total = roomsTotal ?? 0;
   const days: DayMetric[] = dates.map((d) => {

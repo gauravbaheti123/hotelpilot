@@ -243,7 +243,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
 
     const folioId = selectedFolio.id;
 
-    const [{ data: c }, { data: p }, { data: pk }, { data: pos }] = await Promise.all([
+    const [{ data: c, error: __qp1 }, { data: p, error: __qp2 }, { data: pk, error: __qp3 }, { data: pos, error: __qp4 }] = await Promise.all([
       supabase.from("folio_charges").select("*").eq("folio_id", folioId as any).eq("is_wiped", false),
       supabase.from("payments").select("*").eq("folio_id", folioId as any),
       supabase
@@ -259,6 +259,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         .eq("booking_id", bookingId)
         .eq("status", "pending"),
     ]);
+    if (__qp1) reportQueryError("c", __qp1);
+    if (__qp2) reportQueryError("p", __qp2);
+    if (__qp3) reportQueryError("pk", __qp3);
+    if (__qp4) reportQueryError("pos", __qp4);
     setFolio(selectedFolio);
     setCharges(c ?? []);
     // Unfiltered lookup (wiped rows included) purely for the late-fee guard.

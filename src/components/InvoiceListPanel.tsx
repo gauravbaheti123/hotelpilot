@@ -375,7 +375,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
     total_amount: number; is_walkin: boolean; guest_name: string | null; room_id: string | null;
   }) {
     try {
-      const [{ data: items }, { data: room }] = await Promise.all([
+      const [{ data: items, error: __qp1 }, { data: room, error: __qp2 }] = await Promise.all([
         supabase.from("segment_bill_items" as any)
           .select("description,qty,rate,amount,gst_rate,gst_amount")
           .eq("segment_bill_id", bill.id),
@@ -383,6 +383,8 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
           ? supabase.from("rooms").select("room_number").eq("id", bill.room_id).maybeSingle()
           : Promise.resolve({ data: null as any }),
       ]);
+      if (__qp1) reportQueryError("items", __qp1);
+      if (__qp2) reportQueryError("room", __qp2);
       const rows = (items ?? []) as any[];
       const sub = rows.reduce((s, i) => s + Number(i.amount || 0), 0);
       const gst = rows.reduce((s, i) => s + Number(i.gst_amount || 0), 0);

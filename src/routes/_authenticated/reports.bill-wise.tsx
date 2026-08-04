@@ -17,6 +17,7 @@ import {
   buildTallySalesXml, downloadXml, buildFileName,
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/reports/bill-wise")({
   head: () => ({ meta: [{ title: "Bill-Wise Report — HotelPilot" }] }),
@@ -57,14 +58,17 @@ function Page() {
     `).eq("property_id", propertyId).gte("created_at", fromIso).lte("created_at", toIso)
       .order("created_at", { ascending: false });
     if (status !== "all") q = q.eq("status", status === "active" ? "settled" : "voided");
-    const [{ data: allFolios }, scope] = await Promise.all([q, fetchBanquetScope(propertyId)]);
+    const [{ data: allFolios, error: __qp1 }, scope] = await Promise.all([q, fetchBanquetScope(propertyId)]);
+    if (__qp1) reportQueryError("all folios", __qp1);
     // Banquet event-block folios are excluded here — they live in the Owner-only Banquet Billing report.
     const folios = (allFolios ?? []).filter((f: any) => !f.booking_id || !scope.bookingIds.has(f.booking_id));
     const ids = (folios ?? []).map((f: any) => f.id);
-    const [{ data: charges }, { data: pays }] = await Promise.all([
+    const [{ data: charges, error: __qp2 }, { data: pays, error: __qp3 }] = await Promise.all([
       ids.length ? supabase.from("folio_charges").select("folio_id,charge_type,amount").in("folio_id", ids) : Promise.resolve({ data: [] as any[] }),
       ids.length ? supabase.from("payments").select("folio_id,mode,paid_at").in("folio_id", ids) : Promise.resolve({ data: [] as any[] }),
     ]);
+    if (__qp2) reportQueryError("charges", __qp2);
+    if (__qp3) reportQueryError("pays", __qp3);
     const chargeMap = new Map<string, { room: number; food: number; other: number }>();
     for (const c of (charges ?? []) as any[]) {
       const m = chargeMap.get(c.folio_id) ?? { room: 0, food: 0, other: 0 };

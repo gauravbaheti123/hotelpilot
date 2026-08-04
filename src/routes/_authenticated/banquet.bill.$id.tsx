@@ -194,13 +194,14 @@ function BanquetBillPage() {
     setB(bq);
     setBillType((bq.bill_type as "gst_invoice" | "cash_bill") ?? "gst_invoice"); // historical only; no UI toggle
 
-    const [{ data: p }] = await Promise.all([
+    const [{ data: p, error: __qp1 }] = await Promise.all([
       supabase
         .from("properties")
         .select("name,gstin,state_code,address,city,state,pincode,phone,email,wa_number,logo_url")
         .eq("id", bq.property_id)
         .single(),
     ]);
+    if (__qp1) reportQueryError("p", __qp1);
     // Bulk room rows were retired in Part 5 — event rooms live on
     // event_room_blocks / booking_rooms in the unified model.
     setBulk([]);

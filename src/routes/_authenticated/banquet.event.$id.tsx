@@ -234,7 +234,7 @@ function BanquetEventPage() {
     nextDay.setDate(nextDay.getDate() + 1);
     setAddCheckOut(istDateISO(nextDay));
 
-    const [{ data: rs }, { data: cs }, { data: hs }] = await Promise.all([
+    const [{ data: rs, error: __qp1 }, { data: cs, error: __qp2 }, { data: hs, error: __qp3 }] = await Promise.all([
       supabase
         .from("rooms")
         .select("id,room_number,category_id,status")
@@ -252,6 +252,9 @@ function BanquetEventPage() {
         .eq("is_active", true)
         .order("name"),
     ]);
+    if (__qp1) reportQueryError("rs", __qp1);
+    if (__qp2) reportQueryError("cs", __qp2);
+    if (__qp3) reportQueryError("hs", __qp3);
     setRooms((rs ?? []) as Room[]);
     setCats((cs ?? []) as Cat[]);
     setHalls((hs ?? []) as Hall[]);
@@ -590,12 +593,14 @@ function BanquetEventPage() {
       });
       if (pErr) return toast.error("Password incorrect");
 
-      const [{ data: unified }, { data: legacy }] = await Promise.all([
+      const [{ data: unified, error: __qp4 }, { data: legacy, error: __qp5 }] = await Promise.all([
         supabase.from("bookings").select("*").eq("id", ids.bookingId).maybeSingle(),
         ids.legacyId
           ? supabase.from("banquet_bookings").select("*").eq("id", ids.legacyId).maybeSingle()
           : Promise.resolve({ data: null } as any),
       ]);
+      if (__qp4) reportQueryError("unified", __qp4);
+      if (__qp5) reportQueryError("legacy", __qp5);
       const roomIds = blocks.map((bk) => bk.room_id).filter(Boolean) as string[];
 
       await logActivity({

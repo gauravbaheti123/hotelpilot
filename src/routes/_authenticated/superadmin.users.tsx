@@ -108,11 +108,14 @@ function UsersPage() {
     if (currentPropertyId) {
       roleQuery = roleQuery.or(`property_id.is.null,property_id.eq.${currentPropertyId}`);
     }
-    const [{ data: props }, { data: rs }, { data: urs }] = await Promise.all([
+    const [{ data: props, error: __qp1 }, { data: rs, error: __qp2 }, { data: urs, error: __qp3 }] = await Promise.all([
       supabase.from("properties").select("id,name").order("name"),
       roleQuery,
       urQuery,
     ]);
+    if (__qp1) reportQueryError("props", __qp1);
+    if (__qp2) reportQueryError("rs", __qp2);
+    if (__qp3) reportQueryError("urs", __qp3);
     setProperties((props ?? []) as Property[]);
     // Every role template visible to this admin (system + custom).
     setAllRoles(((rs ?? []) as RoleOption[]).filter(

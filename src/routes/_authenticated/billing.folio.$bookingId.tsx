@@ -376,11 +376,14 @@ function FolioPage() {
       fId = folioId as unknown as string;
     }
 
-    const [{ data: f }, { data: c }, { data: p }] = await Promise.all([
+    const [{ data: f, error: __qp1 }, { data: c, error: __qp2 }, { data: p, error: __qp3 }] = await Promise.all([
       supabase.from("folios").select("*").eq("id", fId).single(),
       supabase.from("folio_charges").select("*").eq("folio_id", fId).eq("is_wiped", false).order("charged_on").order("created_at"),
       supabase.from("payments").select("*").eq("folio_id", fId).order("paid_at", { ascending: false }),
     ]);
+    if (__qp1) reportQueryError("f", __qp1);
+    if (__qp2) reportQueryError("c", __qp2);
+    if (__qp3) reportQueryError("p", __qp3);
     setFolio((f ?? null) as unknown as Folio);
     // Hydrate the Bill-To guest (when the folio bills to another individual).
     const billGuestId = (f as any)?.billing_guest_id ?? null;

@@ -16,6 +16,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { RequirePermission } from "@/components/RequirePermission";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/housekeeping/board")({
   head: () => ({ meta: [{ title: "Room Status Board — HotelPilot" }] }),
@@ -72,13 +73,15 @@ function BoardPage() {
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    const [{ data: rms }, { data: nts }] = await Promise.all([
+    const [{ data: rms, error: __qp1 }, { data: nts, error: __qp2 }] = await Promise.all([
       supabase.from("rooms")
         .select("id,room_number,floor,status,housekeeping_status,room_categories(name)")
         .eq("property_id", propertyId).eq("is_active", true)
         .order("floor", { ascending: true }).order("room_number", { ascending: true }),
       supabase.from("housekeeping_room_notes" as never).select("room_id,note").eq("property_id", propertyId),
     ]);
+    if (__qp1) reportQueryError("rms", __qp1);
+    if (__qp2) reportQueryError("nts", __qp2);
     setRooms((rms ?? []) as unknown as RoomRow[]);
     const map: Record<string, string> = {};
     for (const n of (nts ?? []) as any[]) map[n.room_id] = n.note ?? "";

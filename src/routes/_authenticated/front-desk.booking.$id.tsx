@@ -192,7 +192,7 @@ function BookingDetailPage() {
     setB(detail);
     if (detail) {
       setNewCheckOut(detail.check_out);
-      const [{ data: rs }, { data: sh }, { data: kt }, { data: bg }] = await Promise.all([
+      const [{ data: rs, error: __qp1 }, { data: sh, error: __qp2 }, { data: kt, error: __qp3 }, { data: bg, error: __qp4 }] = await Promise.all([
         supabase
         .from("rooms")
         .select("id,room_number,category_id,status,room_categories(name)")
@@ -215,6 +215,10 @@ function BookingDetailPage() {
           .eq("booking_id", detail.id)
           .order("is_primary", { ascending: false }),
       ]);
+      if (__qp1) reportQueryError("rs", __qp1);
+      if (__qp2) reportQueryError("sh", __qp2);
+      if (__qp3) reportQueryError("kt", __qp3);
+      if (__qp4) reportQueryError("bg", __qp4);
       setRooms((rs ?? []) as Room[]);
       // Phase 27b — tariff plans drive every rate decision in the shift flow.
       setTariffPlans(await fetchTariffPlans(detail.property_id).catch(() => []));
