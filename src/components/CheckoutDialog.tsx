@@ -386,8 +386,12 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         .from("gst_slabs" as any)
         .select("from_amount,to_amount,gst_rate,charge_category,is_active,effective_from")
         .eq("property_id", booking.property_id);
-      const gstR = resolveGstRate((slabRows ?? []) as any, "room", rate);
-      if (gstR == null) {
+      const tax = computeRoomChargeTax(
+        rate,
+        (slabRows ?? []) as any,
+        ((booking as any).rate_type ?? "exclusive") as "inclusive" | "exclusive",
+      );
+      if (tax == null) {
         toast.error("GST slab missing for late-checkout rate. Configure it in Master Data → GST Slabs.");
         return;
       }
@@ -397,9 +401,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         description: `Late Checkout — 1 additional night${roomNo} (after ${graceStr})`,
         qty: 1,
         rate,
-        amount: rate,
-        gst_rate: gstR,
-        gst_amount: Math.round(rate * gstR) / 100,
+        amount: tax.amount,
+        gst_rate: tax.gstRate,
+        gst_amount: tax.gstAmount,
         charged_on: istToday(),
         source_table: "late_checkout",
         source_id: primaryRoom?.id ?? null,
