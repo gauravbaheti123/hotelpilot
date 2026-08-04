@@ -109,6 +109,22 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
       reminders.forEach((r) => {
         if (r.is_dismissed) return;
         const state = alertedRef.current.get(r.id) ?? { pre: false, now: false };
+        // Arrival alerts are created by the hourly system job with
+        // reminder_datetime = creation time, so they may already be in the
+        // past when the page loads. Alert once per session on first sight.
+        if (r.type === "system" && r.category === "reservation_arrival") {
+          if (!state.now && !r.is_read) {
+            state.now = true;
+            toast(`🛎️ ${r.title}`, {
+              description: r.message ?? r.notes ?? undefined,
+              duration: 10000,
+              action: { label: "Dismiss", onClick: () => dismiss(r.id) },
+            });
+            playBeep();
+          }
+          alertedRef.current.set(r.id, state);
+          return;
+        }
         const t = new Date(r.reminder_datetime).getTime();
         const diffMs = t - now;
         if (!state.pre && diffMs > 0 && diffMs <= 15 * 60 * 1000) {
