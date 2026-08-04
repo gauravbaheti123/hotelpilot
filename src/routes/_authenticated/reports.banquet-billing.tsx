@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { Pencil, Trash2 } from "lucide-react";
 import { fetchBanquetVisibility, type BanquetVisibilityRow } from "@/lib/banquetScope";
+import { listEventBookings } from "@/lib/banquetEvent";
 import { fmtDate, fmtDateTime, fmtINR, firstOfMonthIso } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
 
