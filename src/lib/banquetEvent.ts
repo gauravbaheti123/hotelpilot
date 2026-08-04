@@ -271,7 +271,7 @@ export async function listEventBookings(
       `id,property_id,banquet_number,status,guest_id,hall_id,event_name,function_type,
        event_date,event_end_date,start_time,end_time,pax,
        hall_charge,fb_charge,extra_charge,total_amount,advance_amount,balance_amount,
-       host_name,host_mobile,
+       host_name,host_mobile,event_status,total_room_charges,
        halls(name),guests(name,mobile)`,
     )
     .eq("property_id", propertyId)
@@ -287,24 +287,10 @@ export async function listEventBookings(
   const base = (data ?? []) as any[];
   if (base.length === 0) return [];
 
-  // Mirror lookup for the two not-yet-migrated columns.
-  const numbers = base.map((b) => b.banquet_number).filter(Boolean) as string[];
-  const mirror = new Map<string, any>();
-  if (numbers.length) {
-    const { data: legacy, error: __qe3 } = await supabase
-      .from("banquet_bookings")
-      .select("id,banquet_number,status,total_room_charges")
-      .eq("property_id", propertyId)
-      .in("banquet_number", numbers);
-    if (__qe3) reportQueryError("banquet bookings", __qe3);
-    for (const l of (legacy ?? []) as any[]) mirror.set(l.banquet_number, l);
-  }
-
   const rows: EventRow[] = base.map((b) => {
-    const m = mirror.get(b.banquet_number) ?? null;
     return {
       booking_id: b.id,
-      legacy_id: m?.id ?? null,
+      legacy_id: b.id,
       property_id: b.property_id,
       banquet_number: b.banquet_number,
       event_name: b.event_name ?? null,
@@ -324,13 +310,12 @@ export async function listEventBookings(
       hall_charge: n(b.hall_charge),
       fb_charge: n(b.fb_charge),
       extra_charge: n(b.extra_charge),
-      total_room_charges: n(m?.total_room_charges),
+      total_room_charges: n(b.total_room_charges),
       total_amount: n(b.total_amount),
       advance_amount: n(b.advance_amount),
       balance_amount: n(b.balance_amount),
-      // Lifecycle vocabulary still lives on the mirror
-      // (reserved / confirmed / in_progress / completed / cancelled).
-      status: (m?.status ?? b.status ?? "reserved") as string,
+      // Lifecycle vocabulary (confirmed / in_progress / completed / cancelled).
+      status: (b.event_status ?? b.status ?? "confirmed") as string,
     };
   });
   return opts.status ? rows.filter((r) => r.status === opts.status) : rows;
@@ -404,11 +389,8 @@ export async function recordEventPayments(
   if (error) throw error;
 }
 
-/** Hard-delete an event: unified booking first, then the legacy mirror. */
+/** Hard-delete an event (children cascade from bookings). */
 export async function deleteEventBooking(ids: EventIds): Promise<void> {
   const { error } = await supabase.from("bookings").delete().eq("id", ids.bookingId);
   if (error) throw error;
-  if (ids.legacyId) {
-    await supabase.from("banquet_bookings").delete().eq("id", ids.legacyId);
-  }
 }
