@@ -1011,6 +1011,38 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
               )}
             </DialogFooter>
           </div>
+        ) : settledZero ? (
+          <div className="space-y-4 text-sm">
+            <div className="rounded border p-3 bg-muted/30">
+              <div className="font-medium">
+                Room {roomNumbers} · {booking.guests?.name ?? "—"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Check-in: {booking.check_in} · Check-out: {booking.check_out} · {nights} Night{nights > 1 ? "s" : ""}
+              </div>
+            </div>
+            <div className="rounded-md border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-950/40 p-4">
+              <div className="text-xs font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                Bill settled
+              </div>
+              <div className="mt-1 text-lg font-semibold text-emerald-700 dark:text-emerald-300">
+                ₹0 due — ready to close
+              </div>
+              <div className="text-[11px] text-muted-foreground mt-1">
+                Invoice {folio.invoice_number ?? "—"} · Total {inrRound(Number(folio.total_amount ?? 0))} · Paid{" "}
+                {inrRound(Number(folio.paid_amount ?? 0))}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+                Cancel
+              </Button>
+              <Button onClick={collectAndCheckout} disabled={busy}>
+                {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                Confirm Checkout
+              </Button>
+            </DialogFooter>
+          </div>
         ) : (
           <div className="space-y-4 text-sm">
             <div className="rounded border p-3 bg-muted/30">
