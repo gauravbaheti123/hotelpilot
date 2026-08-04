@@ -380,18 +380,26 @@ function GuestsListPage() {
     if (ok > 0) load();
   }
 
-  const filtered = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (filter === "blacklist" && !r.is_blacklisted) return false;
-      if (filter === "corporate" && !r.gst_number) return false;
-      if (!term) return true;
-      return r.name.toLowerCase().includes(term) ||
-        (r.mobile ?? "").includes(term) ||
-        (r.email ?? "").toLowerCase().includes(term) ||
-        (r.company ?? "").toLowerCase().includes(term);
-    });
-  }, [rows, q, filter]);
+  // Search and filtering now happen server-side, so the loaded rows already
+  // are the result set.
+  const filtered = rows;
+
+  // Virtualized scroll container — only visible rows are in the DOM.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 12,
+  });
+  const virtualRows = virtualizer.getVirtualItems();
+
+  // Infinite scroll: pull the next page as the last rendered row approaches.
+  useEffect(() => {
+    const last = virtualRows[virtualRows.length - 1];
+    if (!last) return;
+    if (last.index >= filtered.length - 10 && hasMore && !loadingMore) void loadMore();
+  }, [virtualRows, filtered.length, hasMore, loadingMore, loadMore]);
 
   const allSelected = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
   function toggleAll() {
@@ -410,7 +418,7 @@ function GuestsListPage() {
     <AppShell title="Guests">
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Input placeholder="Search name / mobile / email / company…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-sm" />
-        <Chip label={`All (${rows.length})`} active={filter === "all"} onClick={() => setFilter("all")} />
+        <Chip label={`All (${total})`} active={filter === "all"} onClick={() => setFilter("all")} />
         <Chip label="Corporate" active={filter === "corporate"} onClick={() => setFilter("corporate")} />
         <Chip label="Blacklist" active={filter === "blacklist"} onClick={() => setFilter("blacklist")} />
         <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -433,11 +441,23 @@ function GuestsListPage() {
           <div className="flex items-center gap-3 px-4 py-2 bg-muted/40 text-xs">
             <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Select all" />
             <span className="text-muted-foreground">Select all on this view</span>
+            <span className="ml-auto text-muted-foreground">
+              Showing {filtered.length} of {total}
+            </span>
           </div>
         )}
-        {filtered.length === 0 && <p className="p-4 text-sm text-muted-foreground">No guests.</p>}
-        {filtered.map((g) => (
-          <div key={g.id} className="flex items-center gap-3 px-4 py-3 hover:bg-accent">
+        {loading && <p className="p-4 text-sm text-muted-foreground">Loading…</p>}
+        {!loading && filtered.length === 0 && <p className="p-4 text-sm text-muted-foreground">No guests.</p>}
+        <div ref={scrollRef} className="max-h-[calc(100vh-16rem)] overflow-auto">
+        <div className="relative w-full divide-y" style={{ height: `${virtualizer.getTotalSize()}px` }}>
+        {virtualRows.map((vr) => {
+          const g = filtered[vr.index];
+          return (
+          <div key={g.id}
+            ref={virtualizer.measureElement}
+            data-index={vr.index}
+            className="absolute left-0 top-0 w-full flex items-center gap-3 px-4 py-3 hover:bg-accent"
+            style={{ transform: `translateY(${vr.start}px)` }}>
             <Checkbox checked={selected.has(g.id)} onCheckedChange={() => toggleOne(g.id)}
               aria-label={`Select ${g.name}`} onClick={(e) => e.stopPropagation()} />
             <Link to="/guests/$id" params={{ id: g.id }} className="flex-1 min-w-0">
@@ -467,7 +487,11 @@ function GuestsListPage() {
               </Button>
             </div>
           </div>
-        ))}
+          );
+        })}
+        </div>
+        {loadingMore && <p className="p-3 text-center text-xs text-muted-foreground">Loading more…</p>}
+        </div>
       </CardContent></Card>
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
