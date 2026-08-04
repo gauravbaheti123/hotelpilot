@@ -169,7 +169,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     });
     setParties([
       newParty({ name: guestName, mobile: guestMobile, gstin: guestGstin, bill_type: folioGst }),
-      newParty({ name: "", mobile: "", gstin: "", bill_type: isOwnerStrict ? "cash_bill" : "gst_invoice" }),
+      newParty({ name: "", mobile: "", gstin: "", bill_type: "gst_invoice" }),
     ]);
     const ids = new Set<string>();
     for (const c of charges) {
