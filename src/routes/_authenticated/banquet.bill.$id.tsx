@@ -849,9 +849,14 @@ function BanquetBillPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-xs uppercase tracking-wider text-gray-500">
-                    {isGst ? "Tax Invoice" : "Cash Bill"} · Event
+                    {hasBillNumber(b.banquet_number)
+                      ? `${isGst ? "Tax Invoice" : "Cash Bill"} · Event`
+                      : PROVISIONAL_DOC_TITLE}
                   </div>
-                  <div className="text-2xl font-bold" style={{ color: TEAL }}>
+                  <div
+                    className={hasBillNumber(b.banquet_number) ? "text-2xl font-bold" : "text-base font-bold"}
+                    style={{ color: TEAL }}
+                  >
                     {eventRef(b.banquet_number, b.booking_number)}
                   </div>
                   <div className="text-xs text-gray-600">Date: {fmtDate(b.event_date)}</div>
