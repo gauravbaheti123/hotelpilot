@@ -16,6 +16,8 @@ import {
   defaultMealPlanFor, type TariffPlan, NO_TARIFF_PLAN_ERROR,
 } from "@/lib/tariff";
 import { SOURCES, isValidStayRange, nightsBetween } from "@/lib/front-desk";
+import { useGstSlabs } from "@/hooks/use-gst-slabs";
+import { resolveGstRate, resolveGstRateInclusive } from "@/lib/gst";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { emptyRoom, type WizardRoom } from "@/lib/bookingWizard";
@@ -164,6 +166,7 @@ function RoomCard({
   const [avail, setAvail] = useState<AvailableRoom[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [availError, setAvailError] = useState<string | null>(null);
+  const { slabs: gstSlabs } = useGstSlabs(propertyId);
 
   const datesValid = isValidStayRange(room.checkIn, room.checkOut);
   const nights = datesValid ? nightsBetween(room.checkIn, room.checkOut) : 0;
@@ -244,15 +247,15 @@ function RoomCard({
         )}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="grid gap-2">
+      <div className="grid items-start gap-4 sm:grid-cols-2">
+        <div className="grid content-start gap-2">
           <Label>Check-in date *</Label>
           <div className="flex gap-2">
             <Input type="date" value={room.checkIn} onChange={(e) => onChange({ checkIn: e.target.value })} />
             <Input type="time" className="w-32" value={room.checkInTime} onChange={(e) => onChange({ checkInTime: e.target.value })} />
           </div>
         </div>
-        <div className="grid gap-2">
+        <div className="grid content-start gap-2">
           <Label>Check-out date *</Label>
           <div className="flex gap-2">
             <Input type="date" value={room.checkOut} onChange={(e) => onChange({ checkOut: e.target.value })} />
@@ -261,7 +264,7 @@ function RoomCard({
           {!datesValid && <p className="text-xs text-destructive">Check-out must be after check-in</p>}
         </div>
 
-        <div className="grid gap-2">
+        <div className="grid content-start gap-2">
           <Label>Room Category *</Label>
           <SearchableSelect
             value={room.categoryId}
@@ -277,14 +280,14 @@ function RoomCard({
         </div>
 
         {reservation ? (
-          <div className="grid gap-2">
+          <div className="grid content-start gap-2">
             <Label>Room Number</Label>
             <p className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
               Assigned later — reservations hold the category only.
             </p>
           </div>
         ) : (
-          <div className="grid gap-2">
+          <div className="grid content-start gap-2">
             <Label>Room Number {showRoomPicker ? "*" : ""}</Label>
             {showRoomPicker ? (
               <>
@@ -312,7 +315,7 @@ function RoomCard({
                 Room will be assigned later.
               </p>
             )}
-            <label className="flex items-center gap-2 text-xs">
+            <label className="mt-1 flex items-center gap-2 text-xs">
               <Checkbox
                 checked={room.assignLater}
                 onCheckedChange={(c) => onChange({ assignLater: c === true, roomId: c === true ? "" : room.roomId })}
@@ -322,7 +325,7 @@ function RoomCard({
           </div>
         )}
 
-        <div className="grid gap-2">
+        <div className="grid content-start gap-2">
           <Label>Tariff Plan</Label>
           <SearchableSelect
             value={room.planName}
@@ -335,7 +338,7 @@ function RoomCard({
           />
         </div>
 
-        <div className="grid gap-2">
+        <div className="grid content-start gap-2">
           <Label>Meal Plan</Label>
           <SearchableSelect
             value={room.mealPlan}
@@ -348,7 +351,7 @@ function RoomCard({
           />
         </div>
 
-        <div className="grid gap-2">
+        <div className="grid content-start gap-2">
           <Label>Rate / Night *</Label>
           <div className="flex gap-2">
             <Input
@@ -373,9 +376,36 @@ function RoomCard({
             </p>
           )}
           {!rateCheck.allowed && <p className="text-xs text-destructive">{rateCheck.reason}</p>}
+          {Number(room.rate) > 0 && (() => {
+            const rate = Number(room.rate) || 0;
+            const g = room.rateType === "inclusive"
+              ? resolveGstRateInclusive(gstSlabs, "room", rate)
+              : resolveGstRate(gstSlabs, "room", rate);
+            if (g == null) {
+              return (
+                <p className="text-[11px] text-destructive">
+                  No GST slab configured for this room tariff. Configure it in Master Data → GST Slabs.
+                </p>
+              );
+            }
+            if (room.rateType === "inclusive") {
+              const taxable = rate / (1 + g / 100);
+              return (
+                <p className="text-[11px] text-muted-foreground">
+                  Incl. GST {g}% → Taxable ₹{taxable.toFixed(2)} + GST ₹{(rate - taxable).toFixed(2)} = ₹{rate.toFixed(2)}
+                </p>
+              );
+            }
+            const gst = rate * g / 100;
+            return (
+              <p className="text-[11px] text-muted-foreground">
+                Excl. GST {g}% → Taxable ₹{rate.toFixed(2)} + GST ₹{gst.toFixed(2)} = ₹{(rate + gst).toFixed(2)}
+              </p>
+            );
+          })()}
         </div>
 
-        <div className="flex items-end text-xs text-muted-foreground">
+        <div className="flex items-start pt-8 text-xs text-muted-foreground">
           {nights > 0 && `${nights} night${nights === 1 ? "" : "s"} · ₹${((Number(room.rate) || 0) * nights).toLocaleString("en-IN")}`}
         </div>
       </div>
