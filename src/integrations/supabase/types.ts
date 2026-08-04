@@ -731,6 +731,13 @@ export type Database = {
             foreignKeyName: "booking_extra_beds_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_extra_beds_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
@@ -778,6 +785,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "booking_guests_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
           {
             foreignKeyName: "booking_guests_booking_id_fkey"
             columns: ["booking_id"]
@@ -888,6 +902,13 @@ export type Database = {
             foreignKeyName: "booking_rooms_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "booking_rooms_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
@@ -933,8 +954,10 @@ export type Database = {
           adults: number
           advance_amount: number
           balance_amount: number
+          banquet_number: string | null
           billing_company_id: string | null
           booking_number: string
+          booking_type: string
           cancelled_at: string | null
           cancelled_reason: string | null
           check_in: string
@@ -947,16 +970,36 @@ export type Database = {
           created_at: string
           created_by: string | null
           custom_remark: string | null
+          discount_amount: number | null
+          discount_type: string | null
+          discount_value: number | null
+          end_time: string | null
+          event_date: string | null
+          event_end_date: string | null
           event_id: string | null
+          event_name: string | null
+          extra_charge: number | null
+          extra_charge_description: string | null
+          fb_charge: number | null
+          function_type: string | null
           guest_id: string | null
+          hall_charge: number | null
+          hall_id: string | null
+          host_email: string | null
+          host_mobile: string | null
+          host_name: string | null
           id: string
           is_wiped: boolean
           notes: string | null
           ota_partner_name: string | null
+          package_rate: number | null
+          pax: number | null
           property_id: string
           rate_type: string
           restaurant_ledger_balance: number
+          round_off_amount: number | null
           source: string | null
+          start_time: string | null
           status: Database["public"]["Enums"]["booking_status"]
           total_amount: number
           updated_at: string
@@ -967,8 +1010,10 @@ export type Database = {
           adults?: number
           advance_amount?: number
           balance_amount?: number
+          banquet_number?: string | null
           billing_company_id?: string | null
           booking_number: string
+          booking_type?: string
           cancelled_at?: string | null
           cancelled_reason?: string | null
           check_in: string
@@ -981,16 +1026,36 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           custom_remark?: string | null
+          discount_amount?: number | null
+          discount_type?: string | null
+          discount_value?: number | null
+          end_time?: string | null
+          event_date?: string | null
+          event_end_date?: string | null
           event_id?: string | null
+          event_name?: string | null
+          extra_charge?: number | null
+          extra_charge_description?: string | null
+          fb_charge?: number | null
+          function_type?: string | null
           guest_id?: string | null
+          hall_charge?: number | null
+          hall_id?: string | null
+          host_email?: string | null
+          host_mobile?: string | null
+          host_name?: string | null
           id?: string
           is_wiped?: boolean
           notes?: string | null
           ota_partner_name?: string | null
+          package_rate?: number | null
+          pax?: number | null
           property_id: string
           rate_type?: string
           restaurant_ledger_balance?: number
+          round_off_amount?: number | null
           source?: string | null
+          start_time?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
           total_amount?: number
           updated_at?: string
@@ -1001,8 +1066,10 @@ export type Database = {
           adults?: number
           advance_amount?: number
           balance_amount?: number
+          banquet_number?: string | null
           billing_company_id?: string | null
           booking_number?: string
+          booking_type?: string
           cancelled_at?: string | null
           cancelled_reason?: string | null
           check_in?: string
@@ -1015,16 +1082,36 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           custom_remark?: string | null
+          discount_amount?: number | null
+          discount_type?: string | null
+          discount_value?: number | null
+          end_time?: string | null
+          event_date?: string | null
+          event_end_date?: string | null
           event_id?: string | null
+          event_name?: string | null
+          extra_charge?: number | null
+          extra_charge_description?: string | null
+          fb_charge?: number | null
+          function_type?: string | null
           guest_id?: string | null
+          hall_charge?: number | null
+          hall_id?: string | null
+          host_email?: string | null
+          host_mobile?: string | null
+          host_name?: string | null
           id?: string
           is_wiped?: boolean
           notes?: string | null
           ota_partner_name?: string | null
+          package_rate?: number | null
+          pax?: number | null
           property_id?: string
           rate_type?: string
           restaurant_ledger_balance?: number
+          round_off_amount?: number | null
           source?: string | null
+          start_time?: string | null
           status?: Database["public"]["Enums"]["booking_status"]
           total_amount?: number
           updated_at?: string
@@ -1051,6 +1138,13 @@ export type Database = {
             columns: ["guest_id"]
             isOneToOne: false
             referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_hall_id_fkey"
+            columns: ["hall_id"]
+            isOneToOne: false
+            referencedRelation: "halls"
             referencedColumns: ["id"]
           },
           {
@@ -1114,6 +1208,13 @@ export type Database = {
             foreignKeyName: "checkout_overrides_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "checkout_overrides_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
@@ -1162,6 +1263,13 @@ export type Database = {
           undone_by?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "checkout_undo_log_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
           {
             foreignKeyName: "checkout_undo_log_booking_id_fkey"
             columns: ["booking_id"]
@@ -1333,6 +1441,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "communications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
           {
             foreignKeyName: "communications_booking_id_fkey"
             columns: ["booking_id"]
@@ -1583,6 +1698,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "banquet_bookings"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_room_blocks_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
           },
           {
             foreignKeyName: "event_room_blocks_booking_id_fkey"
@@ -1973,6 +2095,13 @@ export type Database = {
             foreignKeyName: "folios_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "folios_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
@@ -2021,6 +2150,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "food_bills_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
           {
             foreignKeyName: "food_bills_booking_id_fkey"
             columns: ["booking_id"]
@@ -2112,6 +2248,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "grc_records_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
           {
             foreignKeyName: "grc_records_booking_id_fkey"
             columns: ["booking_id"]
@@ -2220,6 +2363,13 @@ export type Database = {
             foreignKeyName: "guest_documents_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "guest_documents_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
@@ -2317,6 +2467,13 @@ export type Database = {
           would_recommend?: boolean | null
         }
         Relationships: [
+          {
+            foreignKeyName: "guest_feedback_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
           {
             foreignKeyName: "guest_feedback_booking_id_fkey"
             columns: ["booking_id"]
@@ -2916,6 +3073,13 @@ export type Database = {
           wiped_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "kot_orders_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
           {
             foreignKeyName: "kot_orders_booking_id_fkey"
             columns: ["booking_id"]
@@ -3733,6 +3897,13 @@ export type Database = {
             foreignKeyName: "payments_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
@@ -4018,6 +4189,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "pos_charges_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
           {
             foreignKeyName: "pos_charges_booking_id_fkey"
             columns: ["booking_id"]
@@ -4566,6 +4744,13 @@ export type Database = {
             foreignKeyName: "restaurant_credits_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "restaurant_credits_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
@@ -4645,6 +4830,13 @@ export type Database = {
           settled_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "restaurant_direct_charges_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
           {
             foreignKeyName: "restaurant_direct_charges_booking_id_fkey"
             columns: ["booking_id"]
@@ -5235,6 +5427,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "segment_bills_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
           {
             foreignKeyName: "segment_bills_booking_id_fkey"
             columns: ["booking_id"]
@@ -5898,6 +6097,13 @@ export type Database = {
             foreignKeyName: "whatsapp_messages_booking_id_fkey"
             columns: ["booking_id"]
             isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "whatsapp_messages_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
@@ -6010,7 +6216,25 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      booking_financials: {
+        Row: {
+          advance_amount: number | null
+          balance_amount: number | null
+          booking_id: string | null
+          booking_type: string | null
+          folio_total: number | null
+          property_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       auto_cancel_incomplete_bookings: { Args: never; Returns: number }
@@ -6075,6 +6299,10 @@ export type Database = {
       delete_shift_handover: {
         Args: { _id: string; _reason: string }
         Returns: Json
+      }
+      event_gst_rate: {
+        Args: { _amount: number; _property_id: string }
+        Returns: number
       }
       generate_bill_number: {
         Args: { _property_id: string; _segment: string }
@@ -6231,6 +6459,10 @@ export type Database = {
           _wifi_password: string
         }
         Returns: undefined
+      }
+      seed_event_folio_charges: {
+        Args: { _booking_id: string }
+        Returns: string
       }
       seed_extra_bed_charge: { Args: { _beb_id: string }; Returns: string }
       seed_room_charge_for_booking_room: {
