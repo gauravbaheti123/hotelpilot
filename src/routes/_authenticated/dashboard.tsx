@@ -32,6 +32,7 @@ import {
 import { CalendarDays } from "lucide-react";
 import { SuperadminDashboard as PlatformSuperadminDashboard } from "@/components/SuperadminDashboard";
 import { useSuperadminView } from "@/lib/superadmin-view";
+import { InvoiceListPanel } from "@/components/InvoiceListPanel";
 import { usePermissions } from "@/hooks/use-permissions";
 import {
   AssignRoomDialog,
@@ -228,11 +229,6 @@ function OwnerDashboard({
   const [segment, setSegment] = useState<"rooms" | "food" | "laundry">("rooms");
   // Phase 73 — top-level dashboard view toggle (Rooms / Overview / Invoices).
   const [dashView, setDashView] = useState<"rooms" | "overview" | "invoices">("rooms");
-  const [invSummary, setInvSummary] = useState<{
-    lodgeOpen: number; lodgeDue: number;
-    foodOpen: number; foodDue: number;
-    laundryOpen: number; laundryDue: number;
-  } | null>(null);
   const [segmentPendingByRoom, setSegmentPendingByRoom] = useState<
     Map<string, { amount: number; count: number; bills: Array<{ id: string; bill_number: string; amount: number }> }>
   >(new Map());
@@ -640,54 +636,18 @@ function OwnerDashboard({
     };
   }, [propertyId, reload]);
 
-  // Lightweight invoice summary for the "Invoices" dashboard view.
-  useEffect(() => {
-    if (!propertyId || dashView !== "invoices") return;
-    let cancelled = false;
-    (async () => {
-      const [{ data: fol }, { data: seg }] = await Promise.all([
-        supabase
-          .from("folios")
-          .select("balance_amount")
-          .eq("property_id", propertyId)
-          .eq("is_deleted" as any, false)
-          .gt("balance_amount", 0),
-        supabase
-          .from("segment_bills" as any)
-          .select("segment,total_amount,paid_amount,status")
-          .eq("property_id", propertyId)
-          .neq("status", "settled"),
-      ]);
-      if (cancelled) return;
-      const lodge = (fol ?? []) as Array<{ balance_amount: number }>;
-      const segs = (seg ?? []) as unknown as Array<{
-        segment: string; total_amount: number; paid_amount: number;
-      }>;
-      const due = (s: string) =>
-        segs.filter((r) => r.segment === s)
-          .reduce((a, r) => a + (Number(r.total_amount) - Number(r.paid_amount)), 0);
-      setInvSummary({
-        lodgeOpen: lodge.length,
-        lodgeDue: lodge.reduce((a, r) => a + Number(r.balance_amount ?? 0), 0),
-        foodOpen: segs.filter((r) => r.segment === "food").length,
-        foodDue: due("food"),
-        laundryOpen: segs.filter((r) => r.segment === "laundry").length,
-        laundryDue: due("laundry"),
-      });
-    })();
-    return () => { cancelled = true; };
-  }, [propertyId, dashView]);
-
   return (
-    <AppShell title="Dashboard">
-      <div className="w-full space-y-6">
-        <div className="inline-flex rounded-md border overflow-hidden text-xs">
+    <AppShell
+      title="Dashboard"
+      onTitleClick={() => setDashView("rooms")}
+      titleSlot={
+        <div className="inline-flex rounded-md border overflow-hidden text-xs shrink-0">
           {(["rooms", "overview", "invoices"] as const).map((v) => (
             <button
               key={v}
               type="button"
               onClick={() => setDashView(v)}
-              className={`px-4 h-9 font-medium capitalize transition-colors ${
+              className={`px-3 sm:px-4 h-8 font-medium capitalize transition-colors ${
                 dashView === v
                   ? "bg-primary text-primary-foreground"
                   : "bg-background hover:bg-muted"
@@ -697,7 +657,9 @@ function OwnerDashboard({
             </button>
           ))}
         </div>
-
+      }
+    >
+      <div className="w-full space-y-6">
         {dashView === "rooms" && (
         <>
         <Card>
@@ -1085,48 +1047,9 @@ function OwnerDashboard({
         )}
 
         {dashView === "invoices" && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Open Invoices</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!invSummary ? (
-                <div className="text-sm text-muted-foreground">Loading…</div>
-              ) : (
-                <>
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    {([
-                      ["Lodge", invSummary.lodgeOpen, invSummary.lodgeDue],
-                      ["Food", invSummary.foodOpen, invSummary.foodDue],
-                      ["Laundry", invSummary.laundryOpen, invSummary.laundryDue],
-                    ] as const).map(([label, count, dueAmt]) => (
-                      <div key={label} className="rounded-lg border p-4">
-                        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-                        <div className="mt-1 text-2xl font-semibold">{count}</div>
-                        <div className="text-xs text-muted-foreground">open</div>
-                        <div className="mt-2 text-sm font-medium">
-                          ₹{Math.round(dueAmt).toLocaleString("en-IN")} pending
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between border-t pt-3">
-                    <div className="text-sm">
-                      Total pending{" "}
-                      <span className="font-semibold">
-                        ₹{Math.round(
-                          invSummary.lodgeDue + invSummary.foodDue + invSummary.laundryDue,
-                        ).toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                    <Button onClick={() => navigate({ to: "/billing/invoices" })}>
-                      View All Invoices
-                    </Button>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          <RequirePermission module="invoices">
+            <InvoiceListPanel />
+          </RequirePermission>
         )}
       </div>
       <RoomStatusModal
