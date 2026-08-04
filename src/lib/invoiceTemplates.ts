@@ -4,6 +4,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { consolidateSegmentCharges, expandRoomNights, inr } from "@/lib/billing";
 import { resolveTaxType, splitGst } from "@/lib/gst";
+import { billNo } from "@/lib/billNumber";
 
 export interface InvoiceProperty {
   name: string;
@@ -35,7 +36,8 @@ export interface InvoiceProperty {
 }
 
 export interface InvoiceFolio {
-  invoice_number: string;
+  /** Null until the invoice is numbered (P0: numbering may move to checkout). */
+  invoice_number: string | null;
   bill_type?: string | null;
   gst_mode?: string | null;
   sub_total: number;
@@ -246,9 +248,9 @@ function metaBlock(ctx: InvoiceContext): string {
   const docTitle = draft ? "DRAFT BILL" : isGst ? "TAX INVOICE" : "BILL OF SUPPLY";
   const rooms = (booking.booking_rooms ?? []).map((r) => r.rooms?.room_number).filter(Boolean).join(", ");
   const ns = nights(booking.check_in, booking.check_out);
-  const billNo = draft
+  const billNoLabel = draft
     ? `<span style="color:#9ca3af;letter-spacing:4px">- - - - -</span>`
-    : esc(folio.invoice_number);
+    : esc(billNo(folio.invoice_number));
 
   // OTA / third-party channel name for "Company To" (priority: mapped OTA channel → manual partner name → generic "OTA")
   const otaName =
@@ -280,7 +282,7 @@ function metaBlock(ctx: InvoiceContext): string {
       </div>
       <div style="text-align:right">
         <div class="stamp bg-accent">${docTitle}</div>
-        <div style="margin-top:8px"><span class="small">No:</span> <strong>${billNo}</strong></div>
+        <div style="margin-top:8px"><span class="small">No:</span> <strong>${billNoLabel}</strong></div>
         <div class="small">Booking: ${esc(booking.booking_number)}</div>
         <div class="small">Date: ${new Date().toLocaleDateString("en-IN")}</div>
         ${rooms ? `<div class="small">Room: ${esc(rooms)}</div>` : ""}
@@ -452,7 +454,7 @@ export function renderInvoiceHtml(ctx: InvoiceContext): string {
   const watermark = draft
     ? `<div class="draft-watermark">DRAFT</div>` : "";
   return `<!doctype html><html><head><meta charset="utf-8"/>
-    <title>${esc(ctx.folio.invoice_number)}</title>
+    <title>${esc(billNo(ctx.folio.invoice_number))}</title>
     <style>${commonStyles(color, draft)}</style>
     </head><body><div class="invoice">
       ${watermark}

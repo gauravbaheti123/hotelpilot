@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { BackButton } from "@/components/BackButton";
 import { ArrowLeft, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { billNo } from "@/lib/billNumber";
 import { toast } from "sonner";
 import { inr } from "@/lib/billing";
 import { fmtDate } from "@/lib/reportExports";
@@ -42,7 +43,7 @@ interface MB {
   property_id: string;
   bookings: {
     id: string;
-    banquet_number: string;
+    banquet_number: string | null;
     event_name: string | null;
     function_type: string;
     event_date: string;
@@ -186,7 +187,7 @@ function MasterBillPage() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Event Ref: </span>
-                  {ev.banquet_number}
+                  {billNo(ev.banquet_number)}
                 </div>
                 <div>
                   <span className="text-muted-foreground">Event: </span>

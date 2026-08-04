@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { reportQueryError } from "@/lib/queryError";
+import { billNo } from "@/lib/billNumber";
 
 export type LedgerType = "Lodge" | "Food" | "Laundry" | "Banquet" | "Banquet Food" | "Other";
 
@@ -60,7 +61,7 @@ export async function fetchGuestLedger(guestId: string): Promise<GuestLedger> {
       rows.push({
         id: f.id as string,
         date: String(f.created_at ?? "").slice(0, 10),
-        number: (f.invoice_number as string) ?? "—",
+        number: billNo(f.invoice_number as string | null, "—"),
         type: "Lodge",
         status: (f.status as string) ?? "open",
         total: n(f.total_amount),
@@ -96,7 +97,7 @@ export async function fetchGuestLedger(guestId: string): Promise<GuestLedger> {
 
   const { data: banquetBase, error: __qe4 } = await supabase
     .from("bookings")
-    .select("id,property_id,banquet_number,status,event_status,total_amount,advance_amount,balance_amount,event_date")
+    .select("id,property_id,banquet_number,booking_number,status,event_status,total_amount,advance_amount,balance_amount,event_date")
     .eq("booking_type", "banquet" as any)
     .eq("guest_id", guestId)
     .order("event_date", { ascending: false });
@@ -111,7 +112,7 @@ export async function fetchGuestLedger(guestId: string): Promise<GuestLedger> {
     rows.push({
       id: b.id as string,
       date: String(b.event_date ?? "").slice(0, 10),
-      number: (b.banquet_number as string) ?? "—",
+      number: billNo(b.banquet_number as string | null, (b.booking_number as string) ?? "—"),
       type: "Banquet",
       status: (b.status as string) ?? "open",
       total: n(b.total_amount),

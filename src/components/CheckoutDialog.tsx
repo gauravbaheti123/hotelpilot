@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { billNo } from "@/lib/billNumber";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
@@ -313,7 +314,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     if (!open || loading || !folio || !booking) return;
     if (didSeedRoomCharges.current) return;
     // A settled folio is final — never re-derive or re-seed charges on it.
-    if (folio.status === "settled" || folio.status === "void") {
+    if (folio.status === "settled" || folio.status === "due" || folio.status === "void") {
       didSeedRoomCharges.current = true;
       return;
     }
@@ -358,7 +359,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
   useEffect(() => {
     if (!open || loading || !folio || !booking || !property) return;
     if (didLateChargeCheck.current) return;
-    if (folio.status === "settled" || folio.status === "void") {
+    if (folio.status === "settled" || folio.status === "due" || folio.status === "void") {
       didLateChargeCheck.current = true;
       return;
     }
@@ -464,7 +465,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
   // Settled folio with zero balance: trust folios.balance_amount as the source
   // of truth and skip the client-side charge re-derivation entirely.
   const settledZero =
-    !!folio && folio.status === "settled" && Number(folio.balance_amount ?? 0) <= 0.01;
+    !!folio && (folio.status === "settled" || folio.status === "due") && Number(folio.balance_amount ?? 0) <= 0.01;
 
   // Pre-fill single amount once balance computed
   useEffect(() => {
@@ -1063,7 +1064,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
                 ₹0 due — ready to close
               </div>
               <div className="text-[11px] text-muted-foreground mt-1">
-                Invoice {folio.invoice_number ?? "—"} · Total {inrRound(Number(folio.total_amount ?? 0))} · Paid{" "}
+                Invoice {billNo(folio.invoice_number, "—")} · Total {inrRound(Number(folio.total_amount ?? 0))} · Paid{" "}
                 {inrRound(Number(folio.paid_amount ?? 0))}
               </div>
             </div>

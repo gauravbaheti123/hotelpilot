@@ -4,6 +4,8 @@ export type PaymentMode = (typeof PAYMENT_MODES)[number];
 export const FOLIO_STATUS_TONE: Record<string, string> = {
   open: "bg-amber-100 text-amber-800 border-amber-300",
   settled: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  due: "bg-orange-100 text-orange-800 border-orange-300",
+  refunded: "bg-sky-100 text-sky-800 border-sky-300",
   void: "bg-rose-100 text-rose-800 border-rose-300",
 };
 

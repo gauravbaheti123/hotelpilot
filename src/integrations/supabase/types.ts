@@ -990,12 +990,17 @@ export type Database = {
       }
       checkout_overrides: {
         Row: {
+          amount_transferred: number | null
           approved_by: string | null
           approver_email: string | null
+          authorized_at: string
           booking_id: string
           created_at: string
+          due_date: string | null
           folio_id: string | null
+          guest_id: string | null
           id: string
+          override_type: string
           pending_amount: number | null
           pending_kot_ids: string[] | null
           property_id: string
@@ -1003,12 +1008,17 @@ export type Database = {
           requested_by: string | null
         }
         Insert: {
+          amount_transferred?: number | null
           approved_by?: string | null
           approver_email?: string | null
+          authorized_at?: string
           booking_id: string
           created_at?: string
+          due_date?: string | null
           folio_id?: string | null
+          guest_id?: string | null
           id?: string
+          override_type?: string
           pending_amount?: number | null
           pending_kot_ids?: string[] | null
           property_id: string
@@ -1016,12 +1026,17 @@ export type Database = {
           requested_by?: string | null
         }
         Update: {
+          amount_transferred?: number | null
           approved_by?: string | null
           approver_email?: string | null
+          authorized_at?: string
           booking_id?: string
           created_at?: string
+          due_date?: string | null
           folio_id?: string | null
+          guest_id?: string | null
           id?: string
+          override_type?: string
           pending_amount?: number | null
           pending_kot_ids?: string[] | null
           property_id?: string
@@ -1048,6 +1063,20 @@ export type Database = {
             columns: ["folio_id"]
             isOneToOne: false
             referencedRelation: "folios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkout_overrides_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "receivables_aging"
+            referencedColumns: ["folio_id"]
+          },
+          {
+            foreignKeyName: "checkout_overrides_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
             referencedColumns: ["id"]
           },
           {
@@ -1108,6 +1137,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "folios"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkout_undo_log_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "receivables_aging"
+            referencedColumns: ["folio_id"]
           },
           {
             foreignKeyName: "checkout_undo_log_property_id_fkey"
@@ -1740,6 +1776,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "folio_charges_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "receivables_aging"
+            referencedColumns: ["folio_id"]
+          },
+          {
             foreignKeyName: "folio_charges_wipe_log_id_fkey"
             columns: ["wipe_log_id"]
             isOneToOne: false
@@ -1768,7 +1811,7 @@ export type Database = {
           guest_company: string | null
           guest_gstin: string | null
           id: string
-          invoice_number: string
+          invoice_number: string | null
           is_deleted: boolean
           is_reopened: boolean
           notes: string | null
@@ -1803,7 +1846,7 @@ export type Database = {
           guest_company?: string | null
           guest_gstin?: string | null
           id?: string
-          invoice_number?: string
+          invoice_number?: string | null
           is_deleted?: boolean
           is_reopened?: boolean
           notes?: string | null
@@ -1838,7 +1881,7 @@ export type Database = {
           guest_company?: string | null
           guest_gstin?: string | null
           id?: string
-          invoice_number?: string
+          invoice_number?: string | null
           is_deleted?: boolean
           is_reopened?: boolean
           notes?: string | null
@@ -1889,6 +1932,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "folios"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folios_parent_folio_id_fkey"
+            columns: ["parent_folio_id"]
+            isOneToOne: false
+            referencedRelation: "receivables_aging"
+            referencedColumns: ["folio_id"]
           },
           {
             foreignKeyName: "folios_property_id_fkey"
@@ -1948,6 +1998,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "folios"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "food_bills_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "receivables_aging"
+            referencedColumns: ["folio_id"]
           },
           {
             foreignKeyName: "food_bills_property_id_fkey"
@@ -3693,6 +3750,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "payments_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "receivables_aging"
+            referencedColumns: ["folio_id"]
+          },
+          {
             foreignKeyName: "payments_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
@@ -5227,6 +5291,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "segment_bills_folio_id_fkey"
+            columns: ["folio_id"]
+            isOneToOne: false
+            referencedRelation: "receivables_aging"
+            referencedColumns: ["folio_id"]
+          },
+          {
             foreignKeyName: "segment_bills_guest_id_fkey"
             columns: ["guest_id"]
             isOneToOne: false
@@ -6006,6 +6077,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "bookings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      receivables_aging: {
+        Row: {
+          amount_transferred: number | null
+          authorized_by: string | null
+          balance_amount: number | null
+          booking_id: string | null
+          days_overdue: number | null
+          folio_id: string | null
+          guest_id: string | null
+          guest_mobile: string | null
+          guest_name: string | null
+          invoice_number: string | null
+          paid_amount: number | null
+          property_id: string | null
+          since_at: string | null
+          status: string | null
+          total_amount: number | null
+          transfer_reason: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_guest_id_fkey"
+            columns: ["guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folios_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "folios_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "folios_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"

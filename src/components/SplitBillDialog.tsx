@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { billNo } from "@/lib/billNumber";
 import { toast } from "sonner";
 import {
   inr, inrRound, recomputeFolio, computeBillDiscountAmount,
@@ -148,7 +149,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   });
 
   const [createdBills, setCreatedBills] = useState<
-    { folio_id: string; invoice_number: string; party: PartyDetails; total: number }[]
+    { folio_id: string; invoice_number: string | null; party: PartyDetails; total: number }[]
   >([]);
   const [payRows, setPayRows] = useState<PaymentRow[]>([
     { mode: "cash", amount: "", reference: "" },
@@ -385,7 +386,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           folio_id: childFolioIds[first.i],
           amount: first.a,
           notes: rest.length > 0
-            ? `${p.notes ? `${p.notes} · ` : ""}Split from ${folio.invoice_number} (₹${p.amount.toFixed(2)})`
+            ? `${p.notes ? `${p.notes} · ` : ""}Split from ${billNo(folio.invoice_number)} (₹${p.amount.toFixed(2)})`
             : p.notes,
         } as any).eq("id", p.id);
         if (upErr) throw upErr;
@@ -399,7 +400,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
             mode: p.mode,
             reference_no: p.reference_no,
             paid_at: p.paid_at ?? undefined,
-            notes: `${p.notes ? `${p.notes} · ` : ""}Split from ${folio.invoice_number} (₹${p.amount.toFixed(2)}, source payment ${p.id})`,
+            notes: `${p.notes ? `${p.notes} · ` : ""}Split from ${billNo(folio.invoice_number)} (₹${p.amount.toFixed(2)}, source payment ${p.id})`,
             created_by: user?.id ?? null,
           } as any).select("id").single();
           if (insErr) throw insErr;
@@ -496,7 +497,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           bill_type: party.bill_type,
           guest_gstin: party.gstin || null,
           guest_company: splitType === "different" && i === 1 ? party.name : (folio.guest_company ?? null),
-          notes: `Split bill ${i + 1}/2 of voided ${folio.invoice_number}${splitType === "different" ? ` — Party: ${party.name}` : ""}`,
+          notes: `Split bill ${i + 1}/2 of voided ${billNo(folio.invoice_number)}${splitType === "different" ? ` — Party: ${party.name}` : ""}`,
           discount_type: carryDisc?.type ?? null,
           discount_value: carryDisc?.value ?? 0,
           ...totals,
@@ -574,15 +575,15 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         action_type: "BILL_SPLIT",
         module: "Billing",
         reference_id: booking.id,
-        reference_label: `${folio.invoice_number} → ${created[0].invoice_number} + ${created[1].invoice_number}`,
+        reference_label: `${billNo(folio.invoice_number)} → ${billNo(created[0].invoice_number)} + ${billNo(created[1].invoice_number)}`,
         details: {
-          original_bill: folio.invoice_number,
-          bill1_number: created[0].invoice_number,
-          bill2_number: created[1].invoice_number,
+          original_bill: billNo(folio.invoice_number),
+          bill1_number: billNo(created[0].invoice_number),
+          bill2_number: billNo(created[1].invoice_number),
           split_type: splitType,
         },
       });
-      toast.success(`Bills created: ${created[0].invoice_number} + ${created[1].invoice_number}`);
+      toast.success(`Bills created: ${billNo(created[0].invoice_number)} + ${billNo(created[1].invoice_number)}`);
       setStep(4);
       onDone?.(newFolioIds);
     } catch (e: any) {
@@ -674,8 +675,8 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           : 0;
         const partyPct = round2(shareDistribution.pcts[i] ?? 0);
         const description = splitScope === "charge"
-          ? `Share of ${scopeLabel} — ${partyPct}% of ${folio.invoice_number}`
-          : `Share of Bill — ${partyPct}% of ${folio.invoice_number}`;
+          ? `Share of ${scopeLabel} — ${partyPct}% of ${billNo(folio.invoice_number)}`
+          : `Share of Bill — ${partyPct}% of ${billNo(folio.invoice_number)}`;
         const partyTotal = mode === "gst" ? round2(partyNet + partyGst) : round2(partyNet);
         const { data: f, error: fErr } = await supabase.from("folios").insert({
           property_id: booking.property_id,
@@ -685,7 +686,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           bill_type: party.bill_type,
           guest_gstin: party.gstin || null,
           guest_company: party.name,
-          notes: `Split bill ${i + 1}/${parties.length} (${splitMode === "percent" ? "%" : "₹"}) of voided ${folio.invoice_number} — Party: ${party.name}`,
+          notes: `Split bill ${i + 1}/${parties.length} (${splitMode === "percent" ? "%" : "₹"}) of voided ${billNo(folio.invoice_number)} — Party: ${party.name}`,
           discount_type: null,
           discount_value: 0,
           sub_total: partyNet,
@@ -761,16 +762,16 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         action_type: "BILL_SPLIT",
         module: "Billing",
         reference_id: booking.id,
-        reference_label: `${folio.invoice_number} → ${created.map((c) => c.invoice_number).join(" + ")}`,
+        reference_label: `${billNo(folio.invoice_number)} → ${created.map((c) => billNo(c.invoice_number)).join(" + ")}`,
         details: {
-          original_bill: folio.invoice_number,
+          original_bill: billNo(folio.invoice_number),
           split_mode: splitMode,
           split_scope: splitScope,
           scope_charge_id: splitScope === "charge" ? scopeChargeId : null,
           base_net: baseNet,
           base_gst_rate: gstRate,
           parties: created.map((c) => ({
-            bill_number: c.invoice_number,
+            bill_number: billNo(c.invoice_number),
             party: c.party.name,
             amount: c.total,
           })),
@@ -889,9 +890,9 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         action_type: "DISCOUNT_APPLIED",
         module: "Billing",
         reference_id: target.folio_id,
-        reference_label: target.invoice_number,
+        reference_label: billNo(target.invoice_number),
         details: {
-          bill_number: target.invoice_number,
+          bill_number: billNo(target.invoice_number),
           level: "bill",
           discount_type: type,
           discount_value: value,
@@ -1204,7 +1205,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
               <div key={b.folio_id} className="rounded border p-3 space-y-2">
                 <div className="flex justify-between text-sm">
                   <div>
-                    <div className="font-semibold">{b.invoice_number}</div>
+                    <div className="font-semibold">{billNo(b.invoice_number)}</div>
                     <div className="text-xs text-muted-foreground">{b.party.name}</div>
                   </div>
                   <div className="font-semibold tabular-nums">{inrRound(b.total)}</div>

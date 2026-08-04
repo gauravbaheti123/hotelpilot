@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { listEventBookings } from "@/lib/banquetEvent";
+import { billNo } from "@/lib/billNumber";
 import { ReportShell } from "@/components/ReportShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -43,7 +44,7 @@ function Page() {
       status: status !== "all" ? status : undefined,
     });
     const out: Row[] = events.map((b) => ({
-      _id: b.booking_id, bill_no: b.banquet_number, event_name: b.event_name ?? b.function_type,
+      _id: b.booking_id, bill_no: billNo(b.banquet_number), event_name: b.event_name ?? b.function_type,
       function_type: b.function_type, hall: b.hall_name, date: b.event_date,
       host: b.guest_name ?? b.host_name ?? "", pax: b.pax,
       hall_charge: b.hall_charge, fb_charge: b.fb_charge,

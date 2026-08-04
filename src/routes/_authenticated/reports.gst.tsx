@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { fetchGstInvoiceSlabs, type GstInvoiceSlabRow } from "@/lib/reports";
+import { billNo } from "@/lib/billNumber";
 import { ReportShell } from "@/components/ReportShell";
 import { RequirePermission } from "@/components/RequirePermission";
 import { ReportDataTable } from "@/components/ReportDataTable";
@@ -68,16 +69,17 @@ function GstReportPage() {
       cgst += Number(r.cgst ?? 0);
       sgst += Number(r.sgst ?? 0);
       igst += Number(r.igst ?? 0);
-      if (!seen.has(r.invoice_number)) {
+      const invKey = r.invoice_number ?? `unnumbered-${r.created_at}`;
+      if (!seen.has(invKey)) {
         invoice += Number(r.invoice_total ?? 0);
-        seen.add(r.invoice_number);
+        seen.add(invKey);
       }
     }
     return { taxable, gst, invoice, cgst, sgst, igst };
   }, [derived]);
 
   const columns: ReportColumn<Display>[] = [
-    { key: "bill_no", header: "Bill No", get: (r) => r.invoice_number, type: "text" },
+    { key: "bill_no", header: "Bill No", get: (r) => billNo(r.invoice_number), type: "text" },
     { key: "date", header: "Date", get: (r) => fmtDate(r.created_at), type: "date", sortValue: (r) => r.created_at, dateValue: (r) => r.created_at },
     { key: "guest", header: "Guest Name", get: (r) => r.guest_name ?? "", type: "text" },
     { key: "gstin", header: "GSTIN", get: (r) => r.guest_gstin ?? "", type: "text" },
@@ -111,8 +113,9 @@ function GstReportPage() {
       taxable_amount: number; cgst_amount: number; sgst_amount: number; igst_amount: number; total_amount: number;
     }>();
     for (const r of display) {
-      const v = byInvoice.get(r.invoice_number) ?? {
-        date: r.created_at, voucher_number: r.invoice_number,
+      const invKey = r.invoice_number ?? `unnumbered-${r.created_at}`;
+      const v = byInvoice.get(invKey) ?? {
+        date: r.created_at, voucher_number: billNo(r.invoice_number),
         guest_name: r.guest_name ?? "Walk-In Guest",
         taxable_amount: 0, cgst_amount: 0, sgst_amount: 0, igst_amount: 0, total_amount: 0,
       };
@@ -121,7 +124,7 @@ function GstReportPage() {
       v.sgst_amount += r.sgst;
       v.igst_amount += r.igst;
       v.total_amount += Number(r.invoice_total ?? 0);
-      byInvoice.set(r.invoice_number, v);
+      byInvoice.set(invKey, v);
     }
     const xml = buildTallySalesXml([...byInvoice.values()]);
     downloadXml(xml, buildFileName({ ...meta, reportName: "GST_Tally" }, "xml"));

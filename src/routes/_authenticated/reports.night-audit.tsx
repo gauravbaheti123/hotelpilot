@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { supabase } from "@/integrations/supabase/client";
+import { billNo } from "@/lib/billNumber";
 import { toast } from "sonner";
 import { fetchDailySummary, fetchOccupancy, todayIso, PAYMENT_MODE_LABELS } from "@/lib/reports";
 import { inr } from "@/lib/billing";
@@ -50,7 +51,7 @@ interface OpenKotRow {
 
 interface UnsettledRow {
   id: string;
-  invoice_number: string;
+  invoice_number: string | null;
   booking_id: string;
   guest_name: string | null;
   balance_amount: number;
@@ -461,7 +462,7 @@ function NightAuditPage() {
                 {unsettled.slice(0, 10).map((u) => (
                   <Link key={u.id} to="/billing/folio/$bookingId" params={{ bookingId: u.booking_id }}
                     className="flex justify-between hover:bg-accent rounded px-1">
-                    <span className="font-medium">{u.invoice_number}</span>
+                    <span className="font-medium">{billNo(u.invoice_number)}</span>
                     <span className="ml-2 text-muted-foreground truncate">{u.guest_name ?? "—"}</span>
                     <span className="ml-2 font-medium">{inr(u.balance_amount)}</span>
                   </Link>
