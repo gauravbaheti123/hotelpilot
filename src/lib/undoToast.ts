@@ -20,7 +20,7 @@ export function toastWithUndo(
             await undo();
             toast.success(opts?.undoneMessage ?? "Action undone", { id });
           } catch (e) {
-            toast.error(e instanceof Error ? e.message : "Undo failed", { id });
+            toast.error(errorMessage(e, "undoing that action"), { id });
           }
         })();
       },

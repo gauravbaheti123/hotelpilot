@@ -225,7 +225,7 @@ function ManageRolesDialog({
       .eq("id", swap.id);
     const [r1, r2] = await Promise.all([a, b]);
     if (r1.error || r2.error) {
-      toast.error(r1.error?.message ?? r2.error?.message ?? "Failed to reorder");
+      toastError(r1.error ?? r2.error, "reordering printers");
       return;
     }
     onChanged();

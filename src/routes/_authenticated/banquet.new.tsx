@@ -423,7 +423,7 @@ function NewBanquetPage() {
 
       // Re-seed so any rooms assigned above also land on the event folio.
       await seedEventFolioCharges(created.bookingId).catch((e) =>
-        toast.error(`Event saved, but folio charges failed: ${e?.message ?? e}`),
+        toast.error(`Event saved, but the folio charges could not be added. ${errorMessage(e, "adding folio charges")}`),
       );
 
       const bn = created.banquetNumber;

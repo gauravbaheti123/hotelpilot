@@ -795,7 +795,7 @@ function NewBookingPage() {
             file: idFile.file,
             extra: { bookingId: booking!.id, guestId },
           });
-          toast.error(`ID upload failed: ${e?.message ?? "unknown error"}`);
+          toast.error(errorMessage(e, "uploading the ID document"));
         }
       }
 

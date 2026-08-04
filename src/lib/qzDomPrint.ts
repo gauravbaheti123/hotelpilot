@@ -213,7 +213,7 @@ export async function printDomViaQZ(opts: {
     return true;
   } catch (err: any) {
     console.error("[qz] silent print failed, falling back", err);
-    toast.error(`Silent print failed: ${err?.message ?? err}. Falling back to browser dialog.`);
+    toast.error(`Silent printing isn't available right now — opening the browser print dialog instead. ${errorMessage(err, "printing")}`);
     opts.fallback();
     return false;
   }
