@@ -31,6 +31,7 @@ import { closeEventBlocksForBooking } from "@/lib/eventRoomBlocks";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { istToday } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 
 interface Props {
   bookingId: string | null;
@@ -184,22 +185,24 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
 
     // Load linked billing company (if any) for the Bill-To gate.
     if ((b as any)?.billing_company_id) {
-      const { data: co } = await supabase
+      const { data: co, error: __qe1 } = await supabase
         .from("billing_companies")
         .select("name,gstin")
         .eq("id", (b as any).billing_company_id)
         .maybeSingle();
+      if (__qe1) reportQueryError("billing companies", __qe1);
       setBillToCompany(co ? { name: (co as any).name, gstin: (co as any).gstin ?? null } : null);
     } else {
       setBillToCompany(null);
     }
 
     if ((b as any)?.property_id) {
-      const { data: prop } = await supabase
+      const { data: prop, error: __qe2 } = await supabase
         .from("properties")
         .select("checkout_grace_time")
         .eq("id", (b as any).property_id)
         .maybeSingle();
+      if (__qe2) reportQueryError("properties", __qe2);
       setProperty(prop as any);
     }
 
@@ -240,7 +243,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
 
     const folioId = selectedFolio.id;
 
-    const [{ data: c }, { data: p }, { data: pk }, { data: pos }] = await Promise.all([
+    const [{ data: c, error: __qp1 }, { data: p, error: __qp2 }, { data: pk, error: __qp3 }, { data: pos, error: __qp4 }] = await Promise.all([
       supabase.from("folio_charges").select("*").eq("folio_id", folioId as any).eq("is_wiped", false),
       supabase.from("payments").select("*").eq("folio_id", folioId as any),
       supabase
@@ -256,13 +259,18 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         .eq("booking_id", bookingId)
         .eq("status", "pending"),
     ]);
+    if (__qp1) reportQueryError("folio charges", __qp1);
+    if (__qp2) reportQueryError("payments", __qp2);
+    if (__qp3) reportQueryError("payment methods", __qp3);
+    if (__qp4) reportQueryError("POS charges", __qp4);
     setFolio(selectedFolio);
     setCharges(c ?? []);
     // Unfiltered lookup (wiped rows included) purely for the late-fee guard.
-    const { data: lateRows } = await supabase
+    const { data: lateRows, error: __qe3 } = await supabase
       .from("folio_charges")
       .select("id,description,charge_type,source_table")
       .eq("folio_id", folioId as any);
+    if (__qe3) reportQueryError("folio charges", __qe3);
     setHasAnyLateChargeRow(
       ((lateRows ?? []) as any[]).some(
         (c: any) =>
@@ -273,7 +281,8 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     setPayments(p ?? []);
     setPendingKots((pk ?? []) as unknown as PendingKot[]);
     setPendingPos((pos ?? []) as unknown as PendingPosCharge[]);
-    const { data: segs } = await supabase.rpc("has_pending_segment_bills", { _booking_id: bookingId });
+    const { data: segs, error: __qe4 } = await supabase.rpc("has_pending_segment_bills", { _booking_id: bookingId });
+    if (__qe4) reportQueryError("has pending segment bills", __qe4);
     setPendingSegments(((segs ?? []) as any[]).map((s) => ({
       id: s.id, segment: s.segment, bill_number: s.bill_number,
       total_amount: Number(s.total_amount || 0),
@@ -382,10 +391,11 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     didLateChargeCheck.current = true;
     (async () => {
       const roomNo = primaryRoom?.rooms?.room_number ? ` — Rm ${primaryRoom.rooms.room_number}` : "";
-      const { data: slabRows } = await supabase
+      const { data: slabRows, error: __qe5 } = await supabase
         .from("gst_slabs" as any)
         .select("from_amount,to_amount,gst_rate,charge_category,is_active,effective_from")
         .eq("property_id", booking.property_id);
+      if (__qe5) reportQueryError("gst slabs", __qe5);
       const tax = computeRoomChargeTax(
         rate,
         (slabRows ?? []) as any,
@@ -529,14 +539,16 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         .eq("id", pc.id);
     }
     // Recompute folio totals after inserting
-    const { data: allCharges } = await supabase.from("folio_charges").select("*").eq("folio_id", folio.id);
+    const { data: allCharges, error: __qe6 } = await supabase.from("folio_charges").select("*").eq("folio_id", folio.id);
+    if (__qe6) reportQueryError("folio charges", __qe6);
     const mode = (folio.gst_mode as "cash" | "gst") ?? "gst";
     const posBillDisc: BillDiscount | null =
       (folio as any)?.discount_type && Number((folio as any)?.discount_value) > 0
         ? { type: (folio as any).discount_type as "percent" | "amount", value: Number((folio as any).discount_value) }
         : null;
     const t = recomputeFolio((allCharges ?? []) as any[], mode, posBillDisc);
-    const { data: pays } = await supabase.from("payments").select("amount").eq("folio_id", folio.id);
+    const { data: pays, error: __qe7 } = await supabase.from("payments").select("amount").eq("folio_id", folio.id);
+    if (__qe7) reportQueryError("payments", __qe7);
     const paid = (pays ?? []).reduce((s: number, p: any) => s + Number(p.amount), 0);
     await supabase.from("folios").update({
       ...t,
@@ -555,12 +567,13 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     setBusy(true);
     try {
       // Skip if we already transferred this bill (idempotent)
-      const { data: existing } = await supabase
+      const { data: existing, error: __qe8 } = await supabase
         .from("folio_charges")
         .select("id")
         .eq("source_table", "segment_bills")
         .eq("source_id", bill.id)
         .limit(1);
+      if (__qe8) reportQueryError("folio charges", __qe8);
       if (!existing || existing.length === 0) {
         const { data: items, error: iErr } = await supabase
           .from("segment_bill_items" as any)
@@ -897,10 +910,11 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       setEarlyBusy(false);
       toast.success(`Re-priced to ${early.actualNights} night(s) at the original locked rate.`);
     }
-    const { data: freshCharges } = await supabase
+    const { data: freshCharges, error: __qe9 } = await supabase
       .from("folio_charges")
       .select("charge_type,amount,gst_amount,is_wiped")
       .eq("folio_id", folio?.id as any);
+    if (__qe9) reportQueryError("folio charges", __qe9);
     const newRoomTotal = (freshCharges ?? [])
       .filter((c: any) => c.charge_type === "room" && !c.is_wiped)
       .reduce((s: number, c: any) => s + Number(c.amount || 0) + Number(c.gst_amount || 0), 0);

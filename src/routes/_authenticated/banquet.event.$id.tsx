@@ -68,6 +68,7 @@ import {
   type EventIds,
 } from "@/lib/banquetEvent";
 import { Input as TextInput } from "@/components/ui/input";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/banquet/event/$id")({
   head: () => ({ meta: [{ title: "Banquet Event — HotelPilot" }] }),
   component: () => (
@@ -233,7 +234,7 @@ function BanquetEventPage() {
     nextDay.setDate(nextDay.getDate() + 1);
     setAddCheckOut(istDateISO(nextDay));
 
-    const [{ data: rs }, { data: cs }, { data: hs }] = await Promise.all([
+    const [{ data: rs, error: __qp1 }, { data: cs, error: __qp2 }, { data: hs, error: __qp3 }] = await Promise.all([
       supabase
         .from("rooms")
         .select("id,room_number,category_id,status")
@@ -251,14 +252,18 @@ function BanquetEventPage() {
         .eq("is_active", true)
         .order("name"),
     ]);
+    if (__qp1) reportQueryError("room blocks", __qp1);
+    if (__qp2) reportQueryError("extra charges", __qp2);
+    if (__qp3) reportQueryError("halls", __qp3);
     setRooms((rs ?? []) as Room[]);
     setCats((cs ?? []) as Cat[]);
     setHalls((hs ?? []) as Hall[]);
-    const { data: erb } = await supabase
+    const { data: erb, error: __qe1 } = await supabase
       .from("event_room_blocks")
       .select("*")
       .eq("banquet_booking_id", bq.id)
       .order("room_number");
+    if (__qe1) reportQueryError("event room blocks", __qe1);
     setBlocks((erb ?? []) as unknown as EventBlockRecord[]);
     setLoading(false);
   }, [id]);
@@ -572,13 +577,14 @@ function BanquetEventPage() {
     }
     setDelBusy(true);
     try {
-      const { data: locked } = await supabase.rpc(
+      const { data: locked, error: __qe2 } = await supabase.rpc(
         "is_day_locked" as any,
         {
           _property_id: b.property_id,
           _d: b.event_date,
         } as any,
       );
+      if (__qe2) reportQueryError("is day locked", __qe2);
       if (locked === true)
         return toast.error("Cannot delete — this date is locked by night audit.");
       const { error: pErr } = await supabase.auth.signInWithPassword({
@@ -587,12 +593,14 @@ function BanquetEventPage() {
       });
       if (pErr) return toast.error("Password incorrect");
 
-      const [{ data: unified }, { data: legacy }] = await Promise.all([
+      const [{ data: unified, error: __qp4 }, { data: legacy, error: __qp5 }] = await Promise.all([
         supabase.from("bookings").select("*").eq("id", ids.bookingId).maybeSingle(),
         ids.legacyId
           ? supabase.from("banquet_bookings").select("*").eq("id", ids.legacyId).maybeSingle()
           : Promise.resolve({ data: null } as any),
       ]);
+      if (__qp4) reportQueryError("unified", __qp4);
+      if (__qp5) reportQueryError("legacy", __qp5);
       const roomIds = blocks.map((bk) => bk.room_id).filter(Boolean) as string[];
 
       await logActivity({
@@ -617,10 +625,11 @@ function BanquetEventPage() {
       });
 
       // Folio lines first, then the folio, then the room rows, then the bookings.
-      const { data: folios } = await supabase
+      const { data: folios, error: __qe3 } = await supabase
         .from("folios")
         .select("id")
         .eq("booking_id", ids.bookingId);
+      if (__qe3) reportQueryError("folios", __qe3);
       const folioIds = ((folios ?? []) as any[]).map((f) => f.id);
       if (folioIds.length > 0) {
         await supabase.from("folio_charges").delete().in("folio_id", folioIds);

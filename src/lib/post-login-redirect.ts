@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { reportQueryError } from "@/lib/queryError";
 
 // Ordered by sidebar priority. First module the user has "view" access to wins.
 const MODULE_ROUTES: Array<{ module: string; to: string }> = [
@@ -29,10 +30,11 @@ const MODULE_ROUTES: Array<{ module: string; to: string }> = [
  */
 export async function resolvePostLoginRedirect(userId: string): Promise<string> {
   // 1. Roles: owner/superadmin bypass the permission grid.
-  const { data: userRoles } = await supabase
+  const { data: userRoles, error: __qe1 } = await supabase
     .from("user_roles")
     .select("role, role_id")
     .eq("user_id", userId);
+  if (__qe1) reportQueryError("user roles", __qe1);
 
   const roleNames = ((userRoles ?? []) as Array<{ role: string | null }>)
     .map((r) => r.role)
@@ -51,11 +53,12 @@ export async function resolvePostLoginRedirect(userId: string): Promise<string> 
   if (roleIds.length === 0) return "/access-denied";
 
   // 2. Permission map from role_permissions.
-  const { data: rps } = await supabase
+  const { data: rps, error: __qe2 } = await supabase
     .from("role_permissions")
     .select("allowed, permissions!role_permissions_permission_id_fkey(module, action)")
     .in("role_id", roleIds)
     .eq("allowed", true);
+  if (__qe2) reportQueryError("role permissions", __qe2);
 
   const viewable = new Set<string>();
   for (const row of (rps ?? []) as any[]) {

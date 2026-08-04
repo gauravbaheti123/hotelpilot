@@ -22,6 +22,7 @@ import { AlertTriangle, CheckCircle2, Lock, Printer, FileText } from "lucide-rea
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { istDateISO } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/reports/night-audit")({
   head: () => ({ meta: [{ title: "Night Audit — HotelPilot" }] }),
   component: () => (<RequirePermission module="day_close"><NightAuditPage /></RequirePermission>),
@@ -147,9 +148,10 @@ function NightAuditPage() {
     const bookingIds = Array.from(new Set(checkedIn.map((c) => c.booking_id)));
     const folioMap = new Map<string, string>();
     if (bookingIds.length) {
-      const { data: fs } = await supabase
+      const { data: fs, error: __qe1 } = await supabase
         .from("folios").select("id, booking_id, status, is_deleted")
         .eq("property_id", propertyId).in("booking_id", bookingIds);
+      if (__qe1) reportQueryError("folios", __qe1);
       (fs ?? []).forEach((f: any) => {
         if (f.is_deleted || f.status === "void") return;
         if (!folioMap.has(f.booking_id)) folioMap.set(f.booking_id, f.id);
@@ -170,11 +172,12 @@ function NightAuditPage() {
     })));
 
     // Open KOTs
-    const { data: kots } = await supabase
+    const { data: kots, error: __qe2 } = await supabase
       .from("kot_orders")
       .select("id, kot_number, total_amount, status, rooms(room_number), kot_items(item_name, qty)")
       .eq("property_id", propertyId).eq("kot_copy", "hotel_copy")
       .in("status", ["open", "printed", "served"]);
+    if (__qe2) reportQueryError("kot orders", __qe2);
     setOpenKots(((kots ?? []) as any[]).map((k) => ({
       id: k.id, kot_number: k.kot_number,
       room_number: k.rooms?.room_number ?? null,
@@ -184,12 +187,13 @@ function NightAuditPage() {
     })));
 
     // Unsettled bills
-    const { data: uf } = await supabase
+    const { data: uf, error: __qe3 } = await supabase
       .from("folios")
       .select("id, invoice_number, booking_id, balance_amount, status, bookings(source,guests(name))")
       .eq("property_id", propertyId)
       .neq("status", "void").eq("is_deleted", false)
       .gt("balance_amount", 0);
+    if (__qe3) reportQueryError("folios", __qe3);
     // Banquet event-block folios count normally for 48h after the event ends.
     const bqScope = await fetchBanquetScope(propertyId);
     setUnsettled(((uf ?? []) as any[]).filter(
@@ -210,23 +214,26 @@ function NightAuditPage() {
     const startIso = `${date}T00:00:00`;
     const endD = new Date(`${date}T00:00:00`); endD.setDate(endD.getDate() + 1);
     const endIso = endD.toISOString();
-    const { data: exp } = await supabase
+    const { data: exp, error: __qe4 } = await supabase
       .from("expenses").select("amount").eq("property_id", propertyId)
       .gte("expense_date", date).lte("expense_date", date);
+    if (__qe4) reportQueryError("expenses", __qe4);
     setExpenses((exp ?? []).reduce((a, x: any) => a + Number(x.amount || 0), 0));
 
     // Split revenue by source (best-effort)
-    const { data: folioRows } = await supabase
+    const { data: folioRows, error: __qe5 } = await supabase
       .from("folios").select("id, total_amount, bookings(source)")
       .eq("property_id", propertyId).neq("status", "void").eq("is_deleted", false)
       .gte("created_at", startIso).lt("created_at", endIso);
+    if (__qe5) reportQueryError("folios", __qe5);
     const folioIds = ((folioRows ?? []) as any[])
       .filter((f) => !isBanquetRecord(bqScope, { folio_id: f.id }))
       .map((f) => f.id);
     let roomRev = 0, foodRev = 0, otherRev = 0;
     if (folioIds.length) {
-      const { data: ch } = await supabase
+      const { data: ch, error: __qe6 } = await supabase
         .from("folio_charges").select("folio_id, charge_type, amount, gst_amount").in("folio_id", folioIds);
+      if (__qe6) reportQueryError("folio charges", __qe6);
       (ch ?? []).forEach((c: any) => {
         const t = (c.charge_type ?? "").toLowerCase();
         const v = Number(c.amount || 0) + Number(c.gst_amount || 0);
@@ -245,9 +252,10 @@ function NightAuditPage() {
     // Opening cash = previous day's closing_cash_actual, fallback 0
     const prevD = new Date(`${date}T00:00:00`); prevD.setDate(prevD.getDate() - 1);
     const prevIso = istDateISO(prevD);
-    const { data: prev } = await supabase
+    const { data: prev, error: __qe7 } = await supabase
       .from("night_audit_reports").select("closing_cash_actual")
       .eq("property_id", propertyId).eq("audit_date", prevIso).maybeSingle();
+    if (__qe7) reportQueryError("night audit reports", __qe7);
     setOpeningCash(Number((prev as any)?.closing_cash_actual ?? 0));
   }, [propertyId, date]);
 

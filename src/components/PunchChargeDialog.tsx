@@ -21,6 +21,7 @@ import {
   THERMAL_FEED_HTML,
 } from "@/lib/printStyles";
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
+import { reportQueryError, guardQuery } from "@/lib/queryError";
 
 export type SegmentKind = "food" | "laundry";
 
@@ -88,7 +89,7 @@ export function PunchChargeDialog({
         .eq("property_id", propertyId)
         .eq("is_available", true)
         .order("name")
-        .then(({ data }) => {
+        .then(guardQuery("menu items")).then(({ data }) => {
           if (cancelled) return;
           setPickerItems((data ?? []).map((m: any) => ({
             id: m.id, name: m.name, rate: Number(m.price ?? 0),
@@ -105,7 +106,7 @@ export function PunchChargeDialog({
         .eq("property_id", propertyId)
         .eq("is_active", true)
         .order("name")
-        .then(({ data }) => {
+        .then(guardQuery("sundry items")).then(({ data }) => {
           if (cancelled) return;
           setPickerItems((data ?? []).map((s: any) => ({
             id: s.id, name: s.name, rate: Number(s.rate ?? 0),
@@ -124,7 +125,7 @@ export function PunchChargeDialog({
       .select("id,name,paper_size,printer_role,type,is_active")
       .eq("property_id", propertyId)
       .eq("is_active", true)
-      .then(({ data }) => {
+      .then(guardQuery("printers")).then(({ data }) => {
         if (cancelled) return;
         setPrinters((data ?? []).map((p: any) => ({
           id: p.id, name: p.name, paper_size: p.paper_size, printer_role: p.printer_role,
@@ -137,7 +138,7 @@ export function PunchChargeDialog({
   useEffect(() => {
     if (!open || segment !== "laundry" || !propertyId) return;
     supabase.rpc("get_gst_rate", { p_property_id: propertyId, p_category: "sundry", p_amount: 100 })
-      .then(({ data }) => { if (typeof data === "number") setDefaultGst(data); });
+      .then(guardQuery("get gst rate")).then(({ data }) => { if (typeof data === "number") setDefaultGst(data); });
   }, [open, segment, propertyId]);
 
   const totals = useMemo(() => {
@@ -662,10 +663,11 @@ export function printSegmentBill(opts: {
     let head = { name: opts.propertyName, address: "", phone: "", gstin: "", fssai: "", logo: "" };
     if (opts.propertyId) {
       try {
-        const { data } = await supabase
+        const { data, error: __qe1 } = await supabase
           .from("properties")
           .select("name,address_line1,address_line2,city,state,pin_code,phone,gstin,fssai,logo_url")
           .eq("id", opts.propertyId).maybeSingle();
+        if (__qe1) reportQueryError("properties", __qe1);
         if (data) {
           const p = data as any;
           head = {

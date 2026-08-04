@@ -7,6 +7,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { SEASON_TYPES } from "@/lib/yield";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { guardQuery } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/masters/rate-seasons")({
   head: () => ({ meta: [{ title: "Rate Seasons — HotelPilot" }] }),
   component: () => (<RequirePermission module="master_data"><RateSeasonsPage /></RequirePermission>),
@@ -36,7 +37,7 @@ function RateSeasonsPage() {
       .select("id,name")
       .eq("property_id", current.id)
       .order("name")
-      .then(({ data }) => setCats((data ?? []) as { id: string; name: string }[]));
+      .then(guardQuery("room categories")).then(({ data }) => setCats((data ?? []) as { id: string; name: string }[]));
   }, [current?.id]);
 
   const fields: FieldDef[] = [

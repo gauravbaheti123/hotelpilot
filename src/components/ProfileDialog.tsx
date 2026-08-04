@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { UserCircle2 } from "lucide-react";
+import { reportQueryError } from "@/lib/queryError";
 
 export function ProfileDialog({
   open,
@@ -29,11 +30,12 @@ export function ProfileDialog({
   useEffect(() => {
     if (!open) return;
     (async () => {
-      const { data } = await supabase
+      const { data, error: __qe1 } = await supabase
         .from("profiles")
         .select("name, photo_url")
         .eq("id", userId)
         .maybeSingle();
+      if (__qe1) reportQueryError("profiles", __qe1);
       setName((data as any)?.name ?? "");
       setPhotoUrl((data as any)?.photo_url ?? null);
       setPassword("");

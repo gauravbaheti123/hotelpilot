@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { RequirePermission } from "@/components/RequirePermission";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { istToday } from "@/lib/date";
+import { reportQueryError, guardQuery } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/front-desk/in-house")({
   head: () => ({ meta: [{ title: "In-house — HotelPilot" }] }),
   component: () => (<RequirePermission module="inhouse"><InHousePage /></RequirePermission>),
@@ -230,12 +231,13 @@ function AssignGuestDialog({
     if (!bookingId || !propertyId || search.trim().length < 2) { setResults([]); return; }
     const t = setTimeout(async () => {
       const like = `%${search.trim()}%`;
-      const { data } = await supabase
+      const { data, error: __qe1 } = await supabase
         .from("guests")
         .select("id,name,mobile")
         .eq("property_id", propertyId)
         .or(`name.ilike.${like},mobile.ilike.${like}`)
         .limit(10);
+      if (__qe1) reportQueryError("guests", __qe1);
       setResults((data ?? []) as any);
     }, 250);
     return () => clearTimeout(t);
@@ -318,7 +320,7 @@ function AssignRoomDialog({
       .eq("is_active", true)
       .eq("status", "vacant")
       .order("room_number")
-      .then(({ data }) => setRooms((data ?? []) as any));
+      .then(guardQuery("rooms")).then(({ data }) => setRooms((data ?? []) as any));
   }, [bookingId, propertyId]);
 
   const assign = async () => {

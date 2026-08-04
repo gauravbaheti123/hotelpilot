@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { reportQueryError } from "@/lib/queryError";
 
 /**
  * Petty cash + cash-expense reconciliation helpers.
@@ -127,13 +128,14 @@ export function buildCashBreakdown(
 
 /** Previous handover's closing float for this property (carry-forward). */
 export async function fetchPreviousClosingCash(propertyId: string): Promise<number | null> {
-  const { data } = await supabase
+  const { data, error: __qe1 } = await supabase
     .from("shift_handovers")
     .select("closing_cash,window_end,created_at")
     .eq("property_id", propertyId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (__qe1) reportQueryError("shift handovers", __qe1);
   if (!data) return null;
   const v = (data as Record<string, unknown>).closing_cash;
   return v === null || v === undefined ? 0 : Number(v);

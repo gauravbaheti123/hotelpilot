@@ -15,6 +15,7 @@ import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
+import { reportQueryError, guardQuery } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/reports/food-kot")({
   head: () => ({ meta: [{ title: "Food / KOT Report — HotelPilot" }] }),
@@ -47,19 +48,20 @@ function Page() {
   useEffect(() => {
     if (!propertyId) return;
     supabase.from("menu_categories" as any).select("id,name").eq("property_id", propertyId)
-      .then(({ data }) => setCats((data ?? []) as any));
+      .then(guardQuery("menu categories")).then(({ data }) => setCats((data ?? []) as any));
   }, [propertyId]);
 
   const load = useCallback(async () => {
     if (!propertyId) return;
     const fromIso = `${from}T00:00:00`;
     const toIso = `${to}T23:59:59`;
-    const { data: kotData } = await supabase.from("kot_orders").select(`
+    const { data: kotData, error: __qe1 } = await supabase.from("kot_orders").select(`
       id,kot_number,created_at,total_amount,status,booking_id,
       rooms(room_number),bookings(guests(name)),
       kot_items(id,item_name,qty,rate,amount,menu_items(category_id,kitchen_type,menu_categories(name)))
     `).eq("property_id", propertyId).gte("created_at", fromIso).lte("created_at", toIso)
       .order("created_at", { ascending: false });
+    if (__qe1) reportQueryError("kot orders", __qe1);
     // KOTs raised against banquet event-block rooms are excluded from the
     // operational food report (Owner-only Banquet Billing report shows them).
     const scope = await fetchBanquetScope(propertyId);
@@ -68,10 +70,11 @@ function Page() {
     const bookingIds = Array.from(new Set(kotRows.map((k) => k.booking_id).filter(Boolean)));
     const fbMap = new Map<string, string>();
     if (bookingIds.length > 0) {
-      const { data: fbs } = await supabase
+      const { data: fbs, error: __qe2 } = await supabase
         .from("food_bills" as any)
         .select("booking_id,food_bill_number")
         .in("booking_id", bookingIds);
+      if (__qe2) reportQueryError("food bills", __qe2);
       for (const row of (fbs ?? []) as any[]) fbMap.set(row.booking_id, row.food_bill_number);
     }
     const kr: KotRow[] = []; const ir: ItemRow[] = [];

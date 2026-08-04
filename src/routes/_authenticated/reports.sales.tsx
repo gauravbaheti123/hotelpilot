@@ -13,6 +13,7 @@ import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { istDateISO } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/reports/sales")({
   head: () => ({ meta: [{ title: "Sales Report — HotelPilot" }] }),
   component: () => (<RequirePermission module="reports"><SalesReportPage /></RequirePermission>),
@@ -44,13 +45,15 @@ function SalesReportPage() {
     const endD = new Date(`${to}T00:00:00`); endD.setDate(endD.getDate() + 1);
     const end = endD.toISOString();
     (async () => {
-      const [{ data: f }, { data: p }, scope] = await Promise.all([
+      const [{ data: f, error: __qp1 }, { data: p, error: __qp2 }, scope] = await Promise.all([
         supabase.from("folios").select("created_at,sub_total,gst_amount,total_amount,status,id,booking_id")
           .eq("property_id", propertyId).neq("status", "void").gte("created_at", start).lt("created_at", end),
         supabase.from("payments").select("paid_at,amount,mode,booking_id,folio_id")
           .eq("property_id", propertyId).gte("paid_at", start).lt("paid_at", end),
         fetchBanquetScope(propertyId),
       ]);
+      if (__qp1) reportQueryError("folios", __qp1);
+      if (__qp2) reportQueryError("payments", __qp2);
       // Banquet event-block folios/payments are excluded from operational sales.
       setFolios(((f ?? []) as any[]).filter(
         (row) => !isBanquetRecord(scope, { booking_id: row.booking_id, folio_id: row.id }),

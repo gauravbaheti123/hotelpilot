@@ -31,6 +31,7 @@ import { isValidStayRange } from "@/lib/front-desk";
 import { GuestSearchInput } from "@/components/GuestSearchInput";
 import { istDateISO, istToday } from "@/lib/date";
 import { createEventBooking, seedEventFolioCharges } from "@/lib/banquetEvent";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/banquet/new")({
   head: () => ({ meta: [{ title: "New Banquet — HotelPilot" }] }),
@@ -127,28 +128,31 @@ function NewBanquetPage() {
   useEffect(() => {
     if (!propertyId) return;
     (async () => {
-      const { data } = await supabase
+      const { data, error: __qe1 } = await supabase
         .from("halls")
         .select("id,name,capacity")
         .eq("property_id", propertyId)
         .eq("is_active", true)
         .order("name");
+      if (__qe1) reportQueryError("halls", __qe1);
       setHalls((data ?? []) as Hall[]);
-      const { data: cs } = await supabase
+      const { data: cs, error: __qe2 } = await supabase
         .from("room_categories")
         .select("id, name")
         .eq("property_id", propertyId)
         .order("name");
+      if (__qe2) reportQueryError("room categories", __qe2);
       setCats((cs ?? []) as Cat[]);
       // Phase 27b — room pricing for banquet blocks comes from Tariff Plans.
       setTariffPlans(await fetchTariffPlans(propertyId).catch(() => []));
-      const { data: rs } = await supabase
+      const { data: rs, error: __qe3 } = await supabase
         .from("rooms")
         .select("id,room_number,category_id,status,room_categories(name)")
         .eq("property_id", propertyId)
         .eq("is_active", true)
         .eq("status", "vacant")
         .order("room_number");
+      if (__qe3) reportQueryError("rooms", __qe3);
       setAllRooms(
         ((rs ?? []) as any[]).map((r) => ({
           id: r.id,

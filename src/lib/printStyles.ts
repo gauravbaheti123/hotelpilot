@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { reportQueryError } from "@/lib/queryError";
 
 export type PaperSize = "58mm" | "80mm" | "A4";
 
@@ -72,7 +73,7 @@ export async function fetchBillPrinter(
   propertyId: string | null | undefined,
 ): Promise<{ name: string; paper_size: string } | null> {
   if (!propertyId) return null;
-  const { data } = await supabase
+  const { data, error: __qe1 } = await supabase
     .from("printers")
     .select("name,paper_size,type,is_default")
     .eq("property_id", propertyId)
@@ -80,6 +81,7 @@ export async function fetchBillPrinter(
     .in("type", ["bill", "both"])
     .order("is_default", { ascending: false })
     .limit(1);
+  if (__qe1) reportQueryError("printers", __qe1);
   const row = data?.[0] as { name?: string; paper_size?: string | null } | undefined;
   if (!row?.name) return null;
   return { name: row.name, paper_size: (row.paper_size as string) ?? "80mm" };
@@ -110,7 +112,7 @@ export async function fetchPrinterPaperSize(
   usage: "kot" | "bill",
 ): Promise<string> {
   if (!propertyId) return "80mm";
-  const { data } = await supabase
+  const { data, error: __qe2 } = await supabase
     .from("printers")
     .select("paper_size,type,is_default")
     .eq("property_id", propertyId)
@@ -118,6 +120,7 @@ export async function fetchPrinterPaperSize(
     .in("type", [usage, "both"])
     .order("is_default", { ascending: false })
     .limit(1);
+  if (__qe2) reportQueryError("printers", __qe2);
   return (data?.[0]?.paper_size as string | null) ?? "80mm";
 }
 

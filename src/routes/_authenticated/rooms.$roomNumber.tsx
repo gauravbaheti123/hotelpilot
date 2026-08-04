@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/rooms/$roomNumber")({
   head: () => ({ meta: [{ title: "Room Detail — HotelPilot" }] }),
   component: () => (<RequirePermission module="room_board"><RoomDetailPage /></RequirePermission>),
@@ -94,13 +95,14 @@ function RoomDetailPage() {
     setRoom(r as any);
 
     // current booking via booking_rooms
-    const { data: brRows } = await supabase
+    const { data: brRows, error: __qe1 } = await supabase
       .from("booking_rooms")
       .select("rate, check_in, check_out, tariff:tariff_plans(name), booking:bookings!booking_rooms_booking_id_fkey!inner(id, booking_number, source, status, check_in, check_out, checked_in_at, adults, children, total_amount, advance_amount, balance_amount, guest:guests(name, mobile, id_proof_type, id_proof_number))")
       .eq("room_id", (r as any).id)
       .in("booking.status", ["checked_in"])
       .order("check_in", { ascending: false })
       .limit(1);
+    if (__qe1) reportQueryError("booking rooms", __qe1);
 
     const live = (brRows ?? []).find((x: any) => x.booking) as any;
     if (live?.booking) {
@@ -116,13 +118,16 @@ function RoomDetailPage() {
       setBooking(cb);
 
       // folio + charges + payments
-      const { data: f } = await supabase.from("folios").select("id").eq("booking_id", b.id).maybeSingle();
+      const { data: f, error: __qe2 } = await supabase.from("folios").select("id").eq("booking_id", b.id).maybeSingle();
+      if (__qe2) reportQueryError("folios", __qe2);
       setFolioId(f?.id ?? null);
       if (f?.id) {
-        const [{ data: ch }, { data: pays }] = await Promise.all([
+        const [{ data: ch, error: __qp1 }, { data: pays, error: __qp2 }] = await Promise.all([
           supabase.from("folio_charges").select("id, charge_type, description, amount, charged_on").eq("folio_id", f.id).order("charged_on"),
           supabase.from("payments").select("amount").eq("folio_id", f.id),
         ]);
+        if (__qp1) reportQueryError("folio charges", __qp1);
+        if (__qp2) reportQueryError("payments", __qp2);
         setCharges((ch ?? []) as any);
         setPaid((pays ?? []).reduce((a: number, x: any) => a + Number(x.amount || 0), 0));
       } else {
@@ -130,30 +135,33 @@ function RoomDetailPage() {
       }
 
       // KOTs
-      const { data: kotRows } = await supabase
+      const { data: kotRows, error: __qe3 } = await supabase
         .from("kot_orders")
         .select("id, kot_number, status, total_amount, created_at, items:kot_items(item_name, qty)")
         .eq("booking_id", b.id)
         .order("created_at", { ascending: false });
+      if (__qe3) reportQueryError("kot orders", __qe3);
       setKots((kotRows ?? []) as any);
     } else {
       setBooking(null); setFolioId(null); setCharges([]); setPaid(0); setKots([]);
     }
 
     // Housekeeping tasks for this room
-    const { data: hk } = await supabase
+    const { data: hk, error: __qe4 } = await supabase
       .from("housekeeping_tasks")
       .select("id, task_type, status, due_date, assigned_to, completed_at, notes")
       .eq("room_id", (r as any).id)
       .order("created_at", { ascending: false })
       .limit(20);
+    if (__qe4) reportQueryError("housekeeping tasks", __qe4);
     const hkRows = (hk ?? []) as HkTask[];
     setTasks(hkRows);
 
     // staff names
     const ids = Array.from(new Set(hkRows.map((t) => t.assigned_to).filter(Boolean))) as string[];
     if (ids.length) {
-      const { data: st } = await supabase.from("staff").select("id, full_name").in("id", ids);
+      const { data: st, error: __qe5 } = await supabase.from("staff").select("id, full_name").in("id", ids);
+      if (__qe5) reportQueryError("staff", __qe5);
       const m: Record<string, string> = {};
       (st ?? []).forEach((s: any) => { m[s.id] = s.full_name; });
       setStaffMap(m);
@@ -163,12 +171,13 @@ function RoomDetailPage() {
     setLastClean({ at: lastDone?.completed_at ?? null, by: lastDone?.assigned_to ? null : null });
 
     // booking history (last 5, any status, scoped to this room)
-    const { data: histBr } = await supabase
+    const { data: histBr, error: __qe6 } = await supabase
       .from("booking_rooms")
       .select("booking:bookings!booking_rooms_booking_id_fkey(id, booking_number, check_in, check_out, total_amount, advance_amount, guest:guests(name))")
       .eq("room_id", (r as any).id)
       .order("check_in", { ascending: false })
       .limit(8);
+    if (__qe6) reportQueryError("booking rooms", __qe6);
     // Banquet event-block stays leave room history 48h after the event ends.
     const bqScope = await fetchBanquetScope(null);
     const histRows: HistoryRow[] = (histBr ?? [])

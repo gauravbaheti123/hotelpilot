@@ -22,6 +22,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { istToday } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/restaurant/")({
   head: () => ({ meta: [{ title: "Restaurant Billing — HotelPilot" }] }),
   component: () => (<RequirePermission module="restaurant_billing"><RestaurantPage /></RequirePermission>),
@@ -146,8 +147,9 @@ function RestaurantPage() {
 
   async function recomputeFolioOf(folioChargeId: string | null | undefined) {
     if (!folioChargeId) return;
-    const { data } = await supabase
+    const { data, error: __qe1 } = await supabase
       .from("folio_charges").select("folio_id").eq("id", folioChargeId).maybeSingle();
+    if (__qe1) reportQueryError("folio charges", __qe1);
     const folioId = (data as any)?.folio_id;
     if (folioId) await (supabase as any).rpc("recompute_folio_totals", { _folio_id: folioId });
   }
@@ -262,8 +264,9 @@ function RestaurantPage() {
       const folioChargeId = delCharge.folio_charge_id ?? null;
       let folioId: string | null = null;
       if (folioChargeId) {
-        const { data } = await supabase
+        const { data, error: __qe2 } = await supabase
           .from("folio_charges").select("folio_id").eq("id", folioChargeId).maybeSingle();
+        if (__qe2) reportQueryError("folio charges", __qe2);
         folioId = (data as any)?.folio_id ?? null;
         const del = await supabase.from("folio_charges").delete().eq("id", folioChargeId);
         if (del.error) throw del.error;
@@ -344,10 +347,11 @@ function RestaurantPage() {
     // enrich charge rows w/ room+guest
     const bIds = Array.from(new Set(rows.map((r) => r.booking_id).filter(Boolean))) as string[];
     if (bIds.length) {
-      const { data: bdata } = await supabase
+      const { data: bdata, error: __qe3 } = await supabase
         .from("bookings")
         .select("id,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number))")
         .in("id", bIds);
+      if (__qe3) reportQueryError("bookings", __qe3);
       const map: typeof directEnrich = {};
       for (const b of (bdata ?? []) as any[]) {
         const room = (b.booking_rooms ?? []).map((br: any) => br.rooms?.room_number).filter(Boolean).join(", ") || "—";
@@ -497,19 +501,21 @@ function RestaurantPage() {
     setLoading(true);
     // Hotel outsources ALL food to one restaurant partner. Track every canonical
     // KOT (parent_kot_id IS NULL) for this property regardless of kitchen.
-    const { data: allKots } = await supabase
+    const { data: allKots, error: __qe4 } = await supabase
       .from("kot_orders")
       .select("id,property_id,booking_id,room_id,total_amount,kot_number,created_at,status,kot_type,parent_kot_id")
       .eq("property_id", current.id)
       .is("parent_kot_id", null)
       .eq("is_wiped", false)
       .not("status", "in", "(void,cancelled)");
+    if (__qe4) reportQueryError("kot orders", __qe4);
     if (allKots && allKots.length > 0) {
       const ids = allKots.map((k: any) => k.id);
-      const { data: existing } = await supabase
+      const { data: existing, error: __qe5 } = await supabase
         .from("restaurant_credits")
         .select("kot_order_id")
         .in("kot_order_id", ids);
+      if (__qe5) reportQueryError("restaurant credits", __qe5);
       const have = new Set((existing ?? []).map((x: any) => x.kot_order_id));
       const missing = allKots.filter((k: any) => !have.has(k.id));
       if (missing.length > 0) {
@@ -526,11 +532,12 @@ function RestaurantPage() {
         );
       }
       // Clean up stale unsettled credits keyed to restaurant_copy duplicates.
-      const { data: dupKots } = await supabase
+      const { data: dupKots, error: __qe6 } = await supabase
         .from("kot_orders")
         .select("id")
         .eq("property_id", current.id)
         .not("parent_kot_id", "is", null);
+      if (__qe6) reportQueryError("kot orders", __qe6);
       const dupIds = (dupKots ?? []).map((x: any) => x.id);
       if (dupIds.length > 0) {
         await supabase

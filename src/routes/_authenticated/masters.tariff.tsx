@@ -7,6 +7,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { guardQuery } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/masters/tariff")({
   head: () => ({ meta: [{ title: "Tariff Plans — HotelPilot" }] }),
   component: () => (<RequirePermission module="master_data"><TariffPage /></RequirePermission>),
@@ -37,7 +38,7 @@ function TariffPage() {
       .select("id,name")
       .eq("property_id", current.id)
       .order("name")
-      .then(({ data }) => setCats((data ?? []) as { id: string; name: string }[]));
+      .then(guardQuery("room categories")).then(({ data }) => setCats((data ?? []) as { id: string; name: string }[]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id]);
 

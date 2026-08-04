@@ -21,6 +21,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { listEventBookings, deleteEventBooking, type EventRow } from "@/lib/banquetEvent";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/banquet/bookings")({
   head: () => ({ meta: [{ title: "Banquet Events — HotelPilot" }] }),
   component: () => (<RequirePermission module="banquet"><BanquetBookingsPage /></RequirePermission>),
@@ -85,9 +86,10 @@ function BanquetBookingsPage() {
     if (!delTarget || !user?.email) return;
     setBusy(true);
     // Night-audit day lock guard — same convention as invoice hard-delete.
-    const { data: locked } = await supabase.rpc("is_day_locked" as any, {
+    const { data: locked, error: __qe1 } = await supabase.rpc("is_day_locked" as any, {
       _property_id: propertyId, _d: delTarget.event_date,
     } as any);
+    if (__qe1) reportQueryError("is day locked", __qe1);
     if (locked === true) {
       setBusy(false);
       return toast.error("Cannot delete — this date has been locked by night audit.");
@@ -97,15 +99,17 @@ function BanquetBookingsPage() {
     });
     if (pErr) { setBusy(false); return toast.error("Password incorrect"); }
     // Full snapshot of the unified event row before the hard delete.
-    const { data: eventRow } = await supabase.from("bookings")
+    const { data: eventRow, error: __qe2 } = await supabase.from("bookings")
       .select("*").eq("id", delTarget.booking_id).maybeSingle();
+    if (__qe2) reportQueryError("bookings", __qe2);
     // Collect room_ids linked to this banquet BEFORE deleting the booking
     // (child rows cascade-delete, so we snapshot first). Rooms currently
     // flagged 'blocked' need to be reset to Vacant + Dirty so housekeeping
     // verifies them before they go back on sale.
     const roomIds = new Set<string>();
-    const { data: blocks } = await supabase
+    const { data: blocks, error: __qe3 } = await supabase
       .from("event_room_blocks").select("room_id").eq("event_booking_id", delTarget.booking_id);
+    if (__qe3) reportQueryError("event room blocks", __qe3);
     (blocks ?? []).forEach((r: any) => { if (r.room_id) roomIds.add(r.room_id); });
 
     await logActivity({

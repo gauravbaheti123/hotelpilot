@@ -28,6 +28,7 @@ import {
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { istToday } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 
 interface Row {
   id: string; invoice_number: string; gst_mode: string; status: string;
@@ -164,13 +165,14 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
   useEffect(() => {
     if (!propertyId || !audit) { setAuditRows([]); return; }
     (async () => {
-      const { data } = await supabase
+      const { data, error: __qe1 } = await supabase
         .from("activity_log" as any)
         .select("id,created_at,user_name,action_type,reference_label,details")
         .eq("property_id", propertyId)
         .in("action_type", ["BILL_DELETED", "BILL_NUMBER_EDITED"])
         .order("created_at", { ascending: false })
         .limit(300);
+      if (__qe1) reportQueryError("activity log", __qe1);
       setAuditRows((data ?? []) as any);
     })();
   }, [propertyId, audit, busy]);
@@ -234,9 +236,10 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
     try {
       // 1. Check date lock via RPC (uses folio created date)
       const chargedOn = hardDelTarget.created_at.slice(0, 10);
-      const { data: locked } = await supabase.rpc("is_day_locked" as any, {
+      const { data: locked, error: __qe2 } = await supabase.rpc("is_day_locked" as any, {
         _property_id: propertyId, _d: chargedOn,
       } as any);
+      if (__qe2) reportQueryError("is day locked", __qe2);
       if (locked === true) {
         setBusy(false);
         return toast.error("Cannot delete — this date has been locked by night audit.");
@@ -247,9 +250,12 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
       });
       if (pErr) { setBusy(false); return toast.error("Password incorrect"); }
       // 3. Snapshot bill (charges + payments + folio row)
-      const { data: folioRow } = await supabase.from("folios").select("*").eq("id", hardDelTarget.id).maybeSingle();
-      const { data: charges } = await supabase.from("folio_charges").select("*").eq("folio_id", hardDelTarget.id);
-      const { data: payments } = await supabase.from("payments").select("*").eq("folio_id", hardDelTarget.id);
+      const { data: folioRow, error: __qe3 } = await supabase.from("folios").select("*").eq("id", hardDelTarget.id).maybeSingle();
+      if (__qe3) reportQueryError("folios", __qe3);
+      const { data: charges, error: __qe4 } = await supabase.from("folio_charges").select("*").eq("folio_id", hardDelTarget.id);
+      if (__qe4) reportQueryError("folio charges", __qe4);
+      const { data: payments, error: __qe5 } = await supabase.from("payments").select("*").eq("folio_id", hardDelTarget.id);
+      if (__qe5) reportQueryError("payments", __qe5);
       // 4. Log to activity_log
       await logActivity({
         property_id: propertyId!,
@@ -294,7 +300,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
       return toast.error(`Series mismatch — must start with "${oldPrefix}"`);
     }
     setBusy(true);
-    const { data: dup } = await supabase
+    const { data: dup, error: __qe6 } = await supabase
       .from("folios")
       .select("id")
       .eq("property_id", propertyId)
@@ -303,6 +309,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
       .neq("status", "void")
       .neq("id", numTarget.id)
       .limit(1);
+    if (__qe6) reportQueryError("folios", __qe6);
     if (dup && dup.length > 0) {
       setBusy(false);
       return toast.error(`Bill number ${trimmed} is already in use`);
@@ -368,14 +375,16 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
     total_amount: number; is_walkin: boolean; guest_name: string | null; room_id: string | null;
   }) {
     try {
-      const [{ data: items }, { data: room }] = await Promise.all([
+      const [{ data: items, error: __qp1 }, { data: room, error: __qp2 }] = await Promise.all([
         supabase.from("segment_bill_items" as any)
           .select("description,qty,rate,amount,gst_rate,gst_amount")
           .eq("segment_bill_id", bill.id),
         bill.room_id
           ? supabase.from("rooms").select("room_number").eq("id", bill.room_id).maybeSingle()
-          : Promise.resolve({ data: null as any }),
+          : Promise.resolve({ data: null as any, error: null }),
       ]);
+      if (__qp1) reportQueryError("bill items", __qp1);
+      if (__qp2) reportQueryError("room", __qp2);
       const rows = (items ?? []) as any[];
       const sub = rows.reduce((s, i) => s + Number(i.amount || 0), 0);
       const gst = rows.reduce((s, i) => s + Number(i.gst_amount || 0), 0);

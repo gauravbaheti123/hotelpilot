@@ -13,6 +13,7 @@ import { sendWhatsApp } from "@/lib/whatsapp";
 import { toast } from "sonner";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/whatsapp/")({
   head: () => ({ meta: [{ title: "WhatsApp Inbox — HotelPilot" }] }),
   component: () => (<RequirePermission module="whatsapp_inbox"><WhatsAppInboxPage /></RequirePermission>),
@@ -66,12 +67,13 @@ function WhatsAppInboxPage() {
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    const { data } = await supabase
+    const { data, error: __qe1 } = await supabase
       .from("whatsapp_messages")
       .select("id,property_id,guest_id,booking_id,wa_number,direction,content,category,status,sent_at,delivered_at,read_at,created_at,guests(name)")
       .eq("property_id", propertyId)
       .order("created_at", { ascending: false })
       .limit(500);
+    if (__qe1) reportQueryError("whatsapp messages", __qe1);
     const rows: Msg[] = (data ?? []).map((r: any) => ({
       ...r, guest: r.guests ?? null,
     }));

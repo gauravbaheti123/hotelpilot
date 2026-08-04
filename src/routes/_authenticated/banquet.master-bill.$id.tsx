@@ -11,6 +11,7 @@ import { inr } from "@/lib/billing";
 import { fmtDate } from "@/lib/reportExports";
 import { RequirePermission } from "@/components/RequirePermission";
 import { resolveEventIds } from "@/lib/banquetEvent";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/banquet/master-bill/$id")({
   head: () => ({ meta: [{ title: "Banquet Master Bill — HotelPilot" }] }),
@@ -103,11 +104,12 @@ function MasterBillPage() {
       .eq("master_bill_id", (data as any).id)
       .order("room_number");
     setItems((its ?? []) as Item[]);
-    const { data: p } = await supabase
+    const { data: p, error: __qe1 } = await supabase
       .from("properties")
       .select("name,gstin,address,city,state,pincode,phone,email")
       .eq("id", (data as any).property_id)
       .single();
+    if (__qe1) reportQueryError("properties", __qe1);
     setProp(p as PropertyInfo);
     setLoading(false);
   }, [id]);

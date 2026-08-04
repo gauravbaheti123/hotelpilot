@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { reportQueryError } from "@/lib/queryError";
 
 /**
  * Banquet-origin scope — TIME-BASED visibility.
@@ -49,9 +50,10 @@ async function inChunks<T>(ids: string[], fn: (chunk: string[]) => Promise<T[]>)
 export async function fetchBanquetVisibility(
   propertyId: string | null,
 ): Promise<BanquetVisibilityRow[]> {
-  const { data } = await supabase.rpc("banquet_visibility", {
+  const { data, error: __qe1 } = await supabase.rpc("banquet_visibility", {
     _property_id: propertyId ?? undefined,
   });
+  if (__qe1) reportQueryError("banquet visibility", __qe1);
   return (data ?? []) as BanquetVisibilityRow[];
 }
 
@@ -67,7 +69,8 @@ export async function fetchBanquetScope(propertyId: string | null): Promise<Banq
   if (bookingIds.size === 0) return { bookingIds, folioIds: new Set<string>() };
 
   const folios = await inChunks<{ id: string }>(Array.from(bookingIds), async (chunk) => {
-    const { data: f } = await supabase.from("folios").select("id").in("booking_id", chunk);
+    const { data: f, error: __qe2 } = await supabase.from("folios").select("id").in("booking_id", chunk);
+    if (__qe2) reportQueryError("folios", __qe2);
     return (f ?? []) as Array<{ id: string }>;
   });
   return { bookingIds, folioIds: new Set(folios.map((f) => f.id)) };

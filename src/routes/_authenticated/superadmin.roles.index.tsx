@@ -22,6 +22,7 @@ import {
   updateRoleMeta,
   deleteCustomRole,
 } from "@/lib/staff-users.functions";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/superadmin/roles/")({
   head: () => ({ meta: [{ title: "Roles & Permissions — HotelPilot" }] }),
@@ -87,7 +88,8 @@ function RolesPage() {
     const ids = (data ?? []).map((r) => r.id);
     const counts: Record<string, number> = {};
     if (ids.length) {
-      const { data: urs } = await supabase.from("user_roles").select("role_id").in("role_id", ids);
+      const { data: urs, error: __qe1 } = await supabase.from("user_roles").select("role_id").in("role_id", ids);
+      if (__qe1) reportQueryError("user roles", __qe1);
       for (const u of urs ?? []) if (u.role_id) counts[u.role_id] = (counts[u.role_id] ?? 0) + 1;
     }
     setRows((data ?? []).map((r) => ({ ...(r as any), user_count: counts[r.id] ?? 0 })));

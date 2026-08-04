@@ -22,6 +22,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { istToday } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/guests/")({
   head: () => ({ meta: [{ title: "Guests — HotelPilot" }] }),
   component: () => (<RequirePermission module="guest_crm"><GuestsListPage /></RequirePermission>),
@@ -253,8 +254,9 @@ function GuestsListPage() {
     const errors: string[] = [];
     let ok = 0, skipped = 0;
     // Pre-fetch existing mobiles
-    const { data: existing } = await supabase.from("guests")
+    const { data: existing, error: __qe1 } = await supabase.from("guests")
       .select("id,mobile").eq("property_id", propertyId);
+    if (__qe1) reportQueryError("guests", __qe1);
     const byMobile = new Map<string, string>();
     (existing ?? []).forEach((g: any) => { if (g.mobile) byMobile.set(String(g.mobile).trim(), g.id); });
 

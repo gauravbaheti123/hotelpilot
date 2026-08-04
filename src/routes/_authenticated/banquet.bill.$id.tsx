@@ -47,6 +47,7 @@ import {
 } from "@/lib/banquetEvent";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/banquet/bill/$id")({
   head: () => ({ meta: [{ title: "Event Bill — HotelPilot" }] }),
   component: () => (
@@ -193,13 +194,14 @@ function BanquetBillPage() {
     setB(bq);
     setBillType((bq.bill_type as "gst_invoice" | "cash_bill") ?? "gst_invoice"); // historical only; no UI toggle
 
-    const [{ data: p }] = await Promise.all([
+    const [{ data: p, error: __qp1 }] = await Promise.all([
       supabase
         .from("properties")
         .select("name,gstin,state_code,address,city,state,pincode,phone,email,wa_number,logo_url")
         .eq("id", bq.property_id)
         .single(),
     ]);
+    if (__qp1) reportQueryError("payments", __qp1);
     // Bulk room rows were retired in Part 5 — event rooms live on
     // event_room_blocks / booking_rooms in the unified model.
     setBulk([]);
@@ -209,11 +211,12 @@ function BanquetBillPage() {
         if (url) setProperty((cur) => (cur ? { ...cur, logo_url: url } : cur));
       });
     }
-    const { data: ex } = await supabase
+    const { data: ex, error: __qe1 } = await supabase
       .from("banquet_extra_charges")
       .select("id,point_name,amount,discount_type,discount_value,discount_amount")
       .eq("banquet_booking_id", bq.id)
       .order("sort_order", { ascending: true });
+    if (__qe1) reportQueryError("banquet extra charges", __qe1);
     setExtras((ex ?? []) as unknown as ExtraCharge[]);
     try {
       setPays((await loadEventPayments(bq.booking_id)) as unknown as EventPayment[]);
@@ -231,10 +234,11 @@ function BanquetBillPage() {
   useEffect(() => {
     (async () => {
       if (!user?.id || !b?.property_id) return;
-      const { data: pct } = await supabase.rpc("user_max_discount_pct", {
+      const { data: pct, error: __qe2 } = await supabase.rpc("user_max_discount_pct", {
         _user_id: user.id,
         _property_id: b.property_id,
       });
+      if (__qe2) reportQueryError("user max discount pct", __qe2);
       const n = Number(pct);
       setMaxDiscPct(Number.isFinite(n) ? n : 0);
     })();

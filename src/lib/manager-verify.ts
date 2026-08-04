@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
+import { reportQueryError } from "@/lib/queryError";
 
 /**
  * Verifies that the given email+password belongs to a user with
@@ -25,11 +26,14 @@ export async function verifyManagerPassword(
   }
   const uid = data.user.id;
   // Use main client (with auth) to check role via SECURITY DEFINER rpc
-  const [{ data: isMgr }, { data: isOwner }, { data: isSuper }] = await Promise.all([
+  const [{ data: isMgr, error: __qp1 }, { data: isOwner, error: __qp2 }, { data: isSuper, error: __qp3 }] = await Promise.all([
     supabase.rpc("has_role", { _user_id: uid, _role: "manager" }),
     supabase.rpc("has_role", { _user_id: uid, _role: "owner" }),
     supabase.rpc("has_role", { _user_id: uid, _role: "superadmin" }),
   ]);
+  if (__qp1) reportQueryError("is mgr", __qp1);
+  if (__qp2) reportQueryError("is owner", __qp2);
+  if (__qp3) reportQueryError("is super", __qp3);
   try { await ephemeral.auth.signOut(); } catch { /* ignore */ }
   if (!isMgr && !isOwner && !isSuper) {
     return { ok: false, reason: "User is not a manager" };

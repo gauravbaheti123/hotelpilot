@@ -8,6 +8,7 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { supabase } from "@/integrations/supabase/client";
 import { GSTIN_ERROR, isValidOrEmptyGSTIN } from "@/lib/gstin";
 import type { WizardBillTo } from "@/lib/bookingWizard";
+import { reportQueryError } from "@/lib/queryError";
 
 const NEW_COMPANY = "__new__";
 
@@ -29,12 +30,13 @@ export function StepBillTo({ propertyId, value, onChange }: Props) {
     if (!propertyId) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
+      const { data, error: __qe1 } = await supabase
         .from("billing_companies")
         .select("id,name,gstin,address,email,city,state,nation")
         .eq("property_id", propertyId)
         .eq("is_active", true)
         .order("name");
+      if (__qe1) reportQueryError("billing companies", __qe1);
       if (!cancelled) setCompanies((data ?? []) as unknown as CompanyRow[]);
     })();
     return () => { cancelled = true; };

@@ -15,6 +15,7 @@ import {
   ReportColumn, exportExcel, exportPdf, fmtDateTime, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
+import { reportQueryError, guardQuery } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/reports/room-shift")({
   head: () => ({ meta: [{ title: "Room Shift Report — HotelPilot" }] }),
@@ -52,7 +53,7 @@ function Page() {
   useEffect(() => {
     if (!propertyId) return;
     supabase.from("room_categories").select("id,name").eq("property_id", propertyId)
-      .then(({ data }) => setCats((data ?? []) as any));
+      .then(guardQuery("room categories")).then(({ data }) => setCats((data ?? []) as any));
   }, [propertyId]);
 
   const load = useCallback(async () => {
@@ -60,7 +61,7 @@ function Page() {
     const fromIso = new Date(`${from}T00:00:00`).toISOString();
     const toD = new Date(`${to}T00:00:00`); toD.setDate(toD.getDate() + 1);
     const toIso = toD.toISOString();
-    const { data } = await supabase
+    const { data, error: __qe1 } = await supabase
       .from("room_shifts")
       .select(`
         id, shifted_at, old_rate, new_rate, rate_applied, rate_type, tariff_choice,
@@ -75,6 +76,7 @@ function Page() {
       .gte("shifted_at", fromIso)
       .lt("shifted_at", toIso)
       .order("shifted_at", { ascending: false });
+    if (__qe1) reportQueryError("room shifts", __qe1);
     const out: Row[] = ((data ?? []) as any[]).map((s) => {
       const old = Number(s.old_rate ?? 0);
       const nw = Number(s.new_rate ?? 0);

@@ -1,6 +1,7 @@
 import type { Session, User } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { reportQueryError } from "@/lib/queryError";
 
 export type AppRole =
   | "superadmin"
@@ -24,10 +25,11 @@ async function fetchAuthState(): Promise<Omit<AuthState, "loading">> {
   const session = data.session ?? null;
   const user = session?.user ?? null;
   if (!user) return { user: null, session: null, roles: [] };
-  const { data: rows } = await supabase
+  const { data: rows, error: __qe1 } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", user.id);
+  if (__qe1) reportQueryError("user roles", __qe1);
   const roles = ((rows ?? []) as { role: string }[]).map((r) => r.role as AppRole);
   return { user, session, roles };
 }

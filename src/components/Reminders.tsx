@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/popover";
 import { Bell, Plus, X } from "lucide-react";
 import { toast } from "sonner";
+import { reportQueryError } from "@/lib/queryError";
 
 export interface Reminder {
   id: string;
@@ -77,13 +78,14 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
     refetchOnWindowFocus: false,
     queryFn: async () => {
       if (!propertyId) return [];
-      const { data } = await supabase
+      const { data, error: __qe1 } = await supabase
         .from("reminders")
         .select("id, property_id, title, reminder_datetime, notes, is_dismissed, created_at, is_read, type, category, message")
         .eq("property_id", propertyId)
         .eq("is_dismissed", false)
         .order("created_at", { ascending: false })
         .limit(100);
+      if (__qe1) reportQueryError("reminders", __qe1);
       return (data ?? []) as Reminder[];
     },
   });
@@ -302,12 +304,13 @@ export function RemindersSection({ propertyId, userId }: { propertyId: string | 
 
   const load = useCallback(async () => {
     if (!propertyId) { setReminders([]); return; }
-    const { data } = await supabase
+    const { data, error: __qe2 } = await supabase
       .from("reminders")
       .select("id, property_id, title, reminder_datetime, notes, is_dismissed, created_at")
       .eq("property_id", propertyId)
       .eq("is_dismissed", false)
       .order("reminder_datetime", { ascending: true });
+    if (__qe2) reportQueryError("reminders", __qe2);
     setReminders((data ?? []) as Reminder[]);
   }, [propertyId]);
 

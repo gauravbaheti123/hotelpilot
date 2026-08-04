@@ -14,6 +14,7 @@ import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
+import { reportQueryError, guardQuery } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/reports/room-wise")({
   head: () => ({ meta: [{ title: "Room-Wise Report — HotelPilot" }] }),
@@ -42,8 +43,8 @@ function Page() {
 
   useEffect(() => {
     if (!propertyId) return;
-    supabase.from("room_categories").select("id,name").eq("property_id", propertyId).then(({ data }) => setCats((data ?? []) as any));
-    supabase.from("rooms").select("id,room_number").eq("property_id", propertyId).order("room_number").then(({ data }) => setRoomsList((data ?? []) as any));
+    supabase.from("room_categories").select("id,name").eq("property_id", propertyId).then(guardQuery("room categories")).then(({ data }) => setCats((data ?? []) as any));
+    supabase.from("rooms").select("id,room_number").eq("property_id", propertyId).order("room_number").then(guardQuery("rooms")).then(({ data }) => setRoomsList((data ?? []) as any));
   }, [propertyId]);
 
   const load = useCallback(async () => {
@@ -74,8 +75,9 @@ function Page() {
     }
     const nameMap = new Map<string, string>();
     if (uids.size) {
-      const { data: profs } = await supabase.from("profiles")
+      const { data: profs, error: __qe1 } = await supabase.from("profiles")
         .select("id,name,email").in("id", Array.from(uids));
+      if (__qe1) reportQueryError("profiles", __qe1);
       for (const p of (profs ?? []) as any[]) {
         nameMap.set(p.id, p.name || p.email || "");
       }

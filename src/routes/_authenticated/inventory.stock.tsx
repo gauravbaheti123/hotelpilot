@@ -14,6 +14,7 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { AlertTriangle, Plus } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/inventory/stock")({
   head: () => ({ meta: [{ title: "Current Stock — HotelPilot" }] }),
   component: () => (<RequirePermission module="inventory"><StockPage /></RequirePermission>),
@@ -39,11 +40,12 @@ function StockPage() {
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    const { data } = await supabase
+    const { data, error: __qe1 } = await supabase
       .from("inventory_items")
       .select("id,name,sku,category,unit,current_stock,reorder_level,last_rate,is_active")
       .eq("property_id", propertyId)
       .order("name", { ascending: true });
+    if (__qe1) reportQueryError("inventory items", __qe1);
     setRows((data ?? []) as unknown as ItemRow[]);
   }, [propertyId]);
 

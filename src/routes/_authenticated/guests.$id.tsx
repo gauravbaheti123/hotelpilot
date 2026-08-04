@@ -25,6 +25,7 @@ import { fetchGuestLedger, type GuestLedger } from "@/lib/guestLedger";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/guests/$id")({
   head: () => ({ meta: [{ title: "Guest — HotelPilot" }] }),
   component: () => (<RequirePermission module="guest_crm"><GuestDetail /></RequirePermission>),
@@ -71,12 +72,14 @@ function GuestDetail() {
   } | null>(null);
 
   const load = useCallback(async () => {
-    const { data } = await supabase.from("guests").select("*").eq("id", id).maybeSingle();
+    const { data, error: __qe1 } = await supabase.from("guests").select("*").eq("id", id).maybeSingle();
+    if (__qe1) reportQueryError("guests", __qe1);
     setG((data as Guest | null) ?? null);
     setTagsInput((data?.tags ?? []).join(", "));
-    const { data: b } = await supabase.from("bookings")
+    const { data: b, error: __qe2 } = await supabase.from("bookings")
       .select("id,booking_number,status,check_in,check_out,total_amount,booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number),room_categories(name))")
       .eq("guest_id", id).order("check_in", { ascending: false }).limit(50);
+    if (__qe2) reportQueryError("bookings", __qe2);
     // Hide banquet event-block stays once their 48h window has lapsed.
     const scope = await fetchBanquetScope(null);
     setStays(((b ?? []) as any[])
@@ -89,15 +92,17 @@ function GuestDetail() {
           categories: Array.from(new Set(brs.map((r) => r.room_categories?.name).filter(Boolean))).map(String),
         };
       }) as Stay[]);
-    const { data: f } = await supabase.from("guest_feedback")
+    const { data: f, error: __qe3 } = await supabase.from("guest_feedback")
       .select("id,feedback_date,overall_rating,comments,source")
       .eq("guest_id", id).order("feedback_date", { ascending: false }).limit(20);
+    if (__qe3) reportQueryError("guest feedback", __qe3);
     setFeedback((f ?? []) as Feedback[]);
     try { setLedger(await fetchGuestLedger(id)); } catch { setLedger(null); }
     if (data?.property_id) {
-      const { data: p } = await supabase.from("properties")
+      const { data: p, error: __qe4 } = await supabase.from("properties")
         .select("name,address,city,state,phone,gstin")
         .eq("id", data.property_id).maybeSingle();
+      if (__qe4) reportQueryError("properties", __qe4);
       setProp((p as any) ?? null);
     }
   }, [id]);

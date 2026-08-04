@@ -68,6 +68,7 @@ const INDIAN_STATES: Array<{ name: string; code: string }> = [
 ];
 
 import { GSTIN_REGEX as GSTIN_RE, GSTIN_ERROR, isValidOrEmptyGSTIN } from "@/lib/gstin";
+import { reportQueryError } from "@/lib/queryError";
 const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
 const PIN_RE = /^[0-9]{6}$/;
 const PHONE_RE = /^[0-9]{10}$/;
@@ -131,16 +132,18 @@ function HotelSettingsForm({
       setForm(data ?? {});
       if (data?.logo_url) refreshLogoSignedUrl(data.logo_url);
 
-      const { data: cats } = await supabase
+      const { data: cats, error: __qe1 } = await supabase
         .from("room_categories")
         .select("id,name,rate_per_night,gst_rate")
         .eq("property_id", propertyId)
         .order("name");
+      if (__qe1) reportQueryError("room categories", __qe1);
       setCategories((cats ?? []) as any);
-      const { data: sl } = await supabase.from("gst_slabs" as any)
+      const { data: sl, error: __qe2 } = await supabase.from("gst_slabs" as any)
         .select("id,from_amount,to_amount,gst_rate")
         .eq("property_id", propertyId)
         .order("from_amount");
+      if (__qe2) reportQueryError("gst slabs", __qe2);
       setSlabs(((sl as any) ?? []) as any);
       setLoaded(true);
     })();

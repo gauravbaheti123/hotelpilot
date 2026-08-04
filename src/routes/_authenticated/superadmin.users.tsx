@@ -23,6 +23,7 @@ import {
   setUserActive,
 } from "@/lib/staff-users.functions";
 import { Manage2FADialog } from "@/components/Manage2FADialog";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/superadmin/users")({
   head: () => ({ meta: [{ title: "User Management — HotelPilot" }] }),
@@ -107,11 +108,14 @@ function UsersPage() {
     if (currentPropertyId) {
       roleQuery = roleQuery.or(`property_id.is.null,property_id.eq.${currentPropertyId}`);
     }
-    const [{ data: props }, { data: rs }, { data: urs }] = await Promise.all([
+    const [{ data: props, error: __qp1 }, { data: rs, error: __qp2 }, { data: urs, error: __qp3 }] = await Promise.all([
       supabase.from("properties").select("id,name").order("name"),
       roleQuery,
       urQuery,
     ]);
+    if (__qp1) reportQueryError("properties", __qp1);
+    if (__qp2) reportQueryError("roles", __qp2);
+    if (__qp3) reportQueryError("user roles", __qp3);
     setProperties((props ?? []) as Property[]);
     // Every role template visible to this admin (system + custom).
     setAllRoles(((rs ?? []) as RoleOption[]).filter(
@@ -128,18 +132,20 @@ function UsersPage() {
     const actives: Record<string, boolean> = {};
     const totp: Record<string, { enabled: boolean; locked_until: string | null; created_at: string | null }> = {};
     if (userIds.length) {
-      const { data: profs } = await supabase
+      const { data: profs, error: __qe1 } = await supabase
         .from("profiles").select("id,email,name,is_active").in("id", userIds);
+      if (__qe1) reportQueryError("profiles", __qe1);
       for (const p of profs ?? []) {
         emails[p.id] = (p as any).email ?? "";
         names[p.id] = (p as any).name ?? "";
         actives[p.id] = (p as any).is_active ?? true;
       }
       if (isSuperadmin) {
-        const { data: totps } = await supabase
+        const { data: totps, error: __qe2 } = await supabase
           .from("user_totp_secrets")
           .select("user_id,enabled,locked_until,created_at")
           .in("user_id", userIds);
+        if (__qe2) reportQueryError("user totp secrets", __qe2);
         for (const t of totps ?? []) {
           totp[(t as any).user_id] = {
             enabled: !!(t as any).enabled,

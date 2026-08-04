@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from "@/integrations/supabase/client";
+import { reportQueryError } from "@/lib/queryError";
 
 export interface RoomBlockRow {
   category_id: string;
@@ -168,7 +169,7 @@ export async function checkInBlock(args: {
   // 1. find or create guest
   let guestId: string | null = null;
   if (block.guest_name && block.guest_mobile) {
-    const { data: g } = await supabase
+    const { data: g, error: __qe1 } = await supabase
       .from("guests")
       .insert({
         property_id: propertyId,
@@ -177,6 +178,7 @@ export async function checkInBlock(args: {
       } as any)
       .select("id")
       .single();
+    if (__qe1) reportQueryError("guests", __qe1);
     guestId = (g as any)?.id ?? null;
   }
   // 2. create booking

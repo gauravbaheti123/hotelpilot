@@ -14,6 +14,7 @@ import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtDateTime, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
+import { reportQueryError, guardQuery } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/reports/cash-collection")({
   head: () => ({ meta: [{ title: "Cash Collection — HotelPilot" }] }),
@@ -38,7 +39,7 @@ function Page() {
   const [staffList, setStaffList] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
-    supabase.from("profiles").select("user_id,full_name,email").limit(200).then(({ data }) => {
+    supabase.from("profiles").select("user_id,full_name,email").limit(200).then(guardQuery("profiles")).then(({ data }) => {
       setStaffList(((data ?? []) as any[]).map((p) => ({ id: p.user_id, name: p.full_name ?? p.email ?? p.user_id.slice(0,6) })));
     });
   }, []);
@@ -54,7 +55,8 @@ function Page() {
       .order("paid_at", { ascending: true });
     if (mode !== "all") q = q.eq("mode", mode);
     if (staff !== "all") q = q.eq("created_by", staff);
-    const [{ data }, scope] = await Promise.all([q, fetchBanquetScope(propertyId)]);
+    const [{ data, error: __qp1 }, scope] = await Promise.all([q, fetchBanquetScope(propertyId)]);
+    if (__qp1) reportQueryError("cash collection", __qp1);
     const profileMap = new Map(staffList.map((s) => [s.id, s.name] as const));
     // Banquet event-block collections are excluded (Owner-only Banquet Billing report).
     const out: Row[] = ((data ?? []) as any[])

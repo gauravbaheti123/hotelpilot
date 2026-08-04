@@ -22,6 +22,7 @@ import {
 import { deleteProperty } from "@/lib/admin-properties.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { enterViewMode } from "@/lib/superadmin-view";
+import { reportQueryError } from "@/lib/queryError";
 
 type Prop = {
   id: string;
@@ -90,10 +91,11 @@ export function SuperadminDashboard() {
     const newProps = propsList.filter((p) => p.created_at >= monthStart).length;
 
     // revenue from payments this month
-    const { data: payRows } = await supabase
+    const { data: payRows, error: __qe1 } = await supabase
       .from("payments")
       .select("amount,property_id,created_at")
       .gte("created_at", monthStart);
+    if (__qe1) reportQueryError("payments", __qe1);
     const totalRevenue = (payRows ?? []).reduce((a, r: { amount: number }) => a + Number(r.amount ?? 0), 0);
 
     // per-property aggregation
@@ -106,9 +108,10 @@ export function SuperadminDashboard() {
       revByProp[p.property_id] = (revByProp[p.property_id] ?? 0) + Number(p.amount ?? 0);
     }
     // users per property via user_roles
-    const { data: roleRows } = await supabase
+    const { data: roleRows, error: __qe2 } = await supabase
       .from("user_roles")
       .select("user_id,property_id");
+    if (__qe2) reportQueryError("user roles", __qe2);
     const usersByProp: Record<string, Set<string>> = {};
     for (const r of (roleRows ?? []) as { user_id: string; property_id: string | null }[]) {
       if (!r.property_id) continue;

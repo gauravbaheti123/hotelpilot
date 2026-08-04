@@ -15,6 +15,7 @@ import { ShieldAlert, ArrowLeft, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { upsertRolePermissions } from "@/lib/staff-users.functions";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/superadmin/roles/$id")({
   head: () => ({ meta: [{ title: "Edit Permissions — HotelPilot" }] }),
@@ -116,11 +117,14 @@ function EditRolePage() {
   }, [loading, canAccess, navigate]);
 
   async function loadAll() {
-    const [{ data: r }, { data: ps }, { data: rps }] = await Promise.all([
+    const [{ data: r, error: __qp1 }, { data: ps, error: __qp2 }, { data: rps, error: __qp3 }] = await Promise.all([
       supabase.from("roles").select("id,name,description,is_system,max_discount_pct,max_discount_type,max_discount_amount").eq("id", id).maybeSingle(),
       supabase.from("permissions").select("id,module,action"),
       supabase.from("role_permissions").select("permission_id,allowed").eq("role_id", id),
     ]);
+    if (__qp1) reportQueryError("role", __qp1);
+    if (__qp2) reportQueryError("permissions", __qp2);
+    if (__qp3) reportQueryError("role permissions", __qp3);
     const roleRow = (r as any) ?? null;
     if (roleRow && !isSuperadmin && /^(owner|superadmin)$/i.test(roleRow.name)) {
       toast.error("Access denied");
@@ -149,12 +153,14 @@ function EditRolePage() {
       const { data: u } = await supabase.auth.getUser();
       const uid = u.user?.id;
       if (!uid) return;
-      const { data: ur } = await supabase.from("user_roles").select("role_id").eq("user_id", uid).not("role_id", "is", null);
+      const { data: ur, error: __qe1 } = await supabase.from("user_roles").select("role_id").eq("user_id", uid).not("role_id", "is", null);
+      if (__qe1) reportQueryError("user roles", __qe1);
       const roleIds = (ur ?? []).map((x: any) => x.role_id).filter(Boolean);
       if (roleIds.length === 0) { setOwnerCan({}); return; }
-      const { data: rps } = await supabase
+      const { data: rps, error: __qe2 } = await supabase
         .from("role_permissions").select("allowed, permissions(module,action)")
         .in("role_id", roleIds).eq("allowed", true);
+      if (__qe2) reportQueryError("role permissions", __qe2);
       const m: Record<string, Record<Action, boolean>> = {};
       for (const row of (rps ?? []) as any[]) {
         const p = row.permissions; if (!p) continue;

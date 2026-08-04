@@ -29,6 +29,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { createOwnerLogin } from "@/lib/admin-users.functions";
 import { useNavigate } from "@tanstack/react-router";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/properties")({
   ssr: false,
@@ -37,7 +38,8 @@ export const Route = createFileRoute("/_authenticated/properties")({
     const { supabase } = await import("@/integrations/supabase/client");
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) throw redirect({ to: "/login" });
-    const { data: allowed } = await supabase.rpc("is_owner_or_super", { _user_id: u.user.id });
+    const { data: allowed, error: __qe1 } = await supabase.rpc("is_owner_or_super", { _user_id: u.user.id });
+    if (__qe1) reportQueryError("is owner or super", __qe1);
     if (!allowed) throw redirect({ to: "/dashboard" });
   },
   head: () => ({ meta: [{ title: "Properties — HotelPilot" }] }),
@@ -104,18 +106,20 @@ function PropertiesPage() {
     const ids = list.map((p) => p.id);
     if (ids.length) {
       // owner emails via user_roles -> profiles
-      const { data: ownerRoles } = await supabase
+      const { data: ownerRoles, error: __qe2 } = await supabase
         .from("user_roles")
         .select("property_id, user_id")
         .eq("role", "owner")
         .in("property_id", ids);
+      if (__qe2) reportQueryError("user roles", __qe2);
       const userIds = Array.from(new Set((ownerRoles ?? []).map((r: any) => r.user_id)));
       const emailByUser: Record<string, string> = {};
       if (userIds.length) {
-        const { data: profs } = await supabase
+        const { data: profs, error: __qe3 } = await supabase
           .from("profiles")
           .select("id, email")
           .in("id", userIds);
+        if (__qe3) reportQueryError("profiles", __qe3);
         for (const p of profs ?? []) emailByUser[(p as any).id] = (p as any).email;
       }
       const ownerMap: Record<string, string> = {};
@@ -126,10 +130,11 @@ function PropertiesPage() {
       setOwnersByProp(ownerMap);
 
       // rooms count per property
-      const { data: rms } = await supabase
+      const { data: rms, error: __qe4 } = await supabase
         .from("rooms")
         .select("property_id")
         .in("property_id", ids);
+      if (__qe4) reportQueryError("rooms", __qe4);
       const rcount: Record<string, number> = {};
       for (const r of rms ?? []) {
         const pid = (r as any).property_id;

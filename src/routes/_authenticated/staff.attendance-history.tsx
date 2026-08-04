@@ -18,6 +18,7 @@ import {
   ATTENDANCE_LABEL, ATTENDANCE_TONE, type AttendanceStatus,
   monthStart, monthEnd,
 } from "@/lib/staff-hr";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/staff/attendance-history")({
   head: () => ({ meta: [{ title: "Attendance History — HotelPilot" }] }),
@@ -59,8 +60,9 @@ function AttHistoryPage() {
 
   const loadStaff = useCallback(async () => {
     if (!propertyId) return;
-    const { data } = await supabase.from("staff").select("id,name")
+    const { data, error: __qe1 } = await supabase.from("staff").select("id,name")
       .eq("property_id", propertyId).order("name");
+    if (__qe1) reportQueryError("staff", __qe1);
     setStaff((data ?? []) as StaffOpt[]);
   }, [propertyId]);
 

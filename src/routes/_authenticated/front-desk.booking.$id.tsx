@@ -55,6 +55,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { istToday } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/front-desk/booking/$id")({
   head: () => ({ meta: [{ title: "Booking — HotelPilot" }] }),
@@ -191,7 +192,7 @@ function BookingDetailPage() {
     setB(detail);
     if (detail) {
       setNewCheckOut(detail.check_out);
-      const [{ data: rs }, { data: sh }, { data: kt }, { data: bg }] = await Promise.all([
+      const [{ data: rs, error: __qp1 }, { data: sh, error: __qp2 }, { data: kt, error: __qp3 }, { data: bg, error: __qp4 }] = await Promise.all([
         supabase
         .from("rooms")
         .select("id,room_number,category_id,status,room_categories(name)")
@@ -214,6 +215,10 @@ function BookingDetailPage() {
           .eq("booking_id", detail.id)
           .order("is_primary", { ascending: false }),
       ]);
+      if (__qp1) reportQueryError("booking rooms", __qp1);
+      if (__qp2) reportQueryError("room shifts", __qp2);
+      if (__qp3) reportQueryError("KOT orders", __qp3);
+      if (__qp4) reportQueryError("booking guests", __qp4);
       setRooms((rs ?? []) as Room[]);
       // Phase 27b — tariff plans drive every rate decision in the shift flow.
       setTariffPlans(await fetchTariffPlans(detail.property_id).catch(() => []));
@@ -221,10 +226,11 @@ function BookingDetailPage() {
       // Resolve shifted_by user names from profiles (no FK on shifted_by so we look up manually)
       const userIds = Array.from(new Set(shiftRows.map((s) => s.shifted_by).filter(Boolean) as string[]));
       if (userIds.length > 0) {
-        const { data: profs } = await supabase
+        const { data: profs, error: __qe1 } = await supabase
           .from("profiles")
           .select("id, name")
           .in("id", userIds);
+        if (__qe1) reportQueryError("profiles", __qe1);
         const nameById = new Map<string, string | null>((profs ?? []).map((p: any) => [p.id, p.name]));
         shiftRows.forEach((s) => { s.shifted_by_name = s.shifted_by ? (nameById.get(s.shifted_by) ?? null) : null; });
       }
@@ -299,11 +305,12 @@ function BookingDetailPage() {
     if (!b) return;
     const br = b.booking_rooms.find((x) => x.id === brId);
     if (!br) { setPendingKots([]); return; }
-    const { data } = await supabase
+    const { data, error: __qe2 } = await supabase
       .from("kot_orders")
       .select("id,kot_number,status,total_amount")
       .eq("booking_id", b.id)
       .in("status", ["open", "printed", "served"]);
+    if (__qe2) reportQueryError("kot orders", __qe2);
     setPendingKots(((data ?? []) as any));
   }
 
@@ -364,10 +371,13 @@ function BookingDetailPage() {
 
     // Recompute folio totals at new rate for any still-unposted future nights (existing historical charges remain).
     try {
-      const { data: folioId } = await supabase.rpc("get_or_create_folio", { _booking_id: b.id });
+      const { data: folioId, error: __qe3 } = await supabase.rpc("get_or_create_folio", { _booking_id: b.id });
+      if (__qe3) reportQueryError("get or create folio", __qe3);
       const fId = folioId as unknown as string;
-      const { data: allCharges } = await supabase.from("folio_charges").select("*").eq("folio_id", fId);
-      const { data: folio } = await supabase.from("folios").select("gst_mode,paid_amount,discount_type,discount_value").eq("id", fId).single();
+      const { data: allCharges, error: __qe4 } = await supabase.from("folio_charges").select("*").eq("folio_id", fId);
+      if (__qe4) reportQueryError("folio charges", __qe4);
+      const { data: folio, error: __qe5 } = await supabase.from("folios").select("gst_mode,paid_amount,discount_type,discount_value").eq("id", fId).single();
+      if (__qe5) reportQueryError("folios", __qe5);
       const mode = ((folio as any)?.gst_mode ?? "cash") as "cash" | "gst";
       const billDisc = (folio as any)?.discount_type && Number((folio as any)?.discount_value) > 0
         ? { type: (folio as any).discount_type as "percent" | "amount", value: Number((folio as any).discount_value) }
@@ -383,19 +393,22 @@ function BookingDetailPage() {
     if (transferKots) try {
       if (!fromRoomId) throw new Error("no from room");
       const fromId: string = fromRoomId;
-      const { data: openKots } = await supabase
+      const { data: openKots, error: __qe6 } = await supabase
         .from("kot_orders")
         .select("id,kot_number")
         .eq("booking_id", b.id)
         .eq("room_id", fromId)
         .in("status", ["open", "printed", "served"]);
+      if (__qe6) reportQueryError("kot orders", __qe6);
       const ids = (openKots ?? []).map((k: any) => k.id);
       if (ids.length > 0) {
         await supabase.from("kot_orders")
           .update({ room_id: shiftToRoom } as any)
           .in("id", ids);
-        const { data: toRoom } = await supabase.from("rooms").select("room_number").eq("id", shiftToRoom).single();
-        const { data: frRoom } = await supabase.from("rooms").select("room_number").eq("id", fromId).single();
+        const { data: toRoom, error: __qe7 } = await supabase.from("rooms").select("room_number").eq("id", shiftToRoom).single();
+        if (__qe7) reportQueryError("rooms", __qe7);
+        const { data: frRoom, error: __qe8 } = await supabase.from("rooms").select("room_number").eq("id", fromId).single();
+        if (__qe8) reportQueryError("rooms", __qe8);
         await (supabase as any).from("kot_audit_log").insert(ids.map((kid: string) => ({
           property_id: b.property_id,
           kot_order_id: kid,
@@ -465,7 +478,8 @@ function BookingDetailPage() {
 
     // === Recalculate folio room charges for the new night count ===
     try {
-      const { data: folioId } = await supabase.rpc("get_or_create_folio", { _booking_id: b.id });
+      const { data: folioId, error: __qe9 } = await supabase.rpc("get_or_create_folio", { _booking_id: b.id });
+      if (__qe9) reportQueryError("get or create folio", __qe9);
       const fId = folioId as unknown as string;
       // Refresh room charges through the guarded RPC — it recomputes nights,
       // honours inclusive vs exclusive rate_type, and skips settled/void folios.
@@ -477,8 +491,10 @@ function BookingDetailPage() {
         if (seedErr) console.warn("room charge refresh failed", seedErr.message);
       }
       // Recompute folio totals
-      const { data: allCharges } = await supabase.from("folio_charges").select("*").eq("folio_id", fId);
-      const { data: folio } = await supabase.from("folios").select("gst_mode,paid_amount,discount_type,discount_value").eq("id", fId).single();
+      const { data: allCharges, error: __qe10 } = await supabase.from("folio_charges").select("*").eq("folio_id", fId);
+      if (__qe10) reportQueryError("folio charges", __qe10);
+      const { data: folio, error: __qe11 } = await supabase.from("folios").select("gst_mode,paid_amount,discount_type,discount_value").eq("id", fId).single();
+      if (__qe11) reportQueryError("folios", __qe11);
       const mode = ((folio as any)?.gst_mode ?? "cash") as "cash" | "gst";
       const billDisc = (folio as any)?.discount_type && Number((folio as any)?.discount_value) > 0
         ? { type: (folio as any).discount_type as "percent" | "amount", value: Number((folio as any).discount_value) }
@@ -503,10 +519,11 @@ function BookingDetailPage() {
     const priorStatus = b.status;
     // Snapshot room assignments so an Undo can restore what the
     // cancel trigger closed out.
-    const { data: priorRooms } = await supabase
+    const { data: priorRooms, error: __qe12 } = await supabase
       .from("booking_rooms")
       .select("id,status,end_date")
       .eq("booking_id", bookingId);
+    if (__qe12) reportQueryError("booking rooms", __qe12);
     const { error } = await supabase.from("bookings").update({
       status: "cancelled" as any,
       cancelled_at: new Date().toISOString(),
