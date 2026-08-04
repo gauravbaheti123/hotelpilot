@@ -1089,48 +1089,9 @@ function OwnerDashboard({
         )}
 
         {dashView === "invoices" && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Open Invoices</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!invSummary ? (
-                <div className="text-sm text-muted-foreground">Loading…</div>
-              ) : (
-                <>
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    {([
-                      ["Lodge", invSummary.lodgeOpen, invSummary.lodgeDue],
-                      ["Food", invSummary.foodOpen, invSummary.foodDue],
-                      ["Laundry", invSummary.laundryOpen, invSummary.laundryDue],
-                    ] as const).map(([label, count, dueAmt]) => (
-                      <div key={label} className="rounded-lg border p-4">
-                        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-                        <div className="mt-1 text-2xl font-semibold">{count}</div>
-                        <div className="text-xs text-muted-foreground">open</div>
-                        <div className="mt-2 text-sm font-medium">
-                          ₹{Math.round(dueAmt).toLocaleString("en-IN")} pending
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between border-t pt-3">
-                    <div className="text-sm">
-                      Total pending{" "}
-                      <span className="font-semibold">
-                        ₹{Math.round(
-                          invSummary.lodgeDue + invSummary.foodDue + invSummary.laundryDue,
-                        ).toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                    <Button onClick={() => navigate({ to: "/billing/invoices" })}>
-                      View All Invoices
-                    </Button>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+          <RequirePermission module="invoices">
+            <InvoiceListPanel />
+          </RequirePermission>
         )}
       </div>
       <RoomStatusModal
