@@ -53,6 +53,13 @@ interface Row {
 }
 
 function InvoicesPage() {
+  // Room number(s) for a folio's booking — comma-joined, "—" when unassigned.
+  const roomLabel = (r: Row) => {
+    const nums = (r.bookings?.booking_rooms ?? [])
+      .map((br) => br.rooms?.room_number)
+      .filter(Boolean) as string[];
+    return nums.length ? Array.from(new Set(nums)).join(", ") : "—";
+  };
   const { currentId: propertyId, current: currentProperty } = useCurrentProperty();
   const { seg: segParam, bill: billParam } = Route.useSearch();
   const { user, roles } = useAuth();
