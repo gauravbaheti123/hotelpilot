@@ -447,14 +447,14 @@ function GuestsListPage() {
         {loading && <p className="p-4 text-sm text-muted-foreground">Loading…</p>}
         {!loading && filtered.length === 0 && <p className="p-4 text-sm text-muted-foreground">No guests.</p>}
         <div ref={scrollRef} className="max-h-[calc(100vh-16rem)] overflow-auto">
-        <div className="relative w-full divide-y" style={{ height: `${virtualizer.getTotalSize()}px` }}>
+        <div className="relative w-full" style={{ height: `${virtualizer.getTotalSize()}px` }}>
         {virtualRows.map((vr) => {
           const g = filtered[vr.index];
           return (
           <div key={g.id}
             ref={virtualizer.measureElement}
             data-index={vr.index}
-            className="absolute left-0 top-0 w-full flex items-center gap-3 px-4 py-3 hover:bg-accent"
+            className="absolute left-0 top-0 w-full flex items-center gap-3 border-b px-4 py-3 hover:bg-accent"
             style={{ transform: `translateY(${vr.start}px)` }}>
             <Checkbox checked={selected.has(g.id)} onCheckedChange={() => toggleOne(g.id)}
               aria-label={`Select ${g.name}`} onClick={(e) => e.stopPropagation()} />
