@@ -208,14 +208,20 @@ export async function fetchGstInvoiceSlabs(
   const endD = new Date(`${to}T00:00:00`);
   endD.setDate(endD.getDate() + 1);
   const end = endD.toISOString();
+  // P1 — invoice numbers are issued at settlement, so the GST period basis is
+  // the invoice (settlement) date, falling back to folio creation for legacy
+  // rows that never recorded settled_at.
   const { data, error: __qe2 } = await supabase.from("folios")
-    .select("id,booking_id,invoice_number,created_at,guest_gstin,guest_company,billing_company_id,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name,state,state_code,gst_number)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
+    .select("id,booking_id,invoice_number,created_at,settled_at,guest_gstin,guest_company,billing_company_id,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name,state,state_code,gst_number)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
     .eq("property_id", propertyId)
     .eq("gst_mode", "gst")
     .neq("status", "void")
     .not("invoice_number", "is", null)
-    .gte("created_at", start)
-    .lt("created_at", end)
+    .neq("invoice_number", "")
+    .or(
+      `and(settled_at.gte.${start},settled_at.lt.${end}),` +
+      `and(settled_at.is.null,created_at.gte.${start},created_at.lt.${end})`,
+    )
     .order("created_at", { ascending: false });
   if (__qe2) reportQueryError("folios", __qe2);
   // Place of supply compares GST state codes (GSTIN → state_code → state name).
