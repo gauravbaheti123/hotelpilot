@@ -130,11 +130,12 @@ export function StepReview({ state, categoryName, roomLabel, onEdit }: Props) {
         <Section title="Bill to" step={STEP.BILL_TO} onEdit={onEdit}>
           {state.billTo.enabled ? (
             <>
-              <Row label="Name" value={state.billTo.name} />
               <Row label="GSTIN" value={state.billTo.gstin} />
+              <Row label="GST Status" value={state.billTo.gstStatus ? (state.billTo.gstStatus === "active" ? "Active" : "Cancelled") : ""} />
+              <Row label="Name" value={state.billTo.name} />
               <Row label="Address" value={state.billTo.address} />
               <Row label="Email" value={state.billTo.email} />
-              <Row label="City" value={[state.billTo.city, state.billTo.state, state.billTo.nation].filter(Boolean).join(", ")} />
+              <Row label="Region" value={[state.billTo.state, state.billTo.nation].filter(Boolean).join(", ")} />
             </>
           ) : (
             <p className="text-muted-foreground">Billed to the primary guest.</p>

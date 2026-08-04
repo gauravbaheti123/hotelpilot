@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { GSTIN_ERROR, isValidOrEmptyGSTIN } from "@/lib/gstin";
 import type { WizardBillTo } from "@/lib/bookingWizard";
@@ -13,7 +14,7 @@ import { reportQueryError } from "@/lib/queryError";
 const NEW_COMPANY = "__new__";
 
 interface CompanyRow {
-  id: string; name: string; gstin: string | null; address: string | null;
+  id: string; name: string; gstin: string | null; gst_status: string | null; address: string | null;
   email: string | null; city: string | null; state: string | null; nation: string | null;
 }
 
@@ -32,7 +33,7 @@ export function StepBillTo({ propertyId, value, onChange }: Props) {
     (async () => {
       const { data, error: __qe1 } = await supabase
         .from("billing_companies")
-        .select("id,name,gstin,address,email,city,state,nation")
+        .select("id,name,gstin,gst_status,address,email,city,state,nation")
         .eq("property_id", propertyId)
         .eq("is_active", true)
         .order("name");
@@ -44,7 +45,7 @@ export function StepBillTo({ propertyId, value, onChange }: Props) {
 
   function pick(id: string) {
     if (id === NEW_COMPANY) {
-      onChange({ companyId: "", name: "", gstin: "", address: "", email: "" });
+      onChange({ companyId: "", name: "", gstin: "", gstStatus: "", address: "", email: "" });
       return;
     }
     const c = companies.find((x) => x.id === id);
@@ -53,9 +54,9 @@ export function StepBillTo({ propertyId, value, onChange }: Props) {
       companyId: c.id,
       name: c.name ?? "",
       gstin: c.gstin ?? "",
+      gstStatus: c.gst_status ?? "",
       address: c.address ?? "",
       email: c.email ?? "",
-      city: c.city ?? value.city,
       state: c.state ?? value.state,
       nation: c.nation ?? value.nation,
     });
@@ -104,15 +105,6 @@ export function StepBillTo({ propertyId, value, onChange }: Props) {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Name *</Label>
-              <Input
-                autoTitleCase
-                value={value.name}
-                onChange={(e) => onChange({ name: e.target.value })}
-                placeholder="Company or party name"
-              />
-            </div>
-            <div className="space-y-1.5">
               <Label>GSTIN</Label>
               <Input
                 value={value.gstin}
@@ -121,6 +113,30 @@ export function StepBillTo({ propertyId, value, onChange }: Props) {
               />
               {gstinBad && <p className="text-xs text-destructive">{GSTIN_ERROR}</p>}
             </div>
+            <div className="space-y-1.5">
+              <Label>GST Status</Label>
+              <Select
+                value={value.gstStatus || undefined}
+                onValueChange={(v) => onChange({ gstStatus: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Name *</Label>
+              <Input
+                autoTitleCase
+                value={value.name}
+                onChange={(e) => onChange({ name: e.target.value })}
+                placeholder="Company or party name"
+              />
+            </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Address</Label>
               <Input value={value.address} onChange={(e) => onChange({ address: e.target.value })} />
@@ -128,10 +144,6 @@ export function StepBillTo({ propertyId, value, onChange }: Props) {
             <div className="space-y-1.5">
               <Label>Email</Label>
               <Input type="email" value={value.email} onChange={(e) => onChange({ email: e.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>City</Label>
-              <Input value={value.city} onChange={(e) => onChange({ city: e.target.value })} />
             </div>
             <div className="space-y-1.5">
               <Label>State</Label>

@@ -12,7 +12,6 @@ import { IdDocUpload } from "@/components/booking-wizard/IdDocUpload";
 import { NATIONS, DEFAULT_NATION, titleCase } from "@/lib/indiaGeo";
 import { ID_PROOF_TYPES, ID_PROOF_LABELS } from "@/lib/guests";
 import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
-import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 import {
   searchGuestsDetailed, lookupExistingGuestId,
   type GuestSearchDetail, type GuestIdLookupResult,
@@ -139,7 +138,6 @@ export function StepGuestDetails({ propertyId, guest, onChange }: Props) {
   }, [foreign]);
 
   const mobileError = guest.mobile.length > 0 && !isValidMobile(guest.mobile);
-  const gstError = !isValidOrEmptyGSTIN(guest.gstNumber);
 
   return (
     <div className="space-y-8">
@@ -323,25 +321,6 @@ export function StepGuestDetails({ propertyId, guest, onChange }: Props) {
         </div>
       </Section>
 
-      <Section title="Company (optional)">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="wiz-company">Company Name</Label>
-            <Input
-              id="wiz-company" value={guest.company} maxLength={200}
-              onChange={(e) => onChange({ company: e.target.value })}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="wiz-gstin">GSTIN</Label>
-            <Input
-              id="wiz-gstin" value={guest.gstNumber} maxLength={20}
-              onChange={(e) => onChange({ gstNumber: e.target.value.toUpperCase() })}
-            />
-            {gstError && <p className="text-xs text-destructive">{GSTIN_ERROR}</p>}
-          </div>
-        </div>
-      </Section>
     </div>
   );
 }
