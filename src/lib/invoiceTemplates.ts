@@ -248,7 +248,7 @@ function metaBlock(ctx: InvoiceContext): string {
   const docTitle = draft ? "DRAFT BILL" : isGst ? "TAX INVOICE" : "BILL OF SUPPLY";
   const rooms = (booking.booking_rooms ?? []).map((r) => r.rooms?.room_number).filter(Boolean).join(", ");
   const ns = nights(booking.check_in, booking.check_out);
-  const billNo = draft
+  const billNoLabel = draft
     ? `<span style="color:#9ca3af;letter-spacing:4px">- - - - -</span>`
     : esc(billNo(folio.invoice_number));
 
@@ -282,7 +282,7 @@ function metaBlock(ctx: InvoiceContext): string {
       </div>
       <div style="text-align:right">
         <div class="stamp bg-accent">${docTitle}</div>
-        <div style="margin-top:8px"><span class="small">No:</span> <strong>${billNo}</strong></div>
+        <div style="margin-top:8px"><span class="small">No:</span> <strong>${billNoLabel}</strong></div>
         <div class="small">Booking: ${esc(booking.booking_number)}</div>
         <div class="small">Date: ${new Date().toLocaleDateString("en-IN")}</div>
         ${rooms ? `<div class="small">Room: ${esc(rooms)}</div>` : ""}
