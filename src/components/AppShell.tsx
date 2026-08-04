@@ -1,5 +1,5 @@
 import { Link, useRouter } from "@tanstack/react-router";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, Suspense, lazy, useEffect, useState } from "react";
 import { Logo } from "./Logo";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -76,7 +76,9 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { RemindersBell } from "./Reminders";
 import { useSuperadminView } from "@/lib/superadmin-view";
-import { QZStatusIndicator } from "./QZStatusIndicator";
+const QZStatusIndicator = lazy(() =>
+  import("./QZStatusIndicator").then((m) => ({ default: m.QZStatusIndicator })),
+);
 import { ProfileDialog } from "./ProfileDialog";
 import { reportQueryError } from "@/lib/queryError";
 
@@ -329,6 +331,8 @@ function AppShellInner({
 
   // Profile dialog + display name/photo
   const [profileOpen, setProfileOpen] = useState(false);
+  const [qzMounted, setQzMounted] = useState(false);
+  useEffect(() => { setQzMounted(true); }, []);
   const [displayName, setDisplayName] = useState<string>("");
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   useEffect(() => {
@@ -532,7 +536,13 @@ function AppShellInner({
             {titleSlot}
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <QZStatusIndicator />
+            {qzMounted ? (
+              <Suspense fallback={<span className="inline-block h-8 w-8" />}>
+                <QZStatusIndicator />
+              </Suspense>
+            ) : (
+              <span className="inline-block h-8 w-8" />
+            )}
             {(isOwner ||
               permSuper ||
               permsLoading ||

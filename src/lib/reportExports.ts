@@ -1,4 +1,3 @@
-import * as XLSX from "xlsx";
 import { istDateISO } from "@/lib/date";
 
 export interface ReportColumn<T> {
@@ -47,11 +46,12 @@ export function buildFileName(meta: ReportExportMeta, ext: string) {
 }
 
 /** Excel export — Sheet 1 data, Sheet 2 summary. */
-export function exportExcel<T>(
+export async function exportExcel<T>(
   rows: T[],
   columns: ReportColumn<T>[],
   meta: ReportExportMeta,
 ) {
+  const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
 
   const header = columns.map((c) => c.header);

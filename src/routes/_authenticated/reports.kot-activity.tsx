@@ -10,7 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Download, Filter, RotateCcw, Printer } from "lucide-react";
-import * as XLSX from "xlsx";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
@@ -110,6 +110,7 @@ function KotActivityReport() {
       "Amount After": r.action === "KOT_EDITED" ? (r.after ?? "") : "",
       "Reason": r.reason,
     }));
+    const XLSX = await import("xlsx");
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "KOT Activity");

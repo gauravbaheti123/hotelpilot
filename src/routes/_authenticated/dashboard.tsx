@@ -381,18 +381,33 @@ function OwnerDashboard({
       setDepartures(depRows.map(mapRow));
       setRooms(rmsRows as Room[]);
 
+      // Steps 3, 5 and 6 have no data dependency on each other, so they run in
+      // parallel. Only the guest backfill (step 4) truly needs the food-bill
+      // result, so it stays sequenced after the Promise.all resolves.
       // Pending food per room — SINGLE SOURCE OF TRUTH: open segment_bills (segment = 'food').
       // The legacy kot_orders flow was removed in Phase 17; never read it here again or the
       // Lodge room badge will drift from the Food segment tab / checkout block.
-      const pfMap = new Map<string, PendingFood>();
-      {
-        const { data: fbills, error: __qe2 } = await supabase
+      const [foodRes, eventRes, unassignedRes] = await Promise.all([
+        supabase
           .from("segment_bills" as any)
           .select("id,room_id,booking_id,total_amount,created_at,segment_bill_items(description,qty)")
           .eq("property_id", propertyId)
           .eq("segment", "food")
           .eq("status", "open")
-          .eq("is_walkin", false);
+          .eq("is_walkin", false),
+        loadEventSummaries(propertyId).catch((e) => {
+          console.warn("loadEventSummaries failed", e);
+          return null;
+        }),
+        loadUnassignedReservations(propertyId).catch((e) => {
+          console.warn("loadUnassignedReservations failed", e);
+          return null;
+        }),
+      ]);
+
+      const pfMap = new Map<string, PendingFood>();
+      {
+        const { data: fbills, error: __qe2 } = foodRes as any;
         if (__qe2) reportQueryError("segment bills", __qe2);
         (fbills ?? []).forEach((b: any) => {
           if (!b.room_id || !b.booking_id) return;
@@ -439,8 +454,8 @@ function OwnerDashboard({
       setPendingFoodRows(rows);
 
       // Event room blocks for the selected date
-      try {
-        const summaries = await loadEventSummaries(propertyId);
+      if (eventRes) {
+        const summaries = eventRes;
         // Filter blocks to those covering the selected date
         const filtered = summaries
           .map((ev) => ({
@@ -477,18 +492,11 @@ function OwnerDashboard({
           });
         }));
         setEventBlockByRoom(map);
-      } catch (e) {
-        console.warn("loadEventSummaries failed", e);
       }
 
       // Load reservations without an assigned room (future stays only). These
       // do NOT attach to any room tile — they surface in a separate panel.
-      try {
-        const unas = await loadUnassignedReservations(propertyId);
-        setUnassigned(unas);
-      } catch (e) {
-        console.warn("loadUnassignedReservations failed", e);
-      }
+      if (unassignedRes) setUnassigned(unassignedRes);
   }, [propertyId, viewDate]);
 
   useEffect(() => { reload(); }, [reload]);
@@ -634,10 +642,27 @@ function OwnerDashboard({
         if (status === "SUBSCRIBED") setLiveStatus("live");
         else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") setLiveStatus("polling");
       });
-    const interval = setInterval(() => { if (!cancelled) reload(); }, 60_000);
+    // Visibility-aware polling: no interval while the tab is hidden; on
+    // return, refresh immediately and restart the 60s cycle from that point.
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const startPolling = () => {
+      if (interval) clearInterval(interval);
+      interval = setInterval(() => { if (!cancelled) reload(); }, 60_000);
+    };
+    const stopPolling = () => {
+      if (interval) { clearInterval(interval); interval = null; }
+    };
+    const onVisibility = () => {
+      if (cancelled) return;
+      if (document.visibilityState === "hidden") stopPolling();
+      else { reload(); startPolling(); }
+    };
+    if (typeof document === "undefined" || document.visibilityState === "visible") startPolling();
+    if (typeof document !== "undefined") document.addEventListener("visibilitychange", onVisibility);
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      stopPolling();
+      if (typeof document !== "undefined") document.removeEventListener("visibilitychange", onVisibility);
       supabase.removeChannel(channel);
     };
   }, [propertyId, reload]);
