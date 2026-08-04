@@ -32,6 +32,7 @@ import {
 import { CalendarDays } from "lucide-react";
 import { SuperadminDashboard as PlatformSuperadminDashboard } from "@/components/SuperadminDashboard";
 import { useSuperadminView } from "@/lib/superadmin-view";
+import { InvoiceListPanel } from "@/components/InvoiceListPanel";
 import { usePermissions } from "@/hooks/use-permissions";
 import {
   AssignRoomDialog,
@@ -228,11 +229,6 @@ function OwnerDashboard({
   const [segment, setSegment] = useState<"rooms" | "food" | "laundry">("rooms");
   // Phase 73 — top-level dashboard view toggle (Rooms / Overview / Invoices).
   const [dashView, setDashView] = useState<"rooms" | "overview" | "invoices">("rooms");
-  const [invSummary, setInvSummary] = useState<{
-    lodgeOpen: number; lodgeDue: number;
-    foodOpen: number; foodDue: number;
-    laundryOpen: number; laundryDue: number;
-  } | null>(null);
   const [segmentPendingByRoom, setSegmentPendingByRoom] = useState<
     Map<string, { amount: number; count: number; bills: Array<{ id: string; bill_number: string; amount: number }> }>
   >(new Map());
@@ -639,44 +635,6 @@ function OwnerDashboard({
       supabase.removeChannel(channel);
     };
   }, [propertyId, reload]);
-
-  // Lightweight invoice summary for the "Invoices" dashboard view.
-  useEffect(() => {
-    if (!propertyId || dashView !== "invoices") return;
-    let cancelled = false;
-    (async () => {
-      const [{ data: fol }, { data: seg }] = await Promise.all([
-        supabase
-          .from("folios")
-          .select("balance_amount")
-          .eq("property_id", propertyId)
-          .eq("is_deleted" as any, false)
-          .gt("balance_amount", 0),
-        supabase
-          .from("segment_bills" as any)
-          .select("segment,total_amount,paid_amount,status")
-          .eq("property_id", propertyId)
-          .neq("status", "settled"),
-      ]);
-      if (cancelled) return;
-      const lodge = (fol ?? []) as Array<{ balance_amount: number }>;
-      const segs = (seg ?? []) as unknown as Array<{
-        segment: string; total_amount: number; paid_amount: number;
-      }>;
-      const due = (s: string) =>
-        segs.filter((r) => r.segment === s)
-          .reduce((a, r) => a + (Number(r.total_amount) - Number(r.paid_amount)), 0);
-      setInvSummary({
-        lodgeOpen: lodge.length,
-        lodgeDue: lodge.reduce((a, r) => a + Number(r.balance_amount ?? 0), 0),
-        foodOpen: segs.filter((r) => r.segment === "food").length,
-        foodDue: due("food"),
-        laundryOpen: segs.filter((r) => r.segment === "laundry").length,
-        laundryDue: due("laundry"),
-      });
-    })();
-    return () => { cancelled = true; };
-  }, [propertyId, dashView]);
 
   return (
     <AppShell
