@@ -247,7 +247,14 @@ function RoomDetailPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {!isOccupied && !isMaintenance && (
-                  <Button asChild size="sm"><Link to="/front-desk/new" search={{ room: room.room_number } as any}>+ New Booking</Link></Button>
+                  <Button asChild size="sm">
+                    <Link
+                      to="/front-desk/new"
+                      search={{ roomId: room.id, categoryId: room.category?.id ?? undefined } as never}
+                    >
+                      + New Booking
+                    </Link>
+                  </Button>
                 )}
                 {isOccupied && booking && (
                   <Button asChild size="sm" variant="outline">

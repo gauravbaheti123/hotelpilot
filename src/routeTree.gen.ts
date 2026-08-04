@@ -92,7 +92,7 @@ import { Route as AuthenticatedHandoverNewRouteImport } from './routes/_authenti
 import { Route as AuthenticatedGuestsNewRouteImport } from './routes/_authenticated/guests.new'
 import { Route as AuthenticatedGuestsIdRouteImport } from './routes/_authenticated/guests.$id'
 import { Route as AuthenticatedFrontDeskRateCalendarRouteImport } from './routes/_authenticated/front-desk.rate-calendar'
-import { Route as AuthenticatedFrontDeskNewWizardRouteImport } from './routes/_authenticated/front-desk.new-wizard'
+import { Route as AuthenticatedFrontDeskNewLegacyRouteImport } from './routes/_authenticated/front-desk.new-legacy'
 import { Route as AuthenticatedFrontDeskNewRouteImport } from './routes/_authenticated/front-desk.new'
 import { Route as AuthenticatedFrontDeskInHouseRouteImport } from './routes/_authenticated/front-desk.in-house'
 import { Route as AuthenticatedFrontDeskCalendarRouteImport } from './routes/_authenticated/front-desk.calendar'
@@ -588,10 +588,10 @@ const AuthenticatedFrontDeskRateCalendarRoute =
     path: '/front-desk/rate-calendar',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedFrontDeskNewWizardRoute =
-  AuthenticatedFrontDeskNewWizardRouteImport.update({
-    id: '/front-desk/new-wizard',
-    path: '/front-desk/new-wizard',
+const AuthenticatedFrontDeskNewLegacyRoute =
+  AuthenticatedFrontDeskNewLegacyRouteImport.update({
+    id: '/front-desk/new-legacy',
+    path: '/front-desk/new-legacy',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedFrontDeskNewRoute =
@@ -741,7 +741,7 @@ export interface FileRoutesByFullPath {
   '/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
   '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
-  '/front-desk/new-wizard': typeof AuthenticatedFrontDeskNewWizardRoute
+  '/front-desk/new-legacy': typeof AuthenticatedFrontDeskNewLegacyRoute
   '/front-desk/rate-calendar': typeof AuthenticatedFrontDeskRateCalendarRoute
   '/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/guests/new': typeof AuthenticatedGuestsNewRoute
@@ -846,7 +846,7 @@ export interface FileRoutesByTo {
   '/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
   '/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
-  '/front-desk/new-wizard': typeof AuthenticatedFrontDeskNewWizardRoute
+  '/front-desk/new-legacy': typeof AuthenticatedFrontDeskNewLegacyRoute
   '/front-desk/rate-calendar': typeof AuthenticatedFrontDeskRateCalendarRoute
   '/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/guests/new': typeof AuthenticatedGuestsNewRoute
@@ -953,7 +953,7 @@ export interface FileRoutesById {
   '/_authenticated/front-desk/calendar': typeof AuthenticatedFrontDeskCalendarRoute
   '/_authenticated/front-desk/in-house': typeof AuthenticatedFrontDeskInHouseRoute
   '/_authenticated/front-desk/new': typeof AuthenticatedFrontDeskNewRoute
-  '/_authenticated/front-desk/new-wizard': typeof AuthenticatedFrontDeskNewWizardRoute
+  '/_authenticated/front-desk/new-legacy': typeof AuthenticatedFrontDeskNewLegacyRoute
   '/_authenticated/front-desk/rate-calendar': typeof AuthenticatedFrontDeskRateCalendarRoute
   '/_authenticated/guests/$id': typeof AuthenticatedGuestsIdRoute
   '/_authenticated/guests/new': typeof AuthenticatedGuestsNewRoute
@@ -1060,7 +1060,7 @@ export interface FileRouteTypes {
     | '/front-desk/calendar'
     | '/front-desk/in-house'
     | '/front-desk/new'
-    | '/front-desk/new-wizard'
+    | '/front-desk/new-legacy'
     | '/front-desk/rate-calendar'
     | '/guests/$id'
     | '/guests/new'
@@ -1165,7 +1165,7 @@ export interface FileRouteTypes {
     | '/front-desk/calendar'
     | '/front-desk/in-house'
     | '/front-desk/new'
-    | '/front-desk/new-wizard'
+    | '/front-desk/new-legacy'
     | '/front-desk/rate-calendar'
     | '/guests/$id'
     | '/guests/new'
@@ -1271,7 +1271,7 @@ export interface FileRouteTypes {
     | '/_authenticated/front-desk/calendar'
     | '/_authenticated/front-desk/in-house'
     | '/_authenticated/front-desk/new'
-    | '/_authenticated/front-desk/new-wizard'
+    | '/_authenticated/front-desk/new-legacy'
     | '/_authenticated/front-desk/rate-calendar'
     | '/_authenticated/guests/$id'
     | '/_authenticated/guests/new'
@@ -1948,11 +1948,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrontDeskRateCalendarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/front-desk/new-wizard': {
-      id: '/_authenticated/front-desk/new-wizard'
-      path: '/front-desk/new-wizard'
-      fullPath: '/front-desk/new-wizard'
-      preLoaderRoute: typeof AuthenticatedFrontDeskNewWizardRouteImport
+    '/_authenticated/front-desk/new-legacy': {
+      id: '/_authenticated/front-desk/new-legacy'
+      path: '/front-desk/new-legacy'
+      fullPath: '/front-desk/new-legacy'
+      preLoaderRoute: typeof AuthenticatedFrontDeskNewLegacyRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/front-desk/new': {
@@ -2136,7 +2136,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFrontDeskCalendarRoute: typeof AuthenticatedFrontDeskCalendarRoute
   AuthenticatedFrontDeskInHouseRoute: typeof AuthenticatedFrontDeskInHouseRoute
   AuthenticatedFrontDeskNewRoute: typeof AuthenticatedFrontDeskNewRoute
-  AuthenticatedFrontDeskNewWizardRoute: typeof AuthenticatedFrontDeskNewWizardRoute
+  AuthenticatedFrontDeskNewLegacyRoute: typeof AuthenticatedFrontDeskNewLegacyRoute
   AuthenticatedFrontDeskRateCalendarRoute: typeof AuthenticatedFrontDeskRateCalendarRoute
   AuthenticatedGuestsIdRoute: typeof AuthenticatedGuestsIdRoute
   AuthenticatedGuestsNewRoute: typeof AuthenticatedGuestsNewRoute
@@ -2225,7 +2225,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFrontDeskCalendarRoute: AuthenticatedFrontDeskCalendarRoute,
   AuthenticatedFrontDeskInHouseRoute: AuthenticatedFrontDeskInHouseRoute,
   AuthenticatedFrontDeskNewRoute: AuthenticatedFrontDeskNewRoute,
-  AuthenticatedFrontDeskNewWizardRoute: AuthenticatedFrontDeskNewWizardRoute,
+  AuthenticatedFrontDeskNewLegacyRoute: AuthenticatedFrontDeskNewLegacyRoute,
   AuthenticatedFrontDeskRateCalendarRoute:
     AuthenticatedFrontDeskRateCalendarRoute,
   AuthenticatedGuestsIdRoute: AuthenticatedGuestsIdRoute,
