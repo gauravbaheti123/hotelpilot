@@ -799,16 +799,16 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     : 0;
 
   // ---- Phase 48b: early checkout detection (IST) ----
-  const istToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+  const istTodayStr = istToday();
   const early = (() => {
     if (!booking) return null;
     if (booking.status === "checked_out" || booking.status === "cancelled") return null;
     const ci = String(booking.check_in).slice(0, 10);
     const co = String(booking.check_out).slice(0, 10);
-    if (!(istToday < co)) return null;
+    if (!(istTodayStr < co)) return null;
     // Never allow a zero-night stay: minimum one night from the check-in date.
     const newCheckout =
-      istToday > ci ? istToday : new Date(new Date(`${ci}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10);
+      istTodayStr > ci ? istTodayStr : new Date(new Date(`${ci}T00:00:00Z`).getTime() + 86400000).toISOString().slice(0, 10);
     const actualNights = Math.max(
       1,
       Math.round((new Date(`${newCheckout}T00:00:00Z`).getTime() - new Date(`${ci}T00:00:00Z`).getTime()) / 86400000),
@@ -1038,7 +1038,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
                 </div>
                 <div className="text-[11px] text-muted-foreground">
                   Booked till {early.bookedCheckout} ({early.bookedNights} night
-                  {early.bookedNights > 1 ? "s" : ""}); checking out today ({istToday}). Rate stays as
+                  {early.bookedNights > 1 ? "s" : ""}); checking out today ({istTodayStr}). Rate stays as
                   originally booked.
                 </div>
                 <label className="flex items-start gap-2 cursor-pointer text-sm">
