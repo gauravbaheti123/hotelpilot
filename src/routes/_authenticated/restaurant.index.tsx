@@ -16,8 +16,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
-import { Download, MessageCircle, FileSpreadsheet, AlertTriangle, CheckCircle2, Plus } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { Download, MessageCircle, FileSpreadsheet, AlertTriangle, CheckCircle2, Plus, Pencil, Trash2 } from "lucide-react";
+import { useAuth, hasRole } from "@/hooks/use-auth";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { istToday } from "@/lib/date";
@@ -67,7 +68,8 @@ function OutletBreakdown({ parts, className }: { parts: Array<[string, number]>;
 
 function RestaurantPage() {
   const { current } = useCurrentProperty();
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
   const [credits, setCredits] = useState<CreditRow[]>([]);
   const [enriched, setEnriched] = useState<Record<string, CreditEnrichment>>({});
   const [loading, setLoading] = useState(false);
@@ -109,6 +111,197 @@ function RestaurantPage() {
   const [settleIds, setSettleIds] = useState<string[]>([]);
   const [settleDate, setSettleDate] = useState(istToday());
   const [settleNotes, setSettleNotes] = useState("");
+
+  // ─── Owner edit / delete of direct charges ───────────────────────────────
+  const [editCharge, setEditCharge] = useState<DirectChargeRow | null>(null);
+  const [ecBooking, setEcBooking] = useState("");
+  const [ecOutlet, setEcOutlet] = useState("");
+  const [ecAmount, setEcAmount] = useState("");
+  const [ecBillNo, setEcBillNo] = useState("");
+  const [ecDesc, setEcDesc] = useState("");
+  const [ecDate, setEcDate] = useState(istToday());
+  const [ecReason, setEcReason] = useState("");
+  const [delCharge, setDelCharge] = useState<DirectChargeRow | null>(null);
+  const [delReason, setDelReason] = useState("");
+  const [busyRow, setBusyRow] = useState(false);
+
+  /** A charge is locked once it (or its payable) has been reconciled into a
+   *  month-end settlement — those rows must never be edited or deleted. */
+  function chargeLocked(c: DirectChargeRow) {
+    if (c.is_settled) return true;
+    return payables.some((p) => p.charge_id === c.id && p.is_settled);
+  }
+
+  function openEdit(c: DirectChargeRow) {
+    setEditCharge(c);
+    setEcBooking(c.booking_id ?? "");
+    setEcOutlet(c.outlet_id ?? "");
+    setEcAmount(String(c.amount));
+    setEcBillNo(c.bill_no ?? "");
+    setEcDesc(c.description ?? "");
+    setEcDate(c.charge_date);
+    setEcReason("");
+  }
+
+  async function recomputeFolioOf(folioChargeId: string | null | undefined) {
+    if (!folioChargeId) return;
+    const { data } = await supabase
+      .from("folio_charges").select("folio_id").eq("id", folioChargeId).maybeSingle();
+    const folioId = (data as any)?.folio_id;
+    if (folioId) await (supabase as any).rpc("recompute_folio_totals", { _folio_id: folioId });
+  }
+
+  async function saveChargeEdit() {
+    if (!current || !editCharge) return;
+    const amt = Number(ecAmount);
+    if (!ecOutlet) return toast.error("Select an outlet");
+    if (!amt || amt <= 0) return toast.error("Enter a valid amount");
+    if (!ecReason.trim()) return toast.error("Reason is required");
+    setBusyRow(true);
+    try {
+      const old = { ...editCharge };
+      const bookingChanged = (editCharge.booking_id ?? "") !== ecBooking;
+      const booking = activeBookings.find((b) => b.value === ecBooking);
+      const desc = ecDesc.trim() || "Restaurant Charge";
+
+      // 1. Folio mirror — move or update the guest folio line item.
+      let folioChargeId = editCharge.folio_charge_id ?? null;
+      if (bookingChanged && folioChargeId) {
+        await recomputeFolioOf(folioChargeId);
+        const prevFolioCharge = folioChargeId;
+        await supabase.from("folio_charges").delete().eq("id", prevFolioCharge);
+        folioChargeId = null;
+      }
+      if (ecBooking) {
+        if (folioChargeId) {
+          const { error } = await supabase.from("folio_charges").update({
+            description: `Restaurant Charge — ${desc}`,
+            qty: 1, rate: amt, amount: amt, gst_rate: 0, gst_amount: 0,
+          } as any).eq("id", folioChargeId);
+          if (error) throw error;
+        } else {
+          const folio = await (supabase as any).rpc("get_or_create_folio", { _booking_id: ecBooking });
+          if (folio.error) throw folio.error;
+          const fc = await supabase.from("folio_charges").insert({
+            folio_id: folio.data,
+            charge_type: "extra",
+            description: `Restaurant Charge — ${desc}`,
+            qty: 1, rate: amt, amount: amt, gst_rate: 0, gst_amount: 0,
+            created_by: user?.id ?? null,
+          } as any).select("id").single();
+          if (fc.error) throw fc.error;
+          folioChargeId = fc.data.id;
+        }
+      }
+
+      // 2. Charge row
+      const upd = await (supabase as any).from("restaurant_direct_charges").update({
+        booking_id: ecBooking || null,
+        guest_id: booking?.guest_id ?? (bookingChanged ? null : editCharge.guest_id),
+        outlet_id: ecOutlet,
+        amount: amt,
+        bill_no: ecBillNo.trim() || null,
+        description: desc,
+        charge_date: ecDate,
+        folio_charge_id: folioChargeId,
+      }).eq("id", editCharge.id);
+      if (upd.error) throw upd.error;
+
+      // 3. Unsettled payable mirror
+      const pay = await (supabase as any).from("restaurant_payables").update({
+        amount: amt,
+        bill_no: ecBillNo.trim() || null,
+        description: desc,
+        charge_date: ecDate,
+      }).eq("charge_id", editCharge.id).eq("is_settled", false);
+      if (pay.error) throw pay.error;
+
+      await recomputeFolioOf(folioChargeId);
+
+      await supabase.rpc("log_owner_override" as any, {
+        _property_id: current.id,
+        _table_name: "restaurant_direct_charges",
+        _record_id: editCharge.id,
+        _action: "RESTAURANT_DIRECT_CHARGE_EDITED",
+        _old: old,
+        _new: {
+          booking_id: ecBooking || null, outlet_id: ecOutlet, amount: amt,
+          bill_no: ecBillNo.trim() || null, description: desc, charge_date: ecDate,
+        },
+        _reason: ecReason.trim(),
+      } as any);
+      await logActivity({
+        property_id: current.id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "RESTAURANT_DIRECT_CHARGE_EDITED",
+        module: "Restaurant",
+        reference_id: editCharge.id,
+        reference_label: ecBillNo.trim() || desc,
+        details: { reason: ecReason.trim(), old_amount: Number(old.amount), new_amount: amt },
+      });
+
+      toast.success("Charge updated");
+      setEditCharge(null);
+      await loadDirect();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Update failed");
+    } finally { setBusyRow(false); }
+  }
+
+  async function confirmChargeDelete() {
+    if (!current || !delCharge) return;
+    if (chargeLocked(delCharge)) {
+      return toast.error("Charge is already reconciled into a settlement — it cannot be deleted");
+    }
+    if (!delReason.trim()) return toast.error("Reason is required");
+    setBusyRow(true);
+    try {
+      const snapshot = { ...delCharge, payables: payables.filter((p) => p.charge_id === delCharge.id) };
+      const folioChargeId = delCharge.folio_charge_id ?? null;
+      let folioId: string | null = null;
+      if (folioChargeId) {
+        const { data } = await supabase
+          .from("folio_charges").select("folio_id").eq("id", folioChargeId).maybeSingle();
+        folioId = (data as any)?.folio_id ?? null;
+        const del = await supabase.from("folio_charges").delete().eq("id", folioChargeId);
+        if (del.error) throw del.error;
+      }
+      const pDel = await (supabase as any).from("restaurant_payables")
+        .delete().eq("charge_id", delCharge.id).eq("is_settled", false);
+      if (pDel.error) throw pDel.error;
+      const cDel = await (supabase as any).from("restaurant_direct_charges")
+        .delete().eq("id", delCharge.id);
+      if (cDel.error) throw cDel.error;
+      if (folioId) await (supabase as any).rpc("recompute_folio_totals", { _folio_id: folioId });
+
+      await supabase.rpc("log_owner_override" as any, {
+        _property_id: current.id,
+        _table_name: "restaurant_direct_charges",
+        _record_id: delCharge.id,
+        _action: "RESTAURANT_DIRECT_CHARGE_DELETED",
+        _old: snapshot,
+        _new: {},
+        _reason: delReason.trim(),
+      } as any);
+      await logActivity({
+        property_id: current.id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "RESTAURANT_DIRECT_CHARGE_DELETED",
+        module: "Restaurant",
+        reference_id: delCharge.id,
+        reference_label: delCharge.bill_no || delCharge.description || "Direct charge",
+        details: { reason: delReason.trim(), amount: Number(delCharge.amount) },
+      });
+
+      toast.success("Charge deleted");
+      setDelCharge(null); setDelReason("");
+      await loadDirect();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Delete failed");
+    } finally { setBusyRow(false); }
+  }
 
   async function loadDirect() {
     if (!current) return;
