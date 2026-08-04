@@ -22,7 +22,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
 import { inr, inrRound, recomputeFolio, type BillDiscount } from "@/lib/billing";
-import { resolveGstRate } from "@/lib/gst";
+import { computeRoomChargeTax } from "@/lib/gst";
 import { fireTrigger } from "@/lib/whatsapp";
 import { AlertTriangle, Plus, Trash2, Loader2, SplitSquareHorizontal } from "lucide-react";
 import { SplitBillDialog } from "@/components/SplitBillDialog";
