@@ -1168,6 +1168,93 @@ function RestaurantPage() {
         </Dialog>
 
         {/* Settle Payables Modal */}
+        {/* Owner — Edit Direct Charge */}
+        <Dialog open={!!editCharge} onOpenChange={(o) => !o && setEditCharge(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Edit Restaurant Charge</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Booking (Room · Guest)</Label>
+                <SearchableSelect
+                  options={activeBookings}
+                  value={ecBooking}
+                  onChange={setEcBooking}
+                  placeholder="Search booking…"
+                  emptyText="No active bookings"
+                />
+              </div>
+              <div>
+                <Label>Outlet *</Label>
+                <Select value={ecOutlet} onValueChange={setEcOutlet}>
+                  <SelectTrigger><SelectValue placeholder="Select outlet…" /></SelectTrigger>
+                  <SelectContent>
+                    {outlets.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Bill No</Label>
+                <Input value={ecBillNo} onChange={(e) => setEcBillNo(e.target.value)} placeholder="e.g. 202" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Amount (₹)</Label>
+                  <Input type="number" value={ecAmount} onChange={(e) => setEcAmount(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Date</Label>
+                  <Input type="date" value={ecDate} onChange={(e) => setEcDate(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <Label>Description</Label>
+                <Input value={ecDesc} onChange={(e) => setEcDesc(e.target.value)} />
+              </div>
+              <div>
+                <Label>Reason *</Label>
+                <Textarea value={ecReason} onChange={(e) => setEcReason(e.target.value)} rows={2}
+                  placeholder="Why is this charge being edited?" />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The guest folio line item and the unsettled restaurant payable are updated to match.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditCharge(null)}>Cancel</Button>
+              <Button onClick={saveChargeEdit} disabled={busyRow}>{busyRow ? "Saving…" : "Save Changes"}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Owner — Delete Direct Charge */}
+        <Dialog open={!!delCharge} onOpenChange={(o) => !o && setDelCharge(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Delete Restaurant Charge</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div className="text-sm">
+                {delCharge?.charge_date} · {delCharge?.bill_no || "—"} · ₹{Number(delCharge?.amount ?? 0).toFixed(2)}
+                <div className="text-muted-foreground text-xs">{delCharge?.description}</div>
+              </div>
+              <div className="text-xs text-destructive">
+                This removes the charge, its guest folio line item and the unsettled payable. Folio totals recompute automatically.
+              </div>
+              <div>
+                <Label>Reason *</Label>
+                <Textarea value={delReason} onChange={(e) => setDelReason(e.target.value)} rows={2}
+                  placeholder="Why is this charge being deleted?" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDelCharge(null)}>Cancel</Button>
+              <Button variant="destructive" onClick={confirmChargeDelete} disabled={busyRow}>
+                {busyRow ? "Deleting…" : "Delete Charge"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={settleOpen} onOpenChange={setSettleOpen}>
           <DialogContent>
             <DialogHeader><DialogTitle>Mark Payables Settled</DialogTitle></DialogHeader>
