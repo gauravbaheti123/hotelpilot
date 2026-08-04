@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -69,6 +69,18 @@ interface PartyDetails {
 
 interface PaymentRow { mode: string; amount: string; reference: string }
 
+/** A payment already recorded on the parent folio before the split. */
+interface ParentPayment {
+  id: string;
+  amount: number;
+  mode: string;
+  reference_no: string | null;
+  paid_at: string | null;
+  notes: string | null;
+  booking_id: string | null;
+  property_id: string;
+}
+
 function newParty(base: Partial<PartyDetails> = {}): ShareParty {
   return {
     key: Math.random().toString(36).slice(2),
@@ -88,7 +100,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   const { user, roles } = useAuth();
   // Cash Bill toggle is strictly owner-only (superadmin excluded).
   const isOwnerStrict = roles.includes("owner") && !roles.includes("superadmin");
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [splitType, setSplitType] = useState<SplitType>("same");
   const [splitMode, setSplitMode] = useState<SplitMode>("item");
   const [splitScope, setSplitScope] = useState<SplitScope>("whole");
@@ -102,6 +114,12 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   const [parties, setParties] = useState<ShareParty[]>([]);
   const { methods: payMethods } = usePaymentMethods(booking?.property_id ?? null);
   const { limit: discountLimit } = useDiscountLimit();
+
+  // Payments already recorded on the parent folio (must be re-homed on split).
+  const [parentPayments, setParentPayments] = useState<ParentPayment[]>([]);
+  // paymentId -> per-child allocation strings (index matches child bill index)
+  const [payAlloc, setPayAlloc] = useState<Record<string, string[]>>({});
+  const allocConfirmedRef = useRef(false);
 
   // Resolve current user's max-discount % once dialog opens
   useEffect(() => {
@@ -169,6 +187,32 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, folio?.id]);
 
+  // Load payments already recorded against the parent folio.
+  useEffect(() => {
+    (async () => {
+      setParentPayments([]);
+      setPayAlloc({});
+      allocConfirmedRef.current = false;
+      if (!open || !folio?.id) return;
+      const { data } = await supabase
+        .from("payments")
+        .select("id,amount,mode,reference_no,paid_at,notes,booking_id,property_id")
+        .eq("folio_id", folio.id);
+      setParentPayments(
+        ((data ?? []) as any[]).map((p) => ({
+          id: p.id,
+          amount: Number(p.amount ?? 0),
+          mode: p.mode,
+          reference_no: p.reference_no ?? null,
+          paid_at: p.paid_at ?? null,
+          notes: p.notes ?? null,
+          booking_id: p.booking_id ?? null,
+          property_id: p.property_id,
+        })),
+      );
+    })();
+  }, [open, folio?.id]);
+
   const bill1Charges = useMemo(() => charges.filter((c) => bill1Ids.has(c.id)), [charges, bill1Ids]);
   const bill2Charges = useMemo(() => charges.filter((c) => !bill1Ids.has(c.id)), [charges, bill1Ids]);
 
@@ -226,6 +270,127 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     [bill2Charges, party2.bill_type],
   );
 
+  /**
+   * The child bills this split will produce, with their expected totals.
+   * Used to (a) seed the default payment allocation proportionally and
+   * (b) label the allocation step. Index order matches the order the child
+   * folios are created in, so allocations map 1:1 onto the new folio ids.
+   */
+  const childTargets = useMemo(() => {
+    if (splitMode === "item") {
+      return [
+        { label: `Bill 1 — ${party1.name || guestName}`, total: Number(bill1Total) },
+        { label: `Bill 2 — ${splitType === "same" ? (party1.name || guestName) : (party2.name || "Party 2")}`, total: Number(bill2Total) },
+      ];
+    }
+    return parties.map((p, i) => {
+      const net = Number(shareDistribution.nets[i] ?? 0);
+      const gst = p.bill_type === "gst_invoice" ? round2(net * baseGstRate / 100) : 0;
+      return { label: `Bill ${i + 1} — ${p.name || `Party ${i + 1}`}`, total: round2(net + gst) };
+    });
+  }, [splitMode, party1.name, party2.name, splitType, guestName, bill1Total, bill2Total, parties, shareDistribution, baseGstRate]);
+
+  /** Default (proportional) allocation of a payment across the child bills. */
+  function defaultAllocFor(amount: number, totals: number[]): number[] {
+    const weights = totals.map((t) => Math.max(0, Number(t) || 0));
+    const sum = weights.reduce((s, x) => s + x, 0);
+    if (sum <= 0) return totals.map((_, i) => (i === 0 ? round2(amount) : 0));
+    return distributeWithRemainder(amount, weights);
+  }
+
+  /** Current allocation numbers for a payment (user input or the default). */
+  function allocFor(p: ParentPayment, totals: number[]): number[] {
+    const raw = payAlloc[p.id];
+    if (!raw) return defaultAllocFor(p.amount, totals);
+    return totals.map((_, i) => round2(Number(raw[i] ?? 0) || 0));
+  }
+
+  const allocValid = useMemo(() => {
+    if (parentPayments.length === 0) return true;
+    const totals = childTargets.map((c) => c.total);
+    return parentPayments.every((p) => {
+      const sum = allocFor(p, totals).reduce((s, x) => s + x, 0);
+      return Math.abs(sum - p.amount) < 0.01;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parentPayments, payAlloc, childTargets]);
+
+  /**
+   * Step 4 defaults: each child's payment box pre-fills with the amount still
+   * OUTSTANDING after the payments carried over from the parent folio.
+   */
+  function seedPayRows(created: { total: number }[]): PaymentRow[] {
+    const totals = childTargets.map((c) => c.total);
+    const carried = created.map((_, i) =>
+      parentPayments.reduce((s, p) => s + (allocFor(p, totals)[i] ?? 0), 0));
+    return created.map((cb, i) => ({
+      mode: "cash",
+      amount: Math.max(0, round2(cb.total - (carried[i] ?? 0))).toFixed(2),
+      reference: "",
+    }));
+  }
+
+  /**
+   * Re-home every parent-folio payment onto the child folios BEFORE the parent
+   * is voided, so void_folio_safe() succeeds normally with _force:false and no
+   * payment history is orphaned or lost.
+   *
+   * A payment allocated entirely to one child is simply repointed (same row,
+   * same id — reconciliation history preserved). A payment spanning several
+   * children keeps its original row for the first share and gets sibling rows
+   * for the rest, each tagged with the source payment id in `notes`.
+   *
+   * Returns an undo() that restores the original state, used if the void fails.
+   */
+  async function movePaymentsToChildren(childFolioIds: string[]) {
+    const totals = childTargets.map((c) => c.total);
+    const insertedIds: string[] = [];
+    const moved: { id: string; amount: number }[] = [];
+    const undo = async () => {
+      if (insertedIds.length > 0) await supabase.from("payments").delete().in("id", insertedIds);
+      for (const m of moved) {
+        await supabase.from("payments")
+          .update({ folio_id: folio.id, amount: m.amount } as any).eq("id", m.id);
+      }
+    };
+    try {
+      for (const p of parentPayments) {
+        const alloc = allocFor(p, totals);
+        const idxs = alloc.map((a, i) => ({ a, i })).filter((x) => x.a > 0);
+        if (idxs.length === 0) continue;
+        const [first, ...rest] = idxs;
+        const { error: upErr } = await supabase.from("payments").update({
+          folio_id: childFolioIds[first.i],
+          amount: first.a,
+          notes: rest.length > 0
+            ? `${p.notes ? `${p.notes} · ` : ""}Split from ${folio.invoice_number} (₹${p.amount.toFixed(2)})`
+            : p.notes,
+        } as any).eq("id", p.id);
+        if (upErr) throw upErr;
+        moved.push({ id: p.id, amount: p.amount });
+        for (const r of rest) {
+          const { data: ins, error: insErr } = await supabase.from("payments").insert({
+            property_id: p.property_id,
+            folio_id: childFolioIds[r.i],
+            booking_id: p.booking_id ?? booking.id,
+            amount: r.a,
+            mode: p.mode,
+            reference_no: p.reference_no,
+            paid_at: p.paid_at ?? undefined,
+            notes: `${p.notes ? `${p.notes} · ` : ""}Split from ${folio.invoice_number} (₹${p.amount.toFixed(2)}, source payment ${p.id})`,
+            created_by: user?.id ?? null,
+          } as any).select("id").single();
+          if (insErr) throw insErr;
+          insertedIds.push((ins as any).id);
+        }
+      }
+      return { undo };
+    } catch (e) {
+      await undo();
+      throw e;
+    }
+  }
+
   function moveToBill1(id: string) { setBill1Ids((s) => new Set([...s, id])); }
   function moveToBill2(id: string) {
     setBill1Ids((s) => { const n = new Set(s); n.delete(id); return n; });
@@ -247,6 +412,19 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
 
   async function confirmSplit() {
     if (!folio || !booking) return;
+    // Payments already on the parent must be allocated to the child bills first.
+    if (parentPayments.length > 0 && !allocConfirmedRef.current) {
+      const totals = childTargets.map((c) => c.total);
+      setPayAlloc((prev) => {
+        const next = { ...prev };
+        for (const p of parentPayments) {
+          if (!next[p.id]) next[p.id] = defaultAllocFor(p.amount, totals).map((n) => n.toFixed(2));
+        }
+        return next;
+      });
+      setStep(5);
+      return;
+    }
     if (splitMode !== "item") {
       return confirmShareSplit();
     }
@@ -345,9 +523,10 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         }
       }
 
-      // 3) Both invoices verified — now void the original via the safe helper.
-      //    void_folio_safe refuses to void a folio that still has payments, so
-      //    we don't silently lose payment history.
+      // 3) Move any existing parent payments onto the children, then void the
+      //    original via the safe helper (which refuses to void a folio that
+      //    still has payments — by now it has none).
+      const { undo: undoPayments } = await movePaymentsToChildren(newFolioIds);
       const { error: voidErr } = await supabase.rpc("void_folio_safe" as any, {
         _folio_id: folio.id,
         _reason: `Split into 2 bills (${splitType})`,
@@ -356,6 +535,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       } as any);
       if (voidErr) {
         // Rollback the newly created folios so we don't end up with 3 active bills.
+        await undoPayments();
         await supabase.from("folios").delete().in("id", newFolioIds);
         throw voidErr;
       }
@@ -551,7 +731,9 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         });
       }
 
-      // Void the source only after every share folio is safely persisted.
+      // Move existing parent payments onto the children, then void the source
+      // only after every share folio is safely persisted.
+      const { undo: undoPayments } = await movePaymentsToChildren(newFolioIds);
       const { error: voidErr } = await supabase.rpc("void_folio_safe" as any, {
         _folio_id: folio.id,
         _reason: `Split by ${splitMode} into ${parties.length} bills (${splitScope})`,
@@ -559,6 +741,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         _force: false,
       } as any);
       if (voidErr) {
+        await undoPayments();
         await supabase.from("folios").delete().in("id", newFolioIds);
         throw voidErr;
       }
@@ -628,11 +811,13 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         const b = createdBills[i];
         const row = payRows[i];
         const amt = Number(row.amount);
-        if (row.mode !== "credit" && !(amt > 0)) {
+        // 0 is legitimate when the bill was already covered by a payment
+        // carried over from the parent folio during the split.
+        if (row.mode !== "credit" && amt < 0) {
           setBusy(false);
-          return toast.error(`Bill ${i + 1}: enter payment amount`);
+          return toast.error(`Bill ${i + 1}: payment amount cannot be negative`);
         }
-        if (row.mode !== "credit") {
+        if (row.mode !== "credit" && amt > 0) {
           await supabase.from("payments").insert({
             property_id: booking.property_id,
             folio_id: b.folio_id,
@@ -964,6 +1149,70 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep(2)}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
               <Button onClick={confirmSplit} disabled={busy}>
+                {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                Confirm &amp; Split
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {step === 5 && (
+          <div className="space-y-4">
+            <div className="text-sm font-medium">Allocate Existing Payments</div>
+            <div className="rounded border bg-amber-50 p-3 text-xs text-amber-900">
+              This bill already has {parentPayments.length} recorded payment
+              {parentPayments.length > 1 ? "s" : ""} totalling{" "}
+              <b>{inr(parentPayments.reduce((s, p) => s + p.amount, 0))}</b>. Decide how each
+              payment should be shared across the new bills — the amounts must add up to the
+              original payment. Defaults are proportional to each bill's total.
+            </div>
+            {parentPayments.map((p) => {
+              const totals = childTargets.map((c) => c.total);
+              const alloc = allocFor(p, totals);
+              const sum = alloc.reduce((s, x) => s + x, 0);
+              const ok = Math.abs(sum - p.amount) < 0.01;
+              return (
+                <div key={p.id} className="rounded border p-3 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <div>
+                      <div className="font-semibold">{inr(p.amount)} · {formatPaymentMethodLabel(p.mode)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {p.paid_at ? new Date(p.paid_at).toLocaleString("en-IN") : ""}
+                        {p.reference_no ? ` · Ref ${p.reference_no}` : ""}
+                      </div>
+                    </div>
+                    <Badge variant="outline" className={ok ? "border-emerald-400 text-emerald-700" : "border-amber-400 text-amber-700"}>
+                      {ok ? "Balanced ✓" : `Off by ${inr(sum - p.amount)}`}
+                    </Badge>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {childTargets.map((c, i) => (
+                      <div key={i}>
+                        <Label className="text-xs">{c.label} · {inrRound(c.total)}</Label>
+                        <Input
+                          type="number"
+                          value={payAlloc[p.id]?.[i] ?? (alloc[i] ?? 0).toFixed(2)}
+                          onChange={(e) => setPayAlloc((prev) => {
+                            const cur = prev[p.id] ?? alloc.map((n) => n.toFixed(2));
+                            const next = [...cur];
+                            next[i] = e.target.value;
+                            return { ...prev, [p.id]: next };
+                          })}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setStep(splitMode === "item" ? 3 : 2)}>
+                <ArrowLeft className="h-4 w-4 mr-1" /> Back
+              </Button>
+              <Button
+                disabled={busy || !allocValid}
+                onClick={() => { allocConfirmedRef.current = true; void confirmSplit(); }}
+              >
                 {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
                 Confirm &amp; Split
               </Button>
