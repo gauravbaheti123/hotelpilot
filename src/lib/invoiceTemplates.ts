@@ -457,14 +457,19 @@ function footerBlock(ctx: InvoiceContext): string {
 
 export function renderInvoiceHtml(ctx: InvoiceContext): string {
   const color = ctx.property.invoice_primary_color || "#1D9E75";
-  const draft = !!ctx.draft;
-  const watermark = draft
-    ? `<div class="draft-watermark">DRAFT</div>` : "";
+  const provisional = !hasBillNumber(ctx.folio.invoice_number);
+  const draft = !!ctx.draft || provisional;
+  const watermark = provisional
+    ? `<div class="draft-watermark" style="font-size:64px;letter-spacing:4px">PROVISIONAL</div>`
+    : ctx.draft
+      ? `<div class="draft-watermark">DRAFT</div>`
+      : "";
   return `<!doctype html><html><head><meta charset="utf-8"/>
-    <title>${esc(billNo(ctx.folio.invoice_number))}</title>
+    <title>${esc(provisional ? `PROVISIONAL — ${ctx.booking.booking_number}` : billNo(ctx.folio.invoice_number))}</title>
     <style>${commonStyles(color, draft)}</style>
     </head><body><div class="invoice">
       ${watermark}
+      ${provisional ? `<div style="text-align:center;font-weight:800;letter-spacing:1px;color:#b45309;border:1.5px solid #b45309;padding:6px;margin-bottom:10px">${PROVISIONAL_DOC_TITLE}</div>` : ""}
       ${headerBlock(ctx)}
       ${metaBlock(ctx)}
       ${chargesTable(ctx)}
