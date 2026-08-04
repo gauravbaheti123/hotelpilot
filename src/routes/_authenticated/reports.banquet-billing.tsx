@@ -100,14 +100,11 @@ function Page() {
       if (bookingIds.length === 0) { setGroups([]); return; }
       const visByBooking = new Map(vis.map((v) => [v.booking_id, v]));
 
-      const [{ data: bks }, { data: events }] = await Promise.all([
+      const [{ data: bks }, events] = await Promise.all([
         supabase.from("bookings")
           .select("id,booking_number,guests(name),booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))")
           .in("id", bookingIds),
-        supabase.from("bookings")
-          .select("id,banquet_number,event_name,event_date")
-          .eq("property_id", propertyId)
-          .eq("booking_type", "banquet" as any),
+        listEventBookings(propertyId),
       ]);
       const meta = new Map<string, { room: string; guest: string }>();
       for (const b of (bks ?? []) as any[]) {
@@ -116,12 +113,16 @@ function Page() {
           guest: b.guests?.name ?? "",
         });
       }
+      // Event headers come from the unified model; keys cover BOTH id spaces
+      // because banquet_visibility / master bills still reference legacy ids.
       const eventMeta = new Map<string, { title: string; date: string | null }>();
-      for (const e of (events ?? []) as any[]) {
-        eventMeta.set(e.id, {
+      for (const e of events) {
+        const m = {
           title: `${e.banquet_number ?? "Event"}${e.event_name ? ` · ${e.event_name}` : ""}`,
           date: e.event_date ?? null,
-        });
+        };
+        eventMeta.set(e.booking_id, m);
+        if (e.legacy_id) eventMeta.set(e.legacy_id, m);
       }
 
       const [{ data: folios }, { data: segs }, { data: masters }] = await Promise.all([
