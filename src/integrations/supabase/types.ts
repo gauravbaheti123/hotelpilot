@@ -1628,6 +1628,7 @@ export type Database = {
           checkout_date: string
           checkout_time: string
           created_at: string
+          event_booking_id: string | null
           event_name: string
           guest_id: string | null
           guest_mobile: string | null
@@ -1653,6 +1654,7 @@ export type Database = {
           checkout_date: string
           checkout_time?: string
           created_at?: string
+          event_booking_id?: string | null
           event_name: string
           guest_id?: string | null
           guest_mobile?: string | null
@@ -1678,6 +1680,7 @@ export type Database = {
           checkout_date?: string
           checkout_time?: string
           created_at?: string
+          event_booking_id?: string | null
           event_name?: string
           guest_id?: string | null
           guest_mobile?: string | null
@@ -1709,6 +1712,20 @@ export type Database = {
           {
             foreignKeyName: "event_room_blocks_booking_id_fkey"
             columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_room_blocks_event_booking_id_fkey"
+            columns: ["event_booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "event_room_blocks_event_booking_id_fkey"
+            columns: ["event_booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
