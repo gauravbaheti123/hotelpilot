@@ -265,7 +265,17 @@ function NavEntry({ item, currentPath, collapsed }: { item: NavItem; currentPath
   );
 }
 
-function AppShellInner({ title, children }: { title: string; children: ReactNode }) {
+function AppShellInner({
+  title,
+  children,
+  titleSlot,
+  onTitleClick,
+}: {
+  title: string;
+  children: ReactNode;
+  titleSlot?: ReactNode;
+  onTitleClick?: () => void;
+}) {
   const router = useRouter();
   const { user, roles, loading: authLoading } = useAuth();
   // Superadmin sidebar is reserved for the platform owner email ONLY.
@@ -505,7 +515,19 @@ function AppShellInner({ title, children }: { title: string; children: ReactNode
               {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             </Button>
             <div className="md:hidden shrink-0"><Logo size={28} /></div>
-            <h1 className="text-base sm:text-lg font-semibold truncate">{headerTitle}</h1>
+            {onTitleClick ? (
+              <button
+                type="button"
+                onClick={onTitleClick}
+                className="text-base sm:text-lg font-semibold truncate hover:text-primary transition-colors"
+                title="Back to default view"
+              >
+                {headerTitle}
+              </button>
+            ) : (
+              <h1 className="text-base sm:text-lg font-semibold truncate">{headerTitle}</h1>
+            )}
+            {titleSlot}
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <QZStatusIndicator />
