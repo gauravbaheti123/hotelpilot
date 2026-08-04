@@ -186,6 +186,10 @@ export interface CreateEventPayload {
   balance_amount?: number;
   total_room_charges?: number;
   notes?: string | null;
+  /** Optional "bill to" company + advance payment metadata (wizard path). */
+  billing_company_id?: string | null;
+  advance_payment_mode?: string | null;
+  payment_ref?: string | null;
   /** Named extra-charge lines, saved inside the same transaction. */
   extras?: { point_name: string; amount: number }[];
 }
@@ -195,6 +199,7 @@ export async function createEventBooking(payload: CreateEventPayload): Promise<{
   bookingId: string;
   legacyId: string;
   banquetNumber: string;
+  bookingNumber: string | null;
 }> {
   const { data, error } = await supabase.rpc("create_event_booking" as any, { payload } as any);
   if (error) throw error;
@@ -203,6 +208,7 @@ export async function createEventBooking(payload: CreateEventPayload): Promise<{
     bookingId: r.booking_id as string,
     legacyId: r.booking_id as string,
     banquetNumber: r.banquet_number as string,
+    bookingNumber: (r.booking_number ?? null) as string | null,
   };
 }
 

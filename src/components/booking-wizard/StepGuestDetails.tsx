@@ -22,6 +22,11 @@ interface Props {
   propertyId: string;
   guest: WizardGuest;
   onChange: (patch: Partial<WizardGuest>) => void;
+  /**
+   * Banquet hosts are a trimmed variant: no ID proof / document capture,
+   * since no one is checking in against this record.
+   */
+  variant?: "lodge" | "banquet";
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -33,7 +38,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function StepGuestDetails({ propertyId, guest, onChange }: Props) {
+export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge" }: Props) {
+  const banquet = variant === "banquet";
   const [term, setTerm] = useState("");
   const [matches, setMatches] = useState<GuestSearchDetail[]>([]);
   const [searching, setSearching] = useState(false);
@@ -263,6 +269,7 @@ export function StepGuestDetails({ propertyId, guest, onChange }: Props) {
         </div>
       </Section>
 
+      {banquet ? null : (
       <Section title="Doc Details">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
@@ -320,6 +327,7 @@ export function StepGuestDetails({ propertyId, guest, onChange }: Props) {
           </div>
         </div>
       </Section>
+      )}
 
     </div>
   );

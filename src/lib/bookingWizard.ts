@@ -52,6 +52,48 @@ export interface WizardState {
   payment: WizardPayment;
   /** Step 6 — remark highlighted at checkout. */
   customRemark: string;
+  /** Step 3 (banquet) — event details, extras and room blocks. */
+  event: WizardEvent;
+}
+
+/** Banquet — how rooms are attached to the event. */
+export type RoomBlockMode = "none" | "single" | "bulk";
+
+/** Banquet — one named extra-charge line on the event bill. */
+export interface WizardEventExtra {
+  key: string;
+  pointName: string;
+  amount: string;
+}
+
+/** Banquet — one physical room attached to the event. */
+export interface WizardEventRoomRow {
+  key: string;
+  roomId: string;
+  guestName: string;
+  guestMobile: string;
+  checkIn: string;
+  checkInTime: string;
+  checkOut: string;
+  checkOutTime: string;
+  specialRate: string;
+}
+
+/** Banquet — everything the event form collects. */
+export interface WizardEvent {
+  hallId: string;
+  functionType: string;
+  eventName: string;
+  eventDate: string;
+  startTime: string;
+  eventEndDate: string;
+  endTime: string;
+  pax: string;
+  eventPrice: string;
+  discount: string;
+  extras: WizardEventExtra[];
+  roomMode: RoomBlockMode;
+  roomRows: WizardEventRoomRow[];
 }
 
 /** Part 4 — Bill To (billing_companies row, or none). */
@@ -163,7 +205,47 @@ export function emptyWizardState(): WizardState {
     billTo: emptyBillTo(),
     payment: { advance: 0, mode: "cash", reference: "", notes: "" },
     customRemark: "",
+    event: emptyEvent(),
   };
+}
+
+export function emptyEvent(): WizardEvent {
+  const today = todayIso();
+  return {
+    hallId: "",
+    functionType: "Wedding",
+    eventName: "",
+    eventDate: today,
+    startTime: "18:00",
+    eventEndDate: today,
+    endTime: "23:00",
+    pax: "100",
+    eventPrice: "0",
+    discount: "0",
+    extras: [],
+    roomMode: "none",
+    roomRows: [],
+  };
+}
+
+export function emptyEventExtra(): WizardEventExtra {
+  return { key: nextKey("x"), pointName: "", amount: "" };
+}
+
+export function emptyEventRoomRow(from?: Partial<WizardEventRoomRow>): WizardEventRoomRow {
+  const today = todayIso();
+  const base: WizardEventRoomRow = {
+    key: from?.key || nextKey("blk"),
+    roomId: "",
+    guestName: "",
+    guestMobile: "",
+    checkIn: today,
+    checkInTime: "12:00",
+    checkOut: addDaysIso(today, 1),
+    checkOutTime: "11:00",
+    specialRate: "",
+  };
+  return { ...base, ...from, key: base.key };
 }
 
 export function emptyBillTo(): WizardBillTo {
@@ -209,6 +291,25 @@ export function normalizeWizardState(raw: unknown): WizardState | null {
     billTo: { ...base.billTo, ...(s.billTo ?? {}) },
     payment: { ...base.payment, ...(s.payment ?? {}) },
     customRemark: typeof s.customRemark === "string" ? s.customRemark : "",
+    event: normalizeWizardEvent(s.event),
+  };
+}
+
+/** Older drafts predate the banquet section entirely — fill in safe defaults. */
+export function normalizeWizardEvent(raw: unknown): WizardEvent {
+  const base = emptyEvent();
+  if (!raw || typeof raw !== "object") return base;
+  const e = raw as Partial<WizardEvent>;
+  return {
+    ...base,
+    ...e,
+    roomMode: e.roomMode === "single" || e.roomMode === "bulk" ? e.roomMode : "none",
+    extras: Array.isArray(e.extras)
+      ? e.extras.map((x) => ({ ...emptyEventExtra(), ...x, key: x?.key || emptyEventExtra().key }))
+      : [],
+    roomRows: Array.isArray(e.roomRows)
+      ? e.roomRows.map((r) => emptyEventRoomRow({ ...r, key: r?.key || undefined }))
+      : [],
   };
 }
 
@@ -269,9 +370,16 @@ export function isPristine(s: WizardState) {
   const g = s.guest ?? emptyGuest();
   const rooms = Array.isArray(s.rooms) ? s.rooms : [];
   const extraGuests = Array.isArray(s.extraGuests) ? s.extraGuests : [];
+  const ev = s.event;
+  const eventPristine =
+    !ev ||
+    (!ev.hallId && !ev.eventName && ev.roomMode === "none" &&
+      (ev.extras ?? []).length === 0 && (ev.roomRows ?? []).length === 0 &&
+      !(Number(ev.eventPrice) > 0) && !(Number(ev.discount) > 0));
   return (
     (s.kind ?? "lodge") === "lodge" &&
     !s.reservation &&
+    eventPristine &&
     extraGuests.length === 0 &&
     (s.adults ?? 1) === 1 && (s.children ?? 0) === 0 &&
     rooms.length <= 1 &&
@@ -294,11 +402,13 @@ export function isRoomValid(r: WizardRoom, reservation: boolean): boolean {
 
 export function isStepValid(step: number, s: WizardState): boolean {
   if (!s || typeof s !== "object") return false;
+  const banquet = s.kind === "banquet";
   if (step === STEP.TYPE) return s.kind === "lodge" || s.kind === "banquet";
   if (step === STEP.GUEST) {
     return (s.guest?.name ?? "").trim().length > 0 && isValidMobile(s.guest?.mobile ?? "");
   }
   if (step === STEP.EXTRA_GUESTS) {
+    if (banquet) return true;
     if ((s.adults ?? 0) < 1) return false;
     return (s.extraGuests ?? []).every(
       (g) => g.name.trim().length > 0 && g.relation.trim().length > 0 &&
@@ -306,6 +416,7 @@ export function isStepValid(step: number, s: WizardState): boolean {
     );
   }
   if (step === STEP.STAY) {
+    if (banquet) return isEventStepValid(s.event);
     const rooms = Array.isArray(s.rooms) ? s.rooms : [];
     return rooms.length > 0 && rooms.every((r) => isRoomValid(r, s.reservation));
   }
@@ -320,6 +431,54 @@ export function isStepValid(step: number, s: WizardState): boolean {
   return true;
 }
 
+/** Banquet Step 3 — event window, room-block completeness. */
+export function isEventStepValid(ev: WizardEvent | undefined): boolean {
+  if (!ev) return false;
+  if (!ev.eventDate || !ev.startTime || !ev.eventEndDate || !ev.endTime) return false;
+  if (!isValidStayRange(ev.eventDate, ev.eventEndDate, ev.startTime, ev.endTime)) return false;
+  if (!(Number(ev.pax) > 0)) return false;
+  if (ev.roomMode === "none") return true;
+  if (!ev.eventName.trim()) return false;
+  const rows = ev.roomRows ?? [];
+  if (rows.length === 0) return false;
+  if (ev.roomMode === "single") {
+    const r = rows[0];
+    return !!r.roomId && isValidStayRange(r.checkIn, r.checkOut);
+  }
+  const ids = rows.map((r) => r.roomId);
+  if (ids.some((id, i) => !id || ids.indexOf(id) !== i)) return false;
+  return rows.every(
+    (r) =>
+      r.guestName.trim().length > 0 &&
+      isValidMobile(r.guestMobile) &&
+      isValidStayRange(r.checkIn, r.checkOut, r.checkInTime || "12:00", r.checkOutTime || "11:00"),
+  );
+}
+
+/** Banquet — extras subtotal. */
+export function eventExtrasTotal(ev: WizardEvent): number {
+  return (ev.extras ?? []).reduce((sum, x) => sum + (Number(x.amount) || 0), 0);
+}
+
+/**
+ * Banquet money model: event price + extras − discount, plus the room
+ * revenue produced by the attached room blocks.
+ */
+export function eventTotals(ev: WizardEvent, roomRevenue: number) {
+  const extras = eventExtrasTotal(ev);
+  const price = Number(ev.eventPrice) || 0;
+  const discount = Number(ev.discount) || 0;
+  const eventTotal = Math.max(0, Math.round((price + extras - discount) * 100) / 100);
+  return {
+    price,
+    extras,
+    discount,
+    eventTotal,
+    roomRevenue,
+    grandTotal: Math.round((eventTotal + roomRevenue) * 100) / 100,
+  };
+}
+
 export const WIZARD_STEPS = [
   "Booking Type",
   "Guest Details",
@@ -330,6 +489,15 @@ export const WIZARD_STEPS = [
   "Remarks",
   "Review",
 ];
+
+/** Step labels differ slightly for banquet (Step 3 is the event, not a stay). */
+export function wizardStepLabels(kind: BookingKind): string[] {
+  if (kind !== "banquet") return WIZARD_STEPS;
+  const labels = [...WIZARD_STEPS];
+  labels[STEP.GUEST] = "Host Details";
+  labels[STEP.STAY] = "Event Details";
+  return labels;
+}
 
 export const STEP = {
   TYPE: 0,
@@ -360,8 +528,9 @@ export function stayRange(rooms: WizardRoom[]): { checkIn: string; checkOut: str
   };
 }
 
-/** Reservations skip Additional Guests and Bill To. */
+/** Reservations skip Additional Guests and Bill To; banquet skips Additional Guests. */
 export function isStepSkipped(step: number, s: WizardState): boolean {
+  if (s.kind === "banquet") return step === STEP.EXTRA_GUESTS;
   if (!s.reservation) return false;
   return step === STEP.EXTRA_GUESTS || step === STEP.BILL_TO;
 }

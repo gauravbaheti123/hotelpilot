@@ -20,14 +20,18 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { computeBanquetTotal, FUNCTION_TYPES } from "@/lib/banquet";
 import { Plus, Trash2 } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RequirePermission } from "@/components/RequirePermission";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
-import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
-import { pickTariffPlan, type TariffPlan } from "@/lib/tariff";
+import { type TariffPlan } from "@/lib/tariff";
 import { useRoomCategories, useRooms, useTariffPlans } from "@/hooks/use-rooms";
-import { commitRoomBlocks, nightsBetween, type AssignedBlock } from "@/lib/eventRoomBlocks";
+import { commitRoomBlocks } from "@/lib/eventRoomBlocks";
+import { EventRoomBlocks } from "@/components/booking-wizard/EventRoomBlocks";
+import {
+  assignedBlocksTotal, buildAssignedBlocks, checkRoomBlockDiscounts, roomBlocksSummary,
+  validateRoomBlocks, type RoomOption,
+} from "@/lib/eventRoomsForm";
+import type { RoomBlockMode, WizardEventRoomRow } from "@/lib/bookingWizard";
 import { isValidStayRange } from "@/lib/front-desk";
 import { GuestSearchInput } from "@/components/GuestSearchInput";
 import { istDateISO, istToday } from "@/lib/date";
@@ -53,26 +57,10 @@ interface Cat {
   id: string;
   name: string;
 }
-interface RoomOpt {
-  id: string;
-  room_number: string;
-  category_id: string | null;
-  status: string;
-  category_name: string | null;
-}
+type RoomOpt = RoomOption;
 interface ExtraRow {
   point_name: string;
   amount: string;
-}
-interface BlockRow {
-  room_id: string;
-  guest_name: string;
-  guest_mobile: string;
-  checkin_date: string;
-  checkin_time: string;
-  checkout_date: string;
-  checkout_time: string;
-  special_rate: string;
 }
 
 function NewBanquetPage() {
@@ -120,15 +108,10 @@ function NewBanquetPage() {
   const [extras, setExtras] = useState<ExtraRow[]>([]);
 
   // Rooms: two modes — single-assign or bulk-block
-  const [roomMode, setRoomMode] = useState<"none" | "single" | "bulk">("none");
+  const [roomMode, setRoomMode] = useState<RoomBlockMode>("none");
   const [eventName, setEventName] = useState("");
-  // Single-room state
-  const [singleRoomId, setSingleRoomId] = useState("");
-  const [singleCheckIn, setSingleCheckIn] = useState(today);
-  const [singleCheckOut, setSingleCheckOut] = useState(today);
-  const [singleRate, setSingleRate] = useState("0");
-  // Bulk state — one row per physical room
-  const [blockRows, setBlockRows] = useState<BlockRow[]>([]);
+  // One row per physical room (single mode uses the first row only).
+  const [blockRows, setBlockRows] = useState<WizardEventRoomRow[]>([]);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -160,7 +143,6 @@ function NewBanquetPage() {
           id: r.id,
           room_number: r.room_number,
           category_id: r.category_id,
-          status: r.status,
           category_name: r.category_name,
         })) as RoomOpt[],
     );
@@ -193,92 +175,21 @@ function NewBanquetPage() {
     setExtras((p) => p.filter((_, idx) => idx !== i));
   }
 
-  /**
-   * Phase 27b — single source of truth for room pricing: the tariff plan that
-   * is valid for this category on the given stay date.
-   */
-  function stdRate(categoryId: string | null | undefined, date: string): number {
-    return (
-      Number(pickTariffPlan(tariffPlans, { categoryId: categoryId ?? null, date })?.rate ?? 0) || 0
-    );
-  }
-
-  const blockSummary = useMemo(() => {
-    let totalRooms = 0;
-    let revenue = 0;
-    blockRows.forEach((r) => {
-      if (!r.room_id) return;
-      const room = allRooms.find((x) => x.id === r.room_id);
-      const rate =
-        Number(r.special_rate) || stdRate(room?.category_id, r.checkin_date || eventDate);
-      const nights =
-        r.checkin_date && r.checkout_date ? nightsBetween(r.checkin_date, r.checkout_date) : 1;
-      totalRooms += 1;
-      revenue += rate * nights;
-    });
-    const categories = new Set(
-      blockRows.map((r) => allRooms.find((x) => x.id === r.room_id)?.category_id).filter(Boolean),
-    ).size;
-    return { totalRooms, revenue, categories };
-  }, [blockRows, allRooms, tariffPlans, eventDate]);
-
-  const summaryRoomRevenue = useMemo(() => {
-    if (roomMode === "bulk") return blockSummary.revenue;
-    if (roomMode === "single" && singleRoomId && Number(singleRate) > 0) {
-      const n = Math.max(1, nightsBetween(singleCheckIn, singleCheckOut));
-      return Number(singleRate) * n;
-    }
-    return 0;
-  }, [roomMode, blockSummary.revenue, singleRoomId, singleRate, singleCheckIn, singleCheckOut]);
-
-  function addBlockRow() {
-    const nextDay = new Date(eventDate);
-    nextDay.setDate(nextDay.getDate() + 1);
-    setBlockRows((prev) => [
-      ...prev,
-      {
-        room_id: "",
-        guest_name: "",
-        guest_mobile: "",
-        checkin_date: eventDate,
-        checkin_time: "12:00",
-        checkout_date: istDateISO(nextDay),
-        checkout_time: "11:00",
-        special_rate: "",
-      },
-    ]);
-  }
-  function updateBlockRow(i: number, patch: Partial<BlockRow>) {
-    setBlockRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
-  }
-  function removeBlockRow(i: number) {
-    setBlockRows((prev) => prev.filter((_, idx) => idx !== i));
-  }
-
-  /** Build event_room_blocks rows from the per-room bulk grid. */
-  function buildBulkAssignments(): AssignedBlock[] {
-    return blockRows
-      .filter((row) => row.room_id)
-      .map((row) => {
-        const room = allRooms.find((x) => x.id === row.room_id)!;
-        const rate = row.special_rate
-          ? Number(row.special_rate)
-          : stdRate(room.category_id, row.checkin_date || eventDate);
-        return {
-          room_id: room.id,
-          room_number: room.room_number,
-          room_category: room.category_name ?? "",
-          category_id: room.category_id ?? "",
-          checkin_date: row.checkin_date,
-          checkout_date: row.checkout_date,
-          checkin_time: row.checkin_time || "12:00",
-          checkout_time: row.checkout_time || "11:00",
-          special_rate: rate,
-          guest_name: row.guest_name.trim(),
-          guest_mobile: row.guest_mobile.trim(),
-        } as AssignedBlock;
-      });
-  }
+  /** Shared room-block context (same helpers the wizard banquet path uses). */
+  const blockCtx = useMemo(
+    () => ({
+      mode: roomMode,
+      rows: blockRows,
+      rooms: allRooms,
+      plans: tariffPlans,
+      eventDate,
+      hostName: guestName,
+      hostMobile: guestMobile,
+    }),
+    [roomMode, blockRows, allRooms, tariffPlans, eventDate, guestName, guestMobile],
+  );
+  const blockSummary = useMemo(() => roomBlocksSummary(blockCtx), [blockCtx]);
+  const summaryRoomRevenue = blockSummary.revenue;
 
   async function save() {
     if (!propertyId) return;
@@ -288,88 +199,16 @@ function NewBanquetPage() {
       return toast.error("Event check-in / check-out date & time required");
     if (!isValidStayRange(eventDate, eventEndDate, startTime, endTime))
       return toast.error("Event check-out must be after check-in");
-    if ((roomMode === "single" || roomMode === "bulk") && !eventName.trim()) {
-      return toast.error("Event name required when assigning rooms");
-    }
-    if (roomMode === "single" && !singleRoomId) return toast.error("Pick a room to assign");
-    if (roomMode === "bulk") {
-      if (blockRows.length === 0) return toast.error("Add at least one room row");
-      for (const [i, row] of blockRows.entries()) {
-        const label = `Row ${i + 1}`;
-        if (!row.room_id) return toast.error(`${label}: pick a room`);
-        if (!row.guest_name.trim()) return toast.error(`${label}: guest name required`);
-        if (!isValidMobile(row.guest_mobile))
-          return toast.error(`${label}: ${MOBILE_ERROR.toLowerCase()}`);
-        if (!row.checkin_date || !row.checkout_date)
-          return toast.error(`${label}: check-in / check-out dates required`);
-        if (
-          !isValidStayRange(
-            row.checkin_date,
-            row.checkout_date,
-            row.checkin_time || "12:00",
-            row.checkout_time || "11:00",
-          )
-        )
-          return toast.error(`${label}: check-out must be after check-in`);
-      }
-      const dupe = blockRows.map((r) => r.room_id).find((id, i, arr) => arr.indexOf(id) !== i);
-      if (dupe) return toast.error("Same room selected in more than one row");
-    }
-    // Enforce per-role discount limits on any overridden room rate (single + bulk).
-    if (roomMode === "single" && singleRoomId) {
-      const r = allRooms.find((x) => x.id === singleRoomId);
-      const base = stdRate(r?.category_id, singleCheckIn || eventDate);
-      const proposed = Number(singleRate) || 0;
-      if (base > 0 && proposed > 0 && proposed < base) {
-        const chk = canApplyDiscount(discountLimit, { discountRupees: base - proposed, base });
-        if (!chk.allowed) return toast.error(chk.reason ?? describeLimit(discountLimit));
-      }
-    }
-    if (roomMode === "bulk") {
-      for (const row of blockRows) {
-        if (!row.room_id || !row.special_rate) continue;
-        const room = allRooms.find((x) => x.id === row.room_id);
-        const base = stdRate(room?.category_id, row.checkin_date || eventDate);
-        const proposed = Number(row.special_rate) || 0;
-        if (base > 0 && proposed > 0 && proposed < base) {
-          const chk = canApplyDiscount(discountLimit, { discountRupees: base - proposed, base });
-          if (!chk.allowed)
-            return toast.error(
-              `Room ${room?.room_number ?? ""}: ${chk.reason ?? describeLimit(discountLimit)}`,
-            );
-        }
-      }
-    }
+    const invalid = validateRoomBlocks(blockCtx, eventName);
+    if (invalid) return toast.error(invalid);
+    const overLimit = checkRoomBlockDiscounts(discountLimit, blockCtx);
+    if (overLimit) return toast.error(overLimit);
     setSaving(true);
     try {
       const advanceAmt = Number(advance) || 0;
 
-      // Build assignments depending on roomMode
-      let finalAssignments: AssignedBlock[] = [];
-      if (roomMode === "single" && singleRoomId) {
-        const r = allRooms.find((x) => x.id === singleRoomId);
-        if (!r) throw new Error("Selected room no longer available");
-        finalAssignments = [
-          {
-            room_id: r.id,
-            room_number: r.room_number,
-            room_category: r.category_name ?? "",
-            category_id: r.category_id ?? "",
-            checkin_date: singleCheckIn,
-            checkout_date: singleCheckOut,
-            special_rate: Number(singleRate) || 0,
-            guest_name: guestName.trim(),
-            guest_mobile: guestMobile.trim(),
-          },
-        ];
-      } else if (roomMode === "bulk" && blockRows.length > 0) {
-        finalAssignments = buildBulkAssignments();
-      }
-
-      const totalRoomCharges = finalAssignments.reduce((sum, a) => {
-        const nights = nightsBetween(a.checkin_date, a.checkout_date);
-        return sum + Number(a.special_rate ?? 0) * nights;
-      }, 0);
+      const finalAssignments = buildAssignedBlocks(blockCtx);
+      const totalRoomCharges = assignedBlocksTotal(finalAssignments);
       const combinedTotal = total + totalRoomCharges;
 
       const extraRows = extras
@@ -670,195 +509,17 @@ function NewBanquetPage() {
               <CardTitle className="text-base">Rooms · Assign Guest</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Tabs value={roomMode} onValueChange={(v) => setRoomMode(v as any)}>
-                <TabsList>
-                  <TabsTrigger value="none">None</TabsTrigger>
-                  <TabsTrigger value="single">Assign One Room</TabsTrigger>
-                  <TabsTrigger value="bulk">Block Multiple Rooms</TabsTrigger>
-                </TabsList>
-
-                {roomMode !== "none" && (
-                  <div className="pt-3">
-                    <Field label="Event Name * (shown on dashboard cards)">
-                      <Input
-                        autoTitleCase
-                        placeholder="e.g. Sharma Wedding"
-                        value={eventName}
-                        onChange={(e) => setEventName(e.target.value)}
-                      />
-                    </Field>
-                  </div>
-                )}
-
-                <TabsContent value="single" className="space-y-3 pt-3">
-                  <div className="grid gap-2 sm:grid-cols-4">
-                    <Field label="Room *">
-                      <Select value={singleRoomId} onValueChange={setSingleRoomId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pick vacant room" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {allRooms.length === 0 && (
-                            <div className="px-2 py-1 text-xs text-muted-foreground">
-                              No vacant rooms.
-                            </div>
-                          )}
-                          {allRooms.map((r) => (
-                            <SelectItem key={r.id} value={r.id}>
-                              {r.room_number} {r.category_name ? `· ${r.category_name}` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                    <Field label="Check-in">
-                      <Input
-                        type="date"
-                        value={singleCheckIn}
-                        onChange={(e) => setSingleCheckIn(e.target.value)}
-                      />
-                    </Field>
-                    <Field label="Check-out">
-                      <Input
-                        type="date"
-                        value={singleCheckOut}
-                        onChange={(e) => setSingleCheckOut(e.target.value)}
-                      />
-                    </Field>
-                    <Field label="Rate / night (₹)">
-                      <Input
-                        type="number"
-                        value={singleRate}
-                        onChange={(e) => setSingleRate(e.target.value)}
-                      />
-                    </Field>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Assigns this single room to the event host guest (name/mobile above).
-                  </p>
-                </TabsContent>
-
-                <TabsContent value="bulk" className="space-y-3 pt-3">
-                  <div className="space-y-2">
-                    {blockRows.map((r, i) => {
-                      const room = allRooms.find((x) => x.id === r.room_id);
-                      return (
-                        <div
-                          key={i}
-                          className="grid gap-2 sm:grid-cols-[1fr_1.2fr_1fr_1fr_1fr_120px_30px] items-end p-2 border rounded"
-                        >
-                          <Field label={i === 0 ? "Room *" : ""}>
-                            <Select
-                              value={r.room_id}
-                              onValueChange={(v) => updateBlockRow(i, { room_id: v })}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Pick room" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {allRooms.length === 0 && (
-                                  <div className="px-2 py-1 text-xs text-muted-foreground">
-                                    No vacant rooms.
-                                  </div>
-                                )}
-                                {allRooms.map((x) => (
-                                  <SelectItem key={x.id} value={x.id}>
-                                    {x.room_number}
-                                    {x.category_name ? ` · ${x.category_name}` : ""}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </Field>
-                          <Field label={i === 0 ? "Guest name *" : ""}>
-                            <Input
-                              value={r.guest_name}
-                              onChange={(e) => updateBlockRow(i, { guest_name: e.target.value })}
-                            />
-                          </Field>
-                          <Field label={i === 0 ? "Mobile *" : ""}>
-                            <Input
-                              value={r.guest_mobile}
-                              inputMode="numeric"
-                              pattern="\d{10}"
-                              maxLength={10}
-                              placeholder="10-digit mobile"
-                              onChange={(e) =>
-                                updateBlockRow(i, { guest_mobile: sanitizeMobile(e.target.value) })
-                              }
-                              className={
-                                r.guest_mobile && !isValidMobile(r.guest_mobile)
-                                  ? "border-red-500 focus-visible:ring-red-500"
-                                  : ""
-                              }
-                            />
-                          </Field>
-                          <Field label={i === 0 ? "Check-in" : ""}>
-                            <Input
-                              type="date"
-                              value={r.checkin_date}
-                              onChange={(e) => updateBlockRow(i, { checkin_date: e.target.value })}
-                            />
-                            <Input
-                              type="time"
-                              className="mt-1"
-                              value={r.checkin_time}
-                              onChange={(e) => updateBlockRow(i, { checkin_time: e.target.value })}
-                            />
-                          </Field>
-                          <Field label={i === 0 ? "Check-out" : ""}>
-                            <Input
-                              type="date"
-                              value={r.checkout_date}
-                              onChange={(e) => updateBlockRow(i, { checkout_date: e.target.value })}
-                            />
-                            <Input
-                              type="time"
-                              className="mt-1"
-                              value={r.checkout_time}
-                              onChange={(e) => updateBlockRow(i, { checkout_time: e.target.value })}
-                            />
-                          </Field>
-                          <Field
-                            label={
-                              i === 0
-                                ? `Rate (def ₹${stdRate(room?.category_id, r.checkin_date || eventDate)})`
-                                : ""
-                            }
-                          >
-                            <Input
-                              type="number"
-                              placeholder="default"
-                              value={r.special_rate}
-                              onChange={(e) => updateBlockRow(i, { special_rate: e.target.value })}
-                            />
-                          </Field>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => removeBlockRow(i)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      );
-                    })}
-                    <Button type="button" variant="outline" size="sm" onClick={addBlockRow}>
-                      <Plus className="h-4 w-4 mr-1" /> Add Room
-                    </Button>
-                  </div>
-
-                  {blockRows.length > 0 && (
-                    <div className="text-xs text-muted-foreground">
-                      Rooms to block: <b>{blockSummary.totalRooms}</b> across{" "}
-                      <b>{blockSummary.categories}</b> categories · Estimated room revenue:{" "}
-                      <b>₹{blockSummary.revenue.toLocaleString("en-IN")}</b>
-                    </div>
-                  )}
-                </TabsContent>
-              </Tabs>
+              <EventRoomBlocks
+                mode={roomMode}
+                onModeChange={setRoomMode}
+                eventName={eventName}
+                onEventNameChange={setEventName}
+                rows={blockRows}
+                onRowsChange={setBlockRows}
+                eventDate={eventDate}
+                rooms={allRooms}
+                plans={tariffPlans}
+              />
             </CardContent>
           </Card>
         </div>
@@ -873,16 +534,10 @@ function NewBanquetPage() {
             {Number(discount) > 0 && (
               <Row k="Discount" v={`- ₹${Number(discount).toLocaleString("en-IN")}`} />
             )}
-            {roomMode === "bulk" && blockSummary.revenue > 0 && (
+            {blockSummary.revenue > 0 && (
               <Row
                 k={`Rooms (${blockSummary.totalRooms})`}
                 v={`₹${blockSummary.revenue.toLocaleString("en-IN")}`}
-              />
-            )}
-            {roomMode === "single" && singleRoomId && Number(singleRate) > 0 && (
-              <Row
-                k="Room (1)"
-                v={`₹${(Number(singleRate) * Math.max(1, nightsBetween(singleCheckIn, singleCheckOut))).toLocaleString("en-IN")}`}
               />
             )}
             <div className="border-t pt-2">

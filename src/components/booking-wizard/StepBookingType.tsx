@@ -1,7 +1,5 @@
 // Part 2 — Step 0: booking type + reservation flag.
-import { Link } from "@tanstack/react-router";
 import { PartyPopper } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -50,14 +48,12 @@ export function StepBookingType({ kind, reservation, onKindChange, onReservation
         <div className="rounded-md border bg-muted/40 p-4 sm:max-w-lg">
           <div className="flex items-center gap-2 text-sm font-medium">
             <PartyPopper className="h-4 w-4" />
-            Banquet bookings continue to use the existing flow
+            Banquet event
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Banquet is not part of this wizard yet. Continue in the current banquet form.
+            The next steps collect the host, the event details (hall, timing, pricing, extra
+            charges and any rooms to assign), billing and advance payment.
           </p>
-          <Button asChild className="mt-3" size="sm">
-            <Link to="/banquet/new">Go to Banquet booking</Link>
-          </Button>
         </div>
       )}
     </div>

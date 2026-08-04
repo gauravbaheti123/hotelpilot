@@ -4,6 +4,16 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createBooking, type CreateBookingPayload, type CreateBookingResult } from "@/lib/bookingCreate";
 import { roomsTotal, stayRange, type WizardState } from "@/lib/bookingWizard";
+import { eventTotals } from "@/lib/bookingWizard";
+import { createEventBooking, seedEventFolioCharges } from "@/lib/banquetEvent";
+import { commitRoomBlocks } from "@/lib/eventRoomBlocks";
+import {
+  assignedBlocksTotal, buildAssignedBlocks, checkRoomBlockDiscounts, validateRoomBlocks,
+  type RoomOption,
+} from "@/lib/eventRoomsForm";
+import type { DiscountLimit } from "@/lib/discountLimit";
+import type { TariffPlan } from "@/lib/tariff";
+import { errorMessage } from "@/lib/errorMessage";
 import { reportQueryError } from "@/lib/queryError";
 
 /**
@@ -227,4 +237,134 @@ export async function submitWizard(opts: {
   await linkIdDocuments(opts.propertyId, res.booking_id, res.guest_id, opts.state);
   await fireBookingTriggers(opts.propertyId, res, opts.state, opts.checkInNow);
   return res;
+}
+
+/* ------------------------------------------------------------------ *
+ * Banquet path
+ * ------------------------------------------------------------------ */
+
+export interface BanquetSubmitResult {
+  bookingId: string;
+  bookingNumber: string | null;
+  roomsBlocked: number;
+  /**
+   * Non-fatal problems that happened AFTER the event row was committed
+   * (room blocks / folio seeding). The event exists — these must be shown,
+   * never swallowed, so the user can finish the job from the event page.
+   */
+  warnings: string[];
+}
+
+/**
+ * Creates a banquet event from the wizard state.
+ *
+ * The chain is intentionally staged: `create_event_booking` is a single
+ * transaction (booking + extras + folio seed), and only the room blocks and
+ * the re-seed run afterwards. Anything that fails after the event exists is
+ * surfaced as a warning instead of pretending the whole save failed.
+ */
+export async function submitBanquetWizard(opts: {
+  propertyId: string;
+  state: WizardState;
+  rooms: RoomOption[];
+  plans: TariffPlan[];
+  discountLimit: DiscountLimit;
+}): Promise<BanquetSubmitResult> {
+  const { propertyId, state: s, rooms, plans, discountLimit } = opts;
+  const ev = s.event;
+  const ctx = {
+    mode: ev.roomMode,
+    rows: ev.roomRows,
+    rooms,
+    plans,
+    eventDate: ev.eventDate,
+    hostName: s.guest.name,
+    hostMobile: s.guest.mobile,
+  };
+
+  const invalid = validateRoomBlocks(ctx, ev.eventName);
+  if (invalid) throw new Error(invalid);
+  const overLimit = checkRoomBlockDiscounts(discountLimit, ctx);
+  if (overLimit) throw new Error(overLimit);
+
+  const blocks = buildAssignedBlocks(ctx);
+  const totalRoomCharges = assignedBlocksTotal(blocks);
+  const t = eventTotals(ev, totalRoomCharges);
+  const advance = Number(s.payment.advance) || 0;
+
+  const billingCompanyId = await resolveBillingCompanyId(propertyId, s);
+
+  const created = await createEventBooking({
+    property_id: propertyId,
+    hall_id: ev.hallId || null,
+    guest_id: s.guest.guestId,
+    host_name: s.guest.name.trim(),
+    host_mobile: s.guest.mobile.trim() || null,
+    host_email: s.guest.email.trim() || null,
+    event_name: ev.eventName.trim() || null,
+    function_type: ev.functionType,
+    event_date: ev.eventDate,
+    event_end_date: ev.eventEndDate,
+    start_time: ev.startTime,
+    end_time: ev.endTime,
+    pax: Number(ev.pax) || 0,
+    package_rate: 0,
+    hall_charge: t.price,
+    fb_charge: 0,
+    extra_charge: t.extras,
+    discount_amount: t.discount,
+    total_amount: t.grandTotal,
+    advance_amount: advance,
+    balance_amount: Math.max(0, t.grandTotal - advance),
+    total_room_charges: totalRoomCharges,
+    notes: s.payment.notes.trim() || null,
+    billing_company_id: billingCompanyId,
+    advance_payment_mode: advance > 0 ? s.payment.mode : null,
+    payment_ref: s.payment.reference.trim() || null,
+    extras: ev.extras
+      .map((x) => ({ point_name: x.pointName.trim(), amount: Number(x.amount) || 0 }))
+      .filter((x) => x.point_name && x.amount > 0),
+  });
+
+  const warnings: string[] = [];
+  let roomsBlocked = 0;
+  if (blocks.length > 0) {
+    try {
+      roomsBlocked = await commitRoomBlocks({
+        propertyId,
+        eventBookingId: created.bookingId,
+        eventName: ev.eventName.trim(),
+        rows: blocks,
+      });
+    } catch (e) {
+      warnings.push(
+        `The event was saved, but the rooms could not be assigned. ${errorMessage(e, "assigning rooms")} Assign them from the event page.`,
+      );
+    }
+  }
+
+  if (roomsBlocked > 0) {
+    try {
+      await seedEventFolioCharges(created.bookingId);
+    } catch (e) {
+      warnings.push(
+        `The event was saved, but the room charges could not be added to the folio. ${errorMessage(e, "adding folio charges")}`,
+      );
+    }
+  }
+
+  if (s.customRemark.trim()) {
+    const { error } = await supabase
+      .from("bookings")
+      .update({ custom_remark: s.customRemark.trim() } as never)
+      .eq("id", created.bookingId);
+    if (error) warnings.push(`The custom remark could not be saved. ${errorMessage(error, "saving the remark")}`);
+  }
+
+  return {
+    bookingId: created.bookingId,
+    bookingNumber: created.bookingNumber,
+    roomsBlocked,
+    warnings,
+  };
 }
