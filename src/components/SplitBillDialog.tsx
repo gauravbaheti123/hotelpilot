@@ -716,7 +716,9 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         });
       }
 
-      // Void the source only after every share folio is safely persisted.
+      // Move existing parent payments onto the children, then void the source
+      // only after every share folio is safely persisted.
+      const { undo: undoPayments } = await movePaymentsToChildren(newFolioIds);
       const { error: voidErr } = await supabase.rpc("void_folio_safe" as any, {
         _folio_id: folio.id,
         _reason: `Split by ${splitMode} into ${parties.length} bills (${splitScope})`,
@@ -724,6 +726,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         _force: false,
       } as any);
       if (voidErr) {
+        await undoPayments();
         await supabase.from("folios").delete().in("id", newFolioIds);
         throw voidErr;
       }
