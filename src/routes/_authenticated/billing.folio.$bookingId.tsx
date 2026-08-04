@@ -180,6 +180,11 @@ function FolioPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [foodBillNumber, setFoodBillNumber] = useState<string | null>(null);
+  // Display-only: restaurant direct charges for this booking, used to append
+  // their Bill No to the mirrored folio line item description.
+  const [restBills, setRestBills] = useState<Array<{
+    folio_charge_id: string | null; bill_no: string | null; amount: number;
+  }>>([]);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
   const [billingCompanies, setBillingCompanies] = useState<
     Array<{ id: string; name: string; gstin: string | null; address: string | null; phone: string | null; email: string | null; city?: string | null; state?: string | null; state_code?: string | null; nation?: string | null }>
@@ -429,6 +434,18 @@ function FolioPage() {
     setPayments(((p ?? []) as unknown as Payment[]));
 
     // Load the linked Food Bill number (FB-XXXX) if any food charge exists.
+    // Load restaurant direct charges for this booking (display-only bill no).
+    {
+      const { data: rdc } = await supabase
+        .from("restaurant_direct_charges" as any)
+        .select("folio_charge_id,bill_no,amount")
+        .eq("booking_id", bookingId);
+      setRestBills(((rdc ?? []) as any[]).map((r) => ({
+        folio_charge_id: r.folio_charge_id ?? null,
+        bill_no: r.bill_no ?? null,
+        amount: Number(r.amount ?? 0),
+      })));
+    }
     const hasFood = correctedCharges.some((c) => c.charge_type === "food");
     if (hasFood && bk?.id) {
       const { data: fb } = await supabase
@@ -1379,7 +1396,7 @@ function FolioPage() {
     const logoDataUrl = await resolveLogoUrl(property.logo_url);
     const html = renderInvoiceHtml({
       property: { ...property, logo_url: logoDataUrl },
-      folio, booking, charges, payments, draft: false, logoDataUrl,
+      folio, booking, charges: chargesForDisplay, payments, draft: false, logoDataUrl,
       billToState, billToStateCode, billToGstin,
     });
     openInvoiceWindow(html);
@@ -1489,7 +1506,35 @@ function FolioPage() {
   // Phase 1.5 / 52 — the invoice Charges table shows Food/Laundry segment
   // charges as ONE consolidated line per distinct bill reference. Totals,
   // GST breakup and all persistence keep using the raw `charges` array.
-  const invoiceRows = expandRoomNights(consolidateSegmentCharges(charges as any));
+  // Display-only: append "(Bill No …)" to restaurant-charge line items by
+  // joining folio_charges → restaurant_direct_charges (folio_charge_id first,
+  // then a same-amount fallback for rows re-created by split/undo flows).
+  // Nothing is written back — stored descriptions stay exactly as entered.
+  const chargesForDisplay = (() => {
+    if (restBills.length === 0) return charges;
+    const byFolioCharge = new Map(
+      restBills.filter((r) => r.folio_charge_id).map((r) => [r.folio_charge_id as string, r]),
+    );
+    const usedByAmount = new Set<number>();
+    return charges.map((c) => {
+      if (c.charge_type !== "extra") return c;
+      let hit = byFolioCharge.get(c.id) ?? null;
+      if (!hit) {
+        const amt = Number(c.amount);
+        const idx = restBills.findIndex(
+          (r, i) => !usedByAmount.has(i) && !byFolioCharge.has(c.id) && Math.abs(r.amount - amt) < 0.01,
+        );
+        if (idx >= 0) { usedByAmount.add(idx); hit = restBills[idx]!; }
+      }
+      const bill = (hit?.bill_no ?? "").trim();
+      if (!bill) return c;
+      const base = String(c.description ?? "").trim();
+      if (base.toLowerCase().includes(bill.toLowerCase())) return c;
+      return { ...c, description: `${base} (Bill No ${bill})` };
+    });
+  })();
+
+  const invoiceRows = expandRoomNights(consolidateSegmentCharges(chargesForDisplay as any));
 
   async function shareOnWhatsApp() {
     if (!folio || !booking) return;
