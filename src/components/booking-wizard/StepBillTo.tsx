@@ -1,13 +1,18 @@
 // Part 4 — Step 4: optional "Bill To" (company or third party).
 // One Bill-To applies to the whole booking, including multi-room bookings.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { GSTIN_ERROR, isValidOrEmptyGSTIN } from "@/lib/gstin";
+import { GSTIN_ERROR, isValidGSTIN, isValidOrEmptyGSTIN } from "@/lib/gstin";
+import { gstinLookup } from "@/lib/gstinLookup.functions";
+import { parseGstinProfile } from "@/lib/gstinProfile";
 import type { WizardBillTo } from "@/lib/bookingWizard";
 import { reportQueryError } from "@/lib/queryError";
 
@@ -26,6 +31,9 @@ interface Props {
 
 export function StepBillTo({ propertyId, value, onChange }: Props) {
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
+  const [looking, setLooking] = useState(false);
+  const lastLookedUp = useRef<string>("");
+  const runLookup = useServerFn(gstinLookup);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -63,6 +71,40 @@ export function StepBillTo({ propertyId, value, onChange }: Props) {
   }
 
   const gstinBad = value.gstin.trim().length > 0 && !isValidOrEmptyGSTIN(value.gstin);
+
+  async function handleGstinBlur() {
+    const gstin = value.gstin.trim().toUpperCase();
+    if (!isValidGSTIN(gstin) || gstin === lastLookedUp.current || looking) return;
+    setLooking(true);
+    try {
+      const res = await runLookup({ data: { gstin } });
+      if (res.status < 200 || res.status >= 300) {
+        const msg =
+          (res.body as { error?: string; message?: string } | null)?.error ??
+          (res.body as { message?: string } | null)?.message ??
+          "Could not fetch GST details.";
+        toast.error(msg);
+        return;
+      }
+      lastLookedUp.current = gstin;
+      const profile = parseGstinProfile(res.body);
+      const patch: Partial<WizardBillTo> = {};
+      if (profile.name) patch.name = profile.name;
+      if (profile.address) patch.address = profile.address;
+      if (profile.state) patch.state = profile.state;
+      if (profile.gstStatus) patch.gstStatus = profile.gstStatus;
+      if (Object.keys(patch).length === 0) {
+        toast.info("No details returned for this GSTIN.");
+        return;
+      }
+      onChange(patch);
+      toast.success("GST details fetched.");
+    } catch {
+      toast.error("Could not reach the GST lookup service.");
+    } finally {
+      setLooking(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -106,11 +148,17 @@ export function StepBillTo({ propertyId, value, onChange }: Props) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>GSTIN</Label>
-              <Input
-                value={value.gstin}
-                onChange={(e) => onChange({ gstin: e.target.value.toUpperCase() })}
-                placeholder="27AASFB5351R1ZM"
-              />
+              <div className="relative">
+                <Input
+                  value={value.gstin}
+                  onChange={(e) => onChange({ gstin: e.target.value.toUpperCase() })}
+                  onBlur={handleGstinBlur}
+                  placeholder="27AASFB5351R1ZM"
+                />
+                {looking && (
+                  <Loader2 className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                )}
+              </div>
               {gstinBad && <p className="text-xs text-destructive">{GSTIN_ERROR}</p>}
             </div>
             <div className="space-y-1.5">
