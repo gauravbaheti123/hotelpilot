@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -69,6 +69,18 @@ interface PartyDetails {
 
 interface PaymentRow { mode: string; amount: string; reference: string }
 
+/** A payment already recorded on the parent folio before the split. */
+interface ParentPayment {
+  id: string;
+  amount: number;
+  mode: string;
+  reference_no: string | null;
+  paid_at: string | null;
+  notes: string | null;
+  booking_id: string | null;
+  property_id: string;
+}
+
 function newParty(base: Partial<PartyDetails> = {}): ShareParty {
   return {
     key: Math.random().toString(36).slice(2),
@@ -88,7 +100,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   const { user, roles } = useAuth();
   // Cash Bill toggle is strictly owner-only (superadmin excluded).
   const isOwnerStrict = roles.includes("owner") && !roles.includes("superadmin");
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [splitType, setSplitType] = useState<SplitType>("same");
   const [splitMode, setSplitMode] = useState<SplitMode>("item");
   const [splitScope, setSplitScope] = useState<SplitScope>("whole");
@@ -102,6 +114,12 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   const [parties, setParties] = useState<ShareParty[]>([]);
   const { methods: payMethods } = usePaymentMethods(booking?.property_id ?? null);
   const { limit: discountLimit } = useDiscountLimit();
+
+  // Payments already recorded on the parent folio (must be re-homed on split).
+  const [parentPayments, setParentPayments] = useState<ParentPayment[]>([]);
+  // paymentId -> per-child allocation strings (index matches child bill index)
+  const [payAlloc, setPayAlloc] = useState<Record<string, string[]>>({});
+  const allocConfirmedRef = useRef(false);
 
   // Resolve current user's max-discount % once dialog opens
   useEffect(() => {
