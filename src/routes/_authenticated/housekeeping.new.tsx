@@ -36,16 +36,19 @@ function NewTaskPage() {
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Rooms come from the shared cache (see use-rooms.ts); only staff is
+  // specific to this screen.
+  useEffect(() => {
+    setRooms(sharedRooms.map((r) => ({ id: r.id, room_number: r.room_number })));
+  }, [sharedRooms]);
+
   useEffect(() => {
     if (!propertyId) return;
     (async () => {
-      const [{ data: r, error: __qp1 }, { data: s, error: __qp2 }] = await Promise.all([
-        supabase.from("rooms").select("id,room_number").eq("property_id", propertyId).eq("is_active", true).order("room_number"),
-        supabase.from("staff").select("id,name").eq("property_id", propertyId).eq("is_active", true).order("name"),
-      ]);
-      if (__qp1) reportQueryError("rooms", __qp1);
+      const { data: s, error: __qp2 } = await supabase
+        .from("staff").select("id,name")
+        .eq("property_id", propertyId).eq("is_active", true).order("name");
       if (__qp2) reportQueryError("staff", __qp2);
-      setRooms((r ?? []) as typeof rooms);
       setStaff((s ?? []) as typeof staff);
     })();
   }, [propertyId]);
