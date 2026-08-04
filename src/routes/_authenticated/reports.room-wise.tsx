@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { useCurrentProperty } from "@/hooks/use-property";
+import { useRoomCategories, useRooms } from "@/hooks/use-rooms";
 import { ReportShell } from "@/components/ReportShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,16 +37,10 @@ function Page() {
   const [to, setTo] = useState(today);
   const [catId, setCatId] = useState("all");
   const [roomId, setRoomId] = useState("all");
-  const [cats, setCats] = useState<Array<{ id: string; name: string }>>([]);
-  const [roomsList, setRoomsList] = useState<Array<{ id: string; room_number: string }>>([]);
+  const { categories: cats } = useRoomCategories(propertyId);
+  const { rooms: roomsList } = useRooms(propertyId);
   const [rows, setRows] = useState<Row[]>([]);
   const [derived, setDerived] = useState<Row[]>([]);
-
-  useEffect(() => {
-    if (!propertyId) return;
-    supabase.from("room_categories").select("id,name").eq("property_id", propertyId).then(guardQuery("room categories")).then(({ data }) => setCats((data ?? []) as any));
-    supabase.from("rooms").select("id,room_number").eq("property_id", propertyId).order("room_number").then(guardQuery("rooms")).then(({ data }) => setRoomsList((data ?? []) as any));
-  }, [propertyId]);
 
   const load = useCallback(async () => {
     if (!propertyId) return;

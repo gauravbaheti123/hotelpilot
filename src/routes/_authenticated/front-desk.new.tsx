@@ -1,7 +1,7 @@
 // Part 2 of the New Booking rebuild — wizard shell + Step 0 and Step 1.
 // Runs in parallel with the legacy front-desk.new route until Part 5 cutover.
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Loader2, Printer, Save } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
+import { useRoomCategories, useRooms } from "@/hooks/use-rooms";
 import { useFormDraft } from "@/hooks/use-form-draft";
 import { StepBookingType } from "@/components/booking-wizard/StepBookingType";
 import { StepGuestDetails } from "@/components/booking-wizard/StepGuestDetails";
@@ -103,8 +104,8 @@ function NewBookingWizardPage() {
   const [stepBlocked, setStepBlocked] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<CreateBookingResult | null>(null);
-  const [catNames, setCatNames] = useState<Record<string, string>>({});
-  const [roomNames, setRoomNames] = useState<Record<string, string>>({});
+  const { categories: sharedCats } = useRoomCategories(current?.id ?? null);
+  const { rooms: sharedRooms } = useRooms(current?.id ?? null);
   const resumeChecked = useRef(false);
   const prefilled = useRef(false);
 
@@ -150,21 +151,16 @@ function NewBookingWizardPage() {
     setState((s) => ({ ...s, payment: { ...s.payment, ...patch } }));
   }, []);
 
-  // Label lookups for the read-only Review step.
-  useEffect(() => {
-    if (!current?.id) return;
-    let cancelled = false;
-    (async () => {
-      const [c, r] = await Promise.all([
-        supabase.from("room_categories").select("id,name").eq("property_id", current.id),
-        supabase.from("rooms").select("id,room_number").eq("property_id", current.id),
-      ]);
-      if (cancelled) return;
-      setCatNames(Object.fromEntries(((c.data ?? []) as any[]).map((x) => [x.id, x.name])));
-      setRoomNames(Object.fromEntries(((r.data ?? []) as any[]).map((x) => [x.id, x.room_number])));
-    })();
-    return () => { cancelled = true; };
-  }, [current?.id]);
+  // Label lookups for the read-only Review step — derived from the shared
+  // rooms / categories caches instead of a per-mount fetch.
+  const catNames = useMemo(
+    () => Object.fromEntries(sharedCats.map((x) => [x.id, x.name])) as Record<string, string>,
+    [sharedCats],
+  );
+  const roomNames = useMemo(
+    () => Object.fromEntries(sharedRooms.map((x) => [x.id, x.room_number])) as Record<string, string>,
+    [sharedRooms],
+  );
 
   // Entry-context prefill (?roomId=…&categoryId=…&checkIn=…&checkOut=…).
   // Values stay changeable — they only seed the first room line.
