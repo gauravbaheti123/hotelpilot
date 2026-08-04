@@ -1493,12 +1493,7 @@ const RoomCard = memo(function RoomCard({
         <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
           <div className="flex items-start justify-between gap-2">
             <span style={{ color: "#ffffff", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
-            <span className="font-semibold uppercase tracking-wide rounded-full"
-              style={{ backgroundColor: "rgba(255,255,255,0.25)", color: "#ffffff", fontSize: 10, padding: "2px 7px" }}>
-              {isEventCheckedIn ? "Event·In" : "Event"}
-            </span>
           </div>
-          <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, marginTop: 1 }}>{category}</div>
           <div className="truncate" style={{ color: "rgba(255,255,255,0.8)", fontSize: 13, fontStyle: "italic", fontWeight: 500, marginTop: 2 }}>
             — {eventInfo!.eventName} —
           </div>
@@ -1569,17 +1564,7 @@ const RoomCard = memo(function RoomCard({
       <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
         <div className="flex items-start justify-between gap-2">
           <span style={{ color: "#ffffff", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
-          <span
-            className="font-semibold uppercase tracking-wide rounded-full"
-            style={{
-              backgroundColor: kind === "overdue" ? "#dc2626" : "rgba(255,255,255,0.25)",
-              color: "#ffffff", fontSize: 10, padding: "2px 7px",
-            }}
-          >
-            {meta.label}
-          </span>
         </div>
-        <div style={{ color: "rgba(255,255,255,0.8)", fontSize: 11, marginTop: 1 }}>{category}</div>
 
         {(kind === "occupied" || kind === "overdue") && occ && (
           <>
