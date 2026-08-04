@@ -41,7 +41,6 @@ import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { RequirePermission } from "@/components/RequirePermission";
 import { AssignRoomDialog } from "@/components/AssignRoomDialog";
 import {
-import { istToday } from "@/lib/date";
   LogIn,
   LogOut,
   ArrowLeftRight,
@@ -54,6 +53,7 @@ import { istToday } from "@/lib/date";
   FileText,
   AlertTriangle,
 } from "lucide-react";
+import { istToday } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/front-desk/booking/$id")({
   head: () => ({ meta: [{ title: "Booking — HotelPilot" }] }),

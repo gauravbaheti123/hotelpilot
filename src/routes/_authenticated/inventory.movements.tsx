@@ -23,10 +23,10 @@ import { toast } from "sonner";
 import { Plus } from "lucide-react";
 import { RequirePermission } from "@/components/RequirePermission";
 import {
-import { istToday } from "@/lib/date";
   MOVEMENT_TYPES, MOVEMENT_LABEL, MOVEMENT_TONE, DEPARTMENTS,
   type MovementType,
 } from "@/lib/inventory";
+import { istToday } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/inventory/movements")({
   head: () => ({ meta: [{ title: "Stock Movements — HotelPilot" }] }),

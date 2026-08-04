@@ -22,10 +22,10 @@ import { toast } from "sonner";
 import { Wand2 } from "lucide-react";
 import { RequirePermission } from "@/components/RequirePermission";
 import {
-import { istDateISO } from "@/lib/date";
   ATTENDANCE_WEIGHT, daysInMonth, formatMonth, monthStart,
   type AttendanceStatus,
 } from "@/lib/staff-hr";
+import { istDateISO } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/staff/payroll")({
   head: () => ({ meta: [{ title: "Payroll — HotelPilot" }] }),
