@@ -61,9 +61,30 @@ export function resolveGstRateInclusive(
   return second ?? first;
 }
 
+/** Mirror of public.seed_room_charge_for_booking_room's tax math so client-side
+ *  room-type charges (e.g. late checkout) match the DB exactly.
+ *  `gross` is the money actually collected for the line. */
+export function computeRoomChargeTax(
+  gross: number,
+  slabs: GstSlabRow[] | null | undefined,
+  rateType: "inclusive" | "exclusive" | null | undefined,
+): { gstRate: number; amount: number; gstAmount: number } | null {
+  const g = Number(gross) || 0;
+  if (rateType === "inclusive") {
+    const rate = resolveGstRateInclusive(slabs, "room", g);
+    if (rate == null) return null;
+    const amount = Math.round((g / (1 + rate / 100)) * 100) / 100;
+    return { gstRate: rate, amount, gstAmount: Math.round((g - amount) * 100) / 100 };
+  }
+  const rate = resolveGstRate(slabs, "room", g);
+  if (rate == null) return null;
+  return { gstRate: rate, amount: g, gstAmount: Math.round(g * rate) / 100 };
+}
+
 /* ------------------------------------------------------------------ */
 /* Phase 57 — Place of supply: CGST+SGST (intra-state) vs IGST (inter) */
 /* ------------------------------------------------------------------ */
+
 
 export type TaxType = "cgst_sgst" | "igst";
 

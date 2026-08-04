@@ -22,7 +22,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
 import { inr, inrRound, recomputeFolio, type BillDiscount } from "@/lib/billing";
-import { resolveGstRate } from "@/lib/gst";
+import { computeRoomChargeTax } from "@/lib/gst";
 import { fireTrigger } from "@/lib/whatsapp";
 import { AlertTriangle, Plus, Trash2, Loader2, SplitSquareHorizontal } from "lucide-react";
 import { SplitBillDialog } from "@/components/SplitBillDialog";
@@ -169,7 +169,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     const { data: b, error } = await supabase
       .from("bookings")
       .select(
-        `id,booking_number,status,check_in,check_out,property_id,advance_amount,custom_remark,billing_company_id,
+        `id,booking_number,status,check_in,check_out,property_id,advance_amount,custom_remark,billing_company_id,rate_type,
          guests(name,mobile),
          booking_rooms(id,room_id,rate,check_in,check_out,rooms!booking_rooms_room_id_fkey(id,room_number),room_categories(name))`,
       )
@@ -386,8 +386,12 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         .from("gst_slabs" as any)
         .select("from_amount,to_amount,gst_rate,charge_category,is_active,effective_from")
         .eq("property_id", booking.property_id);
-      const gstR = resolveGstRate((slabRows ?? []) as any, "room", rate);
-      if (gstR == null) {
+      const tax = computeRoomChargeTax(
+        rate,
+        (slabRows ?? []) as any,
+        ((booking as any).rate_type ?? "exclusive") as "inclusive" | "exclusive",
+      );
+      if (tax == null) {
         toast.error("GST slab missing for late-checkout rate. Configure it in Master Data → GST Slabs.");
         return;
       }
@@ -397,9 +401,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         description: `Late Checkout — 1 additional night${roomNo} (after ${graceStr})`,
         qty: 1,
         rate,
-        amount: rate,
-        gst_rate: gstR,
-        gst_amount: Math.round(rate * gstR) / 100,
+        amount: tax.amount,
+        gst_rate: tax.gstRate,
+        gst_amount: tax.gstAmount,
         charged_on: istToday(),
         source_table: "late_checkout",
         source_id: primaryRoom?.id ?? null,
