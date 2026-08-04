@@ -470,7 +470,11 @@ function GuestDetail() {
                 <Link key={s.id} to="/front-desk/booking/$id" params={{ id: s.id }}
                   className="block px-4 py-3 text-sm hover:bg-accent">
                   <div className="flex items-center justify-between">
-                    <div className="font-medium">{s.booking_number}</div>
+                    <div className="font-medium">
+                      {s.rooms?.length
+                        ? `Room ${s.rooms.join(", ")}${s.categories?.length ? ` · ${s.categories.join(", ")}` : ""}`
+                        : s.booking_number}
+                    </div>
                     <Badge variant="outline" className="text-[10px]">{s.status}</Badge>
                   </div>
                   <div className="text-xs text-muted-foreground">
