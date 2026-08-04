@@ -15,10 +15,11 @@ import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment
 import { useAuth, hasRole } from "@/hooks/use-auth";
 import { logActivity, userDisplayName, ACTIVITY } from "@/lib/activityLog";
 import { toastError } from "@/lib/errorMessage";
+import { billNo } from "@/lib/billNumber";
 
 export interface ChangePaymentModeFolio {
   id: string;
-  invoice_number: string;
+  invoice_number: string | null;
   property_id: string;
   booking_id: string | null;
   status: string;
@@ -52,7 +53,7 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const locked = !!folio && (folio.status === "settled" || folio.status === "void" || folio.is_deleted === true);
+  const locked = !!folio && (folio.status === "settled" || folio.status === "due" || folio.status === "void" || folio.is_deleted === true);
 
   useEffect(() => {
     if (!open || !folio) return;
@@ -131,12 +132,12 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
           user_name: userDisplayName(user as any),
           ...ACTIVITY.PAYMENT_MODE_CHANGED,
           reference_id: p.id,
-          reference_label: `${folio.invoice_number} — ₹${p.amount}: ${p.mode} → ${next}`,
+          reference_label: `${billNo(folio.invoice_number)} — ₹${p.amount}: ${p.mode} → ${next}`,
           details: {
             payment_id: p.id,
             folio_id: folio.id,
             bill_id: folio.id,
-            bill_number: folio.invoice_number,
+            bill_number: billNo(folio.invoice_number),
             booking_id: folio.booking_id,
             amount: Number(p.amount),
             old_mode: p.mode,
@@ -163,7 +164,7 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
           <DialogTitle>Change Payment Mode</DialogTitle>
           <DialogDescription>
             {folio ? (
-              <>Bill <b>{folio.invoice_number}</b>{" "}
+              <>Bill <b>{billNo(folio.invoice_number)}</b>{" "}
                 {locked && <Badge variant="outline" className="ml-1 border-amber-400 text-amber-700">LOCKED — owner override</Badge>}
               </>
             ) : null}

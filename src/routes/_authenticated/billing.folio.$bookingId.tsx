@@ -1708,7 +1708,7 @@ function FolioPage() {
     });
     const prevTitle = document.title;
     const safeName = (booking.guests?.name ?? "guest").replace(/[^\w]+/g, "");
-    document.title = `INV-${folio.invoice_number}-${safeName}`;
+    document.title = `INV-${billNo(folio.invoice_number)}-${safeName}`;
     // Invoice/Bill uses the browser's native print dialog — QZ Tray's
     // HTML-to-pixel pipeline caused persistent A4 table cutoff issues.
     // printIsolated() clones the invoice into an in-flow print root so long
@@ -1732,10 +1732,10 @@ function FolioPage() {
     if (!folio || !booking) return;
     const isGst = folio.gst_mode === "gst";
     setEmailTo("");
-    setEmailSubject(`${isGst ? "Tax Invoice" : "Receipt"} from ${property?.name ?? "Hotel"} - ${folio.invoice_number}`);
+    setEmailSubject(`${isGst ? "Tax Invoice" : "Receipt"} from ${property?.name ?? "Hotel"} - ${billNo(folio.invoice_number)}`);
     setEmailBody(
       `Dear ${booking.guests?.name ?? "Guest"},\n\n` +
-      `Please find your ${isGst ? "tax invoice" : "receipt"} ${folio.invoice_number} for ` +
+      `Please find your ${isGst ? "tax invoice" : "receipt"} ${billNo(folio.invoice_number)} for ` +
       `your stay from ${booking.check_in} to ${booking.check_out}.\n\n` +
       `Grand Total: ${inrRound(folio.total_amount)}\n` +
       `Paid: ${inr(folio.paid_amount)}\n` +
@@ -1786,7 +1786,7 @@ function FolioPage() {
     : 0;
 
   return (
-    <AppShell title={`Folio ${folio.invoice_number}`}>
+    <AppShell title={`Folio ${billNo(folio.invoice_number)}`}>
       <style>{`
         @media print {
           /* NOTE: the print area MUST stay in normal flow (no fixed/absolute
@@ -2170,7 +2170,7 @@ function FolioPage() {
                   <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 2, lineHeight: 1, whiteSpace: "nowrap" }}>
                     {draftMode ? "DRAFT BILL" : (isGst ? "TAX INVOICE" : "CASH BILL")}
                   </div>
-                  <div style={{ fontSize: 13, marginTop: 8, fontWeight: 700 }}>Bill No: <span style={{ fontWeight: 700 }}>{draftMode ? "—" : folio.invoice_number}</span></div>
+                  <div style={{ fontSize: 13, marginTop: 8, fontWeight: 700 }}>Bill No: <span style={{ fontWeight: 700 }}>{draftMode ? "—" : billNo(folio.invoice_number, "—")}</span></div>
                   <div style={{ fontSize: 12 }}>Date: <b>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b></div>
                   <div style={{ fontSize: 12 }}>Booking: <b>{booking.booking_number}</b></div>
                 </div>
@@ -2206,7 +2206,7 @@ function FolioPage() {
               {draftMode ? "DRAFT BILL" : (isGst ? "TAX INVOICE" : "CASH BILL / RECEIPT")}
             </div>
             <div className="text-xs text-right">
-              <div><span className="text-muted-foreground">Invoice No:</span> <span className="font-semibold">{draftMode ? "—" : folio.invoice_number}</span>{!draftMode && isSettled && <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: TEAL }}>PAID</span>}</div>
+              <div><span className="text-muted-foreground">Invoice No:</span> <span className="font-semibold">{draftMode ? "—" : billNo(folio.invoice_number, "—")}</span>{!draftMode && isSettled && <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: TEAL }}>PAID</span>}</div>
               <div><span className="text-muted-foreground">Date:</span> <span className="font-semibold">{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
               <div><span className="text-muted-foreground">Booking:</span> <span className="font-semibold">{booking.booking_number}</span></div>
               {foodBillNumber && (
