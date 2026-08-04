@@ -53,6 +53,10 @@ import { printIsolated, withPrintStyles } from "@/lib/printStyles";
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
   head: () => ({ meta: [{ title: "Folio — HotelPilot" }] }),
+  validateSearch: (search: Record<string, unknown>): { folio?: string } => {
+    const f = search?.folio;
+    return typeof f === "string" && f.length > 0 ? { folio: f } : {};
+  },
   component: () => (<RequirePermission module="invoices"><FolioPage /></RequirePermission>),
 });
 
