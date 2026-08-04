@@ -37,7 +37,6 @@ import {
 import { fireTrigger } from "@/lib/whatsapp";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { recomputeFolio } from "@/lib/billing";
-import { resolveGstRate } from "@/lib/gst";
 import { fetchTariffPlans, pickTariffPlan, type TariffPlan } from "@/lib/tariff";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { RequirePermission } from "@/components/RequirePermission";
@@ -468,49 +467,14 @@ function BookingDetailPage() {
     try {
       const { data: folioId } = await supabase.rpc("get_or_create_folio", { _booking_id: b.id });
       const fId = folioId as unknown as string;
-      const { data: slabRows } = await supabase
-        .from("gst_slabs" as any)
-        .select("from_amount,to_amount,gst_rate,charge_category,is_active,effective_from")
-        .eq("property_id", b.property_id);
-      // Delete existing auto-seeded room charge rows
-      await supabase
-        .from("folio_charges")
-        .delete()
-        .eq("folio_id", fId)
-        .eq("charge_type", "room")
-        .eq("source_table", "booking_rooms");
-      // Reinsert room charges for new night count
-      let missingSlab = false;
-      const rows = b.booking_rooms.map((br) => {
-        const n = Math.max(
-          1,
-          Math.round(
-            (new Date(newCheckOut).getTime() - new Date(br.check_in).getTime()) / 86400000,
-          ),
-        );
-        const amt = n * Number(br.rate);
-        const gstR = resolveGstRate((slabRows ?? []) as any, "room", Number(br.rate));
-        if (gstR == null) { missingSlab = true; return null; }
-        return {
-          folio_id: fId,
-          charge_type: "room",
-          description: `Room ${br.rooms?.room_number ?? ""} · ${br.room_categories?.name ?? ""} · ${n} night(s)`,
-          qty: n,
-          rate: Number(br.rate),
-          amount: amt,
-          gst_rate: gstR,
-          gst_amount: Math.round(amt * gstR) / 100,
-          source_table: "booking_rooms",
-          source_id: br.id,
-          created_by: user?.id ?? null,
-        };
-      }).filter((r): r is NonNullable<typeof r> => r != null);
-      if (missingSlab) {
-        toast.error("GST slab missing for the room tariff. Configure it in Master Data → GST Slabs.");
-        return;
-      }
-      if (rows.length > 0) {
-        await supabase.from("folio_charges").insert(rows as any);
+      // Refresh room charges through the guarded RPC — it recomputes nights,
+      // honours inclusive vs exclusive rate_type, and skips settled/void folios.
+      for (const br of b.booking_rooms) {
+        if (Number(br.rate) <= 0) continue;
+        const { error: seedErr } = await supabase.rpc("seed_room_charge_for_booking_room", {
+          _booking_room_id: br.id,
+        } as any);
+        if (seedErr) console.warn("room charge refresh failed", seedErr.message);
       }
       // Recompute folio totals
       const { data: allCharges } = await supabase.from("folio_charges").select("*").eq("folio_id", fId);

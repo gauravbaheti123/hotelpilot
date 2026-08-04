@@ -481,7 +481,9 @@ function FolioPage() {
     didPullKotChargesRef.current = null;
   }, [bookingId]);
 
-  // Auto-seed room charges if none present
+  // Seed room charges via the guarded DB RPC (never hand-rolled inserts):
+  // the RPC skips settled/void folios, skips charges that already live on
+  // another live folio of the booking, and does inclusive/exclusive tax math.
   useEffect(() => {
     if (!folio || !booking || loading) return;
     if (charges.some((c) => c.charge_type === "room")) return;
@@ -489,42 +491,20 @@ function FolioPage() {
     if (didSeedRoomChargesRef.current === folio.id) return;
     didSeedRoomChargesRef.current = folio.id;
     (async () => {
-      const rows = booking.booking_rooms.map((br) => {
-        const nights = Math.max(1, Math.round(
-          (new Date(br.check_out).getTime() - new Date(br.check_in).getTime()) / 86400000,
-        ));
-        const amt = nights * Number(br.rate);
-        const gstR = resolveRoomGstRate(Number(br.rate), gstSlabs);
-        if (gstR == null) return null;
-        return {
-          folio_id: folio.id,
-          charge_type: "room",
-          description: `Room ${br.rooms?.room_number ?? ""} · ${br.room_categories?.name ?? ""} · ${nights} night(s)`,
-          qty: nights,
-          rate: Number(br.rate),
-          amount: amt,
-          gst_rate: gstR,
-          gst_amount: Math.round(amt * gstR) / 100,
-          source_table: "booking_rooms",
-          source_id: br.id,
-          created_by: user?.id ?? null,
-        };
-      }).filter((r): r is NonNullable<typeof r> => r != null && Number(r.rate) > 0);
-      if (rows.length === 0) {
-        if (booking.booking_rooms.some((br) => Number(br.rate) > 0)) {
-          toast.error("GST slab missing for the room tariff. Configure it in Master Data → GST Slabs.");
+      if (folio.status !== "open") return;
+      let seeded = 0;
+      for (const br of booking.booking_rooms) {
+        if (Number(br.rate) <= 0) continue;
+        const { data, error } = await supabase.rpc("seed_room_charge_for_booking_room", {
+          _booking_room_id: br.id,
+        } as any);
+        if (error) {
+          console.warn("[folio] room charge seed failed:", error.message);
+          continue;
         }
-        return;
+        if (data) seeded += 1;
       }
-      const { error } = await supabase.from("folio_charges").insert(rows as any);
-      if (error) {
-        // 23505 = unique_violation → charge already exists, no-op.
-        if ((error as any).code !== "23505") {
-          console.warn("[folio] auto-seed room charges failed:", error.message);
-        }
-        return;
-      }
-      load();
+      if (seeded > 0) load();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [folio?.id, booking?.id, loading]);
