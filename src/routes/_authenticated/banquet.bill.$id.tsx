@@ -694,16 +694,16 @@ function BanquetBillPage() {
       : [{ mode: payMode, amount: Number(payAmt), reference: payRef }];
     const valid = rows.filter((r) => Number.isFinite(r.amount) && r.amount > 0);
     if (valid.length === 0) return toast.error("Enter a valid amount");
-    const inserts = valid.map((r) => ({
-      event_id: b.id,
-      property_id: b.property_id,
-      amount: r.amount,
-      payment_mode: r.mode,
-      reference: r.reference || null,
-      created_by: user?.id ?? null,
-    }));
-    const { error } = await supabase.from("event_payments" as any).insert(inserts as any);
-    if (error) return toast.error(error.message);
+    try {
+      await recordEventPayments({
+        bookingId: b.booking_id,
+        propertyId: b.property_id,
+        userId: user?.id ?? null,
+        rows: valid.map((r) => ({ mode: r.mode, amount: r.amount, reference: r.reference || null })),
+      });
+    } catch (e: any) {
+      return toast.error(e?.message ?? "Failed to record payment");
+    }
     toast.success("Payment recorded");
     setPayAmt("");
     setPayRef("");
