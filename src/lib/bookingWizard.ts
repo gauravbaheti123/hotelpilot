@@ -178,6 +178,37 @@ export function emptyBillTo(): WizardBillTo {
   };
 }
 
+/**
+ * Merge a persisted (possibly older / partial / corrupt) draft into a complete
+ * WizardState. Drafts saved by earlier versions of the wizard can be missing
+ * whole sections (rooms, extraGuests, billTo…), which used to crash the page
+ * on load. Returns null when the input is not a usable object.
+ */
+export function normalizeWizardState(raw: unknown): WizardState | null {
+  if (!raw || typeof raw !== "object") return null;
+  const base = emptyWizardState();
+  const s = raw as Partial<WizardState>;
+  const rooms = Array.isArray(s.rooms) && s.rooms.length > 0
+    ? s.rooms.map((r) => ({ ...emptyRoom(), ...r, key: r?.key || emptyRoom().key }))
+    : base.rooms;
+  return {
+    ...base,
+    ...s,
+    kind: s.kind === "banquet" ? "banquet" : "lodge",
+    reservation: !!s.reservation,
+    guest: { ...base.guest, ...(s.guest ?? {}) },
+    adults: Number(s.adults) > 0 ? Number(s.adults) : 1,
+    children: Number(s.children) > 0 ? Number(s.children) : 0,
+    extraGuests: Array.isArray(s.extraGuests)
+      ? s.extraGuests.map((g) => ({ ...emptyExtraGuest(), ...g, key: g?.key || emptyExtraGuest().key }))
+      : [],
+    rooms,
+    billTo: { ...base.billTo, ...(s.billTo ?? {}) },
+    payment: { ...base.payment, ...(s.payment ?? {}) },
+    customRemark: typeof s.customRemark === "string" ? s.customRemark : "",
+  };
+}
+
 let keySeq = 0;
 function nextKey(prefix: string) {
   keySeq += 1;
@@ -231,15 +262,18 @@ export function isForeign(nation: string) {
 
 /** True when the state still equals a fresh wizard (nothing worth saving). */
 export function isPristine(s: WizardState) {
-  const g = s.guest;
+  if (!s || typeof s !== "object") return true;
+  const g = s.guest ?? emptyGuest();
+  const rooms = Array.isArray(s.rooms) ? s.rooms : [];
+  const extraGuests = Array.isArray(s.extraGuests) ? s.extraGuests : [];
   return (
-    s.kind === "lodge" &&
+    (s.kind ?? "lodge") === "lodge" &&
     !s.reservation &&
-    s.extraGuests.length === 0 &&
-    s.adults === 1 && s.children === 0 &&
-    s.rooms.length <= 1 &&
-    !s.rooms.some((r) => r.categoryId || r.roomId || Number(r.rate) > 0) &&
-    !s.billTo.enabled && !s.customRemark && !(Number(s.payment?.advance) > 0) &&
+    extraGuests.length === 0 &&
+    (s.adults ?? 1) === 1 && (s.children ?? 0) === 0 &&
+    rooms.length <= 1 &&
+    !rooms.some((r) => r?.categoryId || r?.roomId || Number(r?.rate) > 0) &&
+    !s.billTo?.enabled && !s.customRemark && !(Number(s.payment?.advance) > 0) &&
     !g.name && !g.mobile && !g.email && !g.dob && !g.address && !g.pincode &&
     !g.idProofNumber && !g.passportNumber && !g.visaNumber && !g.visaExpiry &&
     !g.company && !g.gstNumber && !g.idDocFileId && !g.guestId
@@ -256,25 +290,29 @@ export function isRoomValid(r: WizardRoom, reservation: boolean): boolean {
 }
 
 export function isStepValid(step: number, s: WizardState): boolean {
+  if (!s || typeof s !== "object") return false;
   if (step === STEP.TYPE) return s.kind === "lodge" || s.kind === "banquet";
-  if (step === STEP.GUEST) return s.guest.name.trim().length > 0 && isValidMobile(s.guest.mobile);
+  if (step === STEP.GUEST) {
+    return (s.guest?.name ?? "").trim().length > 0 && isValidMobile(s.guest?.mobile ?? "");
+  }
   if (step === STEP.EXTRA_GUESTS) {
-    if (s.adults < 1) return false;
-    return s.extraGuests.every(
+    if ((s.adults ?? 0) < 1) return false;
+    return (s.extraGuests ?? []).every(
       (g) => g.name.trim().length > 0 && g.relation.trim().length > 0 &&
         (g.mobile.length === 0 || isValidMobile(g.mobile)),
     );
   }
   if (step === STEP.STAY) {
-    return s.rooms.length > 0 && s.rooms.every((r) => isRoomValid(r, s.reservation));
+    const rooms = Array.isArray(s.rooms) ? s.rooms : [];
+    return rooms.length > 0 && rooms.every((r) => isRoomValid(r, s.reservation));
   }
   if (step === STEP.BILL_TO) {
-    if (!s.billTo.enabled) return true;
+    if (!s.billTo?.enabled) return true;
     if (s.billTo.companyId) return true;
     return s.billTo.name.trim().length > 0 && isValidOrEmptyGSTIN(s.billTo.gstin);
   }
   if (step === STEP.PAYMENT) {
-    return Number(s.payment.advance) >= 0;
+    return Number(s.payment?.advance ?? 0) >= 0;
   }
   return true;
 }
