@@ -2,6 +2,21 @@ import { z } from "zod";
 
 export const ID_PROOF_TYPES = ["aadhaar", "pan", "passport", "driving_license", "voter_id", "other"] as const;
 
+export type IdProofType = (typeof ID_PROOF_TYPES)[number];
+
+/**
+ * Display labels for the single source-of-truth ID proof list. Kept here so
+ * every dropdown in the app renders identical wording.
+ */
+export const ID_PROOF_LABELS: Record<IdProofType, string> = {
+  aadhaar: "Aadhaar",
+  pan: "PAN",
+  passport: "Passport",
+  driving_license: "Driving License",
+  voter_id: "Voter ID",
+  other: "Other",
+};
+
 export const guestSchema = z.object({
   name: z.string().trim().min(1, "Name required").max(120, "Too long"),
   mobile: z.string().trim().regex(/^\d{10}$/, "Enter a valid 10-digit mobile number").optional().or(z.literal("")),

@@ -35,6 +35,62 @@ export interface GuestSearchHit {
 }
 
 /**
+ * Full guest profile + stay stats, as needed by the New Booking guest picker.
+ * Superset of {@link GuestSearchHit}.
+ */
+export interface GuestSearchDetail extends GuestSearchHit {
+  dob: string | null;
+  id_proof_type: string | null;
+  id_proof_number: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  gst_number: string | null;
+  tags: string[] | null;
+  notes: string | null;
+  visit_count: number;
+  last_stay: string | null;
+}
+
+/**
+ * Debounce-friendly guest search returning the full profile plus visit stats.
+ * Single shared implementation for the "find existing guest" search boxes —
+ * replaces the inline ilike query that used to live in front-desk.new.tsx.
+ */
+export async function searchGuestsDetailed(
+  propertyId: string,
+  query: string,
+  limit = 8,
+): Promise<GuestSearchDetail[]> {
+  const q = (query ?? "").trim();
+  if (q.length < 2) return [];
+  const safe = q.replace(/[%,()]/g, " ");
+  const like = `%${safe}%`;
+  const { data, error } = await supabase
+    .from("guests")
+    .select(
+      "id,name,mobile,email,dob,id_proof_type,id_proof_number,address,city,state,country,gst_number,company,tags,notes",
+    )
+    .eq("property_id", propertyId)
+    .or(`name.ilike.${like},mobile.ilike.${like},email.ilike.${like}`)
+    .limit(limit);
+  if (error) return [];
+  const guests = (data ?? []) as any[];
+  return Promise.all(
+    guests.map(async (g) => {
+      const { data: bks } = await supabase
+        .from("bookings")
+        .select("check_in")
+        .eq("guest_id", g.id)
+        .order("check_in", { ascending: false });
+      const rows = bks ?? [];
+      return { ...g, visit_count: rows.length, last_stay: rows[0]?.check_in ?? null } as GuestSearchDetail;
+    }),
+  );
+}
+
+/**
  * Debounce-friendly guest search by name or mobile (Phase 21 lookup pattern,
  * widened to partial matches). Returns [] for queries under 2 characters.
  */
