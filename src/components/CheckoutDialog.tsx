@@ -124,6 +124,11 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
   const [booking, setBooking] = useState<any>(null);
   const [folio, setFolio] = useState<any>(null);
   const [charges, setCharges] = useState<any[]>([]);
+  // Separate flag: does a late-checkout charge row exist on this folio,
+  // INCLUDING soft-deleted (wiped) ones? `charges` only holds live rows, so
+  // the auto-late-fee guard must not use it — otherwise a staff-deleted late
+  // fee would silently be re-added on every reopen.
+  const [hasAnyLateChargeRow, setHasAnyLateChargeRow] = useState(false);
   const [payments, setPayments] = useState<any[]>([]);
   const [pendingKots, setPendingKots] = useState<PendingKot[]>([]);
   const [pendingPos, setPendingPos] = useState<PendingPosCharge[]>([]);
@@ -236,7 +241,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     const folioId = selectedFolio.id;
 
     const [{ data: c }, { data: p }, { data: pk }, { data: pos }] = await Promise.all([
-      supabase.from("folio_charges").select("*").eq("folio_id", folioId as any),
+      supabase.from("folio_charges").select("*").eq("folio_id", folioId as any).eq("is_wiped", false),
       supabase.from("payments").select("*").eq("folio_id", folioId as any),
       supabase
         .from("kot_orders")
@@ -253,6 +258,18 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     ]);
     setFolio(selectedFolio);
     setCharges(c ?? []);
+    // Unfiltered lookup (wiped rows included) purely for the late-fee guard.
+    const { data: lateRows } = await supabase
+      .from("folio_charges")
+      .select("id,description,charge_type,source_table")
+      .eq("folio_id", folioId as any);
+    setHasAnyLateChargeRow(
+      ((lateRows ?? []) as any[]).some(
+        (c: any) =>
+          c.source_table === "late_checkout" ||
+          (typeof c.description === "string" && /late\s*checkout/i.test(c.description)),
+      ),
+    );
     setPayments(p ?? []);
     setPendingKots((pk ?? []) as unknown as PendingKot[]);
     setPendingPos((pos ?? []) as unknown as PendingPosCharge[]);
@@ -343,10 +360,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       return;
     }
 
-    const alreadyLate = charges.some(
-      (c: any) => c.charge_type === "room" && typeof c.description === "string" && /late\s*checkout/i.test(c.description),
-    );
-    if (alreadyLate) {
+    // Includes soft-deleted rows: a late fee staff explicitly removed must
+    // never be re-inserted.
+    if (hasAnyLateChargeRow) {
       didLateChargeCheck.current = true;
       return;
     }
@@ -392,7 +408,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       load();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, loading, folio?.id, booking?.id, property?.checkout_grace_time]);
+  }, [open, loading, folio?.id, booking?.id, property?.checkout_grace_time, hasAnyLateChargeRow]);
 
   const totals = useMemo(() => {
     const rooms: SummaryRow[] = [];
