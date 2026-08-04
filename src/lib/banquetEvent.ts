@@ -75,7 +75,7 @@ export async function loadEventBooking(id: string) {
     .from("bookings")
     .select(
       `
-    id,property_id,banquet_number,status,guest_id,hall_id,event_name,function_type,
+    id,property_id,banquet_number,booking_number,status,guest_id,hall_id,event_name,function_type,
     event_date,event_end_date,start_time,end_time,pax,
     package_rate,hall_charge,fb_charge,extra_charge,extra_charge_description,
     discount_type,discount_value,discount_amount,round_off_amount,
@@ -225,6 +225,7 @@ export interface EventRow {
   legacy_id: string | null;
   property_id: string;
   banquet_number: string | null;
+  booking_number: string | null;
   event_name: string | null;
   function_type: string;
   event_date: string;
@@ -268,7 +269,7 @@ export async function listEventBookings(
   let q = supabase
     .from("bookings")
     .select(
-      `id,property_id,banquet_number,status,guest_id,hall_id,event_name,function_type,
+      `id,property_id,banquet_number,booking_number,status,guest_id,hall_id,event_name,function_type,
        event_date,event_end_date,start_time,end_time,pax,
        hall_charge,fb_charge,extra_charge,total_amount,advance_amount,balance_amount,
        host_name,host_mobile,event_status,total_room_charges,
@@ -293,6 +294,7 @@ export async function listEventBookings(
       legacy_id: b.id,
       property_id: b.property_id,
       banquet_number: b.banquet_number,
+      booking_number: b.booking_number ?? null,
       event_name: b.event_name ?? null,
       function_type: b.function_type ?? "",
       event_date: b.event_date,
