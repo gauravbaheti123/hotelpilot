@@ -189,20 +189,16 @@ function BanquetBillPage() {
     setB(bq);
     setBillType((bq.bill_type as "gst_invoice" | "cash_bill") ?? "gst_invoice"); // historical only; no UI toggle
 
-    const [{ data: br }, { data: p }] = await Promise.all([
-      supabase
-        .from("banquet_bulk_rooms")
-        .select(
-          "id,rate,nights,check_in,check_out,discount_type,discount_value,discount_amount,rooms(room_number),room_categories(name)",
-        )
-        .eq("banquet_id", bq.id),
+    const [{ data: p }] = await Promise.all([
       supabase
         .from("properties")
         .select("name,gstin,state_code,address,city,state,pincode,phone,email,wa_number,logo_url")
         .eq("id", bq.property_id)
         .single(),
     ]);
-    setBulk((br ?? []) as unknown as Bulk[]);
+    // Bulk room rows were retired in Part 5 — event rooms live on
+    // event_room_blocks / booking_rooms in the unified model.
+    setBulk([]);
     setProperty((p ?? null) as PropertyInfo | null);
     if ((p as any)?.logo_url) {
       resolveLogoUrl((p as any).logo_url).then((url) => {
@@ -215,12 +211,11 @@ function BanquetBillPage() {
       .eq("banquet_booking_id", bq.id)
       .order("sort_order", { ascending: true });
     setExtras((ex ?? []) as unknown as ExtraCharge[]);
-    const { data: pp } = await supabase
-      .from("event_payments" as any)
-      .select("id,amount,payment_mode,reference,paid_at,notes")
-      .eq("event_id", bq.id)
-      .order("paid_at", { ascending: false });
-    setPays(((pp as any) ?? []) as EventPayment[]);
+    try {
+      setPays((await loadEventPayments(bq.booking_id)) as unknown as EventPayment[]);
+    } catch {
+      setPays([]);
+    }
     setLoading(false);
   }, [id]);
 
