@@ -1906,7 +1906,7 @@ function FolioPage() {
           </Card>
         )}
 
-        {/* Bill Type controls (screen only) */}
+        {/* GST details (screen only) */}
         <Card className="print:hidden no-print">
           <CardContent className="flex flex-wrap items-end gap-3 p-4">
             {isGst && (
