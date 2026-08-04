@@ -187,6 +187,32 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, folio?.id]);
 
+  // Load payments already recorded against the parent folio.
+  useEffect(() => {
+    (async () => {
+      setParentPayments([]);
+      setPayAlloc({});
+      allocConfirmedRef.current = false;
+      if (!open || !folio?.id) return;
+      const { data } = await supabase
+        .from("payments")
+        .select("id,amount,mode,reference_no,paid_at,notes,booking_id,property_id")
+        .eq("folio_id", folio.id);
+      setParentPayments(
+        ((data ?? []) as any[]).map((p) => ({
+          id: p.id,
+          amount: Number(p.amount ?? 0),
+          mode: p.mode,
+          reference_no: p.reference_no ?? null,
+          paid_at: p.paid_at ?? null,
+          notes: p.notes ?? null,
+          booking_id: p.booking_id ?? null,
+          property_id: p.property_id,
+        })),
+      );
+    })();
+  }, [open, folio?.id]);
+
   const bill1Charges = useMemo(() => charges.filter((c) => bill1Ids.has(c.id)), [charges, bill1Ids]);
   const bill2Charges = useMemo(() => charges.filter((c) => !bill1Ids.has(c.id)), [charges, bill1Ids]);
 
