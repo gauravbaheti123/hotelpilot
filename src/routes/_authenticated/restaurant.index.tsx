@@ -966,10 +966,11 @@ function RestaurantPage() {
                     <TableHead>Description</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Status</TableHead>
+                    {isOwner && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow></TableHeader>
                   <TableBody>
                     {directCharges.length === 0 && (
-                      <TableRow><TableCell colSpan={8} className="text-center py-6 text-sm text-muted-foreground">
+                      <TableRow><TableCell colSpan={isOwner ? 9 : 8} className="text-center py-6 text-sm text-muted-foreground">
                         No direct charges posted yet
                       </TableCell></TableRow>
                     )}
@@ -991,6 +992,26 @@ function RestaurantPage() {
                               ? <Badge variant="secondary">Settled</Badge>
                               : <Badge>Posted</Badge>}
                           </TableCell>
+                          {isOwner && (
+                            <TableCell className="text-right whitespace-nowrap">
+                              <Button
+                                size="icon" variant="ghost" className="h-8 w-8"
+                                title={chargeLocked(c) ? "Reconciled into a settlement — locked" : "Edit charge"}
+                                disabled={chargeLocked(c)}
+                                onClick={() => openEdit(c)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon" variant="ghost" className="h-8 w-8 text-destructive"
+                                title={chargeLocked(c) ? "Reconciled into a settlement — locked" : "Delete charge"}
+                                disabled={chargeLocked(c)}
+                                onClick={() => { setDelCharge(c); setDelReason(""); }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          )}
                         </TableRow>
                       );
                     })}
