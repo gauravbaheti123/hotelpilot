@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ArrowLeft, Printer, Download, MessageCircle, Plus, Trash2, ArrowRightLeft, Percent } from "lucide-react";
+import { ArrowLeft, Printer, Download, MessageCircle, Plus, Trash2, Percent } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -96,8 +96,6 @@ function BanquetBillPage() {
     { mode: "cash", amount: "", reference: "" },
     { mode: "upi", amount: "", reference: "" },
   ]);
-  const [misOpen, setMisOpen] = useState(false);
-  const [misBusy, setMisBusy] = useState(false);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
   const { limit: discountLimit } = useDiscountLimit();
   const { methods: payMethods } = usePaymentMethods(b?.property_id ?? null);
@@ -262,7 +260,6 @@ function BanquetBillPage() {
   const totalPaid = advance + paidViaEventPayments;
   const balance = Math.max(0, total - totalPaid);
   const isSettled = balance < 0.01;
-  const canShiftMis = can("billing", "mis_shift");
 
   // ---------- DISCOUNT HANDLERS ----------
   const unlimitedDisc = () => hasRole(roles, "owner") || hasRole(roles, "superadmin");
@@ -538,39 +535,6 @@ function BanquetBillPage() {
     load();
   }
 
-  async function confirmShiftMis() {
-    if (!b) return;
-    setMisBusy(true);
-    try {
-      const { error } = await supabase.from("mis_ledger" as any).insert({
-        property_id: b.property_id,
-        source_type: "event",
-        source_id: b.id,
-        source_bill_number: b.banquet_number,
-        source_room_number: b.halls?.name ?? null,
-        source_guest_name: b.host_name ?? b.guests?.name ?? null,
-        amount: balance,
-        description: `Event: ${b.event_name ?? b.function_type}`,
-        line_items: [{ name: `Event ${b.event_name ?? b.function_type}`, amount: balance }],
-        shifted_by_name: userDisplayName(user as any),
-        shifted_at: new Date().toISOString(),
-      } as any);
-      if (error) throw error;
-      // mark event paid via offsetting payment
-      await supabase.from("event_payments" as any).insert({
-        event_id: b.id, property_id: b.property_id,
-        amount: balance, payment_mode: "mis_shift",
-        reference: "Shifted to MIS A/c",
-        created_by: user?.id ?? null,
-      } as any);
-      toast.success("Shifted to MIS");
-      setMisOpen(false);
-      load();
-    } catch (e: any) {
-      toast.error(e.message ?? "Could not shift to MIS");
-    } finally { setMisBusy(false); }
-  }
-
   async function whatsappToHost() {
     if (!b) return;
     const phone = (b.host_mobile ?? b.guests?.mobile)?.replace(/\D/g, "") ?? "";
@@ -644,11 +608,6 @@ function BanquetBillPage() {
             <Button variant="outline" size="sm" onClick={whatsappToHost}>
               <MessageCircle className="h-4 w-4 mr-1" /> WhatsApp to Host
             </Button>
-            {balance > 0.01 && canShiftMis && (
-              <Button variant="outline" size="sm" onClick={() => setMisOpen(true)}>
-                <ArrowRightLeft className="h-4 w-4 mr-1" /> Shift to MIS
-              </Button>
-            )}
             {isSettled && <Badge style={{ background: "#1D9E75", color: "#fff" }} className="border-0">PAID</Badge>}
           </div>
         </div>
@@ -938,24 +897,6 @@ function BanquetBillPage() {
             </CardContent>
           </Card>
         )}
-
-        {/* SHIFT TO MIS DIALOG */}
-        <Dialog open={misOpen} onOpenChange={setMisOpen}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Shift to MIS Account?</DialogTitle></DialogHeader>
-            <div className="text-sm text-muted-foreground">
-              Shift <b>{inr(balance)}</b> for event <b>{b.banquet_number}</b> to MIS A/c?
-              This marks the event balance as internally absorbed.
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setMisOpen(false)}>Cancel</Button>
-              <Button onClick={confirmShiftMis} disabled={misBusy}
-                style={{ background: TEAL, color: "#fff" }}>
-                {misBusy ? "Shifting…" : "Confirm Shift"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         <DiscountDialog
           open={discOpen}

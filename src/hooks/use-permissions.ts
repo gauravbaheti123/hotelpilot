@@ -6,7 +6,7 @@ import { useCurrentProperty } from "./use-property";
 // Standard CRUD actions rendered as columns in the permission grid.
 export type PermStdAction = "view" | "create" | "edit" | "delete";
 // Any action string is accepted — modules may define custom actions
-// (e.g. billing/split_bill, billing/mis_shift) in addition to the CRUD set.
+// (e.g. billing/split_bill) in addition to the CRUD set.
 export type PermAction = PermStdAction | (string & {});
 export type PermMap = Record<string, Record<string, boolean>>;
 

@@ -31,14 +31,13 @@ import {
 } from "@/lib/billing";
 import { searchGuests } from "@/lib/guestIdLookup";
 import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil } from "lucide-react";
-import { AlertTriangle, ShieldAlert, ArrowRightLeft } from "lucide-react";
+import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 import { resolveGstRate, resolveTaxType, splitGst } from "@/lib/gst";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
-import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import {
@@ -288,8 +287,6 @@ function FolioPage() {
     const id = setInterval(() => setNowTick(Date.now()), 30_000);
     return () => clearInterval(id);
   }, []);
-  const [misOpen, setMisOpen] = useState(false);
-  const [misFoodOnly, setMisFoodOnly] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailTo, setEmailTo] = useState("");
   const [emailSubject, setEmailSubject] = useState("");
@@ -1424,7 +1421,6 @@ function FolioPage() {
   const pendingTotal = pendingKots.reduce((s, k) => s + Number(k.total_amount || 0), 0);
   const hasPending = pendingKots.length > 0;
   const canVoid = can("invoices", "delete");
-  const canShiftMis = can("billing", "mis_shift");
   // Feature 2: any role granted invoices/edit may edit ANY bill regardless of status
   // (Owner + Manager by default). Previously this was mistakenly wired to invoices/delete,
   // which hid the edit UI on settled/paid bills whenever a role had edit but not delete.
@@ -2059,11 +2055,6 @@ function FolioPage() {
               {isOpen && canVoid && (
                 <Button size="sm" variant="outline" className="border-destructive/40 text-destructive hover:bg-destructive/10" onClick={handleVoidClick}>
                   <Ban className="h-4 w-4 mr-1" /> Void
-                </Button>
-              )}
-              {isOpen && canShiftMis && (
-                <Button size="sm" variant="outline" onClick={() => { setMisFoodOnly(false); setMisOpen(true); }}>
-                  <ArrowRightLeft className="h-4 w-4 mr-1" /> Shift to MIS
                 </Button>
               )}
             </div>
@@ -2965,15 +2956,6 @@ function FolioPage() {
         open={checkoutOpen}
         onOpenChange={setCheckoutOpen}
         onDone={() => { load(); router.navigate({ to: "/front-desk/bookings" }); }}
-      />
-      <ShiftToMisDialog
-        open={misOpen}
-        onOpenChange={setMisOpen}
-        folio={folio}
-        booking={booking as any}
-        charges={charges as any}
-        preselectFoodOnly={misFoodOnly}
-        onShifted={() => load()}
       />
       <Dialog open={undoOpen} onOpenChange={setUndoOpen}>
         <DialogContent className="w-[95vw] max-w-md">
