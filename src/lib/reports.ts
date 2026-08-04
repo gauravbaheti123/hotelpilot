@@ -15,9 +15,7 @@ export interface DailySummary {
   payments_total: number;
   by_mode: Record<string, number>;
   gst_invoice_total: number;
-  cash_bill_total: number;
   gst_invoice_count: number;
-  cash_bill_count: number;
 }
 
 export const PAYMENT_MODE_LABELS: Record<string, string> = {
@@ -71,23 +69,16 @@ export async function fetchDailySummary(propertyId: string, date: string): Promi
     payments_total: 0,
     by_mode: {},
     gst_invoice_total: 0,
-    cash_bill_total: 0,
     gst_invoice_count: 0,
-    cash_bill_count: 0,
   };
   for (const f of folios ?? []) {
     const row = f as { sub_total: number; gst_amount: number; total_amount: number; gst_mode?: string; bill_type?: string | null };
     summary.sub_total += Number(row.sub_total ?? 0);
     summary.gst_amount += Number(row.gst_amount ?? 0);
     summary.total_amount += Number(row.total_amount ?? 0);
-    const isGst = (row.bill_type ?? "") === "gst_invoice" || row.gst_mode === "gst";
-    if (isGst) {
-      summary.gst_invoice_total += Number(row.total_amount ?? 0);
-      summary.gst_invoice_count += 1;
-    } else {
-      summary.cash_bill_total += Number(row.total_amount ?? 0);
-      summary.cash_bill_count += 1;
-    }
+    // Every bill is a GST invoice; the legacy non-GST "cash bill" type is retired.
+    summary.gst_invoice_total += Number(row.total_amount ?? 0);
+    summary.gst_invoice_count += 1;
   }
   for (const p of pays ?? []) {
     const amt = Number((p as { amount: number }).amount ?? 0);
