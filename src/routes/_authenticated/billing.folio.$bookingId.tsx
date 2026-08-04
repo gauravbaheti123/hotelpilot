@@ -82,6 +82,12 @@ interface Folio {
   billing_guest_id?: string | null;
 }
 /** Another individual guest picked as the Bill-To party. */
+/** Bill-level discount stored on the folio (not materialised as a charge line). */
+function folioBillDiscount(f: Folio | null | undefined): BillDiscount | null {
+  return f?.discount_type && Number(f?.discount_value) > 0
+    ? { type: f.discount_type, value: Number(f.discount_value) }
+    : null;
+}
 interface BillToGuest {
   id: string;
   name: string;
