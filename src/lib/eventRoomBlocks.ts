@@ -199,19 +199,10 @@ export async function checkInBlock(args: {
   if (be) throw be;
   const bookingId = (bk as any).id as string;
 
-  // 3. booking_rooms
-  const { error: brErr } = await supabase.from("booking_rooms").insert({
-    booking_id: bookingId,
-    property_id: propertyId,
-    room_id: block.room_id,
-    rate: block.special_rate ?? 0,
-    check_in: block.checkin_date,
-    check_out: block.checkout_date,
-    actual_check_in: new Date().toISOString(),
-  } as any);
-  if (brErr) throw brErr;
-
-  // 4. update room and block
+  // 3. update room and block.
+  //    The booking_rooms row already exists (created as `reserved` the moment the
+  //    block was made). The DB trigger on event_room_blocks repoints that SAME row
+  //    to this stay booking and flips it to `checked_in` — no second row is created.
   await supabase.from("rooms").update({ status: "occupied" } as any).eq("id", block.room_id!);
   await supabase.from("event_room_blocks").update({
     status: "checked_in",
