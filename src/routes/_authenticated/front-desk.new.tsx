@@ -30,7 +30,7 @@ import { submitWizard } from "@/lib/bookingWizardSubmit";
 import type { CreateBookingResult } from "@/lib/bookingCreate";
 import {
   emptyWizardState, isPristine, isStepValid, isStepSkipped, nextStepIndex, prevStepIndex,
-  normalizeWizardState,
+  normalizeWizardState, emptyRoom,
   STEP, WIZARD_DRAFT_KEY, WIZARD_STEPS,
   type WizardGuest, type WizardState, type WizardExtraGuest, type WizardRoom,
   type WizardBillTo, type WizardPayment,
