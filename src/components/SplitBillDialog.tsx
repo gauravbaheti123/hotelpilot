@@ -397,6 +397,19 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
 
   async function confirmSplit() {
     if (!folio || !booking) return;
+    // Payments already on the parent must be allocated to the child bills first.
+    if (parentPayments.length > 0 && !allocConfirmedRef.current) {
+      const totals = childTargets.map((c) => c.total);
+      setPayAlloc((prev) => {
+        const next = { ...prev };
+        for (const p of parentPayments) {
+          if (!next[p.id]) next[p.id] = defaultAllocFor(p.amount, totals).map((n) => n.toFixed(2));
+        }
+        return next;
+      });
+      setStep(5);
+      return;
+    }
     if (splitMode !== "item") {
       return confirmShareSplit();
     }
@@ -495,9 +508,10 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         }
       }
 
-      // 3) Both invoices verified — now void the original via the safe helper.
-      //    void_folio_safe refuses to void a folio that still has payments, so
-      //    we don't silently lose payment history.
+      // 3) Move any existing parent payments onto the children, then void the
+      //    original via the safe helper (which refuses to void a folio that
+      //    still has payments — by now it has none).
+      const { undo: undoPayments } = await movePaymentsToChildren(newFolioIds);
       const { error: voidErr } = await supabase.rpc("void_folio_safe" as any, {
         _folio_id: folio.id,
         _reason: `Split into 2 bills (${splitType})`,
@@ -506,6 +520,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       } as any);
       if (voidErr) {
         // Rollback the newly created folios so we don't end up with 3 active bills.
+        await undoPayments();
         await supabase.from("folios").delete().in("id", newFolioIds);
         throw voidErr;
       }
