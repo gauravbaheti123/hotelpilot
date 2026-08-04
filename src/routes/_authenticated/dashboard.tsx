@@ -466,7 +466,7 @@ function OwnerDashboard({
           map.set(b.room_id, {
             blockId: b.id,
             bookingId: b.booking_id ?? "",
-            banquetBookingId: ev.banquet_booking_id,
+            banquetBookingId: ev.event_booking_id,
             eventName: ev.event_name,
             guestName: b.guest_name,
             guestMobile: b.guest_mobile,
@@ -888,7 +888,7 @@ function OwnerDashboard({
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {events.map((ev) => (
-                <div key={ev.banquet_booking_id} className="border rounded-lg p-3 space-y-2"
+                <div key={ev.event_booking_id} className="border rounded-lg p-3 space-y-2"
                   style={{ borderLeft: "4px solid #7C3AED" }}>
                   <div>
                     <div className="font-semibold">{ev.event_name || "Unnamed Event"}</div>
@@ -1511,7 +1511,7 @@ const RoomCard = memo(function RoomCard({
               <button type="button"
                 style={{ backgroundColor: "transparent", color: "#ffffff", border: "1px solid #ffffff", borderRadius: 4, padding: "3px 8px", fontSize: 11, fontWeight: 600 }}
                 onClick={(e) => { e.stopPropagation(); onAssignEvent({
-                  id: eventInfo!.blockId, banquet_booking_id: eventInfo!.banquetBookingId,
+                  id: eventInfo!.blockId, event_booking_id: eventInfo!.banquetBookingId,
                   event_name: eventInfo!.eventName, room_id: room.id,
                   room_number: room.room_number, room_category: category,
                   guest_name: null, guest_mobile: null,
@@ -1529,7 +1529,7 @@ const RoomCard = memo(function RoomCard({
                   borderRadius: 4, padding: "3px 8px", fontSize: 11, fontWeight: 600, border: "none",
                 }}
                 onClick={(e) => { e.stopPropagation(); onEventCheckIn({
-                  id: eventInfo!.blockId, banquet_booking_id: eventInfo!.banquetBookingId,
+                  id: eventInfo!.blockId, event_booking_id: eventInfo!.banquetBookingId,
                   event_name: eventInfo!.eventName, room_id: room.id,
                   room_number: room.room_number, room_category: category,
                   guest_name: eventInfo!.guestName, guest_mobile: eventInfo!.guestMobile,
@@ -1924,7 +1924,7 @@ function BulkCheckinDialog({
           property_id: propertyId, user_id: user?.id ?? "",
           user_name: userDisplayName(user as any),
           action_type: "BULK_CHECKIN", module: "Front Desk",
-          reference_id: event.banquet_booking_id,
+          reference_id: event.event_booking_id,
           reference_label: event.event_name,
           details: { event_name: event.event_name, rooms_count: n },
         });
