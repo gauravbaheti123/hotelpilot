@@ -6015,6 +6015,21 @@ export type Database = {
     Functions: {
       auto_cancel_incomplete_bookings: { Args: never; Returns: number }
       auto_close_segment_bills: { Args: never; Returns: number }
+      available_rooms: {
+        Args: {
+          _category_id?: string
+          _check_in: string
+          _check_out: string
+          _property_id: string
+        }
+        Returns: {
+          category_id: string
+          floor: string
+          id: string
+          room_number: string
+          status: string
+        }[]
+      }
       banquet_visibility: {
         Args: { _property_id?: string }
         Returns: {
@@ -6046,6 +6061,7 @@ export type Database = {
         Returns: boolean
       }
       check_login_allowed: { Args: { _email: string }; Returns: Json }
+      create_booking: { Args: { payload: Json }; Returns: Json }
       current_user_max_discount_pct: {
         Args: { _property_id: string }
         Returns: number

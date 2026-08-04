@@ -37,7 +37,8 @@ import {
   type TariffPlan,
 } from "@/lib/tariff";
 import { GuestIdUploadField, type SelectedIdFile } from "@/components/GuestIdUploadField";
-import { lookupExistingGuestId, type GuestIdLookupResult } from "@/lib/guestIdLookup";
+import { lookupExistingGuestId, searchGuestsDetailed, type GuestIdLookupResult } from "@/lib/guestIdLookup";
+import { ID_PROOF_TYPES, ID_PROOF_LABELS } from "@/lib/guests";
 import { uploadFileToDrive, safeName, driveFileExtension, logDriveUploadFailure } from "@/lib/driveUpload";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
@@ -247,26 +248,9 @@ function NewBookingPage() {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     debounceRef.current = window.setTimeout(async () => {
       setSearching(true);
-      const term = searchTerm.trim().replace(/[%,]/g, "");
-      const like = `%${term}%`;
-      const { data } = await supabase
-        .from("guests")
-        .select("id,name,mobile,email,dob,id_proof_type,id_proof_number,address,city,state,country,gst_number,company,tags,notes")
-        .eq("property_id", current.id)
-        .or(`name.ilike.${like},mobile.ilike.${like},email.ilike.${like}`)
-        .limit(8);
-      const guests = (data ?? []) as any[];
-      // Fetch visit stats per guest
-      const enriched: GuestMatch[] = await Promise.all(guests.map(async (g) => {
-        const { data: bks } = await supabase
-          .from("bookings")
-          .select("check_in")
-          .eq("guest_id", g.id)
-          .order("check_in", { ascending: false });
-        const rows = bks ?? [];
-        return { ...g, visit_count: rows.length, last_stay: rows[0]?.check_in ?? null };
-      }));
-      setMatches(enriched);
+      // Shared implementation — see src/lib/guestIdLookup.ts
+      const enriched = await searchGuestsDetailed(current.id, searchTerm, 8);
+      setMatches(enriched as unknown as GuestMatch[]);
       setDropdownOpen(true);
       setSearching(false);
     }, 250);
@@ -923,11 +907,9 @@ function NewBookingPage() {
               <Select value={idType} onValueChange={setIdType}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="aadhaar">Aadhaar</SelectItem>
-                  <SelectItem value="passport">Passport</SelectItem>
-                  <SelectItem value="driving_license">Driving License</SelectItem>
-                  <SelectItem value="voter_id">Voter ID</SelectItem>
-                  <SelectItem value="pan">PAN</SelectItem>
+                  {ID_PROOF_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>{ID_PROOF_LABELS[t]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </F>
@@ -1051,11 +1033,9 @@ function NewBookingPage() {
                           <Select value={g.id_proof_type} onValueChange={(v) => updateExtra(g.key, { id_proof_type: v })}>
                             <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="aadhaar">Aadhaar</SelectItem>
-                              <SelectItem value="passport">Passport</SelectItem>
-                              <SelectItem value="driving_license">Driving License</SelectItem>
-                              <SelectItem value="voter_id">Voter ID</SelectItem>
-                              <SelectItem value="pan">PAN</SelectItem>
+                              {ID_PROOF_TYPES.map((t) => (
+                                <SelectItem key={t} value={t}>{ID_PROOF_LABELS[t]}</SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </F>
