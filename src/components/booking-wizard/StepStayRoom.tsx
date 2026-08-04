@@ -1,0 +1,384 @@
+// Part 3 — Step 3: stay dates, room(s) and pricing.
+// Reservation mode is a mini variant (category only, no room number).
+// Regular mode uses the `available_rooms` RPC so only genuinely bookable rooms
+// (vacant + no booking overlap + not event-blocked) can be picked.
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { supabase } from "@/integrations/supabase/client";
+import { fetchAvailableRooms, type AvailableRoom } from "@/lib/roomAvailability";
+import {
+  fetchTariffPlans, findPlanByNameAndMeal, mealPlansForPlanName, planNamesForCategory,
+  defaultMealPlanFor, type TariffPlan, NO_TARIFF_PLAN_ERROR,
+} from "@/lib/tariff";
+import { SOURCES, isValidStayRange, nightsBetween } from "@/lib/front-desk";
+import { useDiscountLimit } from "@/hooks/use-discount-limit";
+import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
+import { emptyRoom, type WizardRoom } from "@/lib/bookingWizard";
+
+const MEAL_PLAN_LABELS: Record<string, string> = {
+  EP: "EP — Room only",
+  CP: "CP — Breakfast",
+  MAP: "MAP — Breakfast + 1 meal",
+  AP: "AP — All meals",
+};
+
+interface Category { id: string; name: string }
+
+interface Props {
+  propertyId: string;
+  reservation: boolean;
+  rooms: WizardRoom[];
+  source: string;
+  otaPartnerName: string;
+  onRoomsChange: (next: WizardRoom[]) => void;
+  onMetaChange: (p: { source?: string; otaPartnerName?: string }) => void;
+  /** Reports rate-override violations so the shell can block Next. */
+  onBlockedChange: (blocked: boolean) => void;
+}
+
+export function StepStayRoom({
+  propertyId, reservation, rooms, source, otaPartnerName,
+  onRoomsChange, onMetaChange, onBlockedChange,
+}: Props) {
+  const [cats, setCats] = useState<Category[]>([]);
+  const [tariffs, setTariffs] = useState<TariffPlan[]>([]);
+  const [violations, setViolations] = useState<Record<string, string | null>>({});
+  const { limit } = useDiscountLimit();
+
+  useEffect(() => {
+    if (!propertyId) return;
+    let cancelled = false;
+    (async () => {
+      const [c, t] = await Promise.all([
+        supabase.from("room_categories").select("id,name").eq("property_id", propertyId).order("name"),
+        fetchTariffPlans(propertyId).catch(() => [] as TariffPlan[]),
+      ]);
+      if (cancelled) return;
+      setCats(((c.data ?? []) as any[]).map((x) => ({ id: x.id, name: x.name })));
+      setTariffs(t);
+    })();
+    return () => { cancelled = true; };
+  }, [propertyId]);
+
+  useEffect(() => {
+    onBlockedChange(Object.values(violations).some(Boolean));
+  }, [violations, onBlockedChange]);
+
+  function patchRoom(key: string, p: Partial<WizardRoom>) {
+    onRoomsChange(rooms.map((r) => (r.key === key ? { ...r, ...p } : r)));
+  }
+
+  function addRoom() {
+    const base = rooms[rooms.length - 1];
+    onRoomsChange([
+      ...rooms,
+      emptyRoom({
+        checkIn: base?.checkIn,
+        checkInTime: base?.checkInTime,
+        checkOut: base?.checkOut,
+        checkOutTime: base?.checkOutTime,
+      }),
+    ]);
+  }
+
+  function removeRoom(key: string) {
+    onRoomsChange(rooms.filter((r) => r.key !== key));
+    setViolations((v) => ({ ...v, [key]: null }));
+  }
+
+  return (
+    <div className="space-y-6">
+      {rooms.map((r, i) => (
+        <RoomCard
+          key={r.key}
+          index={i}
+          propertyId={propertyId}
+          reservation={reservation}
+          room={r}
+          cats={cats}
+          tariffs={tariffs}
+          limitLabel={describeLimit(limit)}
+          checkRate={(standard, rate) =>
+            standard > 0 && rate > 0 && rate < standard
+              ? canApplyDiscount(limit, { discountRupees: standard - rate, base: standard })
+              : { allowed: true, maxRupees: 0 }
+          }
+          onViolation={(msg) => setViolations((v) => (v[r.key] === msg ? v : { ...v, [r.key]: msg }))}
+          onChange={(p) => patchRoom(r.key, p)}
+          onRemove={rooms.length > 1 ? () => removeRoom(r.key) : undefined}
+        />
+      ))}
+
+      {!reservation && (
+        <Button type="button" variant="outline" size="sm" onClick={addRoom}>
+          <Plus className="mr-2 h-4 w-4" /> Add another room
+        </Button>
+      )}
+
+      <div className="grid gap-4 border-t pt-4 sm:max-w-md sm:grid-cols-2">
+        <div className="grid gap-2">
+          <Label>Source</Label>
+          <SearchableSelect
+            value={source}
+            onChange={(v) => onMetaChange({ source: v })}
+            options={SOURCES.map((s) => ({ value: s.value, label: s.label }))}
+            placeholder="Select source"
+            searchPlaceholder="Type to filter…"
+            alwaysShowSearch
+          />
+        </div>
+        {source === "ota" && (
+          <div className="grid gap-2">
+            <Label>OTA Partner</Label>
+            <Input
+              value={otaPartnerName} maxLength={80}
+              onChange={(e) => onMetaChange({ otaPartnerName: e.target.value })}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RoomCard({
+  index, propertyId, reservation, room, cats, tariffs, limitLabel, checkRate, onChange, onRemove, onViolation,
+}: {
+  index: number;
+  propertyId: string;
+  reservation: boolean;
+  room: WizardRoom;
+  cats: Category[];
+  tariffs: TariffPlan[];
+  limitLabel: string;
+  checkRate: (standard: number, rate: number) => { allowed: boolean; reason?: string };
+  onChange: (p: Partial<WizardRoom>) => void;
+  onRemove?: () => void;
+  onViolation: (msg: string | null) => void;
+}) {
+  const [avail, setAvail] = useState<AvailableRoom[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [availError, setAvailError] = useState<string | null>(null);
+
+  const datesValid = isValidStayRange(room.checkIn, room.checkOut);
+  const nights = datesValid ? nightsBetween(room.checkIn, room.checkOut) : 0;
+  const showRoomPicker = !reservation && !room.assignLater;
+
+  // Re-query availability whenever dates or category change.
+  useEffect(() => {
+    if (!showRoomPicker || !propertyId || !datesValid || !room.categoryId) { setAvail([]); return; }
+    let cancelled = false;
+    setLoadingRooms(true);
+    setAvailError(null);
+    fetchAvailableRooms(propertyId, room.checkIn, room.checkOut, room.categoryId)
+      .then((rows) => { if (!cancelled) setAvail(rows); })
+      .catch((e: any) => { if (!cancelled) { setAvail([]); setAvailError(e?.message ?? "Could not load rooms"); } })
+      .finally(() => { if (!cancelled) setLoadingRooms(false); });
+    return () => { cancelled = true; };
+  }, [propertyId, room.checkIn, room.checkOut, room.categoryId, showRoomPicker, datesValid]);
+
+  // Drop a selected room that is no longer available for the current range.
+  useEffect(() => {
+    if (!showRoomPicker || loadingRooms || !room.roomId) return;
+    if (!avail.some((a) => a.id === room.roomId)) onChange({ roomId: "" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [avail, loadingRooms]);
+
+  const planNames = useMemo(
+    () => planNamesForCategory(tariffs, room.categoryId, room.checkIn),
+    [tariffs, room.categoryId, room.checkIn],
+  );
+  const mealPlanOptions = useMemo(
+    () => mealPlansForPlanName(tariffs, room.categoryId, room.planName, room.checkIn),
+    [tariffs, room.categoryId, room.planName, room.checkIn],
+  );
+  const resolvedPlan = useMemo(
+    () => findPlanByNameAndMeal(tariffs, room.categoryId, room.planName, room.mealPlan, room.checkIn),
+    [tariffs, room.categoryId, room.planName, room.mealPlan, room.checkIn],
+  );
+  const standardRate = Number(resolvedPlan?.rate) || 0;
+
+  // Keep plan name / meal plan / rate consistent with the chosen category.
+  useEffect(() => {
+    if (!room.categoryId || tariffs.length === 0) return;
+    if (planNames.length === 0) { onChange({ planName: "", tariffId: "", rate: 0 }); return; }
+    if (!room.planName || !planNames.includes(room.planName)) {
+      const next = planNames.find((n) => n.toLowerCase() === "regular") ?? planNames[0];
+      onChange({ planName: next });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room.categoryId, tariffs.length, planNames.join("|")]);
+
+  useEffect(() => {
+    if (!room.planName || mealPlanOptions.length === 0) return;
+    if (mealPlanOptions.includes(room.mealPlan)) return;
+    onChange({ mealPlan: defaultMealPlanFor(mealPlanOptions) || "CP" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room.planName, mealPlanOptions.join("|")]);
+
+  useEffect(() => {
+    if (!resolvedPlan) return;
+    onChange({ tariffId: resolvedPlan.id, ...(room.rate > 0 ? {} : { rate: Number(resolvedPlan.rate) || 0 }) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedPlan?.id]);
+
+  const rateCheck = checkRate(standardRate, Number(room.rate) || 0);
+  useEffect(() => {
+    onViolation(rateCheck.allowed ? null : rateCheck.reason ?? "Rate below your discount limit");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rateCheck.allowed, rateCheck.reason]);
+
+  return (
+    <div className="space-y-4 rounded-lg border p-4">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold">Room {index + 1}</h4>
+        {onRemove && (
+          <Button type="button" size="icon" variant="ghost" onClick={onRemove} aria-label="Remove room">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-2">
+          <Label>Check-in date *</Label>
+          <div className="flex gap-2">
+            <Input type="date" value={room.checkIn} onChange={(e) => onChange({ checkIn: e.target.value })} />
+            <Input type="time" className="w-32" value={room.checkInTime} onChange={(e) => onChange({ checkInTime: e.target.value })} />
+          </div>
+        </div>
+        <div className="grid gap-2">
+          <Label>Check-out date *</Label>
+          <div className="flex gap-2">
+            <Input type="date" value={room.checkOut} onChange={(e) => onChange({ checkOut: e.target.value })} />
+            <Input type="time" className="w-32" value={room.checkOutTime} onChange={(e) => onChange({ checkOutTime: e.target.value })} />
+          </div>
+          {!datesValid && <p className="text-xs text-destructive">Check-out must be after check-in</p>}
+        </div>
+
+        <div className="grid gap-2">
+          <Label>Room Category *</Label>
+          <SearchableSelect
+            value={room.categoryId}
+            onChange={(v) => onChange({ categoryId: v, roomId: "", planName: "", tariffId: "", rate: 0 })}
+            options={cats.map((c) => ({ value: c.id, label: c.name }))}
+            placeholder="Select category"
+            searchPlaceholder="Type to filter categories…"
+            alwaysShowSearch
+          />
+          {room.categoryId && tariffs.length > 0 && planNames.length === 0 && (
+            <p className="text-xs text-destructive">{NO_TARIFF_PLAN_ERROR}</p>
+          )}
+        </div>
+
+        {reservation ? (
+          <div className="grid gap-2">
+            <Label>Room Number</Label>
+            <p className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              Assigned later — reservations hold the category only.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-2">
+            <Label>Room Number {showRoomPicker ? "*" : ""}</Label>
+            {showRoomPicker ? (
+              <>
+                <SearchableSelect
+                  value={room.roomId}
+                  onChange={(v) => onChange({ roomId: v })}
+                  options={avail.map((a) => ({
+                    value: a.id,
+                    label: a.room_number,
+                    hint: a.floor ? `Floor ${a.floor}` : undefined,
+                  }))}
+                  placeholder={loadingRooms ? "Loading available rooms…" : "Select room"}
+                  searchPlaceholder="Type room number…"
+                  emptyText="No rooms available for these dates"
+                  alwaysShowSearch
+                  disabled={!room.categoryId || !datesValid || loadingRooms}
+                />
+                <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  {loadingRooms && <Loader2 className="h-3 w-3 animate-spin" />}
+                  {availError ?? `${avail.length} available for ${room.checkIn} → ${room.checkOut}`}
+                </p>
+              </>
+            ) : (
+              <p className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                Room will be assigned later.
+              </p>
+            )}
+            <label className="flex items-center gap-2 text-xs">
+              <Checkbox
+                checked={room.assignLater}
+                onCheckedChange={(c) => onChange({ assignLater: c === true, roomId: c === true ? "" : room.roomId })}
+              />
+              Assign room later
+            </label>
+          </div>
+        )}
+
+        <div className="grid gap-2">
+          <Label>Tariff Plan</Label>
+          <SearchableSelect
+            value={room.planName}
+            onChange={(v) => onChange({ planName: v, rate: 0 })}
+            options={planNames.map((n) => ({ value: n, label: n }))}
+            placeholder="Select plan"
+            searchPlaceholder="Type to filter plans…"
+            alwaysShowSearch
+            disabled={planNames.length === 0}
+          />
+        </div>
+
+        <div className="grid gap-2">
+          <Label>Meal Plan</Label>
+          <SearchableSelect
+            value={room.mealPlan}
+            onChange={(v) => onChange({ mealPlan: v, rate: 0 })}
+            options={mealPlanOptions.map((m) => ({ value: m, label: MEAL_PLAN_LABELS[m] ?? m }))}
+            placeholder="Select meal plan"
+            searchPlaceholder="Type to filter…"
+            alwaysShowSearch
+            disabled={mealPlanOptions.length === 0}
+          />
+        </div>
+
+        <div className="grid gap-2">
+          <Label>Rate / Night *</Label>
+          <div className="flex gap-2">
+            <Input
+              type="number" min={0} step="0.01" value={room.rate || ""}
+              onChange={(e) => onChange({ rate: Number(e.target.value) || 0 })}
+            />
+            <div className="w-40">
+              <SearchableSelect
+                value={room.rateType}
+                onChange={(v) => onChange({ rateType: v as "exclusive" | "inclusive" })}
+                options={[
+                  { value: "exclusive", label: "Excl. GST" },
+                  { value: "inclusive", label: "Incl. GST" },
+                ]}
+                placeholder="GST"
+              />
+            </div>
+          </div>
+          {standardRate > 0 && (
+            <p className="text-[11px] text-muted-foreground">
+              Standard rate ₹{standardRate.toLocaleString("en-IN")}. {limitLabel}
+            </p>
+          )}
+          {!rateCheck.allowed && <p className="text-xs text-destructive">{rateCheck.reason}</p>}
+        </div>
+
+        <div className="flex items-end text-xs text-muted-foreground">
+          {nights > 0 && `${nights} night${nights === 1 ? "" : "s"} · ₹${((Number(room.rate) || 0) * nights).toLocaleString("en-IN")}`}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -3,6 +3,7 @@
 // same object without touching the shell.
 import { DEFAULT_NATION } from "@/lib/indiaGeo";
 import { isValidMobile } from "@/lib/mobile";
+import { addDaysIso, isValidStayRange, todayIso } from "@/lib/front-desk";
 
 export type BookingKind = "lodge" | "banquet";
 
@@ -36,7 +37,56 @@ export interface WizardState {
   kind: BookingKind;
   reservation: boolean;
   guest: WizardGuest;
+  /** Step 2 — occupancy + accompanying guests. */
+  adults: number;
+  children: number;
+  extraGuests: WizardExtraGuest[];
+  /** Step 3 — one or more rooms sharing this guest set. */
+  rooms: WizardRoom[];
+  source: string;
+  otaPartnerName: string;
 }
+
+/** Part 3 — accompanying guest (booking_guests row). */
+export interface WizardExtraGuest {
+  key: string;
+  kind: "adult" | "child";
+  guestId: string | null;
+  name: string;
+  mobile: string;
+  age: string;
+  relation: string;
+  nation: string;
+  idProofType: string;
+  idProofNumber: string;
+  passportNumber: string;
+  visaNumber: string;
+  visaExpiry: string;
+  idDocFileId: string | null;
+  idDocViewUrl: string | null;
+  idDocName: string | null;
+}
+
+/** Part 3 — one room line of the booking. */
+export interface WizardRoom {
+  key: string;
+  categoryId: string;
+  roomId: string;
+  assignLater: boolean;
+  checkIn: string;
+  checkInTime: string;
+  checkOut: string;
+  checkOutTime: string;
+  planName: string;
+  mealPlan: string;
+  tariffId: string;
+  rate: number;
+  rateType: "exclusive" | "inclusive";
+}
+
+export const RELATION_OPTIONS = [
+  "Spouse", "Child", "Parent", "Sibling", "Friend", "Colleague", "Other",
+];
 
 export const WIZARD_DRAFT_KEY = "front-desk-new-wizard";
 
@@ -69,7 +119,64 @@ export function emptyGuest(): WizardGuest {
 }
 
 export function emptyWizardState(): WizardState {
-  return { kind: "lodge", reservation: false, guest: emptyGuest() };
+  return {
+    kind: "lodge",
+    reservation: false,
+    guest: emptyGuest(),
+    adults: 1,
+    children: 0,
+    extraGuests: [],
+    rooms: [emptyRoom()],
+    source: "walk_in",
+    otaPartnerName: "",
+  };
+}
+
+let keySeq = 0;
+function nextKey(prefix: string) {
+  keySeq += 1;
+  return `${prefix}-${Date.now().toString(36)}-${keySeq}`;
+}
+
+export function emptyRoom(from?: Partial<WizardRoom>): WizardRoom {
+  return {
+    key: nextKey("room"),
+    categoryId: "",
+    roomId: "",
+    assignLater: false,
+    checkIn: todayIso(),
+    checkInTime: "12:00",
+    checkOut: addDaysIso(todayIso(), 1),
+    checkOutTime: "11:00",
+    planName: "",
+    mealPlan: "CP",
+    tariffId: "",
+    rate: 0,
+    rateType: "exclusive",
+    ...from,
+    ...(from ? { key: nextKey("room") } : {}),
+  };
+}
+
+export function emptyExtraGuest(kind: "adult" | "child" = "adult"): WizardExtraGuest {
+  return {
+    key: nextKey("g"),
+    kind,
+    guestId: null,
+    name: "",
+    mobile: "",
+    age: "",
+    relation: "",
+    nation: DEFAULT_NATION,
+    idProofType: kind === "adult" ? "aadhaar" : "",
+    idProofNumber: "",
+    passportNumber: "",
+    visaNumber: "",
+    visaExpiry: "",
+    idDocFileId: null,
+    idDocViewUrl: null,
+    idDocName: null,
+  };
 }
 
 export function isForeign(nation: string) {
@@ -82,25 +189,75 @@ export function isPristine(s: WizardState) {
   return (
     s.kind === "lodge" &&
     !s.reservation &&
+    s.extraGuests.length === 0 &&
+    s.adults === 1 && s.children === 0 &&
+    s.rooms.length <= 1 &&
+    !s.rooms.some((r) => r.categoryId || r.roomId || Number(r.rate) > 0) &&
     !g.name && !g.mobile && !g.email && !g.dob && !g.address && !g.pincode &&
     !g.idProofNumber && !g.passportNumber && !g.visaNumber && !g.visaExpiry &&
     !g.company && !g.gstNumber && !g.idDocFileId && !g.guestId
   );
 }
 
-/** Step 0 is always satisfiable; Step 1 needs a name and a valid mobile. */
+/** True when a room line is complete enough to move on. */
+export function isRoomValid(r: WizardRoom, reservation: boolean): boolean {
+  if (!r.categoryId) return false;
+  if (!isValidStayRange(r.checkIn, r.checkOut)) return false;
+  if (!(Number(r.rate) > 0)) return false;
+  if (!reservation && !r.assignLater && !r.roomId) return false;
+  return true;
+}
+
 export function isStepValid(step: number, s: WizardState): boolean {
-  if (step === 0) return s.kind === "lodge" || s.kind === "banquet";
-  if (step === 1) return s.guest.name.trim().length > 0 && isValidMobile(s.guest.mobile);
+  if (step === STEP.TYPE) return s.kind === "lodge" || s.kind === "banquet";
+  if (step === STEP.GUEST) return s.guest.name.trim().length > 0 && isValidMobile(s.guest.mobile);
+  if (step === STEP.EXTRA_GUESTS) {
+    if (s.adults < 1) return false;
+    return s.extraGuests.every(
+      (g) => g.name.trim().length > 0 && g.relation.trim().length > 0 &&
+        (g.mobile.length === 0 || isValidMobile(g.mobile)),
+    );
+  }
+  if (step === STEP.STAY) {
+    return s.rooms.length > 0 && s.rooms.every((r) => isRoomValid(r, s.reservation));
+  }
   return true;
 }
 
 export const WIZARD_STEPS = [
   "Booking Type",
   "Guest Details",
-  "Rooms & Stay",
   "Additional Guests",
-  "Charges",
+  "Stay & Room",
   "Bill To",
+  "Payment",
   "Review",
 ];
+
+export const STEP = {
+  TYPE: 0,
+  GUEST: 1,
+  EXTRA_GUESTS: 2,
+  STAY: 3,
+  BILL_TO: 4,
+  PAYMENT: 5,
+  REVIEW: 6,
+} as const;
+
+/** Reservations skip Additional Guests and Bill To. */
+export function isStepSkipped(step: number, s: WizardState): boolean {
+  if (!s.reservation) return false;
+  return step === STEP.EXTRA_GUESTS || step === STEP.BILL_TO;
+}
+
+export function nextStepIndex(step: number, s: WizardState): number {
+  let i = step + 1;
+  while (i < WIZARD_STEPS.length - 1 && isStepSkipped(i, s)) i += 1;
+  return Math.min(i, WIZARD_STEPS.length - 1);
+}
+
+export function prevStepIndex(step: number, s: WizardState): number {
+  let i = step - 1;
+  while (i > 0 && isStepSkipped(i, s)) i -= 1;
+  return Math.max(i, 0);
+}
