@@ -41,7 +41,10 @@ import { fmtDate } from "@/lib/reportExports";
 import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
-import { loadEventBooking, patchEventBooking, type EventIds } from "@/lib/banquetEvent";
+import {
+  loadEventBooking, patchEventBooking, loadEventPayments, recordEventPayments,
+  type EventIds,
+} from "@/lib/banquetEvent";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/banquet/bill/$id")({
@@ -55,6 +58,7 @@ export const Route = createFileRoute("/_authenticated/banquet/bill/$id")({
 
 interface Bq {
   id: string;
+  booking_id: string;
   property_id: string;
   banquet_number: string;
   function_type: string;
@@ -189,20 +193,16 @@ function BanquetBillPage() {
     setB(bq);
     setBillType((bq.bill_type as "gst_invoice" | "cash_bill") ?? "gst_invoice"); // historical only; no UI toggle
 
-    const [{ data: br }, { data: p }] = await Promise.all([
-      supabase
-        .from("banquet_bulk_rooms")
-        .select(
-          "id,rate,nights,check_in,check_out,discount_type,discount_value,discount_amount,rooms(room_number),room_categories(name)",
-        )
-        .eq("banquet_id", bq.id),
+    const [{ data: p }] = await Promise.all([
       supabase
         .from("properties")
         .select("name,gstin,state_code,address,city,state,pincode,phone,email,wa_number,logo_url")
         .eq("id", bq.property_id)
         .single(),
     ]);
-    setBulk((br ?? []) as unknown as Bulk[]);
+    // Bulk room rows were retired in Part 5 — event rooms live on
+    // event_room_blocks / booking_rooms in the unified model.
+    setBulk([]);
     setProperty((p ?? null) as PropertyInfo | null);
     if ((p as any)?.logo_url) {
       resolveLogoUrl((p as any).logo_url).then((url) => {
@@ -215,12 +215,11 @@ function BanquetBillPage() {
       .eq("banquet_booking_id", bq.id)
       .order("sort_order", { ascending: true });
     setExtras((ex ?? []) as unknown as ExtraCharge[]);
-    const { data: pp } = await supabase
-      .from("event_payments" as any)
-      .select("id,amount,payment_mode,reference,paid_at,notes")
-      .eq("event_id", bq.id)
-      .order("paid_at", { ascending: false });
-    setPays(((pp as any) ?? []) as EventPayment[]);
+    try {
+      setPays((await loadEventPayments(bq.booking_id)) as unknown as EventPayment[]);
+    } catch {
+      setPays([]);
+    }
     setLoading(false);
   }, [id]);
 
@@ -473,19 +472,9 @@ function BanquetBillPage() {
       });
       toast.success(value > 0 ? "Line discount applied" : "Line discount cleared");
     } else if (discTarget.kind === "room") {
-      const { error: rerr } = await supabase
-        .from("banquet_bulk_rooms")
-        .update({
-          discount_type: value > 0 ? type : null,
-          discount_value: value > 0 ? value : 0,
-          discount_amount: value > 0 ? rupees : 0,
-        } as any)
-        .eq("id", discTarget.rowId);
-      if (rerr) {
-        toast.error(rerr.message);
-        return;
-      }
-      // Recompute total on the banquet booking to keep in sync
+      // Room lines now come from the unified model; per-room bulk discounts
+      // were retired with banquet_bulk_rooms in Part 5.
+      // Recompute total on the event booking to keep in sync
       // Refresh room list first, then persist totals (uses in-scope roomLineDiscTotal only after reload)
       await persistBanquetDiscount({});
       logActivity({
@@ -705,16 +694,16 @@ function BanquetBillPage() {
       : [{ mode: payMode, amount: Number(payAmt), reference: payRef }];
     const valid = rows.filter((r) => Number.isFinite(r.amount) && r.amount > 0);
     if (valid.length === 0) return toast.error("Enter a valid amount");
-    const inserts = valid.map((r) => ({
-      event_id: b.id,
-      property_id: b.property_id,
-      amount: r.amount,
-      payment_mode: r.mode,
-      reference: r.reference || null,
-      created_by: user?.id ?? null,
-    }));
-    const { error } = await supabase.from("event_payments" as any).insert(inserts as any);
-    if (error) return toast.error(error.message);
+    try {
+      await recordEventPayments({
+        bookingId: b.booking_id,
+        propertyId: b.property_id,
+        userId: user?.id ?? null,
+        rows: valid.map((r) => ({ mode: r.mode, amount: r.amount, reference: r.reference || null })),
+      });
+    } catch (e: any) {
+      return toast.error(e?.message ?? "Failed to record payment");
+    }
     toast.success("Payment recorded");
     setPayAmt("");
     setPayRef("");

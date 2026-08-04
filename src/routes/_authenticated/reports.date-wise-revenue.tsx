@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
+import { fetchEventRevenue } from "@/lib/banquetEvent";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { ReportShell } from "@/components/ReportShell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,13 +48,12 @@ function Page() {
     if (!propertyId) return;
     const fromIso = `${from}T00:00:00`;
     const toIso = `${to}T23:59:59`;
-    const [charges, banquetRes, payRes, folioRes, scope] = await Promise.all([
+    const [charges, banquetRows, payRes, folioRes, scope] = await Promise.all([
       supabase.from("folio_charges")
         .select("charge_type,amount,charged_on,folio_id,folios!inner(property_id,booking_id)")
         .gte("charged_on", from).lte("charged_on", to)
         .eq("folios.property_id", propertyId),
-      supabase.from("banquet_bookings").select("event_date,total_amount").eq("property_id", propertyId)
-        .gte("event_date", from).lte("event_date", to),
+      fetchEventRevenue(propertyId, from, to),
       supabase.from("payments").select("amount,paid_at,booking_id,folio_id").eq("property_id", propertyId)
         .gte("paid_at", fromIso).lte("paid_at", toIso),
       supabase.from("folios").select("id,booking_id,total_amount,paid_amount,created_at").eq("property_id", propertyId)
@@ -75,7 +75,7 @@ function Page() {
       else if (c.charge_type === "food" || c.charge_type === "restaurant") r.food += a;
       else r.other += a;
     }
-    for (const b of (banquetRes.data ?? []) as any[]) {
+    for (const b of banquetRows) {
       const r = map.get((b.event_date as string).slice(0, 10)); if (!r) continue;
       r.banquet += Number(b.total_amount || 0);
     }

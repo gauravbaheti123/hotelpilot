@@ -90,13 +90,31 @@ export async function fetchGuestLedger(guestId: string): Promise<GuestLedger> {
     });
   }
 
-  const { data: banquets } = await supabase
-    .from("banquet_bookings")
-    .select("id,banquet_number,status,total_amount,advance_amount,balance_amount,event_date")
+  const { data: banquetBase } = await supabase
+    .from("bookings")
+    .select("id,property_id,banquet_number,status,total_amount,advance_amount,balance_amount,event_date")
+    .eq("booking_type", "banquet" as any)
     .eq("guest_id", guestId)
     .order("event_date", { ascending: false });
-  const banquetIds = (banquets ?? []).map((b) => b.id as string);
-  for (const b of banquets ?? []) {
+  // Master bills still FK to the legacy mirror id, so map number -> legacy id.
+  const numbers = ((banquetBase ?? []) as any[]).map((b) => b.banquet_number).filter(Boolean);
+  const legacyByNumber = new Map<string, { id: string; status: string }>();
+  if (numbers.length) {
+    const { data: legacy } = await supabase
+      .from("banquet_bookings")
+      .select("id,banquet_number,status")
+      .in("banquet_number", numbers);
+    for (const l of (legacy ?? []) as any[]) {
+      legacyByNumber.set(l.banquet_number as string, { id: l.id as string, status: l.status as string });
+    }
+  }
+  const banquets = ((banquetBase ?? []) as any[]).map((b) => ({
+    ...b,
+    legacy_id: legacyByNumber.get(b.banquet_number as string)?.id ?? null,
+    status: legacyByNumber.get(b.banquet_number as string)?.status ?? b.status,
+  }));
+  const banquetIds = banquets.map((b) => b.legacy_id).filter(Boolean) as string[];
+  for (const b of banquets) {
     if (b.status === "cancelled") continue;
     rows.push({
       id: b.id as string,
