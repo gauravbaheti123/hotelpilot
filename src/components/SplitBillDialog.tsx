@@ -257,13 +257,35 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     return { weights: raw, nets, pcts, sumInput, target, valid, remainder };
   }, [parties, baseNet, splitMode]);
 
+  /** Parent bill-level discount, proportionally carried to a subset of charges
+   *  — mirrors the allocation used when the split bills are actually created. */
+  const carriedDiscountFor = (subset: Charge[]): BillDiscount | null => {
+    const parentBillDisc: BillDiscount | null =
+      folio?.discount_type && Number(folio?.discount_value) > 0
+        ? { type: folio.discount_type, value: Number(folio.discount_value) }
+        : null;
+    if (!parentBillDisc) return null;
+    const netSubOf = (arr: Charge[]) => arr.reduce((s, c) => {
+      if (c.charge_type === "discount" || c.charge_type === "tax") return s;
+      const amt = Math.abs(Number(c.amount) || 0);
+      const ld = Math.min(Number(c.discount_amount) || 0, amt);
+      return s + (amt - ld);
+    }, 0);
+    const parentNet = netSubOf(charges);
+    const amt = computeBillDiscountAmount(parentNet, parentBillDisc);
+    if (!(amt > 0) || parentNet <= 0) return null;
+    const share = Math.round((amt * (netSubOf(subset) / parentNet)) * 100) / 100;
+    return share > 0 ? { type: "amount", value: share } : null;
+  };
   const bill1Total = useMemo(
-    () => recomputeFolio(bill1Charges as any, party1.bill_type === "gst_invoice" ? "gst" : "cash").total_amount,
-    [bill1Charges, party1.bill_type],
+    () => recomputeFolio(bill1Charges as any, party1.bill_type === "gst_invoice" ? "gst" : "cash", carriedDiscountFor(bill1Charges)).total_amount,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bill1Charges, party1.bill_type, charges, folio?.discount_type, folio?.discount_value],
   );
   const bill2Total = useMemo(
-    () => recomputeFolio(bill2Charges as any, party2.bill_type === "gst_invoice" ? "gst" : "cash").total_amount,
-    [bill2Charges, party2.bill_type],
+    () => recomputeFolio(bill2Charges as any, party2.bill_type === "gst_invoice" ? "gst" : "cash", carriedDiscountFor(bill2Charges)).total_amount,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bill2Charges, party2.bill_type, charges, folio?.discount_type, folio?.discount_value],
   );
 
   /**
