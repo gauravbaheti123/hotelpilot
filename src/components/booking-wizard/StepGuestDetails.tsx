@@ -323,25 +323,6 @@ export function StepGuestDetails({ propertyId, guest, onChange }: Props) {
         </div>
       </Section>
 
-      <Section title="Company (optional)">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="wiz-company">Company Name</Label>
-            <Input
-              id="wiz-company" value={guest.company} maxLength={200}
-              onChange={(e) => onChange({ company: e.target.value })}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="wiz-gstin">GSTIN</Label>
-            <Input
-              id="wiz-gstin" value={guest.gstNumber} maxLength={20}
-              onChange={(e) => onChange({ gstNumber: e.target.value.toUpperCase() })}
-            />
-            {gstError && <p className="text-xs text-destructive">{GSTIN_ERROR}</p>}
-          </div>
-        </div>
-      </Section>
     </div>
   );
 }
