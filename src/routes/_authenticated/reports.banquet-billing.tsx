@@ -142,7 +142,7 @@ function Page() {
           .gte("created_at", fromIso).lte("created_at", toIso)
           .order("created_at", { ascending: false }),
         supabase.from("banquet_master_bills")
-          .select("id,banquet_booking_id,bill_number,created_at,status,total_amount")
+          .select("id,booking_id,bill_number,created_at,status,total_amount")
           .eq("property_id", propertyId)
           .gte("created_at", fromIso).lte("created_at", toIso),
       ]);
@@ -219,7 +219,7 @@ function Page() {
         });
       }
       for (const m of (masters ?? []) as any[]) {
-        const g = byKey.get(m.banquet_booking_id);
+        const g = byKey.get(m.booking_id);
         if (!g) continue;
         g.masters.push({
           id: m.id, bill_number: m.bill_number, created_at: m.created_at,
