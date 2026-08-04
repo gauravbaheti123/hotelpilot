@@ -17,12 +17,21 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { useFormDraft } from "@/hooks/use-form-draft";
 import { StepBookingType } from "@/components/booking-wizard/StepBookingType";
 import { StepGuestDetails } from "@/components/booking-wizard/StepGuestDetails";
+import { StepAdditionalGuests } from "@/components/booking-wizard/StepAdditionalGuests";
+import { StepStayRoom } from "@/components/booking-wizard/StepStayRoom";
 import {
-  emptyWizardState, isPristine, isStepValid, WIZARD_DRAFT_KEY, WIZARD_STEPS,
-  type WizardGuest, type WizardState,
+  emptyWizardState, isPristine, isStepValid, isStepSkipped, nextStepIndex, prevStepIndex,
+  STEP, WIZARD_DRAFT_KEY, WIZARD_STEPS,
+  type WizardGuest, type WizardState, type WizardExtraGuest, type WizardRoom,
 } from "@/lib/bookingWizard";
 
 export const Route = createFileRoute("/_authenticated/front-desk/new-wizard")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    roomId: typeof s.roomId === "string" ? s.roomId : undefined,
+    categoryId: typeof s.categoryId === "string" ? s.categoryId : undefined,
+    checkIn: typeof s.checkIn === "string" ? s.checkIn : undefined,
+    checkOut: typeof s.checkOut === "string" ? s.checkOut : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "New Booking Wizard | HotelPilot" },
@@ -36,7 +45,7 @@ export const Route = createFileRoute("/_authenticated/front-desk/new-wizard")({
   component: NewBookingWizardPage,
 });
 
-function Stepper({ step }: { step: number }) {
+function Stepper({ step, skipped }: { step: number; skipped: (i: number) => boolean }) {
   return (
     <div className="space-y-2">
       <p className="text-xs font-medium text-muted-foreground">
@@ -51,6 +60,7 @@ function Stepper({ step }: { step: number }) {
               i < step && "border-primary/40 bg-primary/10 text-primary",
               i === step && "border-primary bg-primary text-primary-foreground",
               i > step && "text-muted-foreground",
+              skipped(i) && "opacity-40 line-through",
             )}
           >
             {i < step ? <Check className="h-3 w-3" /> : <span className="font-semibold">{i + 1}</span>}
@@ -64,6 +74,7 @@ function Stepper({ step }: { step: number }) {
 
 function NewBookingWizardPage() {
   const router = useRouter();
+  const search = Route.useSearch();
   const { roles } = useAuth();
   const canBook = roles.some((r) => ["superadmin", "owner", "manager", "receptionist"].includes(r));
   const { current, loading: propLoading } = useCurrentProperty();
@@ -73,7 +84,9 @@ function NewBookingWizardPage() {
   const [step, setStep] = useState(0);
   const [resumeOpen, setResumeOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+  const [stepBlocked, setStepBlocked] = useState(false);
   const resumeChecked = useRef(false);
+  const prefilled = useRef(false);
 
   // Offer to resume an existing draft, once on mount.
   useEffect(() => {
@@ -92,6 +105,43 @@ function NewBookingWizardPage() {
   const patchGuest = useCallback((patch: Partial<WizardGuest>) => {
     setState((s) => ({ ...s, guest: { ...s.guest, ...patch } }));
   }, []);
+
+  const setExtraGuests = useCallback((extraGuests: WizardExtraGuest[]) => {
+    setState((s) => ({ ...s, extraGuests }));
+  }, []);
+  const setCounts = useCallback((p: { adults?: number; children?: number }) => {
+    setState((s) => ({ ...s, ...p }));
+  }, []);
+  const setRooms = useCallback((rooms: WizardRoom[]) => {
+    setState((s) => ({ ...s, rooms }));
+  }, []);
+  const setMeta = useCallback((p: { source?: string; otaPartnerName?: string }) => {
+    setState((s) => ({ ...s, ...p }));
+  }, []);
+
+  // Entry-context prefill (?roomId=…&categoryId=…&checkIn=…&checkOut=…).
+  // Values stay changeable — they only seed the first room line.
+  useEffect(() => {
+    if (prefilled.current) return;
+    if (!search?.roomId && !search?.categoryId && !search?.checkIn) return;
+    prefilled.current = true;
+    setState((s) => {
+      const [first, ...rest] = s.rooms;
+      return {
+        ...s,
+        rooms: [
+          {
+            ...first,
+            categoryId: search.categoryId ?? first.categoryId,
+            roomId: search.roomId ?? first.roomId,
+            checkIn: search.checkIn ?? first.checkIn,
+            checkOut: search.checkOut ?? first.checkOut,
+          },
+          ...rest,
+        ],
+      };
+    });
+  }, [search?.roomId, search?.categoryId, search?.checkIn, search?.checkOut]);
 
   const dirty = !isPristine(state);
 
@@ -139,10 +189,10 @@ function NewBookingWizardPage() {
               </span>
             )}
           </div>
-          <Stepper step={step} />
+          <Stepper step={step} skipped={(i) => isStepSkipped(i, state)} />
         </CardHeader>
         <CardContent className="space-y-8">
-          {step === 0 && (
+          {step === STEP.TYPE && (
             <StepBookingType
               kind={state.kind}
               reservation={state.reservation}
@@ -151,11 +201,35 @@ function NewBookingWizardPage() {
             />
           )}
 
-          {step === 1 && (
+          {step === STEP.GUEST && (
             <StepGuestDetails propertyId={current.id} guest={state.guest} onChange={patchGuest} />
           )}
 
-          {step >= 2 && (
+          {step === STEP.EXTRA_GUESTS && (
+            <StepAdditionalGuests
+              propertyId={current.id}
+              adults={state.adults}
+              children={state.children}
+              guests={state.extraGuests}
+              onCountsChange={setCounts}
+              onGuestsChange={setExtraGuests}
+            />
+          )}
+
+          {step === STEP.STAY && (
+            <StepStayRoom
+              propertyId={current.id}
+              reservation={state.reservation}
+              rooms={state.rooms}
+              source={state.source}
+              otaPartnerName={state.otaPartnerName}
+              onRoomsChange={setRooms}
+              onMetaChange={setMeta}
+              onBlockedChange={setStepBlocked}
+            />
+          )}
+
+          {step > STEP.STAY && (
             <p className="py-8 text-center text-sm text-muted-foreground">
               Step {step + 1} coming in the next update.
             </p>
@@ -165,15 +239,19 @@ function NewBookingWizardPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => (step === 0 ? (dirty ? setExitOpen(true) : router.history.back()) : setStep((s) => s - 1))}
+              onClick={() =>
+                step === 0
+                  ? (dirty ? setExitOpen(true) : router.history.back())
+                  : setStep((s) => prevStepIndex(s, state))
+              }
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               {step === 0 ? "Cancel" : "Back"}
             </Button>
             <Button
               type="button"
-              disabled={!stepValid || banquetBlocked || step >= WIZARD_STEPS.length - 1}
-              onClick={() => setStep((s) => Math.min(s + 1, WIZARD_STEPS.length - 1))}
+              disabled={!stepValid || banquetBlocked || (step === STEP.STAY && stepBlocked) || step >= WIZARD_STEPS.length - 1}
+              onClick={() => setStep((s) => nextStepIndex(s, state))}
             >
               Next
               <ArrowRight className="ml-2 h-4 w-4" />
