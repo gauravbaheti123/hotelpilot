@@ -272,6 +272,8 @@ export function consolidateSegmentCharges<T extends DisplayCharge>(
         discount_amount: round2(disc),
         hsn_code: c.hsn_code ?? null,
         segment_bill_ref: ref,
+        // Keep a date on the rolled-up line: the earliest item's charge date.
+        charged_on: c.charged_on ?? null,
         is_consolidated: true,
         source_charge_ids: c.id ? [c.id] : [],
       });
@@ -291,6 +293,9 @@ export function consolidateSegmentCharges<T extends DisplayCharge>(
         : 0;
     }
     if (c.id) row.source_charge_ids?.push(c.id);
+    const cur = String(row.charged_on ?? "").slice(0, 10);
+    const next = String(c.charged_on ?? "").slice(0, 10);
+    if (next && (!cur || next < cur)) row.charged_on = c.charged_on ?? null;
   }
 
   return out;
