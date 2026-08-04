@@ -169,7 +169,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     const { data: b, error } = await supabase
       .from("bookings")
       .select(
-        `id,booking_number,status,check_in,check_out,property_id,advance_amount,custom_remark,billing_company_id,
+        `id,booking_number,status,check_in,check_out,property_id,advance_amount,custom_remark,billing_company_id,rate_type,
          guests(name,mobile),
          booking_rooms(id,room_id,rate,check_in,check_out,rooms!booking_rooms_room_id_fkey(id,room_number),room_categories(name))`,
       )
