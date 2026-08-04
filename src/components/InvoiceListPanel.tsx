@@ -381,7 +381,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
           .eq("segment_bill_id", bill.id),
         bill.room_id
           ? supabase.from("rooms").select("room_number").eq("id", bill.room_id).maybeSingle()
-          : Promise.resolve({ data: null as any }),
+          : Promise.resolve({ data: null as any, error: null }),
       ]);
       if (__qp1) reportQueryError("items", __qp1);
       if (__qp2) reportQueryError("room", __qp2);

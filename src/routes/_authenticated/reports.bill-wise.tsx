@@ -64,8 +64,8 @@ function Page() {
     const folios = (allFolios ?? []).filter((f: any) => !f.booking_id || !scope.bookingIds.has(f.booking_id));
     const ids = (folios ?? []).map((f: any) => f.id);
     const [{ data: charges, error: __qp2 }, { data: pays, error: __qp3 }] = await Promise.all([
-      ids.length ? supabase.from("folio_charges").select("folio_id,charge_type,amount").in("folio_id", ids) : Promise.resolve({ data: [] as any[] }),
-      ids.length ? supabase.from("payments").select("folio_id,mode,paid_at").in("folio_id", ids) : Promise.resolve({ data: [] as any[] }),
+      ids.length ? supabase.from("folio_charges").select("folio_id,charge_type,amount").in("folio_id", ids) : Promise.resolve({ data: [] as any[], error: null }),
+      ids.length ? supabase.from("payments").select("folio_id,mode,paid_at").in("folio_id", ids) : Promise.resolve({ data: [] as any[], error: null }),
     ]);
     if (__qp2) reportQueryError("charges", __qp2);
     if (__qp3) reportQueryError("pays", __qp3);

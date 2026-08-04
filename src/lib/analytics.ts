@@ -52,7 +52,7 @@ export async function fetchAnalytics(propertyId: string, from: string, to: strin
       .gt("check_out", from),
   ]);
   if (__qp1) reportQueryError("rooms total", __qp1);
-  if (__qp2) reportQueryError("br", __qp2);
+  if (__qp2) reportQueryError("occupancy data", __qp2);
 
   const total = roomsTotal ?? 0;
   const days: DayMetric[] = dates.map((d) => {
