@@ -123,6 +123,8 @@ function GrcPage() {
       const names = ((staffRows ?? []) as Array<{ display_name: string | null; email: string | null }>)
         .map((r) => (r.display_name || r.email || "").trim())
         .filter(Boolean);
+      const saved = (g?.duty_manager_name ?? "").trim();
+      if (saved && !names.includes(saved)) names.unshift(saved);
       if (signedInName && !names.includes(signedInName)) names.unshift(signedInName);
       setStaffOptions(Array.from(new Set(names)));
       if (g) {
