@@ -218,6 +218,9 @@ export async function fetchGstInvoiceSlabs(
     .neq("status", "void")
     .not("invoice_number", "is", null)
     .neq("invoice_number", "")
+    // An 'open' folio is a running tab, not an invoice — even legacy rows that
+    // still carry a number issued under the old creation-time trigger.
+    .neq("status", "open")
     .or(
       `and(settled_at.gte.${start},settled_at.lt.${end}),` +
       `and(settled_at.is.null,created_at.gte.${start},created_at.lt.${end})`,
