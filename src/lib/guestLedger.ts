@@ -38,22 +38,53 @@ function segmentType(seg: string | null): LedgerType {
  * guest_id) and banquet bookings / banquet master bills.
  */
 export async function fetchGuestLedger(guestId: string): Promise<GuestLedger> {
-  const { data: bookingRows, error: __qe1 } = await supabase
-    .from("bookings")
-    .select("id")
-    .eq("guest_id", guestId)
-    .neq("source", "event_block");
+  // Round trip 1: the two guest-scoped lookups are independent of each other.
+  const [{ data: bookingRows, error: __qe1 }, { data: banquetBase, error: __qe4 }] =
+    await Promise.all([
+      supabase.from("bookings").select("id")
+        .eq("guest_id", guestId).neq("source", "event_block"),
+      supabase.from("bookings")
+        .select("id,property_id,banquet_number,booking_number,status,event_status,total_amount,advance_amount,balance_amount,event_date")
+        .eq("booking_type", "banquet" as any)
+        .eq("guest_id", guestId)
+        .order("event_date", { ascending: false }),
+    ]);
   if (__qe1) reportQueryError("bookings", __qe1);
+  if (__qe4) reportQueryError("bookings", __qe4);
   const bookingIds = (bookingRows ?? []).map((b) => b.id as string);
+  const banquets = ((banquetBase ?? []) as any[]).map((b) => ({
+    ...b,
+    status: b.status === "cancelled" ? "cancelled" : (b.event_status ?? b.status),
+  }));
+  const banquetIds = banquets.map((b) => b.id).filter(Boolean) as string[];
+
+  // Round trip 2: folios, segment bills and banquet master bills in parallel,
+  // each a single batched `.in(...)` query rather than a per-booking loop.
+  const segFilters = [`guest_id.eq.${guestId}`];
+  if (bookingIds.length) segFilters.push(`booking_id.in.(${bookingIds.join(",")})`);
+  const [foliosRes, segsRes, mastersRes] = await Promise.all([
+    bookingIds.length
+      ? supabase.from("folios")
+          .select("id,invoice_number,status,total_amount,paid_amount,balance_amount,created_at,is_deleted")
+          .in("booking_id", bookingIds)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null } as any),
+    supabase.from("segment_bills")
+      .select("id,bill_number,segment,status,total_amount,paid_amount,created_at")
+      .or(segFilters.join(","))
+      .order("created_at", { ascending: false }),
+    banquetIds.length
+      ? supabase.from("banquet_master_bills")
+          .select("id,bill_number,status,total_amount,created_at")
+          .in("booking_id", banquetIds)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null } as any),
+  ]);
 
   const rows: LedgerRow[] = [];
 
-  if (bookingIds.length) {
-    const { data: folios, error: __qe2 } = await supabase
-      .from("folios")
-      .select("id,invoice_number,status,total_amount,paid_amount,balance_amount,created_at,is_deleted")
-      .in("booking_id", bookingIds)
-      .order("created_at", { ascending: false });
+  {
+    const { data: folios, error: __qe2 } = foliosRes as any;
     if (__qe2) reportQueryError("folios", __qe2);
     for (const f of folios ?? []) {
       if ((f as { is_deleted?: boolean }).is_deleted) continue;
@@ -72,13 +103,7 @@ export async function fetchGuestLedger(guestId: string): Promise<GuestLedger> {
   }
 
   // Segment bills: linked directly to the guest, or to one of their bookings.
-  const segFilters = [`guest_id.eq.${guestId}`];
-  if (bookingIds.length) segFilters.push(`booking_id.in.(${bookingIds.join(",")})`);
-  const { data: segs, error: __qe3 } = await supabase
-    .from("segment_bills")
-    .select("id,bill_number,segment,status,total_amount,paid_amount,created_at")
-    .or(segFilters.join(","))
-    .order("created_at", { ascending: false });
+  const { data: segs, error: __qe3 } = segsRes as any;
   if (__qe3) reportQueryError("segment bills", __qe3);
   for (const s of segs ?? []) {
     const total = n(s.total_amount);
@@ -95,18 +120,6 @@ export async function fetchGuestLedger(guestId: string): Promise<GuestLedger> {
     });
   }
 
-  const { data: banquetBase, error: __qe4 } = await supabase
-    .from("bookings")
-    .select("id,property_id,banquet_number,booking_number,status,event_status,total_amount,advance_amount,balance_amount,event_date")
-    .eq("booking_type", "banquet" as any)
-    .eq("guest_id", guestId)
-    .order("event_date", { ascending: false });
-  if (__qe4) reportQueryError("bookings", __qe4);
-  const banquets = ((banquetBase ?? []) as any[]).map((b) => ({
-    ...b,
-    status: b.status === "cancelled" ? "cancelled" : (b.event_status ?? b.status),
-  }));
-  const banquetIds = banquets.map((b) => b.id).filter(Boolean) as string[];
   for (const b of banquets) {
     if (b.status === "cancelled") continue;
     rows.push({
@@ -121,12 +134,8 @@ export async function fetchGuestLedger(guestId: string): Promise<GuestLedger> {
     });
   }
 
-  if (banquetIds.length) {
-    const { data: masters, error: __qe6 } = await supabase
-      .from("banquet_master_bills")
-      .select("id,bill_number,status,total_amount,created_at")
-      .in("booking_id", banquetIds)
-      .order("created_at", { ascending: false });
+  {
+    const { data: masters, error: __qe6 } = mastersRes as any;
     if (__qe6) reportQueryError("banquet master bills", __qe6);
     for (const m of masters ?? []) {
       const total = n(m.total_amount);
