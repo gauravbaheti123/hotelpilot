@@ -86,6 +86,7 @@ function RestaurantPage() {
     id: string; booking_id: string | null; guest_id: string | null;
     amount: number; description: string | null; charge_date: string;
     is_settled: boolean; created_at: string; outlet_id?: string | null; bill_no?: string | null;
+    folio_charge_id?: string | null;
   };
   type PayableRow = {
     id: string; charge_id: string | null; amount: number;
@@ -308,7 +309,7 @@ function RestaurantPage() {
     const [dc, py, bk, ol] = await Promise.all([
       supabase
         .from("restaurant_direct_charges" as any)
-        .select("id,booking_id,guest_id,amount,description,charge_date,is_settled,created_at,outlet_id,bill_no")
+        .select("id,booking_id,guest_id,amount,description,charge_date,is_settled,created_at,outlet_id,bill_no,folio_charge_id")
         .eq("property_id", current.id)
         .order("charge_date", { ascending: false }),
       supabase
