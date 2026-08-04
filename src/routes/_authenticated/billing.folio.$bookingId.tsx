@@ -53,6 +53,10 @@ import { printIsolated, withPrintStyles } from "@/lib/printStyles";
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
   head: () => ({ meta: [{ title: "Folio — HotelPilot" }] }),
+  validateSearch: (search: Record<string, unknown>): { folio?: string } => {
+    const f = search?.folio;
+    return typeof f === "string" && f.length > 0 ? { folio: f } : {};
+  },
   component: () => (<RequirePermission module="invoices"><FolioPage /></RequirePermission>),
 });
 
@@ -164,6 +168,7 @@ function fmtDateTime(value: string | null | undefined, fallbackTime?: string | n
 
 function FolioPage() {
   const { bookingId } = Route.useParams();
+  const { folio: folioParam } = Route.useSearch();
   const router = useRouter();
   const { user, roles } = useAuth();
   const { can } = usePermissions();
@@ -343,11 +348,23 @@ function FolioPage() {
     const slabRows = ((sl ?? []) as unknown as GstSlab[]);
     setGstSlabs(slabRows);
 
-    // get or create folio
-    const { data: folioId, error: fe } = await supabase
-      .rpc("get_or_create_folio", { _booking_id: bookingId });
-    if (fe) { toast.error(fe.message); setLoading(false); return; }
-    const fId = folioId as unknown as string;
+    // Resolve which folio to show. When an explicit ?folio=<id> is supplied
+    // (split bills share one booking_id), use it — after verifying it really
+    // belongs to this booking. Otherwise fall back to the RPC, which picks the
+    // collectable folio (correct for checkout & single-folio bookings).
+    let fId: string | null = null;
+    if (folioParam) {
+      const { data: owned } = await supabase
+        .from("folios").select("id")
+        .eq("id", folioParam).eq("booking_id", bookingId).maybeSingle();
+      if (owned?.id) fId = owned.id as string;
+    }
+    if (!fId) {
+      const { data: folioId, error: fe } = await supabase
+        .rpc("get_or_create_folio", { _booking_id: bookingId });
+      if (fe) { toast.error(fe.message); setLoading(false); return; }
+      fId = folioId as unknown as string;
+    }
 
     const [{ data: f }, { data: c }, { data: p }] = await Promise.all([
       supabase.from("folios").select("*").eq("id", fId).single(),
@@ -454,7 +471,7 @@ function FolioPage() {
     setPendingPos((pos ?? []) as any);
 
     setLoading(false);
-  }, [bookingId]);
+  }, [bookingId, folioParam]);
 
   useEffect(() => { load(); }, [load]);
 
