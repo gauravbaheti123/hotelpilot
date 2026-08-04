@@ -238,10 +238,8 @@ function NightAuditPage() {
     setRevenueFood(foodRev);
     setRevenueOther(otherRev);
 
-    const { data: bq } = await supabase
-      .from("banquet_bookings").select("total_amount")
-      .eq("property_id", propertyId).eq("event_date", date);
-    setRevenueBanquet((bq ?? []).reduce((a, x: any) => a + Number(x.total_amount || 0), 0));
+    const bq = await fetchEventRevenue(propertyId, date, date);
+    setRevenueBanquet(bq.reduce((a, x) => a + Number(x.total_amount || 0), 0));
 
     // Opening cash = previous day's closing_cash_actual, fallback 0
     const prevD = new Date(`${date}T00:00:00`); prevD.setDate(prevD.getDate() - 1);
