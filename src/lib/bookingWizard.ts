@@ -436,7 +436,8 @@ export function isEventStepValid(ev: WizardEvent | undefined): boolean {
   if (!ev) return false;
   if (!ev.eventDate || !ev.startTime || !ev.eventEndDate || !ev.endTime) return false;
   if (!isValidStayRange(ev.eventDate, ev.eventEndDate, ev.startTime, ev.endTime)) return false;
-  if (!(Number(ev.pax) > 0)) return false;
+  // Pax and event price are optional — a banquet booking may be a pure
+  // bulk room-block for a group with no hall/pax/pricing involved.
   if (ev.roomMode === "none") return true;
   if (!ev.eventName.trim()) return false;
   const rows = ev.roomRows ?? [];

@@ -100,42 +100,55 @@ export function StepEventDetails({ propertyId, value, onChange }: Props) {
             </SelectContent>
           </Select>
         </Field>
-        <Field label="Pax *">
+        <Field label="Pax">
           <Input type="number" value={value.pax} onChange={(e) => onChange({ pax: e.target.value })} />
         </Field>
+      </div>
+
+      <div className="grid items-start gap-3 sm:grid-cols-2">
         <Field label="Check-in Date *">
-          <Input
-            type="date"
-            value={value.eventDate}
-            onChange={(e) => {
-              const v = e.target.value;
-              onChange({
-                eventDate: v,
-                ...(!value.eventEndDate || value.eventEndDate < v ? { eventEndDate: v } : {}),
-              });
-            }}
-          />
-        </Field>
-        <Field label="Check-in Time *">
-          <Input type="time" value={value.startTime} onChange={(e) => onChange({ startTime: e.target.value })} />
+          <div className="flex gap-2">
+            <Input
+              type="date"
+              value={value.eventDate}
+              onChange={(e) => {
+                const v = e.target.value;
+                onChange({
+                  eventDate: v,
+                  ...(!value.eventEndDate || value.eventEndDate < v ? { eventEndDate: v } : {}),
+                });
+              }}
+            />
+            <Input
+              type="time"
+              className="w-32"
+              value={value.startTime}
+              onChange={(e) => onChange({ startTime: e.target.value })}
+            />
+          </div>
         </Field>
         <Field label="Check-out Date *">
-          <Input
-            type="date"
-            value={value.eventEndDate}
-            min={value.eventDate}
-            onChange={(e) => onChange({ eventEndDate: e.target.value })}
-          />
-        </Field>
-        <Field label="Check-out Time *">
-          <Input type="time" value={value.endTime} onChange={(e) => onChange({ endTime: e.target.value })} />
+          <div className="flex gap-2">
+            <Input
+              type="date"
+              value={value.eventEndDate}
+              min={value.eventDate}
+              onChange={(e) => onChange({ eventEndDate: e.target.value })}
+            />
+            <Input
+              type="time"
+              className="w-32"
+              value={value.endTime}
+              onChange={(e) => onChange({ endTime: e.target.value })}
+            />
+          </div>
         </Field>
       </div>
 
       <div className="space-y-3 border-t pt-6">
         <h3 className="text-sm font-semibold">Charges</h3>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Field label="Event Price (₹) *">
+          <Field label="Event Price (₹)">
             <Input
               type="number"
               value={value.eventPrice}
