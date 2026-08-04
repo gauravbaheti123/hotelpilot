@@ -270,6 +270,112 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     [bill2Charges, party2.bill_type],
   );
 
+  /**
+   * The child bills this split will produce, with their expected totals.
+   * Used to (a) seed the default payment allocation proportionally and
+   * (b) label the allocation step. Index order matches the order the child
+   * folios are created in, so allocations map 1:1 onto the new folio ids.
+   */
+  const childTargets = useMemo(() => {
+    if (splitMode === "item") {
+      return [
+        { label: `Bill 1 — ${party1.name || guestName}`, total: Number(bill1Total) },
+        { label: `Bill 2 — ${splitType === "same" ? (party1.name || guestName) : (party2.name || "Party 2")}`, total: Number(bill2Total) },
+      ];
+    }
+    return parties.map((p, i) => {
+      const net = Number(shareDistribution.nets[i] ?? 0);
+      const gst = p.bill_type === "gst_invoice" ? round2(net * baseGstRate / 100) : 0;
+      return { label: `Bill ${i + 1} — ${p.name || `Party ${i + 1}`}`, total: round2(net + gst) };
+    });
+  }, [splitMode, party1.name, party2.name, splitType, guestName, bill1Total, bill2Total, parties, shareDistribution, baseGstRate]);
+
+  /** Default (proportional) allocation of a payment across the child bills. */
+  function defaultAllocFor(amount: number, totals: number[]): number[] {
+    const weights = totals.map((t) => Math.max(0, Number(t) || 0));
+    const sum = weights.reduce((s, x) => s + x, 0);
+    if (sum <= 0) return totals.map((_, i) => (i === 0 ? round2(amount) : 0));
+    return distributeWithRemainder(amount, weights);
+  }
+
+  /** Current allocation numbers for a payment (user input or the default). */
+  function allocFor(p: ParentPayment, totals: number[]): number[] {
+    const raw = payAlloc[p.id];
+    if (!raw) return defaultAllocFor(p.amount, totals);
+    return totals.map((_, i) => round2(Number(raw[i] ?? 0) || 0));
+  }
+
+  const allocValid = useMemo(() => {
+    if (parentPayments.length === 0) return true;
+    const totals = childTargets.map((c) => c.total);
+    return parentPayments.every((p) => {
+      const sum = allocFor(p, totals).reduce((s, x) => s + x, 0);
+      return Math.abs(sum - p.amount) < 0.01;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parentPayments, payAlloc, childTargets]);
+
+  /**
+   * Re-home every parent-folio payment onto the child folios BEFORE the parent
+   * is voided, so void_folio_safe() succeeds normally with _force:false and no
+   * payment history is orphaned or lost.
+   *
+   * A payment allocated entirely to one child is simply repointed (same row,
+   * same id — reconciliation history preserved). A payment spanning several
+   * children keeps its original row for the first share and gets sibling rows
+   * for the rest, each tagged with the source payment id in `notes`.
+   *
+   * Returns an undo() that restores the original state, used if the void fails.
+   */
+  async function movePaymentsToChildren(childFolioIds: string[]) {
+    const totals = childTargets.map((c) => c.total);
+    const insertedIds: string[] = [];
+    const moved: { id: string; amount: number }[] = [];
+    const undo = async () => {
+      if (insertedIds.length > 0) await supabase.from("payments").delete().in("id", insertedIds);
+      for (const m of moved) {
+        await supabase.from("payments")
+          .update({ folio_id: folio.id, amount: m.amount } as any).eq("id", m.id);
+      }
+    };
+    try {
+      for (const p of parentPayments) {
+        const alloc = allocFor(p, totals);
+        const idxs = alloc.map((a, i) => ({ a, i })).filter((x) => x.a > 0);
+        if (idxs.length === 0) continue;
+        const [first, ...rest] = idxs;
+        const { error: upErr } = await supabase.from("payments").update({
+          folio_id: childFolioIds[first.i],
+          amount: first.a,
+          notes: rest.length > 0
+            ? `${p.notes ? `${p.notes} · ` : ""}Split from ${folio.invoice_number} (₹${p.amount.toFixed(2)})`
+            : p.notes,
+        } as any).eq("id", p.id);
+        if (upErr) throw upErr;
+        moved.push({ id: p.id, amount: p.amount });
+        for (const r of rest) {
+          const { data: ins, error: insErr } = await supabase.from("payments").insert({
+            property_id: p.property_id,
+            folio_id: childFolioIds[r.i],
+            booking_id: p.booking_id ?? booking.id,
+            amount: r.a,
+            mode: p.mode,
+            reference_no: p.reference_no,
+            paid_at: p.paid_at ?? undefined,
+            notes: `${p.notes ? `${p.notes} · ` : ""}Split from ${folio.invoice_number} (₹${p.amount.toFixed(2)}, source payment ${p.id})`,
+            created_by: user?.id ?? null,
+          } as any).select("id").single();
+          if (insErr) throw insErr;
+          insertedIds.push((ins as any).id);
+        }
+      }
+      return { undo };
+    } catch (e) {
+      await undo();
+      throw e;
+    }
+  }
+
   function moveToBill1(id: string) { setBill1Ids((s) => new Set([...s, id])); }
   function moveToBill2(id: string) {
     setBill1Ids((s) => { const n = new Set(s); n.delete(id); return n; });
