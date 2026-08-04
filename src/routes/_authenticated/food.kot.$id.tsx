@@ -104,6 +104,7 @@ function KotDetailPage() {
 
   async function setStatus(next: "printed" | "served" | "billed") {
     if (!k) return;
+    // Timestamps are forced to server now() by trg_force_server_time_kot.
     const stamp = new Date().toISOString();
     const patch: any = { status: next };
     if (next === "printed") patch.printed_at = stamp;
@@ -119,7 +120,8 @@ function KotDetailPage() {
     if (!k) return;
     if (!voidReason.trim()) return toast.error("Reason required");
     const { error } = await supabase.from("kot_orders").update({
-      status: "void", void_reason: voidReason, voided_at: new Date().toISOString(),
+      // voided_at is stamped with server now() by trg_force_server_time_kot
+      status: "void", void_reason: voidReason,
     }).eq("id", k.id);
     if (error) return toast.error(error.message);
     toast.success("KOT voided");
