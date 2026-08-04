@@ -14,6 +14,7 @@ import { RequirePermission } from "@/components/RequirePermission";
 import { ReportDataTable } from "@/components/ReportDataTable";
 import { Fragment } from "react";
 import { istToday } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/reports/guest-wise")({
   head: () => ({ meta: [{ title: "Guest-Wise Report — HotelPilot" }] }),
   component: () => (<RequirePermission module="reports"><Page /></RequirePermission>),
@@ -44,12 +45,13 @@ function Page() {
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    const { data } = await supabase.from("bookings").select(`
+    const { data, error: __qe1 } = await supabase.from("bookings").select(`
       id,booking_number,check_in,check_out,total_amount,balance_amount,status,guest_id,source,
       checked_in_by,checked_out_by,
       guests(name,mobile)
     `).eq("property_id", propertyId)
       .gte("check_in", from).lte("check_in", to);
+    if (__qe1) reportQueryError("bookings", __qe1);
 
     // Banquet event-block stays remain visible for 48h after the event ends.
     const scope = await fetchBanquetScope(propertyId);
@@ -63,8 +65,9 @@ function Page() {
     }
     const nameMap = new Map<string, string>();
     if (uids.size) {
-      const { data: profs } = await supabase.from("profiles")
+      const { data: profs, error: __qe2 } = await supabase.from("profiles")
         .select("id,name,email").in("id", Array.from(uids));
+      if (__qe2) reportQueryError("profiles", __qe2);
       for (const p of (profs ?? []) as any[]) nameMap.set(p.id, p.name || p.email || "");
     }
 

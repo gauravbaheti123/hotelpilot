@@ -25,6 +25,7 @@ import { formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { Plus, ChevronDown, ChevronRight, Printer, Trash2 } from "lucide-react";
 import { printHandover } from "@/lib/handoverPrint";
 import { istToday } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/reports/cash-handover")({
   head: () => ({ meta: [{ title: "Cash Handover Report — HotelPilot" }] }),
@@ -74,13 +75,14 @@ function Page() {
 
   const loadLatest = useCallback(async () => {
     if (!propertyId) { setLatestId(null); return; }
-    const { data } = await supabase
+    const { data, error: __qe1 } = await supabase
       .from("shift_handovers")
       .select("id,window_end,created_at")
       .eq("property_id", propertyId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    if (__qe1) reportQueryError("shift handovers", __qe1);
     setLatestId((data as any)?.id ?? null);
   }, [propertyId]);
 
@@ -102,13 +104,14 @@ function Page() {
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    const { data } = await supabase
+    const { data, error: __qe2 } = await supabase
       .from("shift_handovers")
       .select("id,created_at,window_start,window_end,opening_cash,closing_cash,outgoing_user_id,outgoing_user_name,incoming_user_id,incoming_user_name,total_system,total_manual,total_difference,notes,shift_handover_lines(id,mode,system_total,manual_entry,difference,note)")
       .eq("property_id", propertyId)
       .gte("created_at", `${from}T00:00:00`)
       .lte("created_at", `${to}T23:59:59`)
       .order("created_at", { ascending: false });
+    if (__qe2) reportQueryError("shift handovers", __qe2);
     const mapped: HandoverRow[] = ((data ?? []) as any[]).map((r) => ({
       id: r.id,
       created_at: r.created_at,

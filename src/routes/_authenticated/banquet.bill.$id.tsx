@@ -47,6 +47,7 @@ import {
 } from "@/lib/banquetEvent";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/banquet/bill/$id")({
   head: () => ({ meta: [{ title: "Event Bill — HotelPilot" }] }),
   component: () => (
@@ -209,11 +210,12 @@ function BanquetBillPage() {
         if (url) setProperty((cur) => (cur ? { ...cur, logo_url: url } : cur));
       });
     }
-    const { data: ex } = await supabase
+    const { data: ex, error: __qe1 } = await supabase
       .from("banquet_extra_charges")
       .select("id,point_name,amount,discount_type,discount_value,discount_amount")
       .eq("banquet_booking_id", bq.id)
       .order("sort_order", { ascending: true });
+    if (__qe1) reportQueryError("banquet extra charges", __qe1);
     setExtras((ex ?? []) as unknown as ExtraCharge[]);
     try {
       setPays((await loadEventPayments(bq.booking_id)) as unknown as EventPayment[]);
@@ -231,10 +233,11 @@ function BanquetBillPage() {
   useEffect(() => {
     (async () => {
       if (!user?.id || !b?.property_id) return;
-      const { data: pct } = await supabase.rpc("user_max_discount_pct", {
+      const { data: pct, error: __qe2 } = await supabase.rpc("user_max_discount_pct", {
         _user_id: user.id,
         _property_id: b.property_id,
       });
+      if (__qe2) reportQueryError("user max discount pct", __qe2);
       const n = Number(pct);
       setMaxDiscPct(Number.isFinite(n) ? n : 0);
     })();

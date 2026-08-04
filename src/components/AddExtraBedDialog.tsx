@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { todayIso } from "@/lib/front-desk";
 import { extraBedRateFor, resolveTariffForCategory } from "@/lib/tariff";
+import { reportQueryError } from "@/lib/queryError";
 
 interface Props {
   bookingId: string | null;
@@ -34,12 +35,13 @@ export function AddExtraBedDialog({ bookingId, open, onOpenChange, onDone }: Pro
   useEffect(() => {
     if (!open || !bookingId) { setCtx(null); setQty(1); return; }
     (async () => {
-      const { data: b } = await supabase
+      const { data: b, error: __qe1 } = await supabase
         .from("bookings")
         .select("property_id, check_in, check_out, status")
         .eq("id", bookingId).maybeSingle();
+      if (__qe1) reportQueryError("bookings", __qe1);
       if (!b) { toast.error("Booking not found"); onOpenChange(false); return; }
-      const { data: br } = await supabase
+      const { data: br, error: __qe2 } = await supabase
         .from("booking_rooms")
         .select("category_id, meal_plan, room_categories(name)")
         .eq("booking_id", bookingId)
@@ -47,6 +49,7 @@ export function AddExtraBedDialog({ bookingId, open, onOpenChange, onDone }: Pro
         .neq("status", "cancelled")
         .order("created_at", { ascending: false })
         .limit(1);
+      if (__qe2) reportQueryError("booking rooms", __qe2);
       const row = (br?.[0] as any) ?? null;
       // Phase 27b — extra bed price comes from the stay's tariff plan
       // (extra_adult_rate), resolved against the booking's check-in date.

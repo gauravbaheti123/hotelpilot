@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./use-auth";
+import { reportQueryError } from "@/lib/queryError";
 
 export interface Property {
   id: string;
@@ -28,10 +29,11 @@ export function useProperties() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["properties"],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error: __qe1 } = await supabase
         .from("properties")
         .select("id,name,city,is_active,status")
         .order("created_at", { ascending: true });
+      if (__qe1) reportQueryError("properties", __qe1);
       return (data ?? []) as Property[];
     },
     staleTime: 5 * 60_000,
@@ -82,11 +84,12 @@ export function useCurrentProperty() {
     gcTime: 30 * 60_000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error: __qe2 } = await supabase
         .from("user_roles")
         .select("property_id")
         .eq("user_id", userId!)
         .not("property_id", "is", null);
+      if (__qe2) reportQueryError("user roles", __qe2);
       return Array.from(
         new Set((data ?? []).map((row) => row.property_id).filter(Boolean) as string[]),
       );

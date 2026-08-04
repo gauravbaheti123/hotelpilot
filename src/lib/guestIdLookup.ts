@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { reportQueryError } from "@/lib/queryError";
 
 export interface ExistingIdDoc {
   documentName: string | null;
@@ -79,11 +80,12 @@ export async function searchGuestsDetailed(
   const guests = (data ?? []) as any[];
   return Promise.all(
     guests.map(async (g) => {
-      const { data: bks } = await supabase
+      const { data: bks, error: __qe1 } = await supabase
         .from("bookings")
         .select("check_in")
         .eq("guest_id", g.id)
         .order("check_in", { ascending: false });
+      if (__qe1) reportQueryError("bookings", __qe1);
       const rows = bks ?? [];
       return { ...g, visit_count: rows.length, last_stay: rows[0]?.check_in ?? null } as GuestSearchDetail;
     }),
@@ -146,22 +148,24 @@ export async function lookupExistingGuestId(
   if (!attempts.length) return null;
 
   for (const a of attempts) {
-    const { data } = await supabase
+    const { data, error: __qe2 } = await supabase
       .from("guests")
       .select("id,name,mobile,id_proof_number,tags,id_document_url,id_document_name,id_document_uploaded_at")
       .eq("property_id", propertyId)
       .eq(a.col, a.val)
       .order("updated_at", { ascending: false })
       .limit(1);
+    if (__qe2) reportQueryError("guests", __qe2);
     const g = (data ?? [])[0] as any;
     if (!g) continue;
 
-    const { data: docs } = await supabase
+    const { data: docs, error: __qe3 } = await supabase
       .from("guest_documents")
       .select("document_name,drive_file_id,drive_view_url,drive_folder_path,uploaded_at")
       .eq("guest_id", g.id)
       .order("uploaded_at", { ascending: false })
       .limit(1);
+    if (__qe3) reportQueryError("guest documents", __qe3);
     const d = (docs ?? [])[0] as any;
 
     let doc: ExistingIdDoc | null = null;

@@ -11,6 +11,7 @@
  * BOTH ids, then reads the event header from the unified row.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { reportQueryError } from "@/lib/queryError";
 
 /** Columns that live on `bookings`; everything else is written to the mirror. */
 const UNIFIED_FIELDS = new Set([
@@ -91,11 +92,12 @@ export async function loadEventBooking(id: string) {
 
   let legacy: any = null;
   if (ids.legacyId) {
-    const { data: l } = await supabase
+    const { data: l, error: __qe1 } = await supabase
       .from("banquet_bookings")
       .select("id,status,bill_type,advance_payment_mode,line_discounts,total_room_charges")
       .eq("id", ids.legacyId)
       .maybeSingle();
+    if (__qe1) reportQueryError("banquet bookings", __qe1);
     legacy = l ?? null;
   }
 
@@ -118,11 +120,12 @@ export async function loadEventBooking(id: string) {
 
 /** Live advance/balance from folios (booking_financials view, Part 1). */
 export async function loadEventFinancials(bookingId: string) {
-  const { data } = await supabase
+  const { data, error: __qe2 } = await supabase
     .from("booking_financials" as any)
     .select("folio_total,advance_amount,balance_amount")
     .eq("booking_id", bookingId)
     .maybeSingle();
+  if (__qe2) reportQueryError("booking financials", __qe2);
   const r = (data ?? null) as any;
   return {
     folioTotal: Number(r?.folio_total ?? 0),
@@ -326,11 +329,12 @@ export async function listEventBookings(
   const numbers = base.map((b) => b.banquet_number).filter(Boolean) as string[];
   const mirror = new Map<string, any>();
   if (numbers.length) {
-    const { data: legacy } = await supabase
+    const { data: legacy, error: __qe3 } = await supabase
       .from("banquet_bookings")
       .select("id,banquet_number,status,total_room_charges")
       .eq("property_id", propertyId)
       .in("banquet_number", numbers);
+    if (__qe3) reportQueryError("banquet bookings", __qe3);
     for (const l of (legacy ?? []) as any[]) mirror.set(l.banquet_number, l);
   }
 

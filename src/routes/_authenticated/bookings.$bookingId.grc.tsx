@@ -15,6 +15,7 @@ import { RequirePermission } from "@/components/RequirePermission";
 import { toast } from "sonner";
 import { Printer, Save, ArrowLeft } from "lucide-react";
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
+import { reportQueryError } from "@/lib/queryError";
 
 function fmtDateTime(value: string | null | undefined, fallbackTime?: string | null): string {
   if (!value) return "—";
@@ -95,31 +96,35 @@ function GrcPage() {
       if (error || !b) { toast.error(error?.message ?? "Booking not found"); setLoading(false); return; }
       setBooking(b);
 
-      const { data: p } = await supabase
+      const { data: p, error: __qe1 } = await supabase
         .from("properties")
         .select("id, name, legal_entity_name, address_line1, address_line2, city, state, pin_code, phone, email, gstin, short_code, logo_url, grc_terms, default_checkin_time, default_checkout_time")
         .eq("id", b.property_id).maybeSingle();
+      if (__qe1) reportQueryError("properties", __qe1);
       setProperty(p);
       if (p?.logo_url) {
         const resolved = await resolveLogoUrl(p.logo_url);
         if (resolved) setProperty((cur: any) => cur ? { ...cur, logo_url: resolved } : cur);
       }
 
-      const { data: g } = await supabase
+      const { data: g, error: __qe2 } = await supabase
         .from("grc_records")
         .select("*").eq("booking_id", bookingId).maybeSingle();
+      if (__qe2) reportQueryError("grc records", __qe2);
       // Duty Manager defaults to the logged-in user; a saved value always wins.
       let signedInName = "";
       const uid = (await supabase.auth.getSession()).data.session?.user?.id ?? null;
       if (uid) {
-        const { data: prof } = await supabase
+        const { data: prof, error: __qe3 } = await supabase
           .from("profiles").select("name,email").eq("id", uid).maybeSingle();
+        if (__qe3) reportQueryError("profiles", __qe3);
         signedInName = (prof?.name || prof?.email || "").trim();
       }
       // Duty Manager options come from the property's staff list.
-      const { data: staffRows } = await supabase.rpc("list_property_staff", {
+      const { data: staffRows, error: __qe4 } = await supabase.rpc("list_property_staff", {
         _property_id: b.property_id,
       });
+      if (__qe4) reportQueryError("list property staff", __qe4);
       const names = ((staffRows ?? []) as Array<{ display_name: string | null; email: string | null }>)
         .map((r) => (r.display_name || r.email || "").trim())
         .filter(Boolean);

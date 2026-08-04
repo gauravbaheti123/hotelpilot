@@ -17,6 +17,7 @@ import { Trash2, AlertTriangle } from "lucide-react";
 import { inr } from "@/lib/billing";
 import { useAuth } from "@/hooks/use-auth";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
+import { reportQueryError } from "@/lib/queryError";
 
 export interface SegmentBillTarget {
   id: string;
@@ -66,11 +67,12 @@ async function recalcSegmentBill(billId: string) {
 
 /** Keep the folio mirror of this bill in step, then re-sync the folio balance. */
 async function syncFolioMirror(bill: SegmentBillTarget, items: ItemRow[], mode: "replace" | "remove") {
-  const { data: existing } = await supabase
+  const { data: existing, error: __qe1 } = await supabase
     .from("folio_charges")
     .select("id,folio_id")
     .eq("source_table", "segment_bills")
     .eq("source_id", bill.id);
+  if (__qe1) reportQueryError("folio charges", __qe1);
   const mirrored = (existing ?? []) as any[];
   const folioId = mirrored[0]?.folio_id ?? bill.folio_id ?? null;
   if (mirrored.length > 0) {
@@ -278,10 +280,11 @@ export function SegmentBillDeleteDialog({
     if (locked && !reason.trim()) return toast.error("A reason is required to delete a settled bill");
     setBusy(true);
     try {
-      const { data: items } = await supabase
+      const { data: items, error: __qe2 } = await supabase
         .from("segment_bill_items" as any)
         .select("id,description,qty,rate,amount,gst_rate,gst_amount,note")
         .eq("segment_bill_id", bill.id);
+      if (__qe2) reportQueryError("segment bill items", __qe2);
       const snapshot = (items ?? []) as any as ItemRow[];
       // Drop the folio mirror first and re-sync the folio balance.
       await syncFolioMirror(bill, [], "remove");

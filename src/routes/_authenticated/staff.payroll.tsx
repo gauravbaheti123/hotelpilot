@@ -26,6 +26,7 @@ import {
   type AttendanceStatus,
 } from "@/lib/staff-hr";
 import { istDateISO } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/staff/payroll")({
   head: () => ({ meta: [{ title: "Payroll — HotelPilot" }] }),
@@ -51,11 +52,12 @@ function PayrollPage() {
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    const { data } = await supabase.from("payroll_runs")
+    const { data, error: __qe1 } = await supabase.from("payroll_runs")
       .select("id,staff_id,period_month,gross_salary,present_days,absent_days,total_days,deductions,bonus,advance,net_pay,status,paid_at,paid_via,notes,staff(name,designation,salary)")
       .eq("property_id", propertyId)
       .eq("period_month", period)
       .order("created_at", { ascending: true });
+    if (__qe1) reportQueryError("payroll runs", __qe1);
     setRows((data ?? []) as unknown as PayrollRow[]);
   }, [propertyId, period]);
 
@@ -72,15 +74,17 @@ function PayrollPage() {
       const fromStr = period;
       const toStr = istDateISO(monthEnd);
 
-      const { data: staff } = await supabase.from("staff")
+      const { data: staff, error: __qe2 } = await supabase.from("staff")
         .select("id,name,designation,salary")
         .eq("property_id", propertyId).eq("is_active", true);
+      if (__qe2) reportQueryError("staff", __qe2);
       const staffList = (staff ?? []) as StaffRow[];
 
-      const { data: att } = await supabase.from("attendance")
+      const { data: att, error: __qe3 } = await supabase.from("attendance")
         .select("staff_id,status")
         .eq("property_id", propertyId)
         .gte("attendance_date", fromStr).lte("attendance_date", toStr);
+      if (__qe3) reportQueryError("attendance", __qe3);
       const byStaff = new Map<string, { present: number; absent: number }>();
       (att ?? []).forEach((r) => {
         const rec = byStaff.get(r.staff_id) ?? { present: 0, absent: 0 };

@@ -14,6 +14,7 @@ import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/reports/room-wise")({
   head: () => ({ meta: [{ title: "Room-Wise Report — HotelPilot" }] }),
@@ -74,8 +75,9 @@ function Page() {
     }
     const nameMap = new Map<string, string>();
     if (uids.size) {
-      const { data: profs } = await supabase.from("profiles")
+      const { data: profs, error: __qe1 } = await supabase.from("profiles")
         .select("id,name,email").in("id", Array.from(uids));
+      if (__qe1) reportQueryError("profiles", __qe1);
       for (const p of (profs ?? []) as any[]) {
         nameMap.set(p.id, p.name || p.email || "");
       }

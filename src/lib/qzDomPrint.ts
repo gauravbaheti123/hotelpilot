@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { isQZConnected, connectQZ, printToPrinter } from "./qzPrint";
 import { getPrintStyles, getPrintContainerStyle, getPrintSafetyCss } from "./printStyles";
+import { reportQueryError } from "@/lib/queryError";
 
 // Properties to copy from computedStyle onto each cloned node as inline styles.
 // This snapshots the app's Tailwind/theme resolution into self-contained HTML
@@ -156,7 +157,7 @@ export async function fetchBillPrinter(
   propertyId: string | null | undefined,
 ): Promise<{ name: string; paper_size: string } | null> {
   if (!propertyId) return null;
-  const { data } = await supabase
+  const { data, error: __qe1 } = await supabase
     .from("printers")
     .select("name,paper_size,type,is_default,is_active")
     .eq("property_id", propertyId)
@@ -164,6 +165,7 @@ export async function fetchBillPrinter(
     .in("type", ["bill", "both"])
     .order("is_default", { ascending: false })
     .limit(1);
+  if (__qe1) reportQueryError("printers", __qe1);
   const row = (data as any[] | null)?.[0];
   if (!row) return null;
   return { name: row.name as string, paper_size: (row.paper_size as string) ?? "A4" };

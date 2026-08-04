@@ -3,6 +3,7 @@ import { resolveTaxType } from "@/lib/gst";
 import { stateNameFromCode } from "@/lib/indiaGeo";
 import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { istDateISO } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 
 export interface DailySummary {
   date: string;
@@ -156,7 +157,7 @@ export async function fetchGstInvoices(propertyId: string, from: string, to: str
   const endD = new Date(`${to}T00:00:00`);
   endD.setDate(endD.getDate() + 1);
   const end = endD.toISOString();
-  const { data } = await supabase.from("folios")
+  const { data, error: __qe1 } = await supabase.from("folios")
     .select("id,booking_id,invoice_number,created_at,guest_gstin,guest_company,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name))")
     .eq("property_id", propertyId)
     .eq("gst_mode", "gst")
@@ -164,6 +165,7 @@ export async function fetchGstInvoices(propertyId: string, from: string, to: str
     .gte("created_at", start)
     .lt("created_at", end)
     .order("created_at", { ascending: false });
+  if (__qe1) reportQueryError("folios", __qe1);
   const scope = await fetchBanquetScope(propertyId);
   const visible = (data ?? []).filter((d) => !isBanquetRecord(scope, d as { booking_id?: string | null }));
   return visible.map((d) => {
@@ -201,7 +203,7 @@ export async function fetchGstInvoiceSlabs(
   const endD = new Date(`${to}T00:00:00`);
   endD.setDate(endD.getDate() + 1);
   const end = endD.toISOString();
-  const { data } = await supabase.from("folios")
+  const { data, error: __qe2 } = await supabase.from("folios")
     .select("id,booking_id,invoice_number,created_at,guest_gstin,guest_company,billing_company_id,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name,state,state_code,gst_number)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
     .eq("property_id", propertyId)
     .eq("gst_mode", "gst")
@@ -209,6 +211,7 @@ export async function fetchGstInvoiceSlabs(
     .gte("created_at", start)
     .lt("created_at", end)
     .order("created_at", { ascending: false });
+  if (__qe2) reportQueryError("folios", __qe2);
   // Place of supply compares GST state codes (GSTIN → state_code → state name).
   const [{ data: propRow }, { data: coRows }, scope] = await Promise.all([
     supabase.from("properties").select("state,state_code,gstin").eq("id", propertyId).maybeSingle(),

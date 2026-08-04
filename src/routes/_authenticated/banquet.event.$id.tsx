@@ -68,6 +68,7 @@ import {
   type EventIds,
 } from "@/lib/banquetEvent";
 import { Input as TextInput } from "@/components/ui/input";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/banquet/event/$id")({
   head: () => ({ meta: [{ title: "Banquet Event — HotelPilot" }] }),
   component: () => (
@@ -254,11 +255,12 @@ function BanquetEventPage() {
     setRooms((rs ?? []) as Room[]);
     setCats((cs ?? []) as Cat[]);
     setHalls((hs ?? []) as Hall[]);
-    const { data: erb } = await supabase
+    const { data: erb, error: __qe1 } = await supabase
       .from("event_room_blocks")
       .select("*")
       .eq("banquet_booking_id", bq.id)
       .order("room_number");
+    if (__qe1) reportQueryError("event room blocks", __qe1);
     setBlocks((erb ?? []) as unknown as EventBlockRecord[]);
     setLoading(false);
   }, [id]);
@@ -572,13 +574,14 @@ function BanquetEventPage() {
     }
     setDelBusy(true);
     try {
-      const { data: locked } = await supabase.rpc(
+      const { data: locked, error: __qe2 } = await supabase.rpc(
         "is_day_locked" as any,
         {
           _property_id: b.property_id,
           _d: b.event_date,
         } as any,
       );
+      if (__qe2) reportQueryError("is day locked", __qe2);
       if (locked === true)
         return toast.error("Cannot delete — this date is locked by night audit.");
       const { error: pErr } = await supabase.auth.signInWithPassword({
@@ -617,10 +620,11 @@ function BanquetEventPage() {
       });
 
       // Folio lines first, then the folio, then the room rows, then the bookings.
-      const { data: folios } = await supabase
+      const { data: folios, error: __qe3 } = await supabase
         .from("folios")
         .select("id")
         .eq("booking_id", ids.bookingId);
+      if (__qe3) reportQueryError("folios", __qe3);
       const folioIds = ((folios ?? []) as any[]).map((f) => f.id);
       if (folioIds.length > 0) {
         await supabase.from("folio_charges").delete().in("folio_id", folioIds);

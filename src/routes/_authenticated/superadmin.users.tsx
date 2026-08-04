@@ -23,6 +23,7 @@ import {
   setUserActive,
 } from "@/lib/staff-users.functions";
 import { Manage2FADialog } from "@/components/Manage2FADialog";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/superadmin/users")({
   head: () => ({ meta: [{ title: "User Management — HotelPilot" }] }),
@@ -128,18 +129,20 @@ function UsersPage() {
     const actives: Record<string, boolean> = {};
     const totp: Record<string, { enabled: boolean; locked_until: string | null; created_at: string | null }> = {};
     if (userIds.length) {
-      const { data: profs } = await supabase
+      const { data: profs, error: __qe1 } = await supabase
         .from("profiles").select("id,email,name,is_active").in("id", userIds);
+      if (__qe1) reportQueryError("profiles", __qe1);
       for (const p of profs ?? []) {
         emails[p.id] = (p as any).email ?? "";
         names[p.id] = (p as any).name ?? "";
         actives[p.id] = (p as any).is_active ?? true;
       }
       if (isSuperadmin) {
-        const { data: totps } = await supabase
+        const { data: totps, error: __qe2 } = await supabase
           .from("user_totp_secrets")
           .select("user_id,enabled,locked_until,created_at")
           .in("user_id", userIds);
+        if (__qe2) reportQueryError("user totp secrets", __qe2);
         for (const t of totps ?? []) {
           totp[(t as any).user_id] = {
             enabled: !!(t as any).enabled,

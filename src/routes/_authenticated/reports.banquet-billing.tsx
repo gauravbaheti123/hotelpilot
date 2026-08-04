@@ -18,6 +18,7 @@ import { fetchBanquetVisibility, type BanquetVisibilityRow } from "@/lib/banquet
 import { listEventBookings } from "@/lib/banquetEvent";
 import { fmtDate, fmtDateTime, fmtINR, firstOfMonthIso } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/reports/banquet-billing")({
   ssr: false,
@@ -36,7 +37,8 @@ export const Route = createFileRoute("/_authenticated/reports/banquet-billing")(
   beforeLoad: async () => {
     const { data: u, error } = await supabase.auth.getUser();
     if (error || !u.user) throw redirect({ to: "/login" });
-    const { data: allowed } = await supabase.rpc("is_owner_or_super", { _user_id: u.user.id });
+    const { data: allowed, error: __qe1 } = await supabase.rpc("is_owner_or_super", { _user_id: u.user.id });
+    if (__qe1) reportQueryError("is owner or super", __qe1);
     if (!allowed) {
       if (typeof window !== "undefined") { try { toast.error("Access denied"); } catch { /* ignore */ } }
       throw redirect({ to: "/reports" });

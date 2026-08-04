@@ -21,6 +21,7 @@ import {
   THERMAL_FEED_HTML,
 } from "@/lib/printStyles";
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
+import { reportQueryError } from "@/lib/queryError";
 
 export type SegmentKind = "food" | "laundry";
 
@@ -662,10 +663,11 @@ export function printSegmentBill(opts: {
     let head = { name: opts.propertyName, address: "", phone: "", gstin: "", fssai: "", logo: "" };
     if (opts.propertyId) {
       try {
-        const { data } = await supabase
+        const { data, error: __qe1 } = await supabase
           .from("properties")
           .select("name,address_line1,address_line2,city,state,pin_code,phone,gstin,fssai,logo_url")
           .eq("id", opts.propertyId).maybeSingle();
+        if (__qe1) reportQueryError("properties", __qe1);
         if (data) {
           const p = data as any;
           head = {

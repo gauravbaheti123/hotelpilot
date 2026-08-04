@@ -13,6 +13,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { fetchTariffPlans, pickTariffPlan, type TariffPlan } from "@/lib/tariff";
 import { Loader2, BedDouble, Sparkles } from "lucide-react";
 import { istToday } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 
 interface RoomOption {
   id: string;
@@ -81,12 +82,13 @@ export function AssignRoomDialog({
       const roomIds = (data ?? []).map((r: any) => r.id);
       let busyIds = new Set<string>();
       if (roomIds.length > 0) {
-        const { data: br } = await supabase
+        const { data: br, error: __qe1 } = await supabase
           .from("booking_rooms")
           .select("room_id,check_in,check_out,status,bookings!booking_rooms_booking_id_fkey!inner(status)")
           .in("room_id", roomIds)
           .lt("check_in", checkOut)
           .gt("check_out", checkIn);
+        if (__qe1) reportQueryError("booking rooms", __qe1);
         for (const row of (br ?? []) as any[]) {
           const bStatus = row.bookings?.status;
           const brStatus = row.status;

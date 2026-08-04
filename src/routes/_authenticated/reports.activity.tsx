@@ -17,6 +17,7 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { istDaysAgo, istToday } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/reports/activity")({
   head: () => ({ meta: [{ title: "Activity Log — HotelPilot" }] }),
   component: () => (<RequirePermission module="reports"><ActivityLogPage /></RequirePermission>),
@@ -85,12 +86,13 @@ function ActivityLogPage() {
   useEffect(() => {
     if (!current) return;
     (async () => {
-      const { data } = await supabase
+      const { data, error: __qe1 } = await supabase
         .from("activity_log" as any)
         .select("user_id,user_name")
         .eq("property_id", current.id)
         .order("user_name", { ascending: true })
         .limit(1000);
+      if (__qe1) reportQueryError("activity log", __qe1);
       const seen = new Map<string, string>();
       ((data ?? []) as unknown as Array<{ user_id: string | null; user_name: string | null }>).forEach((r) => {
         if (r.user_id && !seen.has(r.user_id)) {

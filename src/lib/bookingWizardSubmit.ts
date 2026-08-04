@@ -4,6 +4,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createBooking, type CreateBookingPayload, type CreateBookingResult } from "@/lib/bookingCreate";
 import { roomsTotal, stayRange, type WizardState } from "@/lib/bookingWizard";
+import { reportQueryError } from "@/lib/queryError";
 
 /**
  * Banquet → front-desk handoff context, carried in the URL as
@@ -155,11 +156,12 @@ export async function linkIdDocuments(
     const withDocs = s.extraGuests.filter((x) => x.idDocFileId && x.name.trim());
     if (withDocs.length === 0) return;
     // The RPC creates the accompanying guests; match them back by name.
-    const { data } = await supabase
+    const { data, error: __qe1 } = await supabase
       .from("booking_guests")
       .select("guest_id, guests(name)")
       .eq("booking_id", bookingId)
       .eq("is_primary", false);
+    if (__qe1) reportQueryError("booking guests", __qe1);
     const rows = (data ?? []) as Array<{ guest_id: string; guests: { name: string } | null }>;
     for (const x of withDocs) {
       const hit = rows.find((r) => (r.guests?.name ?? "").trim().toLowerCase() === x.name.trim().toLowerCase());

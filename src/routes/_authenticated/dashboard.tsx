@@ -41,6 +41,7 @@ import {
 } from "@/components/AssignRoomDialog";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — HotelPilot" }] }),
   component: () => (<RequirePermission module="dashboard"><DashboardRouter /></RequirePermission>),
@@ -340,12 +341,13 @@ function OwnerDashboard({
         if (potentialGhosts.length > 0) {
           // Re-check against ALL active bookings with NO date filter, so an
           // overdue checked-in booking still holds its room.
-          const { data: stillActive } = await supabase
+          const { data: stillActive, error: __qe1 } = await supabase
             .from("booking_rooms")
             .select("room_id, actual_check_out, bookings!booking_rooms_booking_id_fkey!inner(status,property_id)")
             .eq("bookings.property_id", propertyId)
             .in("bookings.status", ["reserved", "checked_in"])
             .in("room_id", potentialGhosts);
+          if (__qe1) reportQueryError("booking rooms", __qe1);
           const heldRoomIds = new Set(
             (stillActive ?? [])
               .filter((b: any) => !b.actual_check_out)
@@ -383,13 +385,14 @@ function OwnerDashboard({
       // Lodge room badge will drift from the Food segment tab / checkout block.
       const pfMap = new Map<string, PendingFood>();
       {
-        const { data: fbills } = await supabase
+        const { data: fbills, error: __qe2 } = await supabase
           .from("segment_bills" as any)
           .select("id,room_id,booking_id,total_amount,created_at,segment_bill_items(description,qty)")
           .eq("property_id", propertyId)
           .eq("segment", "food")
           .eq("status", "open")
           .eq("is_walkin", false);
+        if (__qe2) reportQueryError("segment bills", __qe2);
         (fbills ?? []).forEach((b: any) => {
           if (!b.room_id || !b.booking_id) return;
           const prev = pfMap.get(b.room_id) ?? { bookingId: b.booking_id, amount: 0, count: 0, lastAt: null, items: "" };
@@ -411,10 +414,11 @@ function OwnerDashboard({
       const missingBookingIds = Array.from(new Set(Array.from(pfMap.values()).map((v) => v.bookingId)))
         .filter((bid) => !guestByBooking.has(bid));
       if (missingBookingIds.length > 0) {
-        const { data: gb } = await supabase
+        const { data: gb, error: __qe3 } = await supabase
           .from("bookings")
           .select("id, guests:guest_id(name)")
           .in("id", missingBookingIds);
+        if (__qe3) reportQueryError("bookings", __qe3);
         (gb ?? []).forEach((b: any) => guestByBooking.set(b.id, b.guests?.name ?? null));
       }
       const rows: PendingFoodRow[] = [];
@@ -545,11 +549,12 @@ function OwnerDashboard({
         .eq("status", "open");
       if (kErr) throw kErr;
       if (!bills || bills.length === 0) { toast.info("No pending food bills"); return; }
-      const { data: existingCharges } = await supabase
+      const { data: existingCharges, error: __qe4 } = await supabase
         .from("folio_charges")
         .select("source_id")
         .eq("folio_id", folioId as any)
         .eq("source_table", "segment_bills");
+      if (__qe4) reportQueryError("folio charges", __qe4);
       const existing = new Set((existingCharges ?? []).map((c: any) => c.source_id));
       for (const b of bills as any[]) {
         if (!existing.has(b.id)) {
@@ -1709,7 +1714,8 @@ function RoomStatusModal({
       const { error } = await supabase.from("rooms").update(patch).eq("id", room.id);
       if (error) throw error;
       if (log) {
-        const { data: rRow } = await supabase.from("rooms").select("property_id").eq("id", room.id).maybeSingle();
+        const { data: rRow, error: __qe5 } = await supabase.from("rooms").select("property_id").eq("id", room.id).maybeSingle();
+        if (__qe5) reportQueryError("rooms", __qe5);
         const propertyId = (rRow as any)?.property_id;
         if (propertyId) {
           await supabase.from("housekeeping_tasks").insert({
@@ -1725,7 +1731,8 @@ function RoomStatusModal({
       }
       toast.success(`Room ${room.room_number} ${successLabel}`);
       try {
-        const { data: rRow } = await supabase.from("rooms").select("property_id").eq("id", room.id).maybeSingle();
+        const { data: rRow, error: __qe6 } = await supabase.from("rooms").select("property_id").eq("id", room.id).maybeSingle();
+        if (__qe6) reportQueryError("rooms", __qe6);
         const propertyId = (rRow as any)?.property_id;
         if (propertyId) {
           const { data: { user } } = await supabase.auth.getUser();

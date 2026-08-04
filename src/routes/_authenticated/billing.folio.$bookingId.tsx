@@ -51,6 +51,7 @@ import {
 import { printIsolated, withPrintStyles } from "@/lib/printStyles";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
   head: () => ({ meta: [{ title: "Folio — HotelPilot" }] }),
   validateSearch: (search: Record<string, unknown>): { folio?: string } => {
@@ -319,7 +320,7 @@ function FolioPage() {
     const bk = b as unknown as BookingCtx;
     setBooking(bk);
 
-    const { data: prop } = await supabase.from("properties")
+    const { data: prop, error: __qe1 } = await supabase.from("properties")
       .select(`name,legal_entity_name,tagline,gstin,pan_number,state,state_code,
         address_line1,address_line2,city,pin_code,phone,email,website,wa_number,logo_url,
         invoice_prefix,invoice_footer,invoice_primary_color,invoice_template,
@@ -328,6 +329,7 @@ function FolioPage() {
         food_gst_rate,sundry_gst_rate,use_gst_slabs,
         address,pincode`)
       .eq("id", bk.property_id).single();
+    if (__qe1) reportQueryError("properties", __qe1);
     setProperty((prop ?? null) as PropertyInfo | null);
     // Resolve logo storage path -> signed URL for on-screen + print capture.
     if ((prop as any)?.logo_url) {
@@ -337,19 +339,21 @@ function FolioPage() {
     }
 
     // Load active billing companies for this property (used by Bill To picker).
-    const { data: bcs } = await supabase
+    const { data: bcs, error: __qe2 } = await supabase
       .from("billing_companies" as any)
       .select("id,name,gstin,address,phone,email,city,state,state_code,nation")
       .eq("property_id", bk.property_id)
       .eq("is_active", true)
       .order("name", { ascending: true });
+    if (__qe2) reportQueryError("billing companies", __qe2);
     setBillingCompanies(((bcs ?? []) as any));
 
     // Load custom GST slabs for this property (used to resolve room-charge GST%).
-    const { data: sl } = await supabase
+    const { data: sl, error: __qe3 } = await supabase
       .from("gst_slabs" as any)
       .select("from_amount,to_amount,gst_rate,charge_category,is_active,effective_from")
       .eq("property_id", bk.property_id);
+    if (__qe3) reportQueryError("gst slabs", __qe3);
     const slabRows = ((sl ?? []) as unknown as GstSlab[]);
     setGstSlabs(slabRows);
 
@@ -359,9 +363,10 @@ function FolioPage() {
     // collectable folio (correct for checkout & single-folio bookings).
     let fId: string | null = null;
     if (folioParam) {
-      const { data: owned } = await supabase
+      const { data: owned, error: __qe4 } = await supabase
         .from("folios").select("id")
         .eq("id", folioParam).eq("booking_id", bookingId).maybeSingle();
+      if (__qe4) reportQueryError("folios", __qe4);
       if (owned?.id) fId = owned.id as string;
     }
     if (!fId) {
@@ -380,11 +385,12 @@ function FolioPage() {
     // Hydrate the Bill-To guest (when the folio bills to another individual).
     const billGuestId = (f as any)?.billing_guest_id ?? null;
     if (billGuestId) {
-      const { data: bg } = await supabase
+      const { data: bg, error: __qe5 } = await supabase
         .from("guests")
         .select("id,name,mobile,gst_number,company,address,city,state,state_code")
         .eq("id", billGuestId)
         .maybeSingle();
+      if (__qe5) reportQueryError("guests", __qe5);
       setBillToGuest(((bg ?? null) as unknown as BillToGuest | null));
     } else {
       setBillToGuest(null);
@@ -436,10 +442,11 @@ function FolioPage() {
     // Load the linked Food Bill number (FB-XXXX) if any food charge exists.
     // Load restaurant direct charges for this booking (display-only bill no).
     {
-      const { data: rdc } = await supabase
+      const { data: rdc, error: __qe6 } = await supabase
         .from("restaurant_direct_charges" as any)
         .select("folio_charge_id,bill_no,amount")
         .eq("booking_id", bookingId);
+      if (__qe6) reportQueryError("restaurant direct charges", __qe6);
       setRestBills(((rdc ?? []) as any[]).map((r) => ({
         folio_charge_id: r.folio_charge_id ?? null,
         bill_no: r.bill_no ?? null,
@@ -448,11 +455,12 @@ function FolioPage() {
     }
     const hasFood = correctedCharges.some((c) => c.charge_type === "food");
     if (hasFood && bk?.id) {
-      const { data: fb } = await supabase
+      const { data: fb, error: __qe7 } = await supabase
         .from("food_bills" as any)
         .select("food_bill_number")
         .eq("booking_id", bk.id)
         .maybeSingle();
+      if (__qe7) reportQueryError("food bills", __qe7);
       setFoodBillNumber((fb as any)?.food_bill_number ?? null);
     } else {
       setFoodBillNumber(null);
@@ -461,30 +469,33 @@ function FolioPage() {
     // Resolve current user's max-discount % for this property.
     try {
       if (user?.id) {
-        const { data: pct } = await supabase.rpc("user_max_discount_pct", {
+        const { data: pct, error: __qe8 } = await supabase.rpc("user_max_discount_pct", {
           _user_id: user.id, _property_id: bk.property_id,
         });
+        if (__qe8) reportQueryError("user max discount pct", __qe8);
         const n = Number(pct);
         setMaxDiscPct(Number.isFinite(n) ? n : 0);
       }
     } catch { /* keep default */ }
 
     // Load pending KOTs (not served/billed/cancelled, not wiped)
-    const { data: pk } = await supabase
+    const { data: pk, error: __qe9 } = await supabase
       .from("kot_orders")
       .select("id,kot_number,status,total_amount,sub_total,kot_items(id,item_name,qty,rate)")
       .eq("booking_id", bookingId)
       .eq("is_wiped", false)
       .neq("kot_copy", "restaurant_copy")
       .not("status", "in", "(billed,cancelled,void)");
+    if (__qe9) reportQueryError("kot orders", __qe9);
     setPendingKots(((pk ?? []) as unknown as PendingKot[]));
 
     // Load pending POS charges (custom expenses awaiting add-to-bill)
-    const { data: pos } = await supabase
+    const { data: pos, error: __qe10 } = await supabase
       .from("pos_charges")
       .select("id,category_name,description,qty,rate,amount,gst_rate,gst_amount")
       .eq("booking_id", bookingId)
       .eq("status", "pending");
+    if (__qe10) reportQueryError("pos charges", __qe10);
     setPendingPos((pos ?? []) as any);
 
     setLoading(false);
@@ -532,13 +543,14 @@ function FolioPage() {
     if (folio.status !== "open") return;
     if (didPullKotChargesRef.current === folio.id) return;
     (async () => {
-      const { data: kots } = await supabase
+      const { data: kots, error: __qe11 } = await supabase
         .from("kot_orders")
         .select("id,kot_number,sub_total,gst_amount,status")
         .eq("booking_id", booking.id)
         .eq("is_wiped", false)
         .neq("kot_copy", "restaurant_copy")
         .in("status", ["served", "billed"]);
+      if (__qe11) reportQueryError("kot orders", __qe11);
       if (!kots || kots.length === 0) return;
       const existing = new Set(
         charges.filter((c) => c.source_table === "kot_orders").map((c) => c.source_id),
@@ -580,11 +592,12 @@ function FolioPage() {
 
   async function pullFoodCharges() {
     if (!folio || !booking) return;
-    const { data: kots } = await supabase
+    const { data: kots, error: __qe12 } = await supabase
       .from("kot_orders")
       .select("id,kot_number,sub_total,gst_amount,total_amount,status")
       .eq("booking_id", booking.id)
       .in("status", ["served", "billed"]);
+    if (__qe12) reportQueryError("kot orders", __qe12);
     if (!kots || kots.length === 0) return toast.info("No food KOTs to pull");
     const existing = new Set(charges.filter((c) => c.source_table === "kot_orders").map((c) => c.source_id));
     const toAdd = (kots as any[]).filter((k) => !existing.has(k.id));
@@ -640,10 +653,11 @@ function FolioPage() {
       const hits = await searchGuests(propertyId, q, 10);
       const ids = hits.map((h) => h.id);
       if (!ids.length) { setGuestHits([]); return; }
-      const { data } = await supabase
+      const { data, error: __qe13 } = await supabase
         .from("guests")
         .select("id,name,mobile,gst_number,company,address,city,state,state_code")
         .in("id", ids);
+      if (__qe13) reportQueryError("guests", __qe13);
       setGuestHits(((data ?? []) as unknown as BillToGuest[]));
     }, 350);
   }
@@ -770,7 +784,8 @@ function FolioPage() {
 
   async function refetchCharges() {
     if (!folio) return charges;
-    const { data } = await supabase.from("folio_charges").select("*").eq("folio_id", folio.id).eq("is_wiped", false);
+    const { data, error: __qe14 } = await supabase.from("folio_charges").select("*").eq("folio_id", folio.id).eq("is_wiped", false);
+    if (__qe14) reportQueryError("folio charges", __qe14);
     return ((data ?? []) as unknown as Charge[]);
   }
 
@@ -1165,7 +1180,8 @@ function FolioPage() {
     if (error) return toast.error(error.message);
     setPayOpen(false);
     setPayAmount(""); setPayRef(""); setPayNote(""); setPayMode("cash");
-    const { data } = await supabase.from("payments").select("*").eq("folio_id", folio.id);
+    const { data, error: __qe15 } = await supabase.from("payments").select("*").eq("folio_id", folio.id);
+    if (__qe15) reportQueryError("payments", __qe15);
     const nextP = ((data ?? []) as unknown as Payment[]);
     await persistTotals(charges, nextP);
     toast.success("Payment recorded");
@@ -1199,13 +1215,14 @@ function FolioPage() {
     const ids = payments.map((p) => p.id);
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
+      const { data, error: __qe16 } = await supabase
         .from("activity_log" as any)
         .select("reference_id,user_name,details,created_at")
         .eq("property_id", booking.property_id)
         .eq("action_type", "PAYMENT_MODE_CHANGED")
         .in("reference_id", ids)
         .order("created_at", { ascending: false });
+      if (__qe16) reportQueryError("activity log", __qe16);
       if (cancelled) return;
       const map: Record<string, Array<{ old_mode: string; new_mode: string; user_name: string; created_at: string }>> = {};
       ((data ?? []) as any[]).forEach((row) => {
@@ -1323,10 +1340,11 @@ function FolioPage() {
           // only have room_number, so re-query by booking_rooms.id
         }
       }
-      const { data: brs } = await supabase
+      const { data: brs, error: __qe17 } = await supabase
         .from("booking_rooms")
         .select("room_id")
         .eq("booking_id", booking.id);
+      if (__qe17) reportQueryError("booking rooms", __qe17);
       const roomIds = (brs ?? []).map((x: any) => x.room_id).filter(Boolean) as string[];
       if (roomIds.length > 0) {
         await supabase.from("rooms").update({

@@ -19,6 +19,7 @@ import {
 } from "@/lib/staff-hr";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { istToday } from "@/lib/date";
+import { reportQueryError } from "@/lib/queryError";
 
 export const Route = createFileRoute("/_authenticated/staff/attendance")({
   head: () => ({ meta: [{ title: "Attendance — HotelPilot" }] }),
@@ -43,18 +44,20 @@ function AttendancePage() {
 
   const loadStaff = useCallback(async () => {
     if (!propertyId) return;
-    const { data } = await supabase.from("staff")
+    const { data, error: __qe1 } = await supabase.from("staff")
       .select("id,name,designation,department")
       .eq("property_id", propertyId).eq("is_active", true)
       .order("name");
+    if (__qe1) reportQueryError("staff", __qe1);
     setStaff((data ?? []) as StaffRow[]);
   }, [propertyId]);
 
   const loadAtt = useCallback(async () => {
     if (!propertyId) return;
-    const { data } = await supabase.from("attendance")
+    const { data, error: __qe2 } = await supabase.from("attendance")
       .select("id,staff_id,status,check_in,check_out,hours_worked,notes")
       .eq("property_id", propertyId).eq("attendance_date", date);
+    if (__qe2) reportQueryError("attendance", __qe2);
     const map: Record<string, AttRow> = {};
     (data ?? []).forEach((r) => { map[(r as AttRow).staff_id] = r as AttRow; });
     setAtt(map);

@@ -20,6 +20,7 @@ import {
   type KotItemForPrint,
   type PrinterInfo,
 } from "@/lib/kotPrint";
+import { reportQueryError } from "@/lib/queryError";
 
 export type SegmentKind = "food" | "laundry";
 
@@ -68,7 +69,7 @@ function punchKey(billId: string, createdAt: string) {
 }
 
 async function fetchKotPrinter(propertyId: string) {
-  const { data } = await supabase
+  const { data, error: __qe1 } = await supabase
     .from("printers")
     .select("name,paper_size,type,is_default")
     .eq("property_id", propertyId)
@@ -76,6 +77,7 @@ async function fetchKotPrinter(propertyId: string) {
     .in("type", ["kot", "both"])
     .order("is_default", { ascending: false })
     .limit(1);
+  if (__qe1) reportQueryError("printers", __qe1);
   const row = data?.[0] as { name?: string; paper_size?: string | null } | undefined;
   if (!row?.name) return null;
   return { name: row.name, paper_size: (row.paper_size as string) ?? "80mm" };

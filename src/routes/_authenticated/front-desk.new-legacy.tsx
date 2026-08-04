@@ -47,6 +47,7 @@ import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { reportQueryError } from "@/lib/queryError";
 export const Route = createFileRoute("/_authenticated/front-desk/new-legacy")({
   head: () => ({ meta: [{ title: "New Booking — HotelPilot" }] }),
   validateSearch: (s: Record<string, unknown>) => ({
@@ -486,7 +487,7 @@ function NewBookingPage() {
       // the mobile already belongs to a guest on this property. If so, ask
       // the user whether to reuse the existing guest record.
       if (!guestId && mobile.trim()) {
-        const { data: dup } = await supabase
+        const { data: dup, error: __qe1 } = await supabase
           .from("guests")
           .select("id,name,mobile")
           .eq("property_id", current.id)
@@ -494,6 +495,7 @@ function NewBookingPage() {
           .eq("is_wiped", false)
           .limit(1)
           .maybeSingle();
+        if (__qe1) reportQueryError("guests", __qe1);
         if (dup) {
           const reuse = confirm(
             `A guest with mobile ${mobile} already exists: "${dup.name}".\n\n` +
@@ -678,7 +680,8 @@ function NewBookingPage() {
 
       // 7) Advance payment record (Issue #5)
       if (advance > 0) {
-        const { data: folioId } = await supabase.rpc("get_or_create_folio", { _booking_id: booking!.id });
+        const { data: folioId, error: __qe2 } = await supabase.rpc("get_or_create_folio", { _booking_id: booking!.id });
+        if (__qe2) reportQueryError("get or create folio", __qe2);
         await supabase.from("payments").insert({
           property_id: current.id,
           booking_id: booking!.id,

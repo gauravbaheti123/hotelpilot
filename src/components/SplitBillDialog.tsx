@@ -26,6 +26,7 @@ import { useAuth, hasRole } from "@/hooks/use-auth";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { ArrowLeft, ArrowRight, Loader2, SplitSquareHorizontal, Plus, Trash2 } from "lucide-react";
 import { Percent } from "lucide-react";
+import { reportQueryError } from "@/lib/queryError";
 
 interface Charge {
   id: string; charge_type: string; description: string;
@@ -123,9 +124,10 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   useEffect(() => {
     (async () => {
       if (!open || !user?.id || !booking?.property_id) return;
-      const { data: pct } = await supabase.rpc("user_max_discount_pct", {
+      const { data: pct, error: __qe1 } = await supabase.rpc("user_max_discount_pct", {
         _user_id: user.id, _property_id: booking.property_id,
       });
+      if (__qe1) reportQueryError("user max discount pct", __qe1);
       const n = Number(pct);
       setMaxDiscPct(Number.isFinite(n) ? n : 0);
     })();
@@ -190,10 +192,11 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       setPayAlloc({});
       allocConfirmedRef.current = false;
       if (!open || !folio?.id) return;
-      const { data } = await supabase
+      const { data, error: __qe2 } = await supabase
         .from("payments")
         .select("id,amount,mode,reference_no,paid_at,notes,booking_id,property_id")
         .eq("folio_id", folio.id);
+      if (__qe2) reportQueryError("payments", __qe2);
       setParentPayments(
         ((data ?? []) as any[]).map((p) => ({
           id: p.id,
@@ -610,10 +613,11 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   async function repointBills(parentFolioId: string, childFolioIds: string[]) {
     try {
       if (childFolioIds.length === 0) return;
-      const { data: childCharges } = await supabase
+      const { data: childCharges, error: __qe3 } = await supabase
         .from("folio_charges")
         .select("folio_id,source_table,source_id")
         .in("folio_id", childFolioIds);
+      if (__qe3) reportQueryError("folio charges", __qe3);
       const bySegment = new Map<string, string>();
       for (const c of (childCharges ?? []) as any[]) {
         if (c.source_table === "segment_bills" && c.source_id) bySegment.set(c.source_id, c.folio_id);
@@ -622,10 +626,11 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         ? [...bySegment.values()][0]
         : childFolioIds[childFolioIds.length - 1];
 
-      const { data: segs } = await supabase
+      const { data: segs, error: __qe4 } = await supabase
         .from("segment_bills")
         .select("id")
         .eq("folio_id", parentFolioId);
+      if (__qe4) reportQueryError("segment bills", __qe4);
       for (const s of (segs ?? []) as any[]) {
         await supabase.from("segment_bills")
           .update({ folio_id: bySegment.get(s.id) ?? fallback } as any).eq("id", s.id);
@@ -829,7 +834,8 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         await supabase.from("bookings").update({
           status: "checked_out", checked_out_at: now, checked_out_by: user?.id ?? null,
         } as any).eq("id", booking.id);
-        const { data: brs } = await supabase.from("booking_rooms").select("id,room_id").eq("booking_id", booking.id);
+        const { data: brs, error: __qe5 } = await supabase.from("booking_rooms").select("id,room_id").eq("booking_id", booking.id);
+        if (__qe5) reportQueryError("booking rooms", __qe5);
         const roomIds = ((brs ?? []) as any[]).map((x) => x.room_id).filter(Boolean);
         for (const br of (brs ?? []) as any[]) {
           await supabase.from("booking_rooms").update({ actual_check_out: now } as any).eq("id", br.id);
@@ -855,8 +861,9 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     const target = createdBills[discBillIdx];
     if (!target) return;
     // Re-fetch this folio's charges to recompute totals with the new bill discount
-    const { data: chargeRows } = await supabase.from("folio_charges")
+    const { data: chargeRows, error: __qe6 } = await supabase.from("folio_charges")
       .select("*").eq("folio_id", target.folio_id);
+    if (__qe6) reportQueryError("folio charges", __qe6);
     const rows = (chargeRows ?? []) as any[];
     const gstMode = target.party.bill_type === "gst_invoice" ? "gst" : "cash";
     const billDisc: BillDiscount | null = value > 0 ? { type, value } : null;

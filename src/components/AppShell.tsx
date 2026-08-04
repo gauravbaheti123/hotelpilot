@@ -78,6 +78,7 @@ import { RemindersBell } from "./Reminders";
 import { useSuperadminView } from "@/lib/superadmin-view";
 import { QZStatusIndicator } from "./QZStatusIndicator";
 import { ProfileDialog } from "./ProfileDialog";
+import { reportQueryError } from "@/lib/queryError";
 
 interface NavItem {
   to: string;
@@ -334,11 +335,12 @@ function AppShellInner({
     if (!user?.id) return;
     let mounted = true;
     (async () => {
-      const { data } = await supabase
+      const { data, error: __qe1 } = await supabase
         .from("profiles")
         .select("name, photo_url")
         .eq("id", user.id)
         .maybeSingle();
+      if (__qe1) reportQueryError("profiles", __qe1);
       if (!mounted) return;
       setDisplayName((data as any)?.name ?? "");
       setPhotoUrl((data as any)?.photo_url ?? null);

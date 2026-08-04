@@ -13,6 +13,7 @@ import { computeKotTotals } from "@/lib/food";
 import { useAuth } from "@/hooks/use-auth";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { AlertTriangle, Plus, Minus, Trash2 } from "lucide-react";
+import { reportQueryError } from "@/lib/queryError";
 
 interface MenuItem {
   id: string; name: string; price: number; gst_rate: number;
@@ -64,20 +65,22 @@ export function EditKotDialog({
     setShowReprint(false);
     setLoading(true);
     (async () => {
-      const { data } = await supabase.from("kot_orders")
+      const { data, error: __qe1 } = await supabase.from("kot_orders")
         .select(`id,kot_number,kot_type,table_no,booking_id,notes,status,printed_at,
           sub_total,gst_amount,total_amount,property_id,
           kot_items(id,menu_item_id,item_name,qty,rate,gst_rate,kot_station,notes)`)
         .eq("id", kotId).maybeSingle();
+      if (__qe1) reportQueryError("kot orders", __qe1);
       const k = data as unknown as KotSnapshot | null;
       setKot(k);
       setTableNo(k?.table_no ?? "");
       setNotes(k?.notes ?? "");
       setLines((k?.kot_items ?? []).map((i) => ({ ...i })));
       if (k?.property_id) {
-        const { data: mi } = await supabase.from("menu_items")
+        const { data: mi, error: __qe2 } = await supabase.from("menu_items")
           .select("id,name,price,gst_rate,kot_station,is_available,category_id")
           .eq("property_id", k.property_id).eq("is_available", true).order("name");
+        if (__qe2) reportQueryError("menu items", __qe2);
         setItems((mi ?? []) as MenuItem[]);
       }
       setLoading(false);
@@ -151,9 +154,10 @@ export function EditKotDialog({
       if (uErr) throw uErr;
 
       // Keep any linked folio_charge in sync so KOT total and bill never drift.
-      const { data: fc } = await supabase.from("folio_charges")
+      const { data: fc, error: __qe3 } = await supabase.from("folio_charges")
         .select("id,gst_rate")
         .eq("source_table", "kot_orders").eq("source_id", kot.id).maybeSingle();
+      if (__qe3) reportQueryError("folio charges", __qe3);
       if (fc) {
         await supabase.from("folio_charges").update({
           qty: 1, rate: t.sub_total, amount: t.sub_total,
@@ -196,9 +200,10 @@ export function EditKotDialog({
   async function reprint() {
     if (!kot) return;
     // Fetch fresh items and open print window
-    const { data } = await supabase.from("kot_orders")
+    const { data, error: __qe4 } = await supabase.from("kot_orders")
       .select("kot_number,kot_type,table_no,created_at,total_amount,notes,rooms(room_number),kot_items(item_name,qty,rate,notes)")
       .eq("id", kot.id).maybeSingle();
+    if (__qe4) reportQueryError("kot orders", __qe4);
     const k = data as any;
     if (!k) return;
     const esc = (s: unknown) => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
