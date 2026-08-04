@@ -448,6 +448,15 @@ function RestaurantPage() {
     return (p: PayableRow) => p.bill_no ?? (p.charge_id ? byCharge.get(p.charge_id) ?? null : null);
   }, [directCharges]);
 
+  // Display-only: append the bill number to whatever description staff entered.
+  function descWithBill(description?: string | null, billNo?: string | null) {
+    const base = (description ?? "").trim() || "Restaurant Charge";
+    const bill = (billNo ?? "").trim();
+    if (!bill) return base;
+    if (base.toLowerCase().includes(bill.toLowerCase())) return base;
+    return `${base} — Bill No ${bill}`;
+  }
+
   function groupByOutlet<T>(rows: T[], name: (r: T) => string, amount: (r: T) => number): Array<[string, number]> {
     const m = new Map<string, number>();
     for (const r of rows) m.set(name(r), (m.get(name(r)) ?? 0) + Number(amount(r) || 0));
@@ -985,7 +994,7 @@ function RestaurantPage() {
                             {outletName(c.outlet_id)}
                           </TableCell>
                           <TableCell className="text-xs font-mono">{c.bill_no || "—"}</TableCell>
-                          <TableCell className="text-xs">{c.description}</TableCell>
+                          <TableCell className="text-xs">{descWithBill(c.description, c.bill_no)}</TableCell>
                           <TableCell className="text-right font-medium">₹{Number(c.amount).toFixed(2)}</TableCell>
                           <TableCell>
                             {c.is_settled
@@ -1068,7 +1077,7 @@ function RestaurantPage() {
                                   <TableCell className="text-xs">{p.charge_date}</TableCell>
                                   <TableCell className="text-xs">{oname}</TableCell>
                                   <TableCell className="text-xs font-mono">{payableBillNo(p) || "—"}</TableCell>
-                                  <TableCell className="text-xs">{p.description ?? "—"}</TableCell>
+                                  <TableCell className="text-xs">{descWithBill(p.description, payableBillNo(p))}</TableCell>
                                   <TableCell className="text-right">₹{Number(p.amount).toFixed(2)}</TableCell>
                                 </TableRow>
                               ))}
