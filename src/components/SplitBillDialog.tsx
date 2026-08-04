@@ -1156,9 +1156,6 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           </div>
         )}
 
-        {step === 4 && (
-          <></>
-        )}
         {step === 5 && (
           <div className="space-y-4">
             <div className="text-sm font-medium">Allocate Existing Payments</div>
