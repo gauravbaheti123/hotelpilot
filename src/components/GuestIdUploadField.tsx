@@ -70,6 +70,8 @@ export function GuestIdUploadField({
             <img
               src={driveThumbnailUrl(existingDoc.driveFileId)!}
               alt="Existing ID on file"
+              loading="lazy"
+              decoding="async"
               className="h-14 w-14 rounded object-cover border bg-background"
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
             />
@@ -166,6 +168,8 @@ export function GuestIdUploadField({
             <img
               src={value.previewUrl}
               alt="ID preview"
+              loading="lazy"
+              decoding="async"
               className="h-14 w-14 rounded object-cover border"
             />
           ) : (

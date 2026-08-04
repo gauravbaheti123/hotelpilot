@@ -83,7 +83,7 @@ export function ProfileDialog({
           <div className="flex items-center gap-4">
             <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center overflow-hidden">
               {photoUrl ? (
-                <img src={photoUrl} alt="avatar" className="h-full w-full object-cover" />
+                <img src={photoUrl} alt="avatar" loading="lazy" decoding="async" className="h-full w-full object-cover" />
               ) : (
                 <UserCircle2 className="h-10 w-10 text-muted-foreground" />
               )}

@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,15 @@ const SAMPLE_CSV = [
 
 const GUEST_FETCH_LIMIT = 15500;
 const GUEST_PAGE_SIZE = 1000;
+
+/**
+ * Part 3 (perf) — the list itself is now genuinely paginated: 100 rows per
+ * request, more fetched on scroll. The big page size above is only used by
+ * CSV export / import de-dupe, which legitimately need every row.
+ */
+const LIST_PAGE_SIZE = 100;
+/** Row height used by the virtualizer (px) — matches px-4 py-3 rows. */
+const ROW_HEIGHT = 61;
 
 async function fetchGuestsPaginated<T>(
   propertyId: string,
@@ -109,7 +119,12 @@ function GuestsListPage() {
   const { currentId: propertyId, current } = useCurrentProperty();
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>([]);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [q, setQ] = useState("");
+  const [debouncedQ, setDebouncedQ] = useState("");
   const [filter, setFilter] = useState<"all" | "blacklist" | "corporate">("all");
   const [toDelete, setToDelete] = useState<Row | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -123,22 +138,87 @@ function GuestsListPage() {
   const [dedupeMode, setDedupeMode] = useState<"skip" | "update">("skip");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  async function load() {
-    if (!propertyId) return;
-    try {
-      const data = await fetchGuestsPaginated<Row>(
-        propertyId,
-        "id,name,mobile,email,city,tags,is_blacklisted,gst_number,company",
-        "created_at",
-        false,
+  // Debounce the search box so typing doesn't fire a query per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q.trim()), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  /**
+   * Fetches one page of guests. Search and the filter chips are applied
+   * server-side now that the client no longer holds the full table.
+   */
+  const fetchPage = useCallback(async (offset: number) => {
+    const term = debouncedQ.replace(/[,()]/g, " ").trim();
+    let query = supabase.from("guests")
+      .select("id,name,mobile,email,city,tags,is_blacklisted,gst_number,company", { count: "exact" })
+      .eq("property_id", propertyId!);
+    if (filter === "blacklist") query = query.eq("is_blacklisted", true);
+    if (filter === "corporate") query = query.not("gst_number", "is", null);
+    if (term) {
+      const like = `%${term}%`;
+      query = query.or(
+        `name.ilike.${like},mobile.ilike.${like},email.ilike.${like},company.ilike.${like}`,
       );
-      setRows(data);
-      setSelected(new Set());
-    } catch (error: any) {
-      toastError(error, "Could not load guests");
     }
-  }
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [propertyId]);
+    const { data, error, count } = await query
+      .order("created_at", { ascending: false })
+      .range(offset, offset + LIST_PAGE_SIZE - 1);
+    if (error) throw error;
+    return { batch: (data ?? []) as unknown as Row[], count: count ?? 0 };
+  }, [propertyId, filter, debouncedQ]);
+
+  // First page — re-runs whenever property, search term or filter changes.
+  useEffect(() => {
+    if (!propertyId) return;
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      try {
+        const { batch, count } = await fetchPage(0);
+        if (cancelled) return;
+        setRows(batch);
+        setTotal(count);
+        setHasMore(batch.length === LIST_PAGE_SIZE);
+        setSelected(new Set());
+      } catch (error: any) {
+        if (!cancelled) toastError(error, "Could not load guests");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [propertyId, fetchPage]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const { batch } = await fetchPage(rows.length);
+      setRows((prev) => [...prev, ...batch]);
+      setHasMore(batch.length === LIST_PAGE_SIZE);
+    } catch (error: any) {
+      toastError(error, "Could not load more guests");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, fetchPage, rows.length]);
+
+  /** Full reload after a mutation (delete / import). */
+  const load = useCallback(() => {
+    setRows([]);    if (!propertyId) return;
+    (async () => {
+      try {
+        const { batch, count } = await fetchPage(0);
+        setRows(batch);
+        setTotal(count);
+        setHasMore(batch.length === LIST_PAGE_SIZE);
+        setSelected(new Set());
+      } catch (error: any) {
+        toastError(error, "Could not load guests");
+      }
+    })();
+  }, [propertyId, fetchPage]);
 
   async function confirmDelete() {
     if (!toDelete) return;
@@ -298,18 +378,26 @@ function GuestsListPage() {
     if (ok > 0) load();
   }
 
-  const filtered = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (filter === "blacklist" && !r.is_blacklisted) return false;
-      if (filter === "corporate" && !r.gst_number) return false;
-      if (!term) return true;
-      return r.name.toLowerCase().includes(term) ||
-        (r.mobile ?? "").includes(term) ||
-        (r.email ?? "").toLowerCase().includes(term) ||
-        (r.company ?? "").toLowerCase().includes(term);
-    });
-  }, [rows, q, filter]);
+  // Search and filtering now happen server-side, so the loaded rows already
+  // are the result set.
+  const filtered = rows;
+
+  // Virtualized scroll container — only visible rows are in the DOM.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 12,
+  });
+  const virtualRows = virtualizer.getVirtualItems();
+
+  // Infinite scroll: pull the next page as the last rendered row approaches.
+  useEffect(() => {
+    const last = virtualRows[virtualRows.length - 1];
+    if (!last) return;
+    if (last.index >= filtered.length - 10 && hasMore && !loadingMore) void loadMore();
+  }, [virtualRows, filtered.length, hasMore, loadingMore, loadMore]);
 
   const allSelected = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
   function toggleAll() {
@@ -328,7 +416,7 @@ function GuestsListPage() {
     <AppShell title="Guests">
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Input placeholder="Search name / mobile / email / company…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-sm" />
-        <Chip label={`All (${rows.length})`} active={filter === "all"} onClick={() => setFilter("all")} />
+        <Chip label={`All (${total})`} active={filter === "all"} onClick={() => setFilter("all")} />
         <Chip label="Corporate" active={filter === "corporate"} onClick={() => setFilter("corporate")} />
         <Chip label="Blacklist" active={filter === "blacklist"} onClick={() => setFilter("blacklist")} />
         <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -351,11 +439,23 @@ function GuestsListPage() {
           <div className="flex items-center gap-3 px-4 py-2 bg-muted/40 text-xs">
             <Checkbox checked={allSelected} onCheckedChange={toggleAll} aria-label="Select all" />
             <span className="text-muted-foreground">Select all on this view</span>
+            <span className="ml-auto text-muted-foreground">
+              Showing {filtered.length} of {total}
+            </span>
           </div>
         )}
-        {filtered.length === 0 && <p className="p-4 text-sm text-muted-foreground">No guests.</p>}
-        {filtered.map((g) => (
-          <div key={g.id} className="flex items-center gap-3 px-4 py-3 hover:bg-accent">
+        {loading && <p className="p-4 text-sm text-muted-foreground">Loading…</p>}
+        {!loading && filtered.length === 0 && <p className="p-4 text-sm text-muted-foreground">No guests.</p>}
+        <div ref={scrollRef} className="max-h-[calc(100vh-16rem)] overflow-auto">
+        <div className="relative w-full" style={{ height: `${virtualizer.getTotalSize()}px` }}>
+        {virtualRows.map((vr) => {
+          const g = filtered[vr.index];
+          return (
+          <div key={g.id}
+            ref={virtualizer.measureElement}
+            data-index={vr.index}
+            className="absolute left-0 top-0 w-full flex items-center gap-3 border-b px-4 py-3 hover:bg-accent"
+            style={{ transform: `translateY(${vr.start}px)` }}>
             <Checkbox checked={selected.has(g.id)} onCheckedChange={() => toggleOne(g.id)}
               aria-label={`Select ${g.name}`} onClick={(e) => e.stopPropagation()} />
             <Link to="/guests/$id" params={{ id: g.id }} className="flex-1 min-w-0">
@@ -385,7 +485,11 @@ function GuestsListPage() {
               </Button>
             </div>
           </div>
-        ))}
+          );
+        })}
+        </div>
+        {loadingMore && <p className="p-3 text-center text-xs text-muted-foreground">Loading more…</p>}
+        </div>
       </CardContent></Card>
 
       <AlertDialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>

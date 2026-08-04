@@ -78,18 +78,24 @@ export async function searchGuestsDetailed(
     .limit(limit);
   if (error) return [];
   const guests = (data ?? []) as any[];
-  return Promise.all(
-    guests.map(async (g) => {
-      const { data: bks, error: __qe1 } = await supabase
-        .from("bookings")
-        .select("check_in")
-        .eq("guest_id", g.id)
-        .order("check_in", { ascending: false });
-      if (__qe1) reportQueryError("bookings", __qe1);
-      const rows = bks ?? [];
-      return { ...g, visit_count: rows.length, last_stay: rows[0]?.check_in ?? null } as GuestSearchDetail;
-    }),
-  );
+  if (!guests.length) return [];
+  // One batched query for every hit instead of a fetch per guest.
+  const { data: bks, error: __qe1 } = await supabase
+    .from("bookings")
+    .select("guest_id,check_in")
+    .in("guest_id", guests.map((g) => g.id))
+    .order("check_in", { ascending: false });
+  if (__qe1) reportQueryError("bookings", __qe1);
+  const byGuest = new Map<string, string[]>();
+  for (const b of (bks ?? []) as any[]) {
+    const list = byGuest.get(b.guest_id) ?? [];
+    list.push(b.check_in);
+    byGuest.set(b.guest_id, list);
+  }
+  return guests.map((g) => {
+    const rows = byGuest.get(g.id) ?? [];
+    return { ...g, visit_count: rows.length, last_stay: rows[0] ?? null } as GuestSearchDetail;
+  });
 }
 
 /**
