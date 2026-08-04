@@ -25,7 +25,7 @@ import { StepPayment } from "@/components/booking-wizard/StepPayment";
 import { StepRemarks } from "@/components/booking-wizard/StepRemarks";
 import { StepReview } from "@/components/booking-wizard/StepReview";
 import { supabase } from "@/integrations/supabase/client";
-import { userDisplayName } from "@/lib/user";
+import { userDisplayName } from "@/lib/activityLog";
 import { submitWizard } from "@/lib/bookingWizardSubmit";
 import type { CreateBookingResult } from "@/lib/bookingCreate";
 import {
