@@ -642,10 +642,27 @@ function OwnerDashboard({
         if (status === "SUBSCRIBED") setLiveStatus("live");
         else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") setLiveStatus("polling");
       });
-    const interval = setInterval(() => { if (!cancelled) reload(); }, 60_000);
+    // Visibility-aware polling: no interval while the tab is hidden; on
+    // return, refresh immediately and restart the 60s cycle from that point.
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const startPolling = () => {
+      if (interval) clearInterval(interval);
+      interval = setInterval(() => { if (!cancelled) reload(); }, 60_000);
+    };
+    const stopPolling = () => {
+      if (interval) { clearInterval(interval); interval = null; }
+    };
+    const onVisibility = () => {
+      if (cancelled) return;
+      if (document.visibilityState === "hidden") stopPolling();
+      else { reload(); startPolling(); }
+    };
+    if (typeof document === "undefined" || document.visibilityState === "visible") startPolling();
+    if (typeof document !== "undefined") document.addEventListener("visibilitychange", onVisibility);
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      stopPolling();
+      if (typeof document !== "undefined") document.removeEventListener("visibilitychange", onVisibility);
       supabase.removeChannel(channel);
     };
   }, [propertyId, reload]);
