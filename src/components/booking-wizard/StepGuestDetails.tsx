@@ -12,7 +12,6 @@ import { IdDocUpload } from "@/components/booking-wizard/IdDocUpload";
 import { NATIONS, DEFAULT_NATION, titleCase } from "@/lib/indiaGeo";
 import { ID_PROOF_TYPES, ID_PROOF_LABELS } from "@/lib/guests";
 import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
-import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 import {
   searchGuestsDetailed, lookupExistingGuestId,
   type GuestSearchDetail, type GuestIdLookupResult,
@@ -139,7 +138,6 @@ export function StepGuestDetails({ propertyId, guest, onChange }: Props) {
   }, [foreign]);
 
   const mobileError = guest.mobile.length > 0 && !isValidMobile(guest.mobile);
-  const gstError = !isValidOrEmptyGSTIN(guest.gstNumber);
 
   return (
     <div className="space-y-8">
