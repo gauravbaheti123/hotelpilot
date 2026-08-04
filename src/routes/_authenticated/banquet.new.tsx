@@ -25,7 +25,7 @@ import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
 import { type TariffPlan } from "@/lib/tariff";
 import { useRoomCategories, useRooms, useTariffPlans } from "@/hooks/use-rooms";
-import { commitRoomBlocks, nightsBetween } from "@/lib/eventRoomBlocks";
+import { commitRoomBlocks } from "@/lib/eventRoomBlocks";
 import { EventRoomBlocks } from "@/components/booking-wizard/EventRoomBlocks";
 import {
   assignedBlocksTotal, buildAssignedBlocks, checkRoomBlockDiscounts, roomBlocksSummary,
