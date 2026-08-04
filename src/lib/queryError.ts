@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { humanizeError } from "./errorMessage";
 
 /**
  * Phase 90 — centralised reporting for Supabase read failures.
@@ -48,7 +49,8 @@ export function reportQueryError(label: string, error: unknown): void {
   if (last && now - last < DEDUPE_MS) return;
   recent.set(key, now);
 
-  toast.error(`Failed to load ${label}: ${message}`);
+  const human = humanizeError(error, `loading ${label}`);
+  toast.error(human.message, human.details ? { description: human.details } : undefined);
 }
 
 /**
