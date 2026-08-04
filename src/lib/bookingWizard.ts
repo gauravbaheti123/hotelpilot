@@ -61,6 +61,8 @@ export interface WizardBillTo {
   companyId: string;
   name: string;
   gstin: string;
+  /** Manually recorded GST registration status: "" | "active" | "cancelled". */
+  gstStatus: string;
   address: string;
   email: string;
   city: string;
@@ -170,6 +172,7 @@ export function emptyBillTo(): WizardBillTo {
     companyId: "",
     name: "",
     gstin: "",
+    gstStatus: "",
     address: "",
     email: "",
     city: DEFAULT_CITY,
