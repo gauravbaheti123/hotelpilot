@@ -10,7 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
-import { fetchTariffPlans, pickTariffPlan, type TariffPlan } from "@/lib/tariff";
+import { pickTariffPlan } from "@/lib/tariff";
+import { useRooms, useTariffPlans } from "@/hooks/use-rooms";
 import { Loader2, BedDouble, Sparkles } from "lucide-react";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
@@ -59,6 +60,10 @@ export function AssignRoomDialog({
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Shared caches — this dialog used to re-fetch rooms + tariff plans on
+  // every open.
+  const { rooms: allRooms } = useRooms(propertyId);
+  const { plans } = useTariffPlans(propertyId);
 
   useEffect(() => {
     if (!open) return;
@@ -69,18 +74,12 @@ export function AssignRoomDialog({
       setLoading(true);
       // Phase 27b — standard rates come from Tariff Plans, resolved against the
       // booking's own check-in date (this is a stay being priced, not "today").
-      const plans: TariffPlan[] = await fetchTariffPlans(propertyId).catch(() => []);
-      // Fetch all vacant rooms; RLS scopes to the property.
-      const { data, error } = await supabase
-        .from("rooms")
-        .select("id,room_number,category_id,status,housekeeping_status,room_categories(name)")
-        .eq("property_id", propertyId)
-        .eq("is_active", true)
-        .eq("status", "vacant")
-        .order("room_number");
-      if (error) toastError(error);
+      // Vacant rooms only, filtered from the shared active-rooms cache.
+      const data = allRooms
+        .filter((r) => r.status === "vacant")
+        .sort((a, b) => a.room_number.localeCompare(b.room_number, undefined, { numeric: true }));
       // Exclude rooms already booked for the same date window.
-      const roomIds = (data ?? []).map((r: any) => r.id);
+      const roomIds = data.map((r) => r.id);
       let busyIds = new Set<string>();
       if (roomIds.length > 0) {
         const { data: br, error: __qe1 } = await supabase
@@ -101,7 +100,7 @@ export function AssignRoomDialog({
           }
         }
       }
-      const opts: RoomOption[] = (data ?? [])
+      const opts: RoomOption[] = data
         .filter((r: any) => !busyIds.has(r.id))
         .map((r: any) => ({
           id: r.id,
@@ -120,7 +119,7 @@ export function AssignRoomDialog({
       if (suggested) setPickedId(suggested.id);
       setLoading(false);
     })();
-  }, [open, propertyId, categoryId, checkIn, checkOut]);
+  }, [open, propertyId, categoryId, checkIn, checkOut, allRooms, plans]);
 
   const sameCat = useMemo(
     () => rooms.filter((r) => r.category_id === categoryId),

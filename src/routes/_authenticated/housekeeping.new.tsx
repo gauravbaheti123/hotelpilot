@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
+import { useRooms } from "@/hooks/use-rooms";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { TASK_TYPES, TASK_PRIORITIES, type TaskType, type TaskPriority } from "@/lib/housekeeping";
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/_authenticated/housekeeping/new")({
 function NewTaskPage() {
   const router = useRouter();
   const { currentId: propertyId } = useCurrentProperty();
+  const { rooms: sharedRooms } = useRooms(propertyId);
   const [rooms, setRooms] = useState<{ id: string; room_number: string }[]>([]);
   const [staff, setStaff] = useState<{ id: string; name: string }[]>([]);
   const [roomId, setRoomId] = useState<string>("");
@@ -36,16 +38,19 @@ function NewTaskPage() {
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Rooms come from the shared cache (see use-rooms.ts); only staff is
+  // specific to this screen.
+  useEffect(() => {
+    setRooms(sharedRooms.map((r) => ({ id: r.id, room_number: r.room_number })));
+  }, [sharedRooms]);
+
   useEffect(() => {
     if (!propertyId) return;
     (async () => {
-      const [{ data: r, error: __qp1 }, { data: s, error: __qp2 }] = await Promise.all([
-        supabase.from("rooms").select("id,room_number").eq("property_id", propertyId).eq("is_active", true).order("room_number"),
-        supabase.from("staff").select("id,name").eq("property_id", propertyId).eq("is_active", true).order("name"),
-      ]);
-      if (__qp1) reportQueryError("rooms", __qp1);
+      const { data: s, error: __qp2 } = await supabase
+        .from("staff").select("id,name")
+        .eq("property_id", propertyId).eq("is_active", true).order("name");
       if (__qp2) reportQueryError("staff", __qp2);
-      setRooms((r ?? []) as typeof rooms);
       setStaff((s ?? []) as typeof staff);
     })();
   }, [propertyId]);

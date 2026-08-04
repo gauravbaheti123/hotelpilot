@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { useBillingCompanies } from "@/hooks/use-billing-companies";
 import { GSTIN_ERROR, isValidGSTIN, isValidOrEmptyGSTIN } from "@/lib/gstin";
 import { gstinLookup } from "@/lib/gstinLookup.functions";
 import { parseGstinProfile } from "@/lib/gstinProfile";
@@ -18,11 +19,6 @@ import { reportQueryError } from "@/lib/queryError";
 
 const NEW_COMPANY = "__new__";
 
-interface CompanyRow {
-  id: string; name: string; gstin: string | null; gst_status: string | null; address: string | null;
-  email: string | null; city: string | null; state: string | null; nation: string | null;
-}
-
 interface Props {
   propertyId: string;
   value: WizardBillTo;
@@ -30,26 +26,12 @@ interface Props {
 }
 
 export function StepBillTo({ propertyId, value, onChange }: Props) {
-  const [companies, setCompanies] = useState<CompanyRow[]>([]);
+  // Shared cache — this list is one of the slowest reads in the app and used
+  // to be re-fetched on every wizard mount.
+  const { companies } = useBillingCompanies(propertyId);
   const [looking, setLooking] = useState(false);
   const lastLookedUp = useRef<string>("");
   const runLookup = useServerFn(gstinLookup);
-
-  useEffect(() => {
-    if (!propertyId) return;
-    let cancelled = false;
-    (async () => {
-      const { data, error: __qe1 } = await supabase
-        .from("billing_companies")
-        .select("id,name,gstin,gst_status,address,email,city,state,nation")
-        .eq("property_id", propertyId)
-        .eq("is_active", true)
-        .order("name");
-      if (__qe1) reportQueryError("billing companies", __qe1);
-      if (!cancelled) setCompanies((data ?? []) as unknown as CompanyRow[]);
-    })();
-    return () => { cancelled = true; };
-  }, [propertyId]);
 
   function pick(id: string) {
     if (id === NEW_COMPANY) {

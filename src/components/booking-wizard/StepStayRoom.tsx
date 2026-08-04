@@ -12,9 +12,10 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAvailableRooms, type AvailableRoom } from "@/lib/roomAvailability";
 import {
-  fetchTariffPlans, findPlanByNameAndMeal, mealPlansForPlanName, planNamesForCategory,
+  findPlanByNameAndMeal, mealPlansForPlanName, planNamesForCategory,
   defaultMealPlanFor, type TariffPlan, NO_TARIFF_PLAN_ERROR,
 } from "@/lib/tariff";
+import { useRoomCategories, useTariffPlans } from "@/hooks/use-rooms";
 import { SOURCES, isValidStayRange, nightsBetween } from "@/lib/front-desk";
 import { useGstSlabs } from "@/hooks/use-gst-slabs";
 import { resolveGstRate, resolveGstRateInclusive } from "@/lib/gst";
@@ -47,25 +48,12 @@ export function StepStayRoom({
   propertyId, reservation, rooms, source, otaPartnerName,
   onRoomsChange, onMetaChange, onBlockedChange,
 }: Props) {
-  const [cats, setCats] = useState<Category[]>([]);
-  const [tariffs, setTariffs] = useState<TariffPlan[]>([]);
+  // Shared caches (see use-rooms.ts) — categories and tariff plans used to be
+  // re-fetched on every mount of this step.
+  const { categories: cats } = useRoomCategories(propertyId);
+  const { plans: tariffs } = useTariffPlans(propertyId);
   const [violations, setViolations] = useState<Record<string, string | null>>({});
   const { limit } = useDiscountLimit();
-
-  useEffect(() => {
-    if (!propertyId) return;
-    let cancelled = false;
-    (async () => {
-      const [c, t] = await Promise.all([
-        supabase.from("room_categories").select("id,name").eq("property_id", propertyId).order("name"),
-        fetchTariffPlans(propertyId).catch(() => [] as TariffPlan[]),
-      ]);
-      if (cancelled) return;
-      setCats(((c.data ?? []) as any[]).map((x) => ({ id: x.id, name: x.name })));
-      setTariffs(t);
-    })();
-    return () => { cancelled = true; };
-  }, [propertyId]);
 
   useEffect(() => {
     onBlockedChange(Object.values(violations).some(Boolean));
