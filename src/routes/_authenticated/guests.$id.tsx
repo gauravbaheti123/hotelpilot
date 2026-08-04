@@ -47,6 +47,7 @@ interface Guest {
 interface Stay {
   id: string; booking_number: string; status: string;
   check_in: string; check_out: string; total_amount: number;
+  rooms?: string[]; categories?: string[];
 }
 
 interface Feedback {
@@ -74,13 +75,20 @@ function GuestDetail() {
     setG((data as Guest | null) ?? null);
     setTagsInput((data?.tags ?? []).join(", "));
     const { data: b } = await supabase.from("bookings")
-      .select("id,booking_number,status,check_in,check_out,total_amount")
+      .select("id,booking_number,status,check_in,check_out,total_amount,booking_rooms(rooms!booking_rooms_room_id_fkey(room_number),room_categories(name))")
       .eq("guest_id", id).order("check_in", { ascending: false }).limit(50);
     // Hide banquet event-block stays once their 48h window has lapsed.
     const scope = await fetchBanquetScope(null);
-    setStays(((b ?? []) as any[]).filter(
-      (s) => !isBanquetRecord(scope, { booking_id: s.id }),
-    ) as Stay[]);
+    setStays(((b ?? []) as any[])
+      .filter((s) => !isBanquetRecord(scope, { booking_id: s.id }))
+      .map((s) => {
+        const brs = (s.booking_rooms ?? []) as any[];
+        return {
+          ...s,
+          rooms: Array.from(new Set(brs.map((r) => r.rooms?.room_number).filter(Boolean))).map(String),
+          categories: Array.from(new Set(brs.map((r) => r.room_categories?.name).filter(Boolean))).map(String),
+        };
+      }) as Stay[]);
     const { data: f } = await supabase.from("guest_feedback")
       .select("id,feedback_date,overall_rating,comments,source")
       .eq("guest_id", id).order("feedback_date", { ascending: false }).limit(20);
@@ -213,9 +221,6 @@ function GuestDetail() {
     const source = document.getElementById("guest-ledger-print-area");
     if (!source) { window.print(); return; }
     const html = source.outerHTML;
-    const parentStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-      .map((n) => n.outerHTML)
-      .join("\n");
     const printCss = `
       @page { size: A4 portrait; margin: 12mm; }
       html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; color: #000 !important; font-family: Arial, sans-serif; }
@@ -227,7 +232,10 @@ function GuestDetail() {
       .ledger-print .num { text-align: right; font-variant-numeric: tabular-nums; }
       .no-print { display: none !important; }
     `;
-    const doc = `<!doctype html><html><head><meta charset="utf-8"><title>Guest Ledger — ${g?.name ?? ""}</title>${parentStyles}<style>${printCss}</style></head><body>${html}</body></html>`;
+    // NOTE: parent stylesheets are deliberately NOT copied — the app's global
+    // `@media print { body * { visibility: hidden } }` rule (scoped to
+    // #invoice-print-area) would blank this page out entirely.
+    const doc = `<!doctype html><html><head><meta charset="utf-8"><title>Guest Ledger — ${g?.name ?? ""}</title><style>${printCss}</style></head><body>${html}</body></html>`;
     const iframe = document.createElement("iframe");
     iframe.setAttribute("aria-hidden", "true");
     iframe.style.position = "fixed";
@@ -462,7 +470,11 @@ function GuestDetail() {
                 <Link key={s.id} to="/front-desk/booking/$id" params={{ id: s.id }}
                   className="block px-4 py-3 text-sm hover:bg-accent">
                   <div className="flex items-center justify-between">
-                    <div className="font-medium">{s.booking_number}</div>
+                    <div className="font-medium">
+                      {s.rooms?.length
+                        ? `Room ${s.rooms.join(", ")}${s.categories?.length ? ` · ${s.categories.join(", ")}` : ""}`
+                        : s.booking_number}
+                    </div>
                     <Badge variant="outline" className="text-[10px]">{s.status}</Badge>
                   </div>
                   <div className="text-xs text-muted-foreground">
