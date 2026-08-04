@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrentProperty } from "@/hooks/use-property";
@@ -619,17 +620,16 @@ function NightAuditPage() {
           </CardContent>
         </Card>
 
-        {viewReport && (
-          <div className="fixed inset-0 z-50 bg-background/95 overflow-auto p-6">
-            <div className="max-w-3xl mx-auto space-y-4">
-              <div className="flex justify-between">
-                <h2 className="text-lg font-semibold">Audit Report — {viewReport.audit_date}</h2>
-                <Button size="sm" variant="outline" onClick={() => setViewReport(null)}>Close</Button>
-              </div>
+        <Dialog open={!!viewReport} onOpenChange={(o) => !o && setViewReport(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
+            <DialogHeader>
+              <DialogTitle>Audit Report — {viewReport?.audit_date}</DialogTitle>
+            </DialogHeader>
+            {viewReport && (
               <ReportView report={viewReport} propertyName={current?.name ?? ""} onPrint={() => window.print()} />
-            </div>
-          </div>
-        )}
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AppShell>
   );

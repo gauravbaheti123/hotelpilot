@@ -17,6 +17,7 @@ import { PlusCircle, Trash2, AlertTriangle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/banquet/bookings")({
@@ -44,6 +45,7 @@ function BanquetBookingsPage() {
   const [delStep, setDelStep] = useState<1 | 2>(1);
   const [pwd, setPwd] = useState("");
   const [busy, setBusy] = useState(false);
+  const [impact, setImpact] = useState<Record<string, number> | null>(null);
 
   const load = () => {
     if (!propertyId) return;
@@ -66,15 +68,45 @@ function BanquetBookingsPage() {
     ((r.host_name ?? r.guests?.name) ?? "").toLowerCase().includes(q.toLowerCase()) ||
     (r.halls?.name ?? "").toLowerCase().includes(q.toLowerCase()));
 
-  const isEventBill = (n: string) => /^EVENT/i.test(n);
+  /** Load counts of records that will be removed / detached by the delete. */
+  async function openDelete(r: Row) {
+    setDelTarget(r); setDelStep(1); setPwd(""); setImpact(null);
+    const [bulk, blocks, pays, extras, mbills, bkgs] = await Promise.all([
+      supabase.from("banquet_bulk_rooms").select("id", { count: "exact", head: true }).eq("banquet_id", r.id),
+      supabase.from("event_room_blocks").select("id", { count: "exact", head: true }).eq("banquet_booking_id", r.id),
+      supabase.from("event_payments").select("id", { count: "exact", head: true }).eq("event_id", r.id),
+      supabase.from("banquet_extra_charges").select("id", { count: "exact", head: true }).eq("banquet_booking_id", r.id),
+      supabase.from("banquet_master_bills").select("id", { count: "exact", head: true }).eq("banquet_booking_id", r.id),
+      supabase.from("bookings").select("id", { count: "exact", head: true }).eq("event_id", r.id),
+    ]);
+    setImpact({
+      "Bulk room rows": bulk.count ?? 0,
+      "Room blocks": blocks.count ?? 0,
+      "Event payments": pays.count ?? 0,
+      "Extra charges": extras.count ?? 0,
+      "Master bills": mbills.count ?? 0,
+      "Room bookings (kept, unlinked)": bkgs.count ?? 0,
+    });
+  }
 
   async function permanentlyDelete() {
     if (!delTarget || !user?.email) return;
     setBusy(true);
+    // Night-audit day lock guard — same convention as invoice hard-delete.
+    const { data: locked } = await supabase.rpc("is_day_locked" as any, {
+      _property_id: propertyId, _d: delTarget.event_date,
+    } as any);
+    if (locked === true) {
+      setBusy(false);
+      return toast.error("Cannot delete — this date has been locked by night audit.");
+    }
     const { error: pErr } = await supabase.auth.signInWithPassword({
       email: user.email, password: pwd,
     });
     if (pErr) { setBusy(false); return toast.error("Password incorrect"); }
+    // Full snapshot of the event row before the hard delete.
+    const { data: eventRow } = await supabase.from("banquet_bookings")
+      .select("*").eq("id", delTarget.id).maybeSingle();
     // Collect room_ids linked to this banquet BEFORE deleting the booking
     // (child rows cascade-delete, so we snapshot first). Rooms currently
     // flagged 'blocked' need to be reset to Vacant + Dirty so housekeeping
@@ -86,6 +118,26 @@ function BanquetBookingsPage() {
     ]);
     (bulk ?? []).forEach((r: any) => { if (r.room_id) roomIds.add(r.room_id); });
     (blocks ?? []).forEach((r: any) => { if (r.room_id) roomIds.add(r.room_id); });
+
+    await logActivity({
+      property_id: propertyId!,
+      user_id: user.id,
+      user_name: userDisplayName(user as any),
+      action_type: "BANQUET_EVENT_DELETED",
+      module: "Banquet",
+      reference_id: delTarget.id,
+      reference_label: `${delTarget.banquet_number} — ${delTarget.host_name ?? delTarget.guests?.name ?? ""}`,
+      details: {
+        event_id: delTarget.id,
+        banquet_number: delTarget.banquet_number,
+        amount: delTarget.total_amount,
+        event: eventRow ?? null,
+        impact: impact ?? null,
+        deleted_at: new Date().toISOString(),
+        acting_user_id: user.id,
+        acting_user_is_owner: isOwner,
+      },
+    });
 
     const { error } = await supabase.from("banquet_bookings")
       .delete().eq("id", delTarget.id);
@@ -130,9 +182,9 @@ function BanquetBookingsPage() {
                 <div className="text-sm font-medium">₹{Number(r.total_amount).toLocaleString("en-IN")}</div>
                 <div className="text-xs text-muted-foreground">Bal ₹{Number(r.balance_amount).toLocaleString("en-IN")}</div>
               </div>
-              {isOwner && isEventBill(r.banquet_number) && (
+              {isOwner && (
                 <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive ml-2"
-                  onClick={(e) => { e.preventDefault(); setDelTarget(r); setDelStep(1); setPwd(""); }}>
+                  onClick={(e) => { e.preventDefault(); void openDelete(r); }}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               )}
@@ -150,9 +202,21 @@ function BanquetBookingsPage() {
             </DialogTitle>
           </DialogHeader>
           {delStep === 1 && (
-            <p className="text-sm text-muted-foreground">
-              Event bills are <b>permanently deleted</b> and cannot be recovered. No record will remain.
-            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Event bills are <b>permanently deleted</b> and cannot be recovered. An audit snapshot is stored in the activity log.
+              </p>
+              {impact && (
+                <div className="rounded-md border p-3 text-xs space-y-1">
+                  <div className="font-medium mb-1">Records affected</div>
+                  {Object.entries(impact).map(([k, v]) => (
+                    <div key={k} className="flex justify-between">
+                      <span className="text-muted-foreground">{k}</span><span>{v}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
           {delStep === 2 && (
             <div className="space-y-2">

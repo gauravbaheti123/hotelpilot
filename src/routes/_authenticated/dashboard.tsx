@@ -1543,11 +1543,13 @@ const RoomCard = memo(function RoomCard({
             </div>
             {kind === "overdue" ? (
               <div style={{ color: "#fecaca", fontSize: 11, fontWeight: 600 }}>
-                Due: {fmtShortDT(occ.checkOut, occ.checkOutTime)} ⚠️
+                <div>{fmtShortDT(occ.checkIn, occ.checkInTime)} →</div>
+                <div>Due: {fmtShortDT(occ.checkOut, occ.checkOutTime)} → ⚠️</div>
               </div>
             ) : (
               <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 11 }}>
-                {fmtShortDT(occ.checkIn, occ.checkInTime)} → {fmtShortDT(occ.checkOut, occ.checkOutTime)}
+                <div>{fmtShortDT(occ.checkIn, occ.checkInTime)} →</div>
+                <div>{fmtShortDT(occ.checkOut, occ.checkOutTime)} →</div>
               </div>
             )}
             <div style={{ fontSize: 12, fontWeight: 700, color: kind === "overdue" ? "#fecaca" : (pending > 0 ? "#fbbf24" : "rgba(255,255,255,0.9)") }}>

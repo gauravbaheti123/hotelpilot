@@ -2,9 +2,11 @@ import { createFileRoute, useParams, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/BackButton";
 import { Input } from "@/components/ui/input";
 import { CityInput, StateSelect, NationInput } from "@/components/AddressFields";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -78,6 +80,7 @@ function GrcPage() {
   const [booking, setBooking] = useState<any>(null);
   const [property, setProperty] = useState<any>(null);
   const [grc, setGrc] = useState<GrcState>(empty);
+  const [staffOptions, setStaffOptions] = useState<string[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -113,6 +116,17 @@ function GrcPage() {
           .from("profiles").select("name,email").eq("id", uid).maybeSingle();
         signedInName = (prof?.name || prof?.email || "").trim();
       }
+      // Duty Manager options come from the property's staff list.
+      const { data: staffRows } = await supabase.rpc("list_property_staff", {
+        _property_id: b.property_id,
+      });
+      const names = ((staffRows ?? []) as Array<{ display_name: string | null; email: string | null }>)
+        .map((r) => (r.display_name || r.email || "").trim())
+        .filter(Boolean);
+      const saved = (g?.duty_manager_name ?? "").trim();
+      if (saved && !names.includes(saved)) names.unshift(saved);
+      if (signedInName && !names.includes(signedInName)) names.unshift(signedInName);
+      setStaffOptions(Array.from(new Set(names)));
       if (g) {
         setGrc({
           id: g.id, grc_number: g.grc_number,
@@ -309,9 +323,7 @@ function GrcPage() {
 
       <div className="max-w-4xl mx-auto space-y-4">
         <div className="flex flex-wrap items-center gap-2 no-print">
-          <Button variant="outline" size="sm" onClick={() => router.history.back()}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back
-          </Button>
+          <BackButton fallbackTo="/front-desk/bookings" />
           <div className="flex-1" />
           <Button variant="outline" onClick={save} disabled={saving}>
             <Save className="h-4 w-4 mr-1" /> {saving ? "Saving…" : "Save"}
@@ -324,15 +336,24 @@ function GrcPage() {
         {/* Editable office fields */}
         <Card className="no-print">
           <CardContent className="pt-4 grid gap-3 md:grid-cols-2">
-            <Field label="Designation" value={grc.designation} onChange={(v) => setGrc({ ...grc, designation: v })} />
             <Field label="Company / Organisation" value={grc.company} onChange={(v) => setGrc({ ...grc, company: v })} />
-            <Field label="Arriving From" value={grc.arrival_from} onChange={(v) => setGrc({ ...grc, arrival_from: v })} />
-            <Field label="Proceeding To" value={grc.preceding_to} onChange={(v) => setGrc({ ...grc, preceding_to: v })} />
-            <Field label="Mode of Payment" value={grc.mode_of_payment} onChange={(v) => setGrc({ ...grc, mode_of_payment: v })} />
             <Field label="Purpose of Visit" value={grc.purpose_of_visit} onChange={(v) => setGrc({ ...grc, purpose_of_visit: v })} />
             <Field label="Billing Instruction" value={grc.billing_instruction} onChange={(v) => setGrc({ ...grc, billing_instruction: v })} />
             <Field label="Discount / Concession" value={grc.discount_note} onChange={(v) => setGrc({ ...grc, discount_note: v })} />
-            <Field label="Duty Manager" value={grc.duty_manager_name} onChange={(v) => setGrc({ ...grc, duty_manager_name: v })} />
+            <div>
+              <Label className="text-xs">Duty Manager</Label>
+              <Select
+                value={grc.duty_manager_name || undefined}
+                onValueChange={(v) => setGrc({ ...grc, duty_manager_name: v })}
+              >
+                <SelectTrigger><SelectValue placeholder="Select duty manager" /></SelectTrigger>
+                <SelectContent>
+                  {staffOptions.map((n) => (
+                    <SelectItem key={n} value={n}>{n}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="md:col-span-2">
               <Label className="text-xs">Address (as declared on GRC)</Label>
               <Textarea rows={2} value={grc.address} onChange={(e) => setGrc({ ...grc, address: e.target.value })} />
@@ -391,7 +412,6 @@ function GrcPage() {
           <div className="grc-section-label border-t border-black pt-2 mt-2 mb-3 font-semibold text-[12px] uppercase tracking-wide">Guest Details</div>
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4">
             <PrintRow k="Name" v={guest.name ?? "—"} />
-            <PrintRow k="Designation" v={grc.designation || "—"} />
             <PrintRow k="Mobile" v={guest.mobile ?? "—"} />
             <PrintRow k="Email" v={guest.email ?? "—"} />
             <PrintRow k="Gender / DOB" v={`${guest.gender ?? "—"}${guest.dob ? " · " + guest.dob : ""}`} />
@@ -399,10 +419,7 @@ function GrcPage() {
             <PrintRow k="ID Proof" v={guest.id_proof_type ? `${guest.id_proof_type} · ${guest.id_proof_number ?? ""}` : "—"} />
             <PrintRow k="GSTIN" v={guest.gst_number ?? "—"} />
             <PrintRow k="Company" v={grc.company || guest.company || "—"} />
-            <PrintRow k="Arriving From" v={grc.arrival_from || "—"} />
-            <PrintRow k="Proceeding To" v={grc.preceding_to || "—"} />
             <PrintRow k="Purpose of Visit" v={grc.purpose_of_visit || "—"} />
-            <PrintRow k="Mode of Payment" v={grc.mode_of_payment || "—"} />
             <PrintRow k="Billing Instruction" v={grc.billing_instruction || "—"} />
             <PrintRow k="Discount / Concession" v={grc.discount_note || "—"} />
           </div>

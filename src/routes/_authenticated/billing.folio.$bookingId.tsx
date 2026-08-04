@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/BackButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -1775,9 +1776,7 @@ function FolioPage() {
       <div className="max-w-5xl space-y-4">
         {/* Top bar */}
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => router.history.back()}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back
-          </Button>
+          <BackButton fallbackTo="/billing/invoices" />
           <Badge variant="outline" className={FOLIO_STATUS_TONE[folio.status]}>
             {folio.status.toUpperCase()}
           </Badge>

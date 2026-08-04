@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { invalidatePermissions } from "@/hooks/use-permissions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/BackButton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -297,9 +298,7 @@ function EditRolePage() {
     <AppShell title="Edit Permissions">
       <TooltipProvider>
         <div className="max-w-6xl space-y-4">
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/superadmin/roles"><ArrowLeft className="h-4 w-4 mr-1" /> Back to roles</Link>
-          </Button>
+          <BackButton variant="ghost" fallbackTo="/superadmin/roles" />
 
           <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-background/95 backdrop-blur border-b flex items-center justify-between gap-4">
             <div>

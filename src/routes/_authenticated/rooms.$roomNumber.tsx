@@ -6,6 +6,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/BackButton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -199,7 +200,7 @@ function RoomDetailPage() {
   if (!room) return (
     <AppShell title="Room">
       <div className="max-w-2xl space-y-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/dashboard" })}><ChevronLeft className="h-4 w-4 mr-1" />Back</Button>
+        <BackButton variant="ghost" fallbackTo="/dashboard" />
         <Card><CardContent className="p-6 text-sm">Room <b>{roomNumber}</b> not found for this property.</CardContent></Card>
       </div>
     </AppShell>
@@ -226,7 +227,7 @@ function RoomDetailPage() {
   return (
     <AppShell title={`Room ${room.room_number}`}>
       <div className="max-w-5xl space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate({ to: "/dashboard" })}><ChevronLeft className="h-4 w-4 mr-1" />Back to Dashboard</Button>
+        <BackButton variant="ghost" fallbackTo="/dashboard" />
 
         {/* HEADER */}
         <Card>
