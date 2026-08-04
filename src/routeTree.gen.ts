@@ -19,6 +19,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DataProcessingAgreementRouteImport } from './routes/data-processing-agreement'
 import { Route as CookiePolicyRouteImport } from './routes/cookie-policy'
+import { Route as AccessDeniedRouteImport } from './routes/access-denied'
 import { Route as AcceptableUsePolicyRouteImport } from './routes/acceptable-use-policy'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -162,6 +163,11 @@ const DataProcessingAgreementRoute = DataProcessingAgreementRouteImport.update({
 const CookiePolicyRoute = CookiePolicyRouteImport.update({
   id: '/cookie-policy',
   path: '/cookie-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccessDeniedRoute = AccessDeniedRouteImport.update({
+  id: '/access-denied',
+  path: '/access-denied',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AcceptableUsePolicyRoute = AcceptableUsePolicyRouteImport.update({
@@ -714,6 +720,7 @@ const AuthenticatedBanquetBillIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acceptable-use-policy': typeof AcceptableUsePolicyRoute
+  '/access-denied': typeof AccessDeniedRoute
   '/cookie-policy': typeof CookiePolicyRoute
   '/data-processing-agreement': typeof DataProcessingAgreementRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -819,6 +826,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acceptable-use-policy': typeof AcceptableUsePolicyRoute
+  '/access-denied': typeof AccessDeniedRoute
   '/cookie-policy': typeof CookiePolicyRoute
   '/data-processing-agreement': typeof DataProcessingAgreementRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -926,6 +934,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/acceptable-use-policy': typeof AcceptableUsePolicyRoute
+  '/access-denied': typeof AccessDeniedRoute
   '/cookie-policy': typeof CookiePolicyRoute
   '/data-processing-agreement': typeof DataProcessingAgreementRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -1033,6 +1042,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/acceptable-use-policy'
+    | '/access-denied'
     | '/cookie-policy'
     | '/data-processing-agreement'
     | '/forgot-password'
@@ -1138,6 +1148,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/acceptable-use-policy'
+    | '/access-denied'
     | '/cookie-policy'
     | '/data-processing-agreement'
     | '/forgot-password'
@@ -1244,6 +1255,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/acceptable-use-policy'
+    | '/access-denied'
     | '/cookie-policy'
     | '/data-processing-agreement'
     | '/forgot-password'
@@ -1351,6 +1363,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AcceptableUsePolicyRoute: typeof AcceptableUsePolicyRoute
+  AccessDeniedRoute: typeof AccessDeniedRoute
   CookiePolicyRoute: typeof CookiePolicyRoute
   DataProcessingAgreementRoute: typeof DataProcessingAgreementRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -1433,6 +1446,13 @@ declare module '@tanstack/react-router' {
       path: '/cookie-policy'
       fullPath: '/cookie-policy'
       preLoaderRoute: typeof CookiePolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/access-denied': {
+      id: '/access-denied'
+      path: '/access-denied'
+      fullPath: '/access-denied'
+      preLoaderRoute: typeof AccessDeniedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/acceptable-use-policy': {
@@ -2317,6 +2337,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AcceptableUsePolicyRoute: AcceptableUsePolicyRoute,
+  AccessDeniedRoute: AccessDeniedRoute,
   CookiePolicyRoute: CookiePolicyRoute,
   DataProcessingAgreementRoute: DataProcessingAgreementRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
@@ -2331,13 +2352,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
