@@ -262,7 +262,7 @@ function BanquetEventPage() {
     const { data: erb, error: __qe1 } = await supabase
       .from("event_room_blocks")
       .select("*")
-      .eq("banquet_booking_id", bq.id)
+      .eq("event_booking_id", bq.booking_id)
       .order("room_number");
     if (__qe1) reportQueryError("event room blocks", __qe1);
     setBlocks((erb ?? []) as unknown as EventBlockRecord[]);
@@ -289,7 +289,7 @@ function BanquetEventPage() {
     const cat = cats.find((c) => c.id === (roomRow?.category_id ?? addCatId));
     const { error } = await supabase.from("event_room_blocks").insert({
       property_id: b.property_id,
-      banquet_booking_id: b.id,
+      event_booking_id: b.booking_id ?? b.id,
       event_name: b.event_name ?? b.banquet_number,
       room_id: roomRow!.id,
       room_number: roomRow!.room_number,
@@ -594,14 +594,9 @@ function BanquetEventPage() {
       });
       if (pErr) return toast.error("Password incorrect");
 
-      const [{ data: unified, error: __qp4 }, { data: legacy, error: __qp5 }] = await Promise.all([
-        supabase.from("bookings").select("*").eq("id", ids.bookingId).maybeSingle(),
-        ids.legacyId
-          ? supabase.from("banquet_bookings").select("*").eq("id", ids.legacyId).maybeSingle()
-          : Promise.resolve({ data: null } as any),
-      ]);
+      const { data: unified, error: __qp4 } = await supabase
+        .from("bookings").select("*").eq("id", ids.bookingId).maybeSingle();
       if (__qp4) reportQueryError("unified", __qp4);
-      if (__qp5) reportQueryError("legacy", __qp5);
       const roomIds = blocks.map((bk) => bk.room_id).filter(Boolean) as string[];
 
       await logActivity({
@@ -614,11 +609,10 @@ function BanquetEventPage() {
         reference_label: `${b.banquet_number} — ${b.host_name ?? b.guests?.name ?? ""}`,
         details: {
           event_id: ids.bookingId,
-          legacy_event_id: ids.legacyId,
           banquet_number: b.banquet_number,
           amount: b.total_amount,
           booking: unified ?? null,
-          event: legacy ?? null,
+          event: unified ?? null,
           rooms: blocks.map((bk) => ({ room: bk.room_number, status: bk.status })),
           deleted_at: new Date().toISOString(),
           acting_user_id: user.id,
@@ -637,13 +631,6 @@ function BanquetEventPage() {
         await supabase.from("folios").delete().in("id", folioIds);
       }
       await supabase.from("booking_rooms").delete().eq("booking_id", ids.bookingId);
-      if (ids.legacyId) {
-        const { error: le } = await supabase
-          .from("banquet_bookings")
-          .delete()
-          .eq("id", ids.legacyId);
-        if (le) throw le;
-      }
       const { error: ue } = await supabase.from("bookings").delete().eq("id", ids.bookingId);
       if (ue) throw ue;
 
