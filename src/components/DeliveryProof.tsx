@@ -119,7 +119,7 @@ export function DeliveryProof({ kotId, propertyId, proofUrl, takenAt, takenBy, o
           {signed ? (
             <button type="button" onClick={() => setViewOpen(true)} className="shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={signed} alt="Delivery proof" className="h-24 w-24 object-cover rounded border" />
+              <img src={signed} alt="Delivery proof" loading="lazy" decoding="async" className="h-24 w-24 object-cover rounded border" />
             </button>
           ) : (
             <div className="h-24 w-24 rounded border bg-muted animate-pulse" />
@@ -155,7 +155,7 @@ function ProofDialog({ open, onOpenChange, signed, takenAt }: {
       <DialogContent className="max-w-2xl w-[95vw]">
         <DialogHeader><DialogTitle>Delivery Proof</DialogTitle></DialogHeader>
         {signed ? (
-          <img src={signed} alt="Delivery proof full" className="w-full h-auto rounded" />
+          <img src={signed} alt="Delivery proof full" loading="lazy" decoding="async" className="w-full h-auto rounded" />
         ) : (
           <div className="h-64 bg-muted animate-pulse rounded" />
         )}

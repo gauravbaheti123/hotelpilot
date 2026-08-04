@@ -66,6 +66,8 @@ export function IdDocUpload({ value, onChange, guestName, disabled }: Props) {
             <img
               src={thumb}
               alt={value.name ?? "Uploaded ID document"}
+              loading="lazy"
+              decoding="async"
               className="h-16 w-16 rounded border bg-background object-cover"
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
             />
