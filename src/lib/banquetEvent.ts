@@ -224,7 +224,7 @@ export interface EventRow {
   booking_id: string;
   legacy_id: string | null;
   property_id: string;
-  banquet_number: string;
+  banquet_number: string | null;
   event_name: string | null;
   function_type: string;
   event_date: string;

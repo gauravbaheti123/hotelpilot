@@ -63,7 +63,7 @@ interface Bq {
   id: string;
   booking_id: string;
   property_id: string;
-  banquet_number: string;
+  banquet_number: string | null;
   function_type: string;
   event_date: string;
   start_time: string;

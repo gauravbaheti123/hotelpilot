@@ -43,7 +43,7 @@ interface MB {
   property_id: string;
   bookings: {
     id: string;
-    banquet_number: string;
+    banquet_number: string | null;
     event_name: string | null;
     function_type: string;
     event_date: string;
