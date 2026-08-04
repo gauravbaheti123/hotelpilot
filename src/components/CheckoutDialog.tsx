@@ -31,6 +31,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { closeEventBlocksForBooking } from "@/lib/eventRoomBlocks";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { istToday } from "@/lib/date";
 
 interface Props {
   bookingId: string | null;
@@ -381,7 +382,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         amount: rate,
         gst_rate: gstR,
         gst_amount: Math.round(rate * gstR) / 100,
-        charged_on: new Date().toISOString().slice(0, 10),
+        charged_on: istToday(),
         source_table: "late_checkout",
         source_id: primaryRoom?.id ?? null,
         created_by: user?.id ?? null,

@@ -5,6 +5,7 @@ export type GstCategory = "room" | "food" | "banquet" | "sundry";
 
 import { stateCodeFromGstin } from "@/lib/gstin";
 import { stateCodeFromName } from "@/lib/indiaGeo";
+import { istToday } from "@/lib/date";
 
 export interface GstSlabRow {
   property_id?: string;
@@ -27,7 +28,7 @@ export function resolveGstRate(
   amount: number,
 ): number | null {
   if (!slabs || slabs.length === 0) return null;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istToday();
   const amt = Number(amount) || 0;
   const candidates = slabs.filter((s) => {
     if ((s.charge_category as string) !== category) return false;
