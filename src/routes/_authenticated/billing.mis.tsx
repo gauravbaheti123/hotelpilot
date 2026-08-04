@@ -22,6 +22,7 @@ import { Lock, Trash2, AlertTriangle, Pencil, Download } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { istToday } from "@/lib/date";
 export const Route = createFileRoute("/_authenticated/billing/mis")({
   head: () => ({ meta: [{ title: "MIS Account — HotelPilot" }] }),
   component: () => (<RequirePermission module="mis_ac"><MISPage /></RequirePermission>),
@@ -117,7 +118,7 @@ function MISPage() {
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `MIS-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.href = url; a.download = `MIS-${istToday()}.csv`;
     a.click(); URL.revokeObjectURL(url);
   }
 

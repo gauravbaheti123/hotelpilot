@@ -24,6 +24,7 @@ import {
 import { formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { Plus, ChevronDown, ChevronRight, Printer, Trash2 } from "lucide-react";
 import { printHandover } from "@/lib/handoverPrint";
+import { istToday } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/reports/cash-handover")({
   head: () => ({ meta: [{ title: "Cash Handover Report — HotelPilot" }] }),
@@ -57,7 +58,7 @@ interface HandoverRow {
 
 function Page() {
   const { current, currentId: propertyId } = useCurrentProperty();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istToday();
   const [from, setFrom] = useState(firstOfMonthIso());
   const [to, setTo] = useState(today);
   const [managerId, setManagerId] = useState("all");

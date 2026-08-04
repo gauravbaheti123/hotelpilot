@@ -29,6 +29,7 @@ import { BOOKING_STATUS_LABEL, BOOKING_STATUS_TONE } from "@/lib/front-desk";
 import { PlusCircle, FileText } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { istDateISO } from "@/lib/date";
 export const Route = createFileRoute("/_authenticated/front-desk/bookings")({
   head: () => ({ meta: [{ title: "Bookings — HotelPilot" }] }),
   component: () => (<RequirePermission module="bookings"><BookingsPage /></RequirePermission>),
@@ -162,7 +163,7 @@ function BookingsPage() {
                         ₹{Number(r.balance_amount).toLocaleString("en-IN")}
                       </TableCell>
                       <TableCell>
-                        {r.status === "checked_in" && r.check_out < new Date().toISOString().slice(0,10) ? (
+                        {r.status === "checked_in" && r.check_out < istDateISO(new Date()) ? (
                           <Badge className="bg-[#b45309] text-white border-transparent font-bold">OVERDUE</Badge>
                         ) : (
                           <Badge variant="outline" className={BOOKING_STATUS_TONE[r.status]}>

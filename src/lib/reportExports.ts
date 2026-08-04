@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { istDateISO } from "@/lib/date";
 
 export interface ReportColumn<T> {
   key: string;
@@ -300,5 +301,5 @@ export function fmtDateTime(iso: string | null | undefined) {
 export function firstOfMonthIso(): string {
   const d = new Date(); d.setDate(1);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 10);
+  return istDateISO(d);
 }

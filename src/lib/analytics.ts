@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { istDateISO } from "@/lib/date";
 
 export interface DayMetric {
   date: string;
@@ -29,7 +30,7 @@ function eachDay(from: string, to: string): string[] {
   const start = new Date(`${from}T00:00:00`);
   const end = new Date(`${to}T00:00:00`);
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const iso = new Date(d).toISOString().slice(0, 10);
+    const iso = istDateISO(new Date(d));
     out.push(iso);
   }
   return out;
@@ -94,5 +95,5 @@ export function isoDaysAgo(n: number): string {
   const d = new Date();
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+  return istDateISO(d);
 }

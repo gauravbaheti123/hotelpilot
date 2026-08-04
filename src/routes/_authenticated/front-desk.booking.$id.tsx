@@ -41,6 +41,7 @@ import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { RequirePermission } from "@/components/RequirePermission";
 import { AssignRoomDialog } from "@/components/AssignRoomDialog";
 import {
+import { istToday } from "@/lib/date";
   LogIn,
   LogOut,
   ArrowLeftRight,
@@ -323,7 +324,7 @@ function BookingDetailPage() {
   function standardRateFor(br: BookingRoomRow, target: Room | undefined): number {
     const plan = pickTariffPlan(tariffPlans, {
       categoryId: target?.category_id ?? null,
-      date: br.check_in ?? b?.check_in ?? new Date().toISOString().slice(0, 10),
+      date: br.check_in ?? b?.check_in ?? istToday(),
     });
     return Number(plan?.rate ?? 0) || 0;
   }

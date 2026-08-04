@@ -13,6 +13,7 @@ import { ReportDataTable } from "@/components/ReportDataTable";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { fetchBanquetScope } from "@/lib/banquetScope";
 import {
+import { istToday } from "@/lib/date";
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
   buildTallySalesXml, downloadXml, buildFileName,
 } from "@/lib/reportExports";
@@ -35,7 +36,7 @@ function Page() {
   const { current } = useCurrentProperty();
   const propertyId = current?.id ?? null;
   const { methods: paymentMethods } = usePaymentMethods(propertyId);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istToday();
   const [from, setFrom] = useState(firstOfMonthIso());
   const [to, setTo] = useState(today);
   const [billType, setBillType] = useState<string>("all");

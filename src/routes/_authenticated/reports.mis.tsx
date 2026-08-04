@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RequirePermission } from "@/components/RequirePermission";
 import { ReportDataTable } from "@/components/ReportDataTable";
 import {
+import { istToday } from "@/lib/date";
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
 
@@ -29,7 +30,7 @@ function Page() {
   const propertyId = current?.id ?? null;
   const { roles } = useAuth();
   const isOwner = roles.includes("owner") || roles.includes("superadmin");
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istToday();
   const [from, setFrom] = useState(firstOfMonthIso());
   const [to, setTo] = useState(today);
   const [staffFilter, setStaffFilter] = useState("all");

@@ -1,3 +1,4 @@
+import { istDateISO, istToday } from "@/lib/date";
 export function nightsBetween(checkIn: string, checkOut: string): number {
   const a = new Date(checkIn);
   const b = new Date(checkOut);
@@ -23,13 +24,13 @@ export function isValidStayRange(
 }
 
 export function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  return istToday();
 }
 
 export function addDaysIso(iso: string, days: number): string {
   const d = new Date(iso);
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return istDateISO(d);
 }
 
 export const BOOKING_STATUS_LABEL: Record<string, string> = {

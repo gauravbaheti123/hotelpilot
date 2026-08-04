@@ -21,6 +21,7 @@ import { PAYMENT_MODES, PAYMENT_MODE_LABEL, type PaymentMode } from "@/lib/expen
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { istToday } from "@/lib/date";
 export const Route = createFileRoute("/_authenticated/expenses/new")({
   head: () => ({ meta: [{ title: "New Expense — HotelPilot" }] }),
   component: () => (<RequirePermission module="expenses"><NewExpensePage /></RequirePermission>),
@@ -44,7 +45,7 @@ function NewExpensePage() {
   const [addForm, setAddForm] = useState({ name: "", mobile: "", gstin: "", designation: "" });
 
   const [form, setForm] = useState({
-    expense_date: new Date().toISOString().slice(0, 10),
+    expense_date: istToday(),
     category_id: "",
     vendor_id: "",
     paid_to_staff_id: "",

@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { Wand2 } from "lucide-react";
 import { RequirePermission } from "@/components/RequirePermission";
 import {
+import { istDateISO } from "@/lib/date";
   ATTENDANCE_WEIGHT, daysInMonth, formatMonth, monthStart,
   type AttendanceStatus,
 } from "@/lib/staff-hr";
@@ -69,7 +70,7 @@ function PayrollPage() {
       monthEnd.setMonth(monthEnd.getMonth() + 1);
       monthEnd.setDate(0);
       const fromStr = period;
-      const toStr = monthEnd.toISOString().slice(0, 10);
+      const toStr = istDateISO(monthEnd);
 
       const { data: staff } = await supabase.from("staff")
         .select("id,name,designation,salary")

@@ -12,6 +12,7 @@ import { todayIso, PAYMENT_MODE_LABELS } from "@/lib/reports";
 import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { istDateISO } from "@/lib/date";
 export const Route = createFileRoute("/_authenticated/reports/sales")({
   head: () => ({ meta: [{ title: "Sales Report — HotelPilot" }] }),
   component: () => (<RequirePermission module="reports"><SalesReportPage /></RequirePermission>),
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/reports/sales")({
 function firstOfMonth() {
   const d = new Date(); d.setDate(1);
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 10);
+  return istDateISO(d);
 }
 
 interface DayRow {

@@ -13,6 +13,7 @@ import { ChevronRight, ChevronDown } from "lucide-react";
 import { RequirePermission } from "@/components/RequirePermission";
 import { ReportDataTable } from "@/components/ReportDataTable";
 import { Fragment } from "react";
+import { istToday } from "@/lib/date";
 export const Route = createFileRoute("/_authenticated/reports/guest-wise")({
   head: () => ({ meta: [{ title: "Guest-Wise Report — HotelPilot" }] }),
   component: () => (<RequirePermission module="reports"><Page /></RequirePermission>),
@@ -33,7 +34,7 @@ interface GuestRow {
 function Page() {
   const { current } = useCurrentProperty();
   const propertyId = current?.id ?? null;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istToday();
   const [from, setFrom] = useState(firstOfMonthIso());
   const [to, setTo] = useState(today);
   const [search, setSearch] = useState("");

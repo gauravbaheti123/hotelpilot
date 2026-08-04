@@ -28,6 +28,7 @@ import {
 } from "@/lib/eventRoomBlocks";
 import { isValidStayRange } from "@/lib/front-desk";
 import { GuestSearchInput } from "@/components/GuestSearchInput";
+import { istDateISO, istToday } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/banquet/new")({
   head: () => ({ meta: [{ title: "New Banquet — HotelPilot" }] }),
@@ -60,7 +61,7 @@ function NewBanquetPage() {
   const [saving, setSaving] = useState(false);
   const { limit: discountLimit } = useDiscountLimit();
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istToday();
 
   // guest
   const [guestName, setGuestName] = useState("");
@@ -183,7 +184,7 @@ function NewBanquetPage() {
     setBlockRows((prev) => [...prev, {
       room_id: "", guest_name: "", guest_mobile: "",
       checkin_date: eventDate, checkin_time: "12:00",
-      checkout_date: nextDay.toISOString().slice(0, 10), checkout_time: "11:00",
+      checkout_date: istDateISO(nextDay), checkout_time: "11:00",
       special_rate: "",
     }]);
   }

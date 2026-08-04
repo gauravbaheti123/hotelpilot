@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { istToday } from "@/lib/date";
 export const Route = createFileRoute("/_authenticated/guests/")({
   head: () => ({ meta: [{ title: "Guests — HotelPilot" }] }),
   component: () => (<RequirePermission module="guest_crm"><GuestsListPage /></RequirePermission>),
@@ -217,7 +218,7 @@ function GuestsListPage() {
       ].join(","));
     }
     const hotel = (current?.name ?? "hotel").replace(/\s+/g, "-").toLowerCase();
-    const date = new Date().toISOString().slice(0, 10);
+    const date = istToday();
     downloadFile(`guests-${hotel}-${date}.csv`, lines.join("\n"));
   }
 

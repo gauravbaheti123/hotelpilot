@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
+import { istToday } from "@/lib/date";
   ReportColumn, exportExcel, exportPdf, fmtDateTime, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
 
@@ -39,7 +40,7 @@ interface Row {
 function Page() {
   const { current } = useCurrentProperty();
   const propertyId = current?.id ?? null;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istToday();
   const [from, setFrom] = useState(firstOfMonthIso());
   const [to, setTo] = useState(today);
   const [typeFilter, setTypeFilter] = useState<"all" | "original_rate" | "new_rate">("all");

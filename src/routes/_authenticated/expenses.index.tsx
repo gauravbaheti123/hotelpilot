@@ -22,6 +22,7 @@ import {
 } from "@/lib/expenses";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { useAuth } from "@/hooks/use-auth";
+import { istDateISO, istToday } from "@/lib/date";
 
 export const Route = createFileRoute("/_authenticated/expenses/")({
   head: () => ({ meta: [{ title: "Expenses — HotelPilot" }] }),
@@ -40,10 +41,10 @@ interface ExpenseRow {
   staff: { name: string } | null;
 }
 
-function today() { return new Date().toISOString().slice(0, 10); }
+function today() { return istToday(); }
 function daysAgo(n: number) {
   const d = new Date(); d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+  return istDateISO(d);
 }
 
 function ExpensesPage() {

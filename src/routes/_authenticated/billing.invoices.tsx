@@ -27,6 +27,7 @@ import {
 } from "@/components/SegmentBillActionsDialog";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { istToday } from "@/lib/date";
 export const Route = createFileRoute("/_authenticated/billing/invoices")({
   head: () => ({ meta: [{ title: "Invoices — HotelPilot" }] }),
   validateSearch: (search: Record<string, unknown>): { seg?: "lodge" | "food" | "laundry"; bill?: string } => ({
@@ -327,7 +328,7 @@ function InvoicesPage() {
     }));
     const ws2 = XLSX.utils.json_to_sheet(auditData);
     XLSX.utils.book_append_sheet(wb, ws2, "Audit Trail");
-    XLSX.writeFile(wb, `invoices-audit-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `invoices-audit-${istToday()}.xlsx`);
   }
 
   async function printSegBill(bill: {

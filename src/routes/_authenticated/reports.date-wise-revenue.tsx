@@ -11,6 +11,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { RequirePermission } from "@/components/RequirePermission";
 import { ReportDataTable } from "@/components/ReportDataTable";
 import {
+import { istDateISO, istToday } from "@/lib/date";
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
 
@@ -28,7 +29,7 @@ function eachDay(from: string, to: string): string[] {
   const out: string[] = [];
   const a = new Date(from), b = new Date(to);
   for (let d = new Date(a); d <= b; d.setDate(d.getDate() + 1)) {
-    out.push(d.toISOString().slice(0, 10));
+    out.push(istDateISO(d));
   }
   return out;
 }
@@ -36,7 +37,7 @@ function eachDay(from: string, to: string): string[] {
 function Page() {
   const { current } = useCurrentProperty();
   const propertyId = current?.id ?? null;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = istToday();
   const [from, setFrom] = useState(firstOfMonthIso());
   const [to, setTo] = useState(today);
   const [rows, setRows] = useState<DayRow[]>([]);

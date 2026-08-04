@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { resolveTaxType } from "@/lib/gst";
 import { stateNameFromCode } from "@/lib/indiaGeo";
 import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
+import { istDateISO } from "@/lib/date";
 
 export interface DailySummary {
   date: string;
@@ -333,5 +334,5 @@ export async function fetchGstInvoiceSlabs(
 export function todayIso(): string {
   const d = new Date();
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 10);
+  return istDateISO(d);
 }

@@ -27,6 +27,7 @@ import { sanitizeMobile } from "@/lib/mobile";
 import { RequirePermission } from "@/components/RequirePermission";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
+import { istDateISO, istToday } from "@/lib/date";
 export const Route = createFileRoute("/_authenticated/banquet/event/$id")({
   head: () => ({ meta: [{ title: "Banquet Event — HotelPilot" }] }),
   component: () => (<RequirePermission module="banquet"><BanquetEventPage /></RequirePermission>),
@@ -122,7 +123,7 @@ function BanquetEventPage() {
     });
     setAddCheckIn(bq.event_date);
     const nextDay = new Date(bq.event_date); nextDay.setDate(nextDay.getDate() + 1);
-    setAddCheckOut(nextDay.toISOString().slice(0, 10));
+    setAddCheckOut(istDateISO(nextDay));
 
     const [{ data: rs }, { data: cs }, { data: hs }] = await Promise.all([
       supabase.from("rooms").select("id,room_number,category_id,status")
@@ -272,7 +273,7 @@ function BanquetEventPage() {
 
   async function doBulkCheckIn() {
     if (!b || !user) return;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = istToday();
     const due = dueForCheckIn(blocks, today);
     if (due.length === 0) {
       return toast.error("No rooms due for check-in today (guest name + mobile required).");

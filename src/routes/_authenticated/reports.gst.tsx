@@ -9,6 +9,7 @@ import { ReportShell } from "@/components/ReportShell";
 import { RequirePermission } from "@/components/RequirePermission";
 import { ReportDataTable } from "@/components/ReportDataTable";
 import {
+import { istDateISO } from "@/lib/date";
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR,
   buildTallySalesXml, downloadXml, buildFileName,
 } from "@/lib/reportExports";
@@ -24,7 +25,7 @@ function monthBounds(month: string): [string, string] {
   const end = new Date(y, m, 0);
   const f = (d: Date) => {
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().slice(0, 10);
+    return istDateISO(d);
   };
   return [f(start), f(end)];
 }
