@@ -811,11 +811,13 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         const b = createdBills[i];
         const row = payRows[i];
         const amt = Number(row.amount);
-        if (row.mode !== "credit" && !(amt > 0)) {
+        // 0 is legitimate when the bill was already covered by a payment
+        // carried over from the parent folio during the split.
+        if (row.mode !== "credit" && amt < 0) {
           setBusy(false);
-          return toast.error(`Bill ${i + 1}: enter payment amount`);
+          return toast.error(`Bill ${i + 1}: payment amount cannot be negative`);
         }
-        if (row.mode !== "credit") {
+        if (row.mode !== "credit" && amt > 0) {
           await supabase.from("payments").insert({
             property_id: booking.property_id,
             folio_id: b.folio_id,
