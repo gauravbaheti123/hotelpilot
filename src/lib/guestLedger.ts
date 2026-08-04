@@ -96,12 +96,15 @@ export async function fetchGuestLedger(guestId: string): Promise<GuestLedger> {
 
   const { data: banquetBase, error: __qe4 } = await supabase
     .from("bookings")
-    .select("id,property_id,banquet_number,status,total_amount,advance_amount,balance_amount,event_date")
+    .select("id,property_id,banquet_number,status,event_status,total_amount,advance_amount,balance_amount,event_date")
     .eq("booking_type", "banquet" as any)
     .eq("guest_id", guestId)
     .order("event_date", { ascending: false });
   if (__qe4) reportQueryError("bookings", __qe4);
-  const banquets = ((banquetBase ?? []) as any[]).map((b) => ({ ...b }));
+  const banquets = ((banquetBase ?? []) as any[]).map((b) => ({
+    ...b,
+    status: b.status === "cancelled" ? "cancelled" : (b.event_status ?? b.status),
+  }));
   const banquetIds = banquets.map((b) => b.id).filter(Boolean) as string[];
   for (const b of banquets) {
     if (b.status === "cancelled") continue;
