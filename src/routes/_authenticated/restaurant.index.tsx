@@ -994,7 +994,7 @@ function RestaurantPage() {
                             {outletName(c.outlet_id)}
                           </TableCell>
                           <TableCell className="text-xs font-mono">{c.bill_no || "—"}</TableCell>
-                          <TableCell className="text-xs">{c.description}</TableCell>
+                          <TableCell className="text-xs">{descWithBill(c.description, c.bill_no)}</TableCell>
                           <TableCell className="text-right font-medium">₹{Number(c.amount).toFixed(2)}</TableCell>
                           <TableCell>
                             {c.is_settled
@@ -1077,7 +1077,7 @@ function RestaurantPage() {
                                   <TableCell className="text-xs">{p.charge_date}</TableCell>
                                   <TableCell className="text-xs">{oname}</TableCell>
                                   <TableCell className="text-xs font-mono">{payableBillNo(p) || "—"}</TableCell>
-                                  <TableCell className="text-xs">{p.description ?? "—"}</TableCell>
+                                  <TableCell className="text-xs">{descWithBill(p.description, payableBillNo(p))}</TableCell>
                                   <TableCell className="text-right">₹{Number(p.amount).toFixed(2)}</TableCell>
                                 </TableRow>
                               ))}
