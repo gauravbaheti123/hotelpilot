@@ -250,7 +250,7 @@ function RoomDetailPage() {
                   <Button asChild size="sm">
                     <Link
                       to="/front-desk/new"
-                      search={{ roomId: room.id, categoryId: room.category_id ?? undefined } as never}
+                      search={{ roomId: room.id, categoryId: room.category?.id ?? undefined } as never}
                     >
                       + New Booking
                     </Link>
