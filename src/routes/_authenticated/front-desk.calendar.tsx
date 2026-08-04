@@ -38,7 +38,6 @@ interface BRRow {
 
 interface EventBlockRow {
   id: string;
-  event_booking_id: string;
   /** Unified bookings.id for the event (Part 5). */
   event_booking_id: string | null;
   event_name: string;
