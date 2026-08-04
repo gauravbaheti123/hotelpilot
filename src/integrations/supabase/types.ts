@@ -4325,7 +4325,6 @@ export type Database = {
           city: string | null
           created_at: string
           currency: string | null
-          default_bill_type: string | null
           default_checkin_time: string | null
           default_checkout_time: string | null
           early_checkin_charge: number | null
@@ -4384,7 +4383,6 @@ export type Database = {
           city?: string | null
           created_at?: string
           currency?: string | null
-          default_bill_type?: string | null
           default_checkin_time?: string | null
           default_checkout_time?: string | null
           early_checkin_charge?: number | null
@@ -4443,7 +4441,6 @@ export type Database = {
           city?: string | null
           created_at?: string
           currency?: string | null
-          default_bill_type?: string | null
           default_checkin_time?: string | null
           default_checkout_time?: string | null
           early_checkin_charge?: number | null

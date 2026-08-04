@@ -98,8 +98,6 @@ function round2(n: number) {
 
 export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, onDone }: Props) {
   const { user, roles } = useAuth();
-  // Cash Bill toggle is strictly owner-only (superadmin excluded).
-  const isOwnerStrict = roles.includes("owner") && !roles.includes("superadmin");
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [splitType, setSplitType] = useState<SplitType>("same");
   const [splitMode, setSplitMode] = useState<SplitMode>("item");
@@ -136,16 +134,14 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   const guestName = booking?.guests?.name ?? "Guest";
   const guestMobile = booking?.guests?.mobile ?? "";
   const guestGstin = booking?.guests?.gst_number ?? "";
-  const folioGst = (folio?.bill_type ?? (folio?.gst_mode === "gst" ? "gst_invoice" : "cash_bill")) as
-    "cash_bill" | "gst_invoice";
+  const folioGst = "gst_invoice" as const;
 
   const [party1, setParty1] = useState<PartyDetails>({
     name: guestName, mobile: guestMobile, gstin: guestGstin, bill_type: folioGst,
   });
   const [party2, setParty2] = useState<PartyDetails>({
     name: "", mobile: "", gstin: "",
-    // Non-owners cannot generate a cash bill — default silently to GST Invoice.
-    bill_type: isOwnerStrict ? "cash_bill" : "gst_invoice",
+    bill_type: "gst_invoice",
   });
 
   const [createdBills, setCreatedBills] = useState<
@@ -169,11 +165,11 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     setParty1({ name: guestName, mobile: guestMobile, gstin: guestGstin, bill_type: folioGst });
     setParty2({
       name: "", mobile: "", gstin: "",
-      bill_type: isOwnerStrict ? "cash_bill" : "gst_invoice",
+      bill_type: "gst_invoice",
     });
     setParties([
       newParty({ name: guestName, mobile: guestMobile, gstin: guestGstin, bill_type: folioGst }),
-      newParty({ name: "", mobile: "", gstin: "", bill_type: isOwnerStrict ? "cash_bill" : "gst_invoice" }),
+      newParty({ name: "", mobile: "", gstin: "", bill_type: "gst_invoice" }),
     ]);
     const ids = new Set<string>();
     for (const c of charges) {
@@ -561,27 +557,6 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         },
       });
       toast.success(`Bills created: ${created[0].invoice_number} + ${created[1].invoice_number}`);
-      // Log any resulting cash bills separately for audit.
-      for (const cb of created) {
-        if (cb.party.bill_type === "cash_bill" && user) {
-          logActivity({
-            property_id: booking.property_id,
-            user_id: user.id,
-            user_name: userDisplayName(user as any),
-            action_type: "CASH_BILL_GENERATED",
-            module: "Billing",
-            reference_id: cb.folio_id,
-            reference_label: cb.invoice_number,
-            details: {
-              bill_number: cb.invoice_number,
-              amount: cb.total,
-              party_name: cb.party.name,
-              generated_by: user.id,
-              via: "split_bill",
-            },
-          });
-        }
-      }
       setStep(4);
       onDone?.(newFolioIds);
     } catch (e: any) {
@@ -774,26 +749,6 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         },
       });
       toast.success(`Created ${created.length} bill${created.length > 1 ? "s" : ""}`);
-      for (const cb of created) {
-        if (cb.party.bill_type === "cash_bill" && user) {
-          logActivity({
-            property_id: booking.property_id,
-            user_id: user.id,
-            user_name: userDisplayName(user as any),
-            action_type: "CASH_BILL_GENERATED",
-            module: "Billing",
-            reference_id: cb.folio_id,
-            reference_label: cb.invoice_number,
-            details: {
-              bill_number: cb.invoice_number,
-              amount: cb.total,
-              party_name: cb.party.name,
-              generated_by: user.id,
-              via: `split_bill_${splitMode}`,
-            },
-          });
-        }
-      }
       setStep(4);
       onDone?.(newFolioIds);
     } catch (e: any) {
@@ -1116,7 +1071,6 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
             parties={parties}
             setParties={setParties}
             distribution={shareDistribution}
-            showBillType={isOwnerStrict}
             onBack={() => setStep(1)}
             onNext={confirmSplit}
             busy={busy}
@@ -1126,19 +1080,12 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         {step === 3 && splitMode === "item" && (
           <div className="space-y-4">
             <div className="text-sm font-medium">Step 3 — Party Details</div>
-            <PartyEditor label="Bill 1 Party" party={party1} setParty={setParty1} disabledName={splitType === "same"} showBillType={isOwnerStrict} />
+            <PartyEditor label="Bill 1 Party" party={party1} setParty={setParty1} disabledName={splitType === "same"} />
             {splitType === "different" ? (
-              <PartyEditor label="Bill 2 Party" party={party2} setParty={setParty2} showMobile showBillType={isOwnerStrict} />
+              <PartyEditor label="Bill 2 Party" party={party2} setParty={setParty2} showMobile />
             ) : (
               <div className="rounded border bg-muted/30 p-3 text-xs text-muted-foreground">
                 Bill 2 will use the same party as Bill 1 ({party1.name}).
-              {isOwnerStrict && (
-                <div className="mt-2 flex items-center gap-3">
-                  <Label className="text-xs">Bill 2 Type</Label>
-                  <BillTypeToggle value={party2.bill_type}
-                    onChange={(v) => setParty2({ ...party2, bill_type: v, name: party1.name, mobile: party1.mobile, gstin: party1.gstin })} />
-                </div>
-              )}
               </div>
             )}
             <div className="rounded border p-3 text-xs space-y-1">
@@ -1294,30 +1241,14 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   );
 }
 
-function BillTypeToggle({ value, onChange }: { value: "cash_bill" | "gst_invoice"; onChange: (v: "cash_bill" | "gst_invoice") => void }) {
-  return (
-    <div className="flex gap-1 rounded-md border p-0.5 bg-muted/30">
-      <button type="button" onClick={() => onChange("cash_bill")}
-        className={`px-2 py-1 text-xs rounded ${value === "cash_bill" ? "bg-background shadow font-medium" : "text-muted-foreground"}`}>
-        Cash Bill
-      </button>
-      <button type="button" onClick={() => onChange("gst_invoice")}
-        className={`px-2 py-1 text-xs rounded ${value === "gst_invoice" ? "bg-background shadow font-medium" : "text-muted-foreground"}`}>
-        GST Invoice
-      </button>
-    </div>
-  );
-}
-
 function PartyEditor({
-  label, party, setParty, showMobile, disabledName, showBillType,
+  label, party, setParty, showMobile, disabledName,
 }: {
   label: string;
   party: PartyDetails;
   setParty: (p: PartyDetails) => void;
   showMobile?: boolean;
   disabledName?: boolean;
-  showBillType?: boolean;
 }) {
   return (
     <div className="rounded border p-3 space-y-2">
@@ -1348,12 +1279,6 @@ function PartyEditor({
             <p className="mt-1 text-[11px] text-red-600">{GSTIN_ERROR}</p>
           )}
         </div>
-        {showBillType && (
-          <div>
-            <Label className="text-xs">Bill Type</Label>
-            <div><BillTypeToggle value={party.bill_type} onChange={(v) => setParty({ ...party, bill_type: v })} /></div>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -1393,7 +1318,7 @@ interface ShareDistribution {
 
 function ShareEditor({
   splitMode, baseNet, baseGstRate, baseChargeCount, scopeLabel, parties, setParties,
-  distribution, showBillType, onBack, onNext, busy,
+  distribution, onBack, onNext, busy,
 }: {
   splitMode: "percent" | "amount";
   baseNet: number;
@@ -1403,7 +1328,6 @@ function ShareEditor({
   parties: ShareParty[];
   setParties: (p: ShareParty[] | ((prev: ShareParty[]) => ShareParty[])) => void;
   distribution: ShareDistribution;
-  showBillType?: boolean;
   onBack: () => void;
   onNext: () => void;
   busy: boolean;
@@ -1485,12 +1409,6 @@ function ShareEditor({
                       {(partyNet * baseGstRate / 100).toFixed(2)}
                     </span>
                   </span>
-                )}
-                {showBillType && (
-                  <BillTypeToggle
-                    value={p.bill_type}
-                    onChange={(v) => setParties((prev) => prev.map((x, idx) => idx === i ? { ...x, bill_type: v } : x))}
-                  />
                 )}
                 {i === parties.length - 1 && distribution.valid && Math.abs(diff) < 0.01 && (
                   <span className="text-[10px] italic">

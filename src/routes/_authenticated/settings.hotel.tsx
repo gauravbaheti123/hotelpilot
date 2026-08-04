@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -230,7 +229,6 @@ function HotelSettingsForm({
         legal_entity_name: form.legal_entity_name || null,
         invoice_prefix: form.invoice_prefix?.toUpperCase() || "INV",
         invoice_start_number: form.invoice_start_number ? Number(form.invoice_start_number) : 1,
-        default_bill_type: form.default_bill_type || "cash",
         invoice_footer: form.invoice_footer || null,
         invoice_primary_color: form.invoice_primary_color || "#1D9E75",
         invoice_template: "premium",
@@ -561,18 +559,6 @@ function HotelSettingsForm({
           </Field>
           <Field label="Invoice Starting Number" hint="Current counter will reset to this number.">
             <Input type="number" min={1} disabled={dis} value={form.invoice_start_number ?? 1} onChange={(e) => set("invoice_start_number", e.target.value)} />
-          </Field>
-
-          <Field label="Default Bill Type">
-            <RadioGroup
-              className="flex gap-6"
-              disabled={dis}
-              value={form.default_bill_type ?? "cash"}
-              onValueChange={(v) => set("default_bill_type", v)}
-            >
-              <label className="flex items-center gap-2"><RadioGroupItem value="gst" /> GST Invoice</label>
-              <label className="flex items-center gap-2"><RadioGroupItem value="cash" /> Cash Bill</label>
-            </RadioGroup>
           </Field>
 
           <Field label="Invoice Primary Color">
