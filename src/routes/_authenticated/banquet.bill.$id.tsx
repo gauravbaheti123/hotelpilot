@@ -215,7 +215,7 @@ function BanquetBillPage() {
     const { data: ex, error: __qe1 } = await supabase
       .from("banquet_extra_charges")
       .select("id,point_name,amount,discount_type,discount_value,discount_amount")
-      .eq("banquet_booking_id", bq.id)
+      .eq("booking_id", bq.booking_id)
       .order("sort_order", { ascending: true });
     if (__qe1) reportQueryError("banquet extra charges", __qe1);
     setExtras((ex ?? []) as unknown as ExtraCharge[]);
