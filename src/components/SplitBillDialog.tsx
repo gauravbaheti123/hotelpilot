@@ -352,7 +352,8 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         _folio_id: folio.id,
         _reason: `Split into 2 bills (${splitType})`,
         _user_id: user?.id ?? null,
-      });
+        _force: false,
+      } as any);
       if (voidErr) {
         // Rollback the newly created folios so we don't end up with 3 active bills.
         await supabase.from("folios").delete().in("id", newFolioIds);
@@ -555,7 +556,8 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         _folio_id: folio.id,
         _reason: `Split by ${splitMode} into ${parties.length} bills (${splitScope})`,
         _user_id: user?.id ?? null,
-      });
+        _force: false,
+      } as any);
       if (voidErr) {
         await supabase.from("folios").delete().in("id", newFolioIds);
         throw voidErr;

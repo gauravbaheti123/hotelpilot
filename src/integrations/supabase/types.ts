@@ -6409,20 +6409,15 @@ export type Database = {
         Returns: number
       }
       user_property_ids: { Args: { _uid: string }; Returns: string[] }
-      void_folio_safe:
-        | {
-            Args: { _folio_id: string; _reason: string; _user_id: string }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              _folio_id: string
-              _force?: boolean
-              _reason: string
-              _user_id: string
-            }
-            Returns: undefined
-          }
+      void_folio_safe: {
+        Args: {
+          _folio_id: string
+          _force?: boolean
+          _reason: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
