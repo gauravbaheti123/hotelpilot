@@ -166,6 +166,7 @@ export async function fetchGstInvoices(propertyId: string, from: string, to: str
     .eq("property_id", propertyId)
     .eq("gst_mode", "gst")
     .neq("status", "void")
+    .not("invoice_number", "is", null)
     .gte("created_at", start)
     .lt("created_at", end)
     .order("created_at", { ascending: false });
@@ -212,6 +213,7 @@ export async function fetchGstInvoiceSlabs(
     .eq("property_id", propertyId)
     .eq("gst_mode", "gst")
     .neq("status", "void")
+    .not("invoice_number", "is", null)
     .gte("created_at", start)
     .lt("created_at", end)
     .order("created_at", { ascending: false });
