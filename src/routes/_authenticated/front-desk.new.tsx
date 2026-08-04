@@ -30,6 +30,7 @@ import { submitWizard } from "@/lib/bookingWizardSubmit";
 import type { CreateBookingResult } from "@/lib/bookingCreate";
 import {
   emptyWizardState, isPristine, isStepValid, isStepSkipped, nextStepIndex, prevStepIndex,
+  normalizeWizardState,
   STEP, WIZARD_DRAFT_KEY, WIZARD_STEPS,
   type WizardGuest, type WizardState, type WizardExtraGuest, type WizardRoom,
   type WizardBillTo, type WizardPayment,
@@ -110,8 +111,13 @@ function NewBookingWizardPage() {
   useEffect(() => {
     if (resumeChecked.current) return;
     resumeChecked.current = true;
-    const saved = draft.load();
-    if (saved && !isPristine(saved)) setResumeOpen(true);
+    try {
+      const saved = normalizeWizardState(draft.load());
+      if (saved && !isPristine(saved)) setResumeOpen(true);
+    } catch {
+      // A corrupt/legacy draft must never block the wizard from rendering.
+      draft.clear();
+    }
   }, [draft]);
 
   // Debounced autosave.
@@ -165,22 +171,27 @@ function NewBookingWizardPage() {
     if (prefilled.current) return;
     if (!search?.roomId && !search?.categoryId && !search?.checkIn) return;
     prefilled.current = true;
-    setState((s) => {
-      const [first, ...rest] = s.rooms;
-      return {
-        ...s,
-        rooms: [
-          {
-            ...first,
-            categoryId: search.categoryId ?? first.categoryId,
-            roomId: search.roomId ?? first.roomId,
-            checkIn: search.checkIn ?? first.checkIn,
-            checkOut: search.checkOut ?? first.checkOut,
-          },
-          ...rest,
-        ],
-      };
-    });
+    try {
+      setState((s) => {
+        const existing = Array.isArray(s.rooms) && s.rooms.length > 0 ? s.rooms : [emptyRoom()];
+        const [first, ...rest] = existing;
+        return {
+          ...s,
+          rooms: [
+            {
+              ...first,
+              categoryId: search.categoryId ?? first.categoryId,
+              roomId: search.roomId ?? first.roomId,
+              checkIn: search.checkIn ?? first.checkIn,
+              checkOut: search.checkOut ?? first.checkOut,
+            },
+            ...rest,
+          ],
+        };
+      });
+    } catch {
+      // Prefill is a convenience — never let it take the page down.
+    }
   }, [search?.roomId, search?.categoryId, search?.checkIn, search?.checkOut]);
 
   const dirty = !isPristine(state);
@@ -419,8 +430,8 @@ function NewBookingWizardPage() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                const saved = draft.load();
-                if (saved) setState({ ...emptyWizardState(), ...saved, guest: { ...emptyWizardState().guest, ...saved.guest } });
+                const saved = normalizeWizardState(draft.load());
+                if (saved) setState(saved);
               }}
             >
               Resume
