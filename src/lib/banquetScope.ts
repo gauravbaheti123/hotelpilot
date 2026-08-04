@@ -16,7 +16,7 @@ import { reportQueryError } from "@/lib/queryError";
  *
  * `bookings.source = 'event_block'` is the single reliable discriminator.
  * Never match on the invoice-number prefix: `-B-` is shared with
- * `banquet_bookings.banquet_number`.
+ * `bookings.banquet_number`.
  */
 export interface BanquetScope {
   /** bookings.id that are PAST the 48h window and must be hidden */
