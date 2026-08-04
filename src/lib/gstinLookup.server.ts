@@ -4,9 +4,11 @@ import { GSTIN_REGEX } from "@/lib/gstin";
 const NO_RETRY = new Set([400, 401, 402, 403, 404]);
 const RETRY = new Set([429, 502]);
 
+export type JsonBody = Record<string, unknown> | null;
+
 export interface GstinLookupResult {
   status: number;
-  body: unknown;
+  body: JsonBody;
 }
 
 export function normalizeGstin(raw: string): string {
@@ -36,9 +38,9 @@ export async function lookupGstin(gstin: string, apiKey: string): Promise<GstinL
     }
 
     const text = await res.text();
-    let body: unknown;
+    let body: JsonBody;
     try {
-      body = text ? JSON.parse(text) : null;
+      body = text ? (JSON.parse(text) as JsonBody) : null;
     } catch {
       body = { error: text || "Unexpected response from GST lookup service." };
     }
