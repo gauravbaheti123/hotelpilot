@@ -513,7 +513,7 @@ function NewBanquetPage() {
                 {roomMode !== "none" && (
                   <div className="pt-3">
                     <Field label="Event Name * (shown on dashboard cards)">
-                      <Input placeholder="e.g. Sharma Wedding" value={eventName} onChange={(e) => setEventName(e.target.value)} />
+                      <Input autoTitleCase placeholder="e.g. Sharma Wedding" value={eventName} onChange={(e) => setEventName(e.target.value)} />
                     </Field>
                   </div>
                 )}

@@ -900,7 +900,7 @@ function NewBookingPage() {
             )}
 
             <div className="grid grid-cols-2 gap-3">
-            <F label="Full name *"><Input value={name} onChange={(e) => setName(e.target.value)} /></F>
+            <F label="Full name *"><Input autoTitleCase value={name} onChange={(e) => setName(e.target.value)} /></F>
             <F label="Mobile *">
               <Input
                 value={mobile}
@@ -932,7 +932,7 @@ function NewBookingPage() {
               </Select>
             </F>
             <F label="ID number"><Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} /></F>
-            <F label="Company (optional)"><Input value={company} onChange={(e) => setCompany(e.target.value)} /></F>
+            <F label="Company (optional)"><Input autoTitleCase value={company} onChange={(e) => setCompany(e.target.value)} /></F>
             <F label="GSTIN (optional)">
               <Input
                 id="gstin-input"
@@ -1040,7 +1040,7 @@ function NewBookingPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <F label="Full name *">
-                      <Input value={g.name} onChange={(e) => updateExtra(g.key, { name: e.target.value })} />
+                      <Input autoTitleCase value={g.name} onChange={(e) => updateExtra(g.key, { name: e.target.value })} />
                     </F>
                     <F label="Age *">
                       <Input type="number" value={g.age} onChange={(e) => updateExtra(g.key, { age: e.target.value })} />

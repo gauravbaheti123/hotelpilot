@@ -68,9 +68,11 @@ function InvoicesPage() {
   const canEdit = can("invoices", "edit");
   const canDelete = can("invoices", "delete");
   const canEditPaymentMode = hasRole(roles, "owner") || hasRole(roles, "superadmin") || hasRole(roles, "manager");
-  // Bill renumbering is intentionally owner-only — no dedicated permission key
-  // exists for renumbering, so keep the hardcoded role gate.
-  const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  // Phase 73 — all invoice edit/delete/renumber/segment-bill actions are now
+  // driven by the dynamic role_permissions grid (Settings > Roles), not by
+  // hardcoded role names. Renumbering and audit-trail viewing follow "edit".
+  const canRenumber = canEdit;
+  const canViewAudit = canEdit || canDelete;
 
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState("");
@@ -396,7 +398,7 @@ function InvoicesPage() {
           ))}
         </div>
         <Input placeholder="Search invoice / booking / guest…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-sm" />
-        {isOwner && (
+        {canViewAudit && (
           <div className="flex gap-1 rounded-md border p-1 bg-muted/30 ml-2">
             <button onClick={() => setAudit(false)}
               className={`px-3 py-1 text-xs rounded ${!audit ? "bg-background shadow font-medium" : "text-muted-foreground"}`}>
@@ -408,7 +410,7 @@ function InvoicesPage() {
             </button>
           </div>
         )}
-        {isOwner && audit && (
+        {canViewAudit && audit && (
           <Button size="sm" variant="outline" onClick={exportAudit}>
             <FileSpreadsheet className="h-4 w-4 mr-1" /> Export (Excel)
           </Button>
@@ -445,7 +447,7 @@ function InvoicesPage() {
                 </div>
                 {(canEdit || canDelete) && !voided && (
                   <div className="flex items-center gap-1 ml-2">
-                    {isOwner && (
+                    {canRenumber && (
                       <Button size="sm" variant="ghost" title="Edit bill number"
                         onClick={(e) => { e.preventDefault(); setNumTarget(r); setNumNew(r.invoice_number); setNumReason(""); }}>
                         <Hash className="h-4 w-4" />
@@ -486,7 +488,7 @@ function InvoicesPage() {
                         <Wallet className="h-4 w-4" />
                       </Button>
                     )}
-                    {isOwner && (
+                    {canDelete && (
                       <Button size="sm" variant="ghost" title="Permanently delete voided bill"
                         className="text-destructive hover:text-destructive"
                         onClick={(e) => { e.preventDefault(); setHardDelTarget(r); setHardDelStep(1); setHardDelPwd(""); setHardDelReason(""); }}>
@@ -537,8 +539,9 @@ function InvoicesPage() {
                     <Button size="sm" variant="ghost" title="Print bill" onClick={() => printSegBill(r)}>
                       <Printer className="h-4 w-4" />
                     </Button>
-                    {isOwner && (
+                    {(canEdit || canDelete) && (
                       <>
+                        {canEdit && (
                         <Button size="sm" variant="ghost" title="Edit bill"
                           onClick={() => setSegEditTarget({
                             id: r.id, bill_number: r.bill_number, segment: r.segment,
@@ -548,6 +551,8 @@ function InvoicesPage() {
                           })}>
                           <Pencil className="h-4 w-4" />
                         </Button>
+                        )}
+                        {canDelete && (
                         <Button size="sm" variant="ghost" title="Delete bill"
                           className="text-destructive hover:text-destructive"
                           onClick={() => setSegDelTarget({
@@ -558,6 +563,7 @@ function InvoicesPage() {
                           })}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
+                        )}
                       </>
                     )}
                   </div>
@@ -589,7 +595,7 @@ function InvoicesPage() {
         onSaved={() => { setPayModeTarget(null); load(); }}
       />
 
-      {isOwner && audit && auditRows.length > 0 && (
+      {canViewAudit && audit && auditRows.length > 0 && (
         <Card className="mt-4">
           <CardContent className="p-0">
             <div className="px-4 py-2 border-b bg-muted/30 text-xs font-medium uppercase tracking-wider">

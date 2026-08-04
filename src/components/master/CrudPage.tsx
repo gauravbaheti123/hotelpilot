@@ -63,6 +63,8 @@ export interface FieldDef {
   options?: { value: string; label: string }[];
   defaultValue?: any;
   colSpan?: 1 | 2;
+  /** Opt-in Title Casing on blur (name/address-type fields only). */
+  titleCase?: boolean;
 }
 
 export interface ColumnDef<T> {

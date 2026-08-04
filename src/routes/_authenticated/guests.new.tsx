@@ -104,7 +104,7 @@ function NewGuestPage() {
         <CardHeader><CardTitle className="text-base">Guest details</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Full name *"><Input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} /></Field>
+            <Field label="Full name *"><Input autoTitleCase value={name} onChange={(e) => setName(e.target.value)} maxLength={120} /></Field>
             <Field label="Mobile *">
               <Input
                 value={mobile}
@@ -154,7 +154,7 @@ function NewGuestPage() {
             <Field label="ID proof number"><Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} maxLength={40} /></Field>
             <div className="md:col-span-2">
               <Field label="Company Name">
-                <Input value={company} onChange={(e) => setCompany(e.target.value)} maxLength={200} placeholder="e.g. Growth Story Pvt Ltd" />
+                <Input autoTitleCase value={company} onChange={(e) => setCompany(e.target.value)} maxLength={200} placeholder="e.g. Growth Story Pvt Ltd" />
                 <p className="mt-1 text-[11px] text-muted-foreground">Optional — useful for corporate / business travelers</p>
               </Field>
             </div>
