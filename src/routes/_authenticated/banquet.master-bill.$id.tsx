@@ -14,27 +14,50 @@ import { resolveEventIds } from "@/lib/banquetEvent";
 
 export const Route = createFileRoute("/_authenticated/banquet/master-bill/$id")({
   head: () => ({ meta: [{ title: "Banquet Master Bill — HotelPilot" }] }),
-  component: () => (<RequirePermission module="banquet"><MasterBillPage /></RequirePermission>),
+  component: () => (
+    <RequirePermission module="banquet">
+      <MasterBillPage />
+    </RequirePermission>
+  ),
 });
 
 interface Item {
-  id: string; booking_id: string; room_number: string; room_category: string | null;
-  food_amount: number; gst_amount: number; food_bill_number: string | null;
+  id: string;
+  booking_id: string;
+  room_number: string;
+  room_category: string | null;
+  food_amount: number;
+  gst_amount: number;
+  food_bill_number: string | null;
 }
 interface MB {
-  id: string; bill_number: string; food_subtotal: number; gst_amount: number; total_amount: number;
-  created_at: string; property_id: string;
+  id: string;
+  bill_number: string;
+  food_subtotal: number;
+  gst_amount: number;
+  total_amount: number;
+  created_at: string;
+  property_id: string;
   banquet_bookings: {
-    id: string; banquet_number: string; event_name: string | null; function_type: string;
-    event_date: string; pax: number;
+    id: string;
+    banquet_number: string;
+    event_name: string | null;
+    function_type: string;
+    event_date: string;
+    pax: number;
     guests: { name: string; mobile: string | null } | null;
     halls: { name: string } | null;
   } | null;
 }
 interface PropertyInfo {
-  name: string; gstin: string | null; address: string | null;
-  city: string | null; state: string | null; pincode: string | null;
-  phone: string | null; email: string | null;
+  name: string;
+  gstin: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  pincode: string | null;
+  phone: string | null;
+  email: string | null;
 }
 
 function MasterBillPage() {
@@ -52,46 +75,69 @@ function MasterBillPage() {
     try {
       const r = await resolveEventIds(id);
       if (r?.legacyId) legacyId = r.legacyId;
-    } catch { /* fall back to the raw param */ }
-    const { data, error } = await (supabase as any).from("banquet_master_bills")
-      .select(`id,bill_number,food_subtotal,gst_amount,total_amount,created_at,property_id,
+    } catch {
+      /* fall back to the raw param */
+    }
+    const { data, error } = await (supabase as any)
+      .from("banquet_master_bills")
+      .select(
+        `id,bill_number,food_subtotal,gst_amount,total_amount,created_at,property_id,
                banquet_bookings(id,banquet_number,event_name,function_type,event_date,pax,
-                 guests(name,mobile), halls(name))`)
-      .eq("banquet_booking_id", legacyId).maybeSingle();
-    if (error) { toast.error(error.message); setLoading(false); return; }
+                 guests(name,mobile), halls(name))`,
+      )
+      .eq("banquet_booking_id", legacyId)
+      .maybeSingle();
+    if (error) {
+      toast.error(error.message);
+      setLoading(false);
+      return;
+    }
     if (!data) {
-      setLoading(false); return;
+      setLoading(false);
+      return;
     }
     setMb(data as MB);
-    const { data: its } = await (supabase as any).from("banquet_master_bill_items")
+    const { data: its } = await (supabase as any)
+      .from("banquet_master_bill_items")
       .select("id,booking_id,room_number,room_category,food_amount,gst_amount,food_bill_number")
       .eq("master_bill_id", (data as any).id)
       .order("room_number");
     setItems((its ?? []) as Item[]);
-    const { data: p } = await supabase.from("properties")
+    const { data: p } = await supabase
+      .from("properties")
       .select("name,gstin,address,city,state,pincode,phone,email")
-      .eq("id", (data as any).property_id).single();
+      .eq("id", (data as any).property_id)
+      .single();
     setProp(p as PropertyInfo);
     setLoading(false);
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   function doPrint() {
     window.print();
   }
 
   if (loading) {
-    return <AppShell title="Banquet Master Bill"><div className="p-6">Loading…</div></AppShell>;
+    return (
+      <AppShell title="Banquet Master Bill">
+        <div className="p-6">Loading…</div>
+      </AppShell>
+    );
   }
   if (!mb) {
     return (
       <AppShell title="Banquet Master Bill">
         <div className="p-6 space-y-3">
           <BackButton variant="ghost" fallbackTo={`/banquet/event/${id}`} />
-          <Card><CardContent className="p-6 text-sm text-muted-foreground">
-            No Master Bill yet. It will be generated automatically once a room under this event checks out.
-          </CardContent></Card>
+          <Card>
+            <CardContent className="p-6 text-sm text-muted-foreground">
+              No Master Bill yet. It will be generated automatically once a room under this event
+              checks out.
+            </CardContent>
+          </Card>
         </div>
       </AppShell>
     );
@@ -110,7 +156,9 @@ function MasterBillPage() {
       <div className="p-6 max-w-4xl mx-auto space-y-4">
         <div className="flex items-center justify-between no-print">
           <BackButton variant="ghost" fallbackTo={`/banquet/event/${ev.id}`} />
-          <Button size="sm" onClick={doPrint}><Printer className="h-4 w-4 mr-1" /> Print</Button>
+          <Button size="sm" onClick={doPrint}>
+            <Printer className="h-4 w-4 mr-1" /> Print
+          </Button>
         </div>
 
         <Card id="master-bill">
@@ -121,7 +169,8 @@ function MasterBillPage() {
                 {[prop?.address, prop?.city, prop?.state, prop?.pincode].filter(Boolean).join(", ")}
               </div>
               <div className="text-xs text-muted-foreground">
-                {prop?.phone ? `Ph: ${prop.phone}` : ""}{prop?.email ? ` · ${prop.email}` : ""}
+                {prop?.phone ? `Ph: ${prop.phone}` : ""}
+                {prop?.email ? ` · ${prop.email}` : ""}
                 {prop?.gstin ? ` · GSTIN: ${prop.gstin}` : ""}
               </div>
               <div className="mt-3 text-lg font-bold tracking-wider">BANQUET MASTER BILL</div>
@@ -129,21 +178,47 @@ function MasterBillPage() {
 
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <div><span className="text-muted-foreground">Bill No: </span><span className="font-semibold">{mb.bill_number}</span></div>
-                <div><span className="text-muted-foreground">Event Ref: </span>{ev.banquet_number}</div>
-                <div><span className="text-muted-foreground">Event: </span><span className="font-semibold">{ev.event_name ?? ev.function_type}</span></div>
-                <div><span className="text-muted-foreground">Type: </span>{ev.function_type}</div>
+                <div>
+                  <span className="text-muted-foreground">Bill No: </span>
+                  <span className="font-semibold">{mb.bill_number}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Event Ref: </span>
+                  {ev.banquet_number}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Event: </span>
+                  <span className="font-semibold">{ev.event_name ?? ev.function_type}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Type: </span>
+                  {ev.function_type}
+                </div>
               </div>
               <div className="text-right">
-                <div><span className="text-muted-foreground">Event Date: </span>{fmtDate(ev.event_date)}</div>
-                <div><span className="text-muted-foreground">Hall: </span>{ev.halls?.name ?? "—"}</div>
-                <div><span className="text-muted-foreground">Host: </span>{ev.guests?.name ?? "—"}</div>
-                <div><span className="text-muted-foreground">Pax: </span>{ev.pax}</div>
+                <div>
+                  <span className="text-muted-foreground">Event Date: </span>
+                  {fmtDate(ev.event_date)}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Hall: </span>
+                  {ev.halls?.name ?? "—"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Host: </span>
+                  {ev.guests?.name ?? "—"}
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Pax: </span>
+                  {ev.pax}
+                </div>
               </div>
             </div>
 
             <div className="border-t pt-2">
-              <div className="text-xs text-muted-foreground mb-1">Room-wise Food &amp; Extra Charges</div>
+              <div className="text-xs text-muted-foreground mb-1">
+                Room-wise Food &amp; Extra Charges
+              </div>
               <table className="w-full text-sm">
                 <thead className="bg-muted/40">
                   <tr>
@@ -169,12 +244,18 @@ function MasterBillPage() {
                     </tr>
                   ))}
                   {items.length === 0 && (
-                    <tr><td colSpan={6} className="text-center py-4 text-muted-foreground">No line items yet</td></tr>
+                    <tr>
+                      <td colSpan={6} className="text-center py-4 text-muted-foreground">
+                        No line items yet
+                      </td>
+                    </tr>
                   )}
                 </tbody>
                 <tfoot className="border-t-2 font-semibold">
                   <tr>
-                    <td colSpan={3} className="px-2 py-2 text-right">Totals</td>
+                    <td colSpan={3} className="px-2 py-2 text-right">
+                      Totals
+                    </td>
                     <td className="px-2 py-2 text-right tabular-nums">{inr(mb.food_subtotal)}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{inr(mb.gst_amount)}</td>
                     <td className="px-2 py-2 text-right tabular-nums">{inr(mb.total_amount)}</td>
@@ -185,15 +266,24 @@ function MasterBillPage() {
 
             <div className="border-t pt-3 flex justify-end">
               <div className="text-right space-y-1">
-                <div className="text-sm"><span className="text-muted-foreground mr-3">Food &amp; Extras Subtotal</span>{inr(mb.food_subtotal)}</div>
-                <div className="text-sm"><span className="text-muted-foreground mr-3">GST</span>{inr(mb.gst_amount)}</div>
-                <div className="text-lg font-bold border-t pt-1"><span className="mr-3">Grand Total</span>{inr(mb.total_amount)}</div>
+                <div className="text-sm">
+                  <span className="text-muted-foreground mr-3">Food &amp; Extras Subtotal</span>
+                  {inr(mb.food_subtotal)}
+                </div>
+                <div className="text-sm">
+                  <span className="text-muted-foreground mr-3">GST</span>
+                  {inr(mb.gst_amount)}
+                </div>
+                <div className="text-lg font-bold border-t pt-1">
+                  <span className="mr-3">Grand Total</span>
+                  {inr(mb.total_amount)}
+                </div>
               </div>
             </div>
 
             <div className="text-xs text-muted-foreground border-t pt-2">
-              Note: This Master Bill consolidates food &amp; extra charges only.
-              Individual room / accommodation charges are billed separately on each room's own Tax Invoice.
+              Note: This Master Bill consolidates food &amp; extra charges only. Individual room /
+              accommodation charges are billed separately on each room's own Tax Invoice.
             </div>
           </CardContent>
         </Card>

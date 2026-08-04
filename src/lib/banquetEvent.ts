@@ -14,15 +14,39 @@ import { supabase } from "@/integrations/supabase/client";
 
 /** Columns that live on `bookings`; everything else is written to the mirror. */
 const UNIFIED_FIELDS = new Set([
-  "hall_id", "guest_id", "function_type", "event_date", "event_end_date",
-  "start_time", "end_time", "pax", "package_rate", "hall_charge", "fb_charge",
-  "extra_charge", "extra_charge_description", "discount_type", "discount_value",
-  "discount_amount", "round_off_amount", "total_amount", "advance_amount",
-  "balance_amount", "event_name", "host_name", "host_mobile", "host_email",
-  "notes", "cancelled_at", "cancelled_reason",
+  "hall_id",
+  "guest_id",
+  "function_type",
+  "event_date",
+  "event_end_date",
+  "start_time",
+  "end_time",
+  "pax",
+  "package_rate",
+  "hall_charge",
+  "fb_charge",
+  "extra_charge",
+  "extra_charge_description",
+  "discount_type",
+  "discount_value",
+  "discount_amount",
+  "round_off_amount",
+  "total_amount",
+  "advance_amount",
+  "balance_amount",
+  "event_name",
+  "host_name",
+  "host_mobile",
+  "host_email",
+  "notes",
+  "cancelled_at",
+  "cancelled_reason",
 ]);
 
-export interface EventIds { bookingId: string; legacyId: string | null }
+export interface EventIds {
+  bookingId: string;
+  legacyId: string | null;
+}
 
 /** Accepts a unified bookings.id OR a legacy banquet_bookings.id. */
 export async function resolveEventIds(id: string): Promise<EventIds | null> {
@@ -30,7 +54,10 @@ export async function resolveEventIds(id: string): Promise<EventIds | null> {
   if (error) throw error;
   const row = data as any;
   if (!row?.booking_id) return null;
-  return { bookingId: row.booking_id as string, legacyId: (row.banquet_booking_id ?? null) as string | null };
+  return {
+    bookingId: row.booking_id as string,
+    legacyId: (row.banquet_booking_id ?? null) as string | null,
+  };
 }
 
 /**
@@ -45,7 +72,10 @@ export async function loadEventBooking(id: string) {
   const ids = await resolveEventIds(id);
   if (!ids) return null;
 
-  const { data: u, error } = await supabase.from("bookings").select(`
+  const { data: u, error } = await supabase
+    .from("bookings")
+    .select(
+      `
     id,property_id,banquet_number,status,guest_id,hall_id,event_name,function_type,
     event_date,event_end_date,start_time,end_time,pax,
     package_rate,hall_charge,fb_charge,extra_charge,extra_charge_description,
@@ -53,14 +83,19 @@ export async function loadEventBooking(id: string) {
     total_amount,advance_amount,balance_amount,notes,cancelled_at,cancelled_reason,
     halls(id,name,capacity),
     guests(id,name,mobile,email,gst_number,company,state,state_code)
-  `).eq("id", ids.bookingId).single();
+  `,
+    )
+    .eq("id", ids.bookingId)
+    .single();
   if (error) throw error;
 
   let legacy: any = null;
   if (ids.legacyId) {
-    const { data: l } = await supabase.from("banquet_bookings")
+    const { data: l } = await supabase
+      .from("banquet_bookings")
       .select("id,status,bill_type,advance_payment_mode,line_discounts,total_room_charges")
-      .eq("id", ids.legacyId).maybeSingle();
+      .eq("id", ids.legacyId)
+      .maybeSingle();
     legacy = l ?? null;
   }
 
@@ -83,9 +118,11 @@ export async function loadEventBooking(id: string) {
 
 /** Live advance/balance from folios (booking_financials view, Part 1). */
 export async function loadEventFinancials(bookingId: string) {
-  const { data } = await supabase.from("booking_financials" as any)
+  const { data } = await supabase
+    .from("booking_financials" as any)
     .select("folio_total,advance_amount,balance_amount")
-    .eq("booking_id", bookingId).maybeSingle();
+    .eq("booking_id", bookingId)
+    .maybeSingle();
   const r = (data ?? null) as any;
   return {
     folioTotal: Number(r?.folio_total ?? 0),
@@ -99,10 +136,7 @@ export async function loadEventFinancials(bookingId: string) {
  * Patch an event. Unified columns go to `bookings`; legacy-only columns go to
  * the mirror. DB triggers keep the other side in sync either way.
  */
-export async function patchEventBooking(
-  ids: EventIds,
-  patch: Record<string, any>,
-): Promise<void> {
+export async function patchEventBooking(ids: EventIds, patch: Record<string, any>): Promise<void> {
   const unified: Record<string, any> = {};
   const legacyOnly: Record<string, any> = {};
   for (const [k, v] of Object.entries(patch)) {
@@ -111,11 +145,17 @@ export async function patchEventBooking(
     (UNIFIED_FIELDS.has(k) ? unified : legacyOnly)[k] = v;
   }
   if (Object.keys(unified).length > 0) {
-    const { error } = await supabase.from("bookings").update(unified as any).eq("id", ids.bookingId);
+    const { error } = await supabase
+      .from("bookings")
+      .update(unified as any)
+      .eq("id", ids.bookingId);
     if (error) throw error;
   }
   if (Object.keys(legacyOnly).length > 0 && ids.legacyId) {
-    const { error } = await supabase.from("banquet_bookings").update(legacyOnly as any).eq("id", ids.legacyId);
+    const { error } = await supabase
+      .from("banquet_bookings")
+      .update(legacyOnly as any)
+      .eq("id", ids.legacyId);
     if (error) throw error;
   }
 }
@@ -127,20 +167,29 @@ export async function setEventStatus(
   extra?: { cancelled_reason?: string },
 ): Promise<void> {
   if (ids.legacyId) {
-    const { error } = await supabase.from("banquet_bookings").update({
-      status,
-      ...(status === "cancelled"
-        ? { cancelled_at: new Date().toISOString(), cancelled_reason: extra?.cancelled_reason ?? null }
-        : {}),
-    } as any).eq("id", ids.legacyId);
+    const { error } = await supabase
+      .from("banquet_bookings")
+      .update({
+        status,
+        ...(status === "cancelled"
+          ? {
+              cancelled_at: new Date().toISOString(),
+              cancelled_reason: extra?.cancelled_reason ?? null,
+            }
+          : {}),
+      } as any)
+      .eq("id", ids.legacyId);
     if (error) throw error;
   }
   if (status === "cancelled") {
-    await supabase.from("bookings").update({
-      status: "cancelled",
-      cancelled_at: new Date().toISOString(),
-      cancelled_reason: extra?.cancelled_reason ?? null,
-    } as any).eq("id", ids.bookingId);
+    await supabase
+      .from("bookings")
+      .update({
+        status: "cancelled",
+        cancelled_at: new Date().toISOString(),
+        cancelled_reason: extra?.cancelled_reason ?? null,
+      } as any)
+      .eq("id", ids.bookingId);
   }
 }
 
@@ -175,7 +224,9 @@ export interface CreateEventPayload {
 
 /** Creates the unified event booking (+ mirror) and returns both ids. */
 export async function createEventBooking(payload: CreateEventPayload): Promise<{
-  bookingId: string; legacyId: string; banquetNumber: string;
+  bookingId: string;
+  legacyId: string;
+  banquetNumber: string;
 }> {
   const { data, error } = await supabase.rpc("create_event_booking" as any, { payload } as any);
   if (error) throw error;
@@ -189,6 +240,9 @@ export async function createEventBooking(payload: CreateEventPayload): Promise<{
 
 /** Seed hall + itemised extra charges onto the event folio. */
 export async function seedEventFolioCharges(bookingId: string): Promise<void> {
-  const { error } = await supabase.rpc("seed_event_folio_charges" as any, { _booking_id: bookingId } as any);
+  const { error } = await supabase.rpc(
+    "seed_event_folio_charges" as any,
+    { _booking_id: bookingId } as any,
+  );
   if (error) throw error;
 }
