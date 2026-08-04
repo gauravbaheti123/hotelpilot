@@ -122,17 +122,17 @@ export async function loadEventFinancials(bookingId: string) {
   };
 }
 
-/**
- * Patch an event. Unified columns go to `bookings`; legacy-only columns go to
- * the mirror. DB triggers keep the other side in sync either way.
- */
+/** Patch an event. Everything is written straight to `bookings`. */
 export async function patchEventBooking(ids: EventIds, patch: Record<string, any>): Promise<void> {
   const unified: Record<string, any> = {};
-  const legacyOnly: Record<string, any> = {};
   for (const [k, v] of Object.entries(patch)) {
     if (v === undefined) continue;
-    if (k === "halls" || k === "guests" || k === "id") continue;
-    (UNIFIED_FIELDS.has(k) ? unified : legacyOnly)[k] = v;
+    if (k === "halls" || k === "guests" || k === "id" || k === "booking_id" || k === "legacy_id") continue;
+    if (k === "status") {
+      unified.event_status = v;
+      continue;
+    }
+    if (UNIFIED_FIELDS.has(k)) unified[k] = v;
   }
   if (Object.keys(unified).length > 0) {
     const { error } = await supabase
@@ -141,46 +141,24 @@ export async function patchEventBooking(ids: EventIds, patch: Record<string, any
       .eq("id", ids.bookingId);
     if (error) throw error;
   }
-  if (Object.keys(legacyOnly).length > 0 && ids.legacyId) {
-    const { error } = await supabase
-      .from("banquet_bookings")
-      .update(legacyOnly as any)
-      .eq("id", ids.legacyId);
-    if (error) throw error;
-  }
 }
 
-/** Event lifecycle status lives on the mirror; cancellation mirrors to bookings. */
+/** Event lifecycle status lives on bookings.event_status. */
 export async function setEventStatus(
   ids: EventIds,
   status: "reserved" | "confirmed" | "in_progress" | "completed" | "cancelled",
   extra?: { cancelled_reason?: string },
 ): Promise<void> {
-  if (ids.legacyId) {
-    const { error } = await supabase
-      .from("banquet_bookings")
-      .update({
-        status,
-        ...(status === "cancelled"
-          ? {
-              cancelled_at: new Date().toISOString(),
-              cancelled_reason: extra?.cancelled_reason ?? null,
-            }
-          : {}),
-      } as any)
-      .eq("id", ids.legacyId);
-    if (error) throw error;
-  }
+  const patch: Record<string, any> = {
+    event_status: status === "reserved" ? "confirmed" : status,
+  };
   if (status === "cancelled") {
-    await supabase
-      .from("bookings")
-      .update({
-        status: "cancelled",
-        cancelled_at: new Date().toISOString(),
-        cancelled_reason: extra?.cancelled_reason ?? null,
-      } as any)
-      .eq("id", ids.bookingId);
+    patch.status = "cancelled";
+    patch.cancelled_at = new Date().toISOString();
+    patch.cancelled_reason = extra?.cancelled_reason ?? null;
   }
+  const { error } = await supabase.from("bookings").update(patch as any).eq("id", ids.bookingId);
+  if (error) throw error;
 }
 
 export interface CreateEventPayload {
@@ -212,7 +190,7 @@ export interface CreateEventPayload {
   extras?: { point_name: string; amount: number }[];
 }
 
-/** Creates the unified event booking (+ mirror) and returns both ids. */
+/** Creates the unified event booking and returns its id. */
 export async function createEventBooking(payload: CreateEventPayload): Promise<{
   bookingId: string;
   legacyId: string;
@@ -223,7 +201,7 @@ export async function createEventBooking(payload: CreateEventPayload): Promise<{
   const r = data as any;
   return {
     bookingId: r.booking_id as string,
-    legacyId: r.banquet_booking_id as string,
+    legacyId: r.booking_id as string,
     banquetNumber: r.banquet_number as string,
   };
 }
@@ -238,11 +216,8 @@ export async function seedEventFolioCharges(bookingId: string): Promise<void> {
 }
 
 /* ------------------------------------------------------------------ *
- * Part 5 — unified read paths
- * Every list / report / ledger screen reads the event header from the
- * unified `bookings` row (booking_type = 'banquet'). The legacy mirror is
- * consulted ONLY for the two columns that have not moved yet:
- * the event lifecycle status vocabulary and total_room_charges.
+ * Unified read paths — every list / report / ledger screen reads the
+ * event header from the unified `bookings` row (booking_type='banquet').
  * ------------------------------------------------------------------ */
 
 export interface EventRow {
