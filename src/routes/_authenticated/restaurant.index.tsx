@@ -16,8 +16,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
-import { Download, MessageCircle, FileSpreadsheet, AlertTriangle, CheckCircle2, Plus } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { Download, MessageCircle, FileSpreadsheet, AlertTriangle, CheckCircle2, Plus, Pencil, Trash2 } from "lucide-react";
+import { useAuth, hasRole } from "@/hooks/use-auth";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { istToday } from "@/lib/date";
@@ -67,7 +68,8 @@ function OutletBreakdown({ parts, className }: { parts: Array<[string, number]>;
 
 function RestaurantPage() {
   const { current } = useCurrentProperty();
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
+  const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
   const [credits, setCredits] = useState<CreditRow[]>([]);
   const [enriched, setEnriched] = useState<Record<string, CreditEnrichment>>({});
   const [loading, setLoading] = useState(false);
@@ -84,6 +86,7 @@ function RestaurantPage() {
     id: string; booking_id: string | null; guest_id: string | null;
     amount: number; description: string | null; charge_date: string;
     is_settled: boolean; created_at: string; outlet_id?: string | null; bill_no?: string | null;
+    folio_charge_id?: string | null;
   };
   type PayableRow = {
     id: string; charge_id: string | null; amount: number;
@@ -110,12 +113,203 @@ function RestaurantPage() {
   const [settleDate, setSettleDate] = useState(istToday());
   const [settleNotes, setSettleNotes] = useState("");
 
+  // ─── Owner edit / delete of direct charges ───────────────────────────────
+  const [editCharge, setEditCharge] = useState<DirectChargeRow | null>(null);
+  const [ecBooking, setEcBooking] = useState("");
+  const [ecOutlet, setEcOutlet] = useState("");
+  const [ecAmount, setEcAmount] = useState("");
+  const [ecBillNo, setEcBillNo] = useState("");
+  const [ecDesc, setEcDesc] = useState("");
+  const [ecDate, setEcDate] = useState(istToday());
+  const [ecReason, setEcReason] = useState("");
+  const [delCharge, setDelCharge] = useState<DirectChargeRow | null>(null);
+  const [delReason, setDelReason] = useState("");
+  const [busyRow, setBusyRow] = useState(false);
+
+  /** A charge is locked once it (or its payable) has been reconciled into a
+   *  month-end settlement — those rows must never be edited or deleted. */
+  function chargeLocked(c: DirectChargeRow) {
+    if (c.is_settled) return true;
+    return payables.some((p) => p.charge_id === c.id && p.is_settled);
+  }
+
+  function openEdit(c: DirectChargeRow) {
+    setEditCharge(c);
+    setEcBooking(c.booking_id ?? "");
+    setEcOutlet(c.outlet_id ?? "");
+    setEcAmount(String(c.amount));
+    setEcBillNo(c.bill_no ?? "");
+    setEcDesc(c.description ?? "");
+    setEcDate(c.charge_date);
+    setEcReason("");
+  }
+
+  async function recomputeFolioOf(folioChargeId: string | null | undefined) {
+    if (!folioChargeId) return;
+    const { data } = await supabase
+      .from("folio_charges").select("folio_id").eq("id", folioChargeId).maybeSingle();
+    const folioId = (data as any)?.folio_id;
+    if (folioId) await (supabase as any).rpc("recompute_folio_totals", { _folio_id: folioId });
+  }
+
+  async function saveChargeEdit() {
+    if (!current || !editCharge) return;
+    const amt = Number(ecAmount);
+    if (!ecOutlet) return toast.error("Select an outlet");
+    if (!amt || amt <= 0) return toast.error("Enter a valid amount");
+    if (!ecReason.trim()) return toast.error("Reason is required");
+    setBusyRow(true);
+    try {
+      const old = { ...editCharge };
+      const bookingChanged = (editCharge.booking_id ?? "") !== ecBooking;
+      const booking = activeBookings.find((b) => b.value === ecBooking);
+      const desc = ecDesc.trim() || "Restaurant Charge";
+
+      // 1. Folio mirror — move or update the guest folio line item.
+      let folioChargeId = editCharge.folio_charge_id ?? null;
+      if (bookingChanged && folioChargeId) {
+        await recomputeFolioOf(folioChargeId);
+        const prevFolioCharge = folioChargeId;
+        await supabase.from("folio_charges").delete().eq("id", prevFolioCharge);
+        folioChargeId = null;
+      }
+      if (ecBooking) {
+        if (folioChargeId) {
+          const { error } = await supabase.from("folio_charges").update({
+            description: `Restaurant Charge — ${desc}`,
+            qty: 1, rate: amt, amount: amt, gst_rate: 0, gst_amount: 0,
+          } as any).eq("id", folioChargeId);
+          if (error) throw error;
+        } else {
+          const folio = await (supabase as any).rpc("get_or_create_folio", { _booking_id: ecBooking });
+          if (folio.error) throw folio.error;
+          const fc = await supabase.from("folio_charges").insert({
+            folio_id: folio.data,
+            charge_type: "extra",
+            description: `Restaurant Charge — ${desc}`,
+            qty: 1, rate: amt, amount: amt, gst_rate: 0, gst_amount: 0,
+            created_by: user?.id ?? null,
+          } as any).select("id").single();
+          if (fc.error) throw fc.error;
+          folioChargeId = fc.data.id;
+        }
+      }
+
+      // 2. Charge row
+      const upd = await (supabase as any).from("restaurant_direct_charges").update({
+        booking_id: ecBooking || null,
+        guest_id: booking?.guest_id ?? (bookingChanged ? null : editCharge.guest_id),
+        outlet_id: ecOutlet,
+        amount: amt,
+        bill_no: ecBillNo.trim() || null,
+        description: desc,
+        charge_date: ecDate,
+        folio_charge_id: folioChargeId,
+      }).eq("id", editCharge.id);
+      if (upd.error) throw upd.error;
+
+      // 3. Unsettled payable mirror
+      const pay = await (supabase as any).from("restaurant_payables").update({
+        amount: amt,
+        bill_no: ecBillNo.trim() || null,
+        description: desc,
+        charge_date: ecDate,
+      }).eq("charge_id", editCharge.id).eq("is_settled", false);
+      if (pay.error) throw pay.error;
+
+      await recomputeFolioOf(folioChargeId);
+
+      await supabase.rpc("log_owner_override" as any, {
+        _property_id: current.id,
+        _table_name: "restaurant_direct_charges",
+        _record_id: editCharge.id,
+        _action: "RESTAURANT_DIRECT_CHARGE_EDITED",
+        _old: old,
+        _new: {
+          booking_id: ecBooking || null, outlet_id: ecOutlet, amount: amt,
+          bill_no: ecBillNo.trim() || null, description: desc, charge_date: ecDate,
+        },
+        _reason: ecReason.trim(),
+      } as any);
+      await logActivity({
+        property_id: current.id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "RESTAURANT_DIRECT_CHARGE_EDITED",
+        module: "Restaurant",
+        reference_id: editCharge.id,
+        reference_label: ecBillNo.trim() || desc,
+        details: { reason: ecReason.trim(), old_amount: Number(old.amount), new_amount: amt },
+      });
+
+      toast.success("Charge updated");
+      setEditCharge(null);
+      await loadDirect();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Update failed");
+    } finally { setBusyRow(false); }
+  }
+
+  async function confirmChargeDelete() {
+    if (!current || !delCharge) return;
+    if (chargeLocked(delCharge)) {
+      return toast.error("Charge is already reconciled into a settlement — it cannot be deleted");
+    }
+    if (!delReason.trim()) return toast.error("Reason is required");
+    setBusyRow(true);
+    try {
+      const snapshot = { ...delCharge, payables: payables.filter((p) => p.charge_id === delCharge.id) };
+      const folioChargeId = delCharge.folio_charge_id ?? null;
+      let folioId: string | null = null;
+      if (folioChargeId) {
+        const { data } = await supabase
+          .from("folio_charges").select("folio_id").eq("id", folioChargeId).maybeSingle();
+        folioId = (data as any)?.folio_id ?? null;
+        const del = await supabase.from("folio_charges").delete().eq("id", folioChargeId);
+        if (del.error) throw del.error;
+      }
+      const pDel = await (supabase as any).from("restaurant_payables")
+        .delete().eq("charge_id", delCharge.id).eq("is_settled", false);
+      if (pDel.error) throw pDel.error;
+      const cDel = await (supabase as any).from("restaurant_direct_charges")
+        .delete().eq("id", delCharge.id);
+      if (cDel.error) throw cDel.error;
+      if (folioId) await (supabase as any).rpc("recompute_folio_totals", { _folio_id: folioId });
+
+      await supabase.rpc("log_owner_override" as any, {
+        _property_id: current.id,
+        _table_name: "restaurant_direct_charges",
+        _record_id: delCharge.id,
+        _action: "RESTAURANT_DIRECT_CHARGE_DELETED",
+        _old: snapshot,
+        _new: {},
+        _reason: delReason.trim(),
+      } as any);
+      await logActivity({
+        property_id: current.id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "RESTAURANT_DIRECT_CHARGE_DELETED",
+        module: "Restaurant",
+        reference_id: delCharge.id,
+        reference_label: delCharge.bill_no || delCharge.description || "Direct charge",
+        details: { reason: delReason.trim(), amount: Number(delCharge.amount) },
+      });
+
+      toast.success("Charge deleted");
+      setDelCharge(null); setDelReason("");
+      await loadDirect();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Delete failed");
+    } finally { setBusyRow(false); }
+  }
+
   async function loadDirect() {
     if (!current) return;
     const [dc, py, bk, ol] = await Promise.all([
       supabase
         .from("restaurant_direct_charges" as any)
-        .select("id,booking_id,guest_id,amount,description,charge_date,is_settled,created_at,outlet_id,bill_no")
+        .select("id,booking_id,guest_id,amount,description,charge_date,is_settled,created_at,outlet_id,bill_no,folio_charge_id")
         .eq("property_id", current.id)
         .order("charge_date", { ascending: false }),
       supabase
@@ -772,10 +966,11 @@ function RestaurantPage() {
                     <TableHead>Description</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Status</TableHead>
+                    {isOwner && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow></TableHeader>
                   <TableBody>
                     {directCharges.length === 0 && (
-                      <TableRow><TableCell colSpan={8} className="text-center py-6 text-sm text-muted-foreground">
+                      <TableRow><TableCell colSpan={isOwner ? 9 : 8} className="text-center py-6 text-sm text-muted-foreground">
                         No direct charges posted yet
                       </TableCell></TableRow>
                     )}
@@ -797,6 +992,26 @@ function RestaurantPage() {
                               ? <Badge variant="secondary">Settled</Badge>
                               : <Badge>Posted</Badge>}
                           </TableCell>
+                          {isOwner && (
+                            <TableCell className="text-right whitespace-nowrap">
+                              <Button
+                                size="icon" variant="ghost" className="h-8 w-8"
+                                title={chargeLocked(c) ? "Reconciled into a settlement — locked" : "Edit charge"}
+                                disabled={chargeLocked(c)}
+                                onClick={() => openEdit(c)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon" variant="ghost" className="h-8 w-8 text-destructive"
+                                title={chargeLocked(c) ? "Reconciled into a settlement — locked" : "Delete charge"}
+                                disabled={chargeLocked(c)}
+                                onClick={() => { setDelCharge(c); setDelReason(""); }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          )}
                         </TableRow>
                       );
                     })}
@@ -953,6 +1168,93 @@ function RestaurantPage() {
         </Dialog>
 
         {/* Settle Payables Modal */}
+        {/* Owner — Edit Direct Charge */}
+        <Dialog open={!!editCharge} onOpenChange={(o) => !o && setEditCharge(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Edit Restaurant Charge</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Booking (Room · Guest)</Label>
+                <SearchableSelect
+                  options={activeBookings}
+                  value={ecBooking}
+                  onChange={setEcBooking}
+                  placeholder="Search booking…"
+                  emptyText="No active bookings"
+                />
+              </div>
+              <div>
+                <Label>Outlet *</Label>
+                <Select value={ecOutlet} onValueChange={setEcOutlet}>
+                  <SelectTrigger><SelectValue placeholder="Select outlet…" /></SelectTrigger>
+                  <SelectContent>
+                    {outlets.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Bill No</Label>
+                <Input value={ecBillNo} onChange={(e) => setEcBillNo(e.target.value)} placeholder="e.g. 202" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Amount (₹)</Label>
+                  <Input type="number" value={ecAmount} onChange={(e) => setEcAmount(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Date</Label>
+                  <Input type="date" value={ecDate} onChange={(e) => setEcDate(e.target.value)} />
+                </div>
+              </div>
+              <div>
+                <Label>Description</Label>
+                <Input value={ecDesc} onChange={(e) => setEcDesc(e.target.value)} />
+              </div>
+              <div>
+                <Label>Reason *</Label>
+                <Textarea value={ecReason} onChange={(e) => setEcReason(e.target.value)} rows={2}
+                  placeholder="Why is this charge being edited?" />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The guest folio line item and the unsettled restaurant payable are updated to match.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditCharge(null)}>Cancel</Button>
+              <Button onClick={saveChargeEdit} disabled={busyRow}>{busyRow ? "Saving…" : "Save Changes"}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Owner — Delete Direct Charge */}
+        <Dialog open={!!delCharge} onOpenChange={(o) => !o && setDelCharge(null)}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Delete Restaurant Charge</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div className="text-sm">
+                {delCharge?.charge_date} · {delCharge?.bill_no || "—"} · ₹{Number(delCharge?.amount ?? 0).toFixed(2)}
+                <div className="text-muted-foreground text-xs">{delCharge?.description}</div>
+              </div>
+              <div className="text-xs text-destructive">
+                This removes the charge, its guest folio line item and the unsettled payable. Folio totals recompute automatically.
+              </div>
+              <div>
+                <Label>Reason *</Label>
+                <Textarea value={delReason} onChange={(e) => setDelReason(e.target.value)} rows={2}
+                  placeholder="Why is this charge being deleted?" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDelCharge(null)}>Cancel</Button>
+              <Button variant="destructive" onClick={confirmChargeDelete} disabled={busyRow}>
+                {busyRow ? "Deleting…" : "Delete Charge"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={settleOpen} onOpenChange={setSettleOpen}>
           <DialogContent>
             <DialogHeader><DialogTitle>Mark Payables Settled</DialogTitle></DialogHeader>
