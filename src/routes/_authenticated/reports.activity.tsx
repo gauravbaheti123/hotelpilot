@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Download, Filter, RotateCcw } from "lucide-react";
-import * as XLSX from "xlsx";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
@@ -146,6 +146,7 @@ function ActivityLogPage() {
       Details: r.reference_label ?? "",
       Extra: r.details ? JSON.stringify(r.details) : "",
     }));
+    const XLSX = await import("xlsx");
     const ws = XLSX.utils.json_to_sheet(formatted);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Activity");
