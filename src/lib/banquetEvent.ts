@@ -1,19 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * Banquet events on the unified `bookings` model (Part 4).
+ * Banquet events on the unified `bookings` model (Part 6 — legacy mirror retired).
  *
  * Source of truth is the `bookings` row with booking_type = 'banquet'.
- * `banquet_bookings` is kept as a legacy mirror (DB triggers sync both ways)
- * because extras, bulk rooms, master bills and room blocks still FK to it and
- * the list page / reports still read it.
- *
- * Every screen resolves whichever id it was handed (unified or legacy) into
- * BOTH ids, then reads the event header from the unified row.
+ * Extras, master bills and room blocks all FK to `bookings.id`.
+ * `EventIds.legacyId` is kept only as a deprecated alias of `bookingId`.
  */
 import { supabase } from "@/integrations/supabase/client";
 import { reportQueryError } from "@/lib/queryError";
 
-/** Columns that live on `bookings`; everything else is written to the mirror. */
+/** Columns that live on `bookings` (all of them now). */
 const UNIFIED_FIELDS = new Set([
   "hall_id",
   "guest_id",
@@ -42,14 +38,20 @@ const UNIFIED_FIELDS = new Set([
   "notes",
   "cancelled_at",
   "cancelled_reason",
+  "event_status",
+  "total_room_charges",
+  "bill_type",
+  "line_discounts",
+  "advance_payment_mode",
 ]);
 
 export interface EventIds {
   bookingId: string;
+  /** @deprecated same value as bookingId; kept for call-site compatibility. */
   legacyId: string | null;
 }
 
-/** Accepts a unified bookings.id OR a legacy banquet_bookings.id. */
+/** Resolves a unified bookings.id for a banquet event. */
 export async function resolveEventIds(id: string): Promise<EventIds | null> {
   const { data, error } = await supabase.rpc("resolve_event_ids" as any, { _id: id } as any);
   if (error) throw error;
@@ -57,17 +59,13 @@ export async function resolveEventIds(id: string): Promise<EventIds | null> {
   if (!row?.booking_id) return null;
   return {
     bookingId: row.booking_id as string,
-    legacyId: (row.banquet_booking_id ?? null) as string | null,
+    legacyId: row.booking_id as string,
   };
 }
 
 /**
- * Event header, read from the unified booking and merged with the few
- * legacy-only fields (bill_type, line_discounts, advance_payment_mode,
- * total_room_charges) that have not been moved yet.
- *
- * `id` is intentionally the LEGACY id so existing child queries
- * (extras / bulk rooms / room blocks / master bill) keep working unchanged.
+ * Event header, read entirely from the unified booking.
+ * `id` is the unified bookings.id, which every child table now points at.
  */
 export async function loadEventBooking(id: string) {
   const ids = await resolveEventIds(id);
@@ -82,6 +80,7 @@ export async function loadEventBooking(id: string) {
     package_rate,hall_charge,fb_charge,extra_charge,extra_charge_description,
     discount_type,discount_value,discount_amount,round_off_amount,
     total_amount,advance_amount,balance_amount,notes,cancelled_at,cancelled_reason,
+    event_status,total_room_charges,bill_type,line_discounts,advance_payment_mode,
     halls(id,name,capacity),
     guests(id,name,mobile,email,gst_number,company,state,state_code)
   `,
@@ -90,30 +89,18 @@ export async function loadEventBooking(id: string) {
     .single();
   if (error) throw error;
 
-  let legacy: any = null;
-  if (ids.legacyId) {
-    const { data: l, error: __qe1 } = await supabase
-      .from("banquet_bookings")
-      .select("id,status,bill_type,advance_payment_mode,line_discounts,total_room_charges")
-      .eq("id", ids.legacyId)
-      .maybeSingle();
-    if (__qe1) reportQueryError("banquet bookings", __qe1);
-    legacy = l ?? null;
-  }
-
+  const row: any = u as any;
   const ev: any = {
-    ...(u as any),
-    // Legacy id space keeps every child table query working untouched.
-    id: ids.legacyId ?? (u as any).id,
+    ...row,
+    id: ids.bookingId,
     booking_id: ids.bookingId,
-    legacy_id: ids.legacyId,
-    // Event lifecycle status stays on the legacy vocabulary
-    // (reserved / confirmed / in_progress / completed / cancelled).
-    status: legacy?.status ?? (u as any).status,
-    bill_type: legacy?.bill_type ?? "gst_invoice",
-    advance_payment_mode: legacy?.advance_payment_mode ?? null,
-    line_discounts: legacy?.line_discounts ?? {},
-    total_room_charges: Number(legacy?.total_room_charges ?? 0),
+    legacy_id: ids.bookingId,
+    // Event lifecycle vocabulary (confirmed / in_progress / completed / cancelled).
+    status: row.event_status ?? row.status,
+    bill_type: row.bill_type ?? "gst_invoice",
+    advance_payment_mode: row.advance_payment_mode ?? null,
+    line_discounts: row.line_discounts ?? {},
+    total_room_charges: Number(row.total_room_charges ?? 0),
   };
   return ev as any;
 }
