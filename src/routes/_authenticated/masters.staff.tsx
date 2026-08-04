@@ -23,7 +23,7 @@ interface Staff {
 }
 
 const fields: FieldDef[] = [
-  { name: "name", label: "Full name", type: "text", required: true },
+  { name: "name", label: "Full name", type: "text", required: true, titleCase: true },
   { name: "mobile", label: "Mobile", type: "text" },
   { name: "email", label: "Email", type: "text" },
   { name: "designation", label: "Designation", type: "text" },

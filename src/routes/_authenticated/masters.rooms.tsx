@@ -283,6 +283,7 @@ function RoomsMasterPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <Box label="Name *">
                         <Input
+                          autoTitleCase
                           value={editingCat.name ?? ""}
                           onChange={(e) =>
                             setEditingCat({ ...editingCat, name: e.target.value })

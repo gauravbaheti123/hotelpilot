@@ -19,6 +19,7 @@ import { useAuth, hasRole } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { toast } from "sonner";
+import { toastWithUndo } from "@/lib/undoToast";
 import {
   FOLIO_STATUS_TONE,
   inr,
@@ -1358,7 +1359,21 @@ function FolioPage() {
     } as any);
     if (error) return toast.error(error.message);
     setVoidOpen(false);
-    toast.success("Folio voided");
+    const voidedId = folio.id;
+    const priorStatus = (folio as any).status ?? "open";
+    toastWithUndo(
+      "Folio voided",
+      async () => {
+        const { error: undoErr } = await supabase.from("folios").update({
+          is_deleted: false, deleted_at: null, deleted_by: null,
+          status: priorStatus === "void" ? "open" : priorStatus,
+          voided_at: null, void_reason: null,
+        } as any).eq("id", voidedId);
+        if (undoErr) throw undoErr;
+        load();
+      },
+      { undoneMessage: "Folio restored" },
+    );
     load();
   }
 

@@ -20,7 +20,7 @@ interface Vendor {
 }
 
 const fields: FieldDef[] = [
-  { name: "name", label: "Vendor name", type: "text", required: true, colSpan: 2 },
+  { name: "name", label: "Vendor name", type: "text", required: true, colSpan: 2, titleCase: true },
   { name: "contact_person", label: "Contact person", type: "text" },
   { name: "mobile", label: "Mobile", type: "text" },
   { name: "email", label: "Email", type: "text" },

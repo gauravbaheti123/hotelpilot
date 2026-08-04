@@ -38,7 +38,6 @@ const SECTIONS: { title: string; modules: { key: string; label: string; singleAc
     { key: "pos", label: "POS" },
     { key: "restaurant_billing", label: "Restaurant Billing" },
     { key: "invoices", label: "Invoices" },
-    { key: "mis_ac", label: "MIS A/c" },
     { key: "billing", label: "Split Bill", singleAction: "split_bill" },
   ]},
   { title: "Reports", modules: [

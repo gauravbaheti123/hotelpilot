@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_authenticated/masters/expense-categories
 interface Cat { id: string; name: string; is_active: boolean }
 
 const fields: FieldDef[] = [
-  { name: "name", label: "Category name", type: "text", required: true, colSpan: 2 },
+  { name: "name", label: "Category name", type: "text", required: true, colSpan: 2, titleCase: true },
   { name: "is_active", label: "Active", type: "switch", defaultValue: true },
 ];
 

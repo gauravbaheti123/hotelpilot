@@ -27,6 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { toastWithUndo } from "@/lib/undoToast";
 import {
   BOOKING_STATUS_LABEL,
   BOOKING_STATUS_TONE,
@@ -534,14 +535,39 @@ function BookingDetailPage() {
 
   async function cancelBooking() {
     if (!b) return;
+    const bookingId = b.id;
+    const priorStatus = b.status;
+    // Snapshot room assignments so an Undo can restore what the
+    // cancel trigger closed out.
+    const { data: priorRooms } = await supabase
+      .from("booking_rooms")
+      .select("id,status,end_date")
+      .eq("booking_id", bookingId);
     const { error } = await supabase.from("bookings").update({
       status: "cancelled" as any,
       cancelled_at: new Date().toISOString(),
       cancelled_reason: cancelReason || null,
-    }).eq("id", b.id);
+    }).eq("id", bookingId);
     if (error) return toast.error(error.message);
-    toast.success("Booking cancelled");
     setCancelOpen(false);
+    toastWithUndo(
+      "Booking cancelled",
+      async () => {
+        const { error: undoErr } = await supabase.from("bookings").update({
+          status: (priorStatus === "cancelled" ? "reserved" : priorStatus) as any,
+          cancelled_at: null,
+          cancelled_reason: null,
+        }).eq("id", bookingId);
+        if (undoErr) throw undoErr;
+        for (const r of (priorRooms ?? []) as Array<{ id: string; status: string | null; end_date: string | null }>) {
+          await supabase.from("booking_rooms")
+            .update({ status: r.status, end_date: r.end_date } as any)
+            .eq("id", r.id);
+        }
+        load();
+      },
+      { undoneMessage: "Booking restored" },
+    );
     load();
   }
 
