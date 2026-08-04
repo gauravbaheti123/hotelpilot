@@ -134,7 +134,9 @@ export async function loadEventSummaries(propertyId: string): Promise<EventBlock
 
   const byEvent = new Map<string, EventBlockSummary>();
   (data ?? []).forEach((row: any) => {
-    const key = row.banquet_booking_id;
+    // Group by the unified event booking id when linked (Part 5); fall back to
+    // the legacy mirror id for any block not yet converged.
+    const key = row.event_booking_id ?? row.banquet_booking_id;
     const prev: EventBlockSummary = byEvent.get(key) ?? {
       banquet_booking_id: key,
       event_name: row.event_name,
