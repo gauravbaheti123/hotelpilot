@@ -111,10 +111,31 @@ function NewBookingWizardPage() {
   const [stepBlocked, setStepBlocked] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<CreateBookingResult | null>(null);
+  const [savedEvent, setSavedEvent] = useState<BanquetSubmitResult | null>(null);
   const { categories: sharedCats } = useRoomCategories(current?.id ?? null);
   const { rooms: sharedRooms } = useRooms(current?.id ?? null);
+  const { plans: sharedPlans } = useTariffPlans(current?.id ?? null);
+  const { limit: discountLimit } = useDiscountLimit();
   const resumeChecked = useRef(false);
   const prefilled = useRef(false);
+  const banquet = state.kind === "banquet";
+
+  // Halls are only needed to label the event on the Review step.
+  const { data: halls = [] } = useQuery({
+    queryKey: ["halls", current?.id ?? null],
+    enabled: !!current?.id && banquet,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("halls")
+        .select("id,name,capacity")
+        .eq("property_id", current!.id)
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as { id: string; name: string; capacity: number }[];
+    },
+  });
 
   // Offer to resume an existing draft, once on mount.
   useEffect(() => {
@@ -157,6 +178,9 @@ function NewBookingWizardPage() {
   const patchPayment = useCallback((patch: Partial<WizardPayment>) => {
     setState((s) => ({ ...s, payment: { ...s.payment, ...patch } }));
   }, []);
+  const patchEvent = useCallback((patch: Partial<WizardEvent>) => {
+    setState((s) => ({ ...s, event: { ...s.event, ...patch } }));
+  }, []);
 
   // Label lookups for the read-only Review step — derived from the shared
   // rooms / categories caches instead of a per-mount fetch.
@@ -167,6 +191,37 @@ function NewBookingWizardPage() {
   const roomNames = useMemo(
     () => Object.fromEntries(sharedRooms.map((x) => [x.id, x.room_number])) as Record<string, string>,
     [sharedRooms],
+  );
+
+  // Banquet — vacant room options + the revenue produced by the room blocks.
+  const vacantRooms = useMemo<RoomOption[]>(
+    () =>
+      sharedRooms
+        .filter((r) => r.status === "vacant")
+        .map((r) => ({
+          id: r.id,
+          room_number: r.room_number,
+          category_id: r.category_id,
+          category_name: r.category_name,
+        })),
+    [sharedRooms],
+  );
+  const eventRoomRevenue = useMemo(
+    () =>
+      roomBlocksSummary({
+        mode: state.event.roomMode,
+        rows: state.event.roomRows,
+        rooms: vacantRooms,
+        plans: sharedPlans,
+        eventDate: state.event.eventDate,
+        hostName: state.guest.name,
+        hostMobile: state.guest.mobile,
+      }).revenue,
+    [state.event, vacantRooms, sharedPlans, state.guest.name, state.guest.mobile],
+  );
+  const eventMoney = useMemo(
+    () => eventTotals(state.event, eventRoomRevenue),
+    [state.event, eventRoomRevenue],
   );
 
   // Entry-context prefill (?roomId=…&categoryId=…&checkIn=…&checkOut=…).
@@ -230,7 +285,6 @@ function NewBookingWizardPage() {
   }
 
   const stepValid = isStepValid(step, state);
-  const banquetBlocked = step === 0 && state.kind === "banquet";
   const onReview = step === STEP.REVIEW;
 
   async function handleSubmit(checkInNow: boolean) {
@@ -261,6 +315,70 @@ function NewBookingWizardPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleBanquetSubmit() {
+    if (!current) return;
+    setSaving(true);
+    try {
+      const res = await submitBanquetWizard({
+        propertyId: current.id,
+        state,
+        rooms: vacantRooms,
+        plans: sharedPlans,
+        discountLimit,
+      });
+      draft.clear();
+      setSavedEvent(res);
+      res.warnings.forEach((w) => toast.warning(w, { duration: 10_000 }));
+      toast.success(
+        res.roomsBlocked > 0
+          ? `Event saved — ${res.roomsBlocked} room${res.roomsBlocked === 1 ? "" : "s"} assigned`
+          : "Event saved",
+      );
+    } catch (e: any) {
+      // Draft is deliberately kept on failure so nothing typed is lost.
+      toastError(e, "Failed to save event");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (savedEvent) {
+    return (
+      <AppShell title="New Booking">
+        <Card className="mx-auto max-w-xl">
+          <CardHeader>
+            <CardTitle>Event {savedEvent.bookingNumber ?? ""} created</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {state.event.eventName || state.event.functionType} · {state.guest.name}
+              {savedEvent.roomsBlocked > 0
+                ? ` · ${savedEvent.roomsBlocked} room${savedEvent.roomsBlocked === 1 ? "" : "s"} assigned`
+                : ""}
+            </p>
+            {savedEvent.warnings.length > 0 && (
+              <ul className="space-y-1 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                {savedEvent.warnings.map((w) => <li key={w}>{w}</li>)}
+              </ul>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() =>
+                  router.navigate({ to: "/banquet/event/$id", params: { id: savedEvent.bookingId } })
+                }
+              >
+                Open event
+              </Button>
+              <Button variant="ghost" onClick={() => router.navigate({ to: "/dashboard" })}>
+                Back to dashboard
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </AppShell>
+    );
   }
 
   if (saved) {
@@ -312,7 +430,11 @@ function NewBookingWizardPage() {
               </span>
             )}
           </div>
-          <Stepper step={step} skipped={(i) => isStepSkipped(i, state)} />
+          <Stepper
+            step={step}
+            skipped={(i) => isStepSkipped(i, state)}
+            labels={wizardStepLabels(state.kind)}
+          />
         </CardHeader>
         <CardContent className="space-y-8">
           {step === STEP.TYPE && (
@@ -325,7 +447,12 @@ function NewBookingWizardPage() {
           )}
 
           {step === STEP.GUEST && (
-            <StepGuestDetails propertyId={current.id} guest={state.guest} onChange={patchGuest} />
+            <StepGuestDetails
+              propertyId={current.id}
+              guest={state.guest}
+              onChange={patchGuest}
+              variant={banquet ? "banquet" : "lodge"}
+            />
           )}
 
           {step === STEP.EXTRA_GUESTS && (
@@ -339,7 +466,11 @@ function NewBookingWizardPage() {
             />
           )}
 
-          {step === STEP.STAY && (
+          {step === STEP.STAY && banquet && (
+            <StepEventDetails propertyId={current.id} value={state.event} onChange={patchEvent} />
+          )}
+
+          {step === STEP.STAY && !banquet && (
             <StepStayRoom
               propertyId={current.id}
               reservation={state.reservation}
@@ -362,6 +493,24 @@ function NewBookingWizardPage() {
               rooms={state.rooms}
               value={state.payment}
               onChange={patchPayment}
+              {...(banquet
+                ? {
+                    totalLabel: "Event total",
+                    totalOverride: eventMoney.grandTotal,
+                    lines: [
+                      { label: "Event price", amount: eventMoney.price },
+                      ...(eventMoney.extras > 0
+                        ? [{ label: "Extra charges", amount: eventMoney.extras }]
+                        : []),
+                      ...(eventMoney.discount > 0
+                        ? [{ label: "Discount", amount: -eventMoney.discount }]
+                        : []),
+                      ...(eventMoney.roomRevenue > 0
+                        ? [{ label: "Rooms", amount: eventMoney.roomRevenue }]
+                        : []),
+                    ],
+                  }
+                : {})}
             />
           )}
 
@@ -378,6 +527,8 @@ function NewBookingWizardPage() {
               categoryName={(id) => catNames[id] ?? "Category"}
               roomLabel={(id) => (roomNames[id] ? `Room ${roomNames[id]}` : "Room")}
               onEdit={setStep}
+              hallName={halls.find((h) => h.id === state.event.hallId)?.name}
+              eventRoomRevenue={eventRoomRevenue}
             />
           )}
 
@@ -396,6 +547,12 @@ function NewBookingWizardPage() {
               {step === 0 ? "Cancel" : "Back"}
             </Button>
             {onReview ? (
+              banquet ? (
+                <Button type="button" disabled={saving} onClick={handleBanquetSubmit}>
+                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save event
+                </Button>
+              ) : (
               <div className="flex flex-wrap justify-end gap-2">
                 <Button type="button" variant="outline" disabled={saving} onClick={() => handleSubmit(false)}>
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -406,10 +563,11 @@ function NewBookingWizardPage() {
                   Save &amp; check-in now
                 </Button>
               </div>
+              )
             ) : (
               <Button
                 type="button"
-                disabled={!stepValid || banquetBlocked || (step === STEP.STAY && stepBlocked)}
+                disabled={!stepValid || (step === STEP.STAY && !banquet && stepBlocked)}
                 onClick={() => setStep((s) => nextStepIndex(s, state))}
               >
                 Next
