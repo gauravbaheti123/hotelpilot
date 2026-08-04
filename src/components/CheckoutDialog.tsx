@@ -24,8 +24,7 @@ import { toast } from "sonner";
 import { inr, inrRound, recomputeFolio } from "@/lib/billing";
 import { resolveGstRate } from "@/lib/gst";
 import { fireTrigger } from "@/lib/whatsapp";
-import { AlertTriangle, Plus, Trash2, Loader2, ArrowRightLeft, SplitSquareHorizontal } from "lucide-react";
-import { ShiftToMisDialog } from "@/components/ShiftToMisDialog";
+import { AlertTriangle, Plus, Trash2, Loader2, SplitSquareHorizontal } from "lucide-react";
 import { SplitBillDialog } from "@/components/SplitBillDialog";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { closeEventBlocksForBooking } from "@/lib/eventRoomBlocks";
@@ -118,8 +117,6 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
   const { user, roles } = useAuth();
   const { can } = usePermissions();
   const isOwnerRole = roles.includes("owner") || roles.includes("superadmin");
-  const canShiftMis = can("billing", "mis_shift");
-  const [misOpen, setMisOpen] = useState(false);
   const canSplit = can("billing", "split_bill");
   const [splitOpen, setSplitOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -1016,13 +1013,6 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
             <Section title="Room Charges" rows={totals.rooms} total={totals.roomTotal} />
             <div>
               <Section title="Food & Restaurant Bill" rows={totals.food} total={totals.foodTotal} empty="No food charges" />
-              {canShiftMis && totals.foodTotal > 0 && (
-                <div className="flex justify-end mt-1">
-                  <Button size="sm" variant="outline" onClick={() => setMisOpen(true)}>
-                    <ArrowRightLeft className="h-3.5 w-3.5 mr-1" /> Shift Food Charges to MIS
-                  </Button>
-                </div>
-              )}
             </div>
             <Section title="Other Charges" rows={totals.other} total={totals.otherTotal} empty="—" />
 
@@ -1250,15 +1240,6 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
           </div>
         )}
       </DialogContent>
-      <ShiftToMisDialog
-        open={misOpen}
-        onOpenChange={setMisOpen}
-        folio={folio}
-        booking={booking}
-        charges={charges as any}
-        preselectFoodOnly
-        onShifted={() => load()}
-      />
       <SplitBillDialog
         open={splitOpen}
         onOpenChange={setSplitOpen}
