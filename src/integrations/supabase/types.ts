@@ -815,6 +815,7 @@ export type Database = {
           ota_partner_name: string | null
           package_rate: number | null
           pax: number | null
+          payment_ref: string | null
           property_id: string
           rate_type: string
           restaurant_ledger_balance: number
@@ -876,6 +877,7 @@ export type Database = {
           ota_partner_name?: string | null
           package_rate?: number | null
           pax?: number | null
+          payment_ref?: string | null
           property_id: string
           rate_type?: string
           restaurant_ledger_balance?: number
@@ -937,6 +939,7 @@ export type Database = {
           ota_partner_name?: string | null
           package_rate?: number | null
           pax?: number | null
+          payment_ref?: string | null
           property_id?: string
           rate_type?: string
           restaurant_ledger_balance?: number

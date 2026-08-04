@@ -4,6 +4,7 @@ import { Pencil } from "lucide-react";
 import { inr } from "@/lib/billing";
 import { nightsBetween } from "@/lib/front-desk";
 import { roomsTotal, STEP, type WizardState } from "@/lib/bookingWizard";
+import { eventTotals, type WizardEventRoomRow } from "@/lib/bookingWizard";
 import { SOURCES } from "@/lib/front-desk";
 import { ID_PROOF_LABELS } from "@/lib/guests";
 
@@ -28,6 +29,9 @@ interface Props {
   categoryName: (id: string) => string;
   roomLabel: (id: string) => string;
   onEdit: (step: number) => void;
+  /** Banquet only — resolved hall name and room revenue for the summary. */
+  hallName?: string;
+  eventRoomRevenue?: number;
 }
 
 function Section({
@@ -56,10 +60,100 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export function StepReview({ state, categoryName, roomLabel, onEdit }: Props) {
+export function StepReview({
+  state, categoryName, roomLabel, onEdit, hallName, eventRoomRevenue = 0,
+}: Props) {
   const total = roomsTotal(state.rooms);
   const advance = Number(state.payment.advance) || 0;
   const g = state.guest;
+
+  if (state.kind === "banquet") {
+    const ev = state.event;
+    const t = eventTotals(ev, eventRoomRevenue);
+    const activeRows: WizardEventRoomRow[] =
+      ev.roomMode === "none" ? [] : ev.roomMode === "single" ? ev.roomRows.slice(0, 1) : ev.roomRows;
+    return (
+      <div className="space-y-4">
+        <Section title="Booking type" step={STEP.TYPE} onEdit={onEdit}>
+          <Row label="Type" value="Banquet" />
+          <Row label="Source" value={sourceLabel(state.source)} />
+        </Section>
+
+        <Section title="Host" step={STEP.GUEST} onEdit={onEdit}>
+          <Row label="Name" value={g.name} />
+          <Row label="Mobile" value={g.mobile} />
+          <Row label="Email" value={g.email} />
+          <Row label="Address" value={[g.address, g.city, g.state].filter(Boolean).join(", ")} />
+        </Section>
+
+        <Section title="Event" step={STEP.STAY} onEdit={onEdit}>
+          <Row label="Event name" value={ev.eventName} />
+          <Row label="Hall" value={hallName} />
+          <Row label="Function type" value={ev.functionType} />
+          <Row label="Pax" value={ev.pax} />
+          <Row label="From" value={`${ev.eventDate} ${ev.startTime}`} />
+          <Row label="To" value={`${ev.eventEndDate} ${ev.endTime}`} />
+          <Row label="Event price" value={inr(t.price)} />
+          {t.extras > 0 && (
+            <div className="mt-2 space-y-1">
+              {ev.extras
+                .filter((x) => x.pointName.trim() && Number(x.amount) > 0)
+                .map((x) => (
+                  <div key={x.key} className="flex gap-3 py-0.5 text-muted-foreground">
+                    <span className="w-40 shrink-0">{x.pointName}</span>
+                    <span className="font-medium text-foreground">{inr(Number(x.amount) || 0)}</span>
+                  </div>
+                ))}
+            </div>
+          )}
+          {t.discount > 0 && <Row label="Discount" value={`- ${inr(t.discount)}`} />}
+          {activeRows.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {activeRows.map((r) => (
+                <div key={r.key} className="rounded-md bg-muted/40 px-3 py-2">
+                  <p className="font-medium">{roomLabel(r.roomId)}</p>
+                  <p className="text-muted-foreground">
+                    {r.checkIn} {r.checkInTime} → {r.checkOut} {r.checkOutTime}
+                    {ev.roomMode === "bulk" && r.guestName ? ` · ${r.guestName}` : ""}
+                  </p>
+                </div>
+              ))}
+              <Row label="Room revenue" value={inr(t.roomRevenue)} />
+            </div>
+          )}
+        </Section>
+
+        <Section title="Bill to" step={STEP.BILL_TO} onEdit={onEdit}>
+          {state.billTo.enabled ? (
+            <>
+              <Row label="GSTIN" value={state.billTo.gstin} />
+              <Row label="Name" value={state.billTo.name} />
+              <Row label="Address" value={state.billTo.address} />
+              <Row label="Email" value={state.billTo.email} />
+            </>
+          ) : (
+            <p className="text-muted-foreground">Billed to the host.</p>
+          )}
+        </Section>
+
+        <Section title="Payment" step={STEP.PAYMENT} onEdit={onEdit}>
+          <Row label="Event total" value={inr(t.grandTotal)} />
+          <Row
+            label="Advance"
+            value={`${inr(advance)}${advance > 0 ? ` (${titleCase(state.payment.mode ?? "")})` : ""}`}
+          />
+          <Row label="Balance" value={inr(Math.max(0, t.grandTotal - advance))} />
+          <Row label="Notes" value={state.payment.notes} />
+        </Section>
+
+        <Section title="Custom remark" step={STEP.REMARKS} onEdit={onEdit}>
+          {state.customRemark
+            ? <p className="whitespace-pre-wrap">{state.customRemark}</p>
+            : <p className="text-muted-foreground">None.</p>}
+        </Section>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

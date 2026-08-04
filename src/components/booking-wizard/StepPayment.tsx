@@ -13,11 +13,17 @@ interface Props {
   rooms: WizardRoom[];
   value: WizardPayment;
   onChange: (patch: Partial<WizardPayment>) => void;
+  /** Banquet path: the charge lines and total come from the event, not rooms. */
+  lines?: { label: string; amount: number }[];
+  totalOverride?: number;
+  totalLabel?: string;
 }
 
-export function StepPayment({ propertyId, rooms, value, onChange }: Props) {
+export function StepPayment({
+  propertyId, rooms, value, onChange, lines, totalOverride, totalLabel,
+}: Props) {
   const { methods } = usePaymentMethods(propertyId);
-  const total = roomsTotal(rooms);
+  const total = totalOverride ?? roomsTotal(rooms);
   const advance = Number(value.advance) || 0;
   const balance = Math.max(0, total - advance);
 
@@ -33,7 +39,14 @@ export function StepPayment({ propertyId, rooms, value, onChange }: Props) {
       <div className="rounded-lg border">
         <table className="w-full text-sm">
           <tbody>
-            {rooms.map((r, i) => {
+            {lines
+              ? lines.map((l) => (
+                  <tr key={l.label} className="border-b last:border-0">
+                    <td className="px-3 py-2 text-muted-foreground">{l.label}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{inr(l.amount)}</td>
+                  </tr>
+                ))
+              : rooms.map((r, i) => {
               const n = nightsBetween(r.checkIn, r.checkOut);
               return (
                 <tr key={r.key} className="border-b last:border-0">
@@ -47,7 +60,7 @@ export function StepPayment({ propertyId, rooms, value, onChange }: Props) {
               );
             })}
             <tr className="bg-muted/40 font-medium">
-              <td className="px-3 py-2">Room total</td>
+              <td className="px-3 py-2">{totalLabel ?? "Room total"}</td>
               <td className="px-3 py-2 text-right tabular-nums">{inr(total)}</td>
             </tr>
           </tbody>
