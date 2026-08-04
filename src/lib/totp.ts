@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { resolveEdgeError } from "@/lib/errorMessage";
 
 export interface GenerateResponse {
   secret: string;
@@ -10,7 +11,7 @@ export async function generateTotpSecret(targetUserId: string): Promise<Generate
   const { data, error } = await supabase.functions.invoke("generate-totp-secret", {
     body: { targetUserId },
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error((await resolveEdgeError(error, "generating the 2FA secret")).message);
   if (!data?.secret) throw new Error(data?.error ?? "Failed to generate secret");
   return data as GenerateResponse;
 }
@@ -19,7 +20,7 @@ export async function verifyAndEnableTotp(targetUserId: string, code: string): P
   const { data, error } = await supabase.functions.invoke("verify-and-enable-totp", {
     body: { targetUserId, code },
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error((await resolveEdgeError(error, "verifying the 2FA code")).message);
   return !!data?.success;
 }
 
@@ -35,7 +36,7 @@ export async function verifyTotpLogin(userId: string, code: string): Promise<Log
   const { data, error } = await supabase.functions.invoke("verify-totp-login", {
     body: { userId, code },
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error((await resolveEdgeError(error, "verifying the 2FA code")).message);
   return (data ?? { success: false }) as LoginVerifyResult;
 }
 
