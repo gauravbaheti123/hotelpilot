@@ -41,7 +41,10 @@ import { fmtDate } from "@/lib/reportExports";
 import { fetchPrinterPaperSize, withPrintStyles } from "@/lib/printStyles";
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
-import { loadEventBooking, patchEventBooking, type EventIds } from "@/lib/banquetEvent";
+import {
+  loadEventBooking, patchEventBooking, loadEventPayments, recordEventPayments,
+  type EventIds,
+} from "@/lib/banquetEvent";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/banquet/bill/$id")({
@@ -55,6 +58,7 @@ export const Route = createFileRoute("/_authenticated/banquet/bill/$id")({
 
 interface Bq {
   id: string;
+  booking_id: string;
   property_id: string;
   banquet_number: string;
   function_type: string;
@@ -468,19 +472,9 @@ function BanquetBillPage() {
       });
       toast.success(value > 0 ? "Line discount applied" : "Line discount cleared");
     } else if (discTarget.kind === "room") {
-      const { error: rerr } = await supabase
-        .from("banquet_bulk_rooms")
-        .update({
-          discount_type: value > 0 ? type : null,
-          discount_value: value > 0 ? value : 0,
-          discount_amount: value > 0 ? rupees : 0,
-        } as any)
-        .eq("id", discTarget.rowId);
-      if (rerr) {
-        toast.error(rerr.message);
-        return;
-      }
-      // Recompute total on the banquet booking to keep in sync
+      // Room lines now come from the unified model; per-room bulk discounts
+      // were retired with banquet_bulk_rooms in Part 5.
+      // Recompute total on the event booking to keep in sync
       // Refresh room list first, then persist totals (uses in-scope roomLineDiscTotal only after reload)
       await persistBanquetDiscount({});
       logActivity({
