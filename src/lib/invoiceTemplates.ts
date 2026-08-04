@@ -35,7 +35,8 @@ export interface InvoiceProperty {
 }
 
 export interface InvoiceFolio {
-  invoice_number: string;
+  /** Null until the invoice is numbered (P0: numbering may move to checkout). */
+  invoice_number: string | null;
   bill_type?: string | null;
   gst_mode?: string | null;
   sub_total: number;
