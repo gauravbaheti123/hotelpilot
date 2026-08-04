@@ -2,6 +2,7 @@ import { createFileRoute, useParams, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/BackButton";
 import { Input } from "@/components/ui/input";
 import { CityInput, StateSelect, NationInput } from "@/components/AddressFields";
 import { Label } from "@/components/ui/label";
@@ -309,9 +310,7 @@ function GrcPage() {
 
       <div className="max-w-4xl mx-auto space-y-4">
         <div className="flex flex-wrap items-center gap-2 no-print">
-          <Button variant="outline" size="sm" onClick={() => router.history.back()}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back
-          </Button>
+          <BackButton fallbackTo="/front-desk/bookings" />
           <div className="flex-1" />
           <Button variant="outline" onClick={save} disabled={saving}>
             <Save className="h-4 w-4 mr-1" /> {saving ? "Saving…" : "Save"}

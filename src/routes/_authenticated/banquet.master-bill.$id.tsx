@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/BackButton";
 import { ArrowLeft, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -81,9 +82,7 @@ function MasterBillPage() {
     return (
       <AppShell title="Banquet Master Bill">
         <div className="p-6 space-y-3">
-          <Button variant="ghost" size="sm" onClick={() => router.navigate({ to: "/banquet/event/$id", params: { id } })}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back
-          </Button>
+          <BackButton variant="ghost" fallbackTo={`/banquet/event/${id}`} />
           <Card><CardContent className="p-6 text-sm text-muted-foreground">
             No Master Bill yet. It will be generated automatically once a room under this event checks out.
           </CardContent></Card>
@@ -104,9 +103,7 @@ function MasterBillPage() {
       }`}</style>
       <div className="p-6 max-w-4xl mx-auto space-y-4">
         <div className="flex items-center justify-between no-print">
-          <Button variant="ghost" size="sm" onClick={() => router.navigate({ to: "/banquet/event/$id", params: { id: ev.id } })}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back to Event
-          </Button>
+          <BackButton variant="ghost" fallbackTo={`/banquet/event/${ev.id}`} />
           <Button size="sm" onClick={doPrint}><Printer className="h-4 w-4 mr-1" /> Print</Button>
         </div>
 

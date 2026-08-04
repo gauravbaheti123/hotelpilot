@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/BackButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -196,7 +197,7 @@ function KotDetailPage() {
     <AppShell title={`KOT ${k.kot_number}`}>
       <div className="max-w-4xl space-y-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => router.history.back()}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
+          <BackButton fallbackTo="/restaurant" />
           <Badge variant="outline" className={KOT_STATUS_TONE[k.status]}>{KOT_STATUS_LABEL[k.status]}</Badge>
           <div className="text-sm text-muted-foreground">
             {k.kot_type === "room" ? `Room ${k.rooms?.room_number ?? "—"}` : `Table ${k.table_no ?? "—"}`}

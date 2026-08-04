@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/BackButton";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Printer, Download, MessageCircle, Plus, Trash2, Percent } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -549,9 +550,7 @@ function BanquetBillPage() {
 
       <div className="max-w-5xl space-y-4">
         <div className="flex flex-wrap items-center gap-3 no-print">
-          <Button variant="outline" size="sm" onClick={() => router.history.back()}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back
-          </Button>
+          <BackButton fallbackTo="/banquet/bookings" />
           <Badge variant="outline">{b.banquet_number}</Badge>
           <div className="text-sm text-muted-foreground">
             {b.event_name ?? b.function_type} · {fmtDate(b.event_date)}

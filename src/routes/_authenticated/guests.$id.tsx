@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { CityInput, StateSelect, NationInput } from "@/components/AddressFields";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/BackButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -256,7 +257,7 @@ function GuestDetail() {
               <div className="md:col-span-2"><Field label="Notes"><Textarea rows={2} value={g.notes ?? ""} onChange={(e) => patch("notes", e.target.value)} maxLength={1000} /></Field></div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => router.history.back()}>Back</Button>
+              <BackButton fallbackTo="/guests" />
               <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save changes"}</Button>
             </div>
           </CardContent>

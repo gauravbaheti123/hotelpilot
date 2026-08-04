@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/BackButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -551,7 +552,7 @@ function BookingDetailPage() {
     <AppShell title={`Booking ${b.booking_number}`}>
       <div className="max-w-6xl space-y-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => router.history.back()}>← Back</Button>
+          <BackButton fallbackTo="/front-desk/bookings" />
           <Badge variant="outline" className={BOOKING_STATUS_TONE[b.status]}>
             {BOOKING_STATUS_LABEL[b.status] ?? b.status}
           </Badge>
