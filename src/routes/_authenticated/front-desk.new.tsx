@@ -2,6 +2,7 @@
 // Runs in parallel with the legacy front-desk.new route until Part 5 cutover.
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Check, Loader2, Printer, Save } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -15,25 +16,29 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
-import { useRoomCategories, useRooms } from "@/hooks/use-rooms";
+import { useRoomCategories, useRooms, useTariffPlans } from "@/hooks/use-rooms";
+import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { useFormDraft } from "@/hooks/use-form-draft";
 import { StepBookingType } from "@/components/booking-wizard/StepBookingType";
 import { StepGuestDetails } from "@/components/booking-wizard/StepGuestDetails";
 import { StepAdditionalGuests } from "@/components/booking-wizard/StepAdditionalGuests";
 import { StepStayRoom } from "@/components/booking-wizard/StepStayRoom";
+import { StepEventDetails } from "@/components/booking-wizard/StepEventDetails";
 import { StepBillTo } from "@/components/booking-wizard/StepBillTo";
 import { StepPayment } from "@/components/booking-wizard/StepPayment";
 import { StepRemarks } from "@/components/booking-wizard/StepRemarks";
 import { StepReview } from "@/components/booking-wizard/StepReview";
 import { supabase } from "@/integrations/supabase/client";
 import { userDisplayName } from "@/lib/activityLog";
-import { submitWizard } from "@/lib/bookingWizardSubmit";
+import { submitWizard, submitBanquetWizard, type BanquetSubmitResult } from "@/lib/bookingWizardSubmit";
+import { roomBlocksSummary, type RoomOption } from "@/lib/eventRoomsForm";
+import { eventTotals } from "@/lib/bookingWizard";
 import type { CreateBookingResult } from "@/lib/bookingCreate";
 import {
   emptyWizardState, isPristine, isStepValid, isStepSkipped, nextStepIndex, prevStepIndex,
-  normalizeWizardState, emptyRoom,
+  normalizeWizardState, emptyRoom, wizardStepLabels,
   STEP, WIZARD_DRAFT_KEY, WIZARD_STEPS,
-  type WizardGuest, type WizardState, type WizardExtraGuest, type WizardRoom,
+  type WizardGuest, type WizardState, type WizardExtraGuest, type WizardRoom, type WizardEvent,
   type WizardBillTo, type WizardPayment,
 } from "@/lib/bookingWizard";
 import { toastError } from "@/lib/errorMessage";
@@ -62,14 +67,16 @@ export const Route = createFileRoute("/_authenticated/front-desk/new")({
   component: NewBookingWizardPage,
 });
 
-function Stepper({ step, skipped }: { step: number; skipped: (i: number) => boolean }) {
+function Stepper({
+  step, skipped, labels,
+}: { step: number; skipped: (i: number) => boolean; labels: string[] }) {
   return (
     <div className="space-y-2">
       <p className="text-xs font-medium text-muted-foreground">
-        Step {step + 1} of {WIZARD_STEPS.length} — {WIZARD_STEPS[step]}
+        Step {step + 1} of {labels.length} — {labels[step]}
       </p>
       <div className="flex flex-wrap gap-1.5">
-        {WIZARD_STEPS.map((label, i) => (
+        {labels.map((label, i) => (
           <div
             key={label}
             className={cn(
