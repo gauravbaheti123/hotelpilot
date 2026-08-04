@@ -221,9 +221,6 @@ function GuestDetail() {
     const source = document.getElementById("guest-ledger-print-area");
     if (!source) { window.print(); return; }
     const html = source.outerHTML;
-    const parentStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-      .map((n) => n.outerHTML)
-      .join("\n");
     const printCss = `
       @page { size: A4 portrait; margin: 12mm; }
       html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; color: #000 !important; font-family: Arial, sans-serif; }
@@ -235,7 +232,10 @@ function GuestDetail() {
       .ledger-print .num { text-align: right; font-variant-numeric: tabular-nums; }
       .no-print { display: none !important; }
     `;
-    const doc = `<!doctype html><html><head><meta charset="utf-8"><title>Guest Ledger — ${g?.name ?? ""}</title>${parentStyles}<style>${printCss}</style></head><body>${html}</body></html>`;
+    // NOTE: parent stylesheets are deliberately NOT copied — the app's global
+    // `@media print { body * { visibility: hidden } }` rule (scoped to
+    // #invoice-print-area) would blank this page out entirely.
+    const doc = `<!doctype html><html><head><meta charset="utf-8"><title>Guest Ledger — ${g?.name ?? ""}</title><style>${printCss}</style></head><body>${html}</body></html>`;
     const iframe = document.createElement("iframe");
     iframe.setAttribute("aria-hidden", "true");
     iframe.style.position = "fixed";
