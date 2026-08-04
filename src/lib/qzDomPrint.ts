@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { isQZConnected, connectQZ, printToPrinter } from "./qzPrint";
 import { getPrintStyles, getPrintContainerStyle, getPrintSafetyCss } from "./printStyles";
 import { reportQueryError } from "@/lib/queryError";
+import { errorMessage } from "@/lib/errorMessage";
 
 // Properties to copy from computedStyle onto each cloned node as inline styles.
 // This snapshots the app's Tailwind/theme resolution into self-contained HTML

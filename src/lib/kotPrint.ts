@@ -8,6 +8,7 @@ import {
 } from "./printStyles";
 import { isQZConnected, connectQZ, printToPrinter } from "./qzPrint";
 import { toast } from "sonner";
+import { errorMessage } from "@/lib/errorMessage";
 
 export type PrinterInfo = {
   id: string;
