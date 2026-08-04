@@ -64,14 +64,14 @@ export async function pickAvailableRooms(
  */
 export async function commitRoomBlocks(args: {
   propertyId: string;
-  banquetBookingId: string;
+  eventBookingId: string;
   eventName: string;
   rows: AssignedBlock[];
 }): Promise<number> {
   if (args.rows.length === 0) return 0;
   const inserts = args.rows.map((r) => ({
     property_id: args.propertyId,
-    banquet_booking_id: args.banquetBookingId,
+    event_booking_id: args.eventBookingId,
     event_name: args.eventName,
     room_id: r.room_id,
     room_number: r.room_number,
@@ -95,7 +95,7 @@ export async function commitRoomBlocks(args: {
 }
 
 export interface EventBlockSummary {
-  banquet_booking_id: string;
+  event_booking_id: string;
   event_name: string;
   function_type: string;
   event_date: string;
@@ -108,7 +108,7 @@ export interface EventBlockSummary {
 
 export interface EventBlockRecord {
   id: string;
-  banquet_booking_id: string;
+  event_booking_id: string;
   event_name: string;
   room_id: string | null;
   room_number: string | null;
@@ -127,7 +127,7 @@ export interface EventBlockRecord {
 export async function loadEventSummaries(propertyId: string): Promise<EventBlockSummary[]> {
   const { data, error } = await supabase
     .from("event_room_blocks")
-    .select("id, banquet_booking_id, event_booking_id, event_name, room_id, room_number, room_category, guest_name, guest_mobile, checkin_date, checkout_date, checkin_time, checkout_time, special_rate, status, booking_id, bookings!event_room_blocks_event_booking_id_fkey(function_type, event_date)")
+    .select("id, event_booking_id, event_name, room_id, room_number, room_category, guest_name, guest_mobile, checkin_date, checkout_date, checkin_time, checkout_time, special_rate, status, booking_id, bookings!event_room_blocks_event_booking_id_fkey(function_type, event_date)")
     .eq("property_id", propertyId)
     .in("status", ["blocked", "checked_in"])
     .order("checkin_date");
@@ -135,11 +135,9 @@ export async function loadEventSummaries(propertyId: string): Promise<EventBlock
 
   const byEvent = new Map<string, EventBlockSummary>();
   (data ?? []).forEach((row: any) => {
-    // Group by the unified event booking id when linked (Part 5); fall back to
-    // the legacy mirror id for any block not yet converged.
-    const key = row.event_booking_id ?? row.banquet_booking_id;
+    const key = row.event_booking_id;
     const prev: EventBlockSummary = byEvent.get(key) ?? {
-      banquet_booking_id: key,
+      event_booking_id: key,
       event_name: row.event_name,
       function_type: row.bookings?.function_type ?? "",
       event_date: row.bookings?.event_date ?? "",
