@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { BackButton } from "@/components/BackButton";
 import { ArrowLeft, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { billNo } from "@/lib/billNumber";
+import { billNo , eventRef } from "@/lib/billNumber";
 import { toast } from "sonner";
 import { inr } from "@/lib/billing";
 import { fmtDate } from "@/lib/reportExports";
@@ -44,6 +44,7 @@ interface MB {
   bookings: {
     id: string;
     banquet_number: string | null;
+    booking_number: string | null;
     event_name: string | null;
     function_type: string;
     event_date: string;
@@ -84,7 +85,7 @@ function MasterBillPage() {
       .from("banquet_master_bills")
       .select(
         `id,bill_number,food_subtotal,gst_amount,total_amount,created_at,property_id,
-               bookings!banquet_master_bills_booking_id_fkey(id,banquet_number,event_name,function_type,event_date,pax,
+               bookings!banquet_master_bills_booking_id_fkey(id,banquet_number,booking_number,event_name,function_type,event_date,pax,
                  guests(name,mobile), halls(name))`,
       )
       .eq("booking_id", bookingId)
@@ -187,7 +188,7 @@ function MasterBillPage() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Event Ref: </span>
-                  {billNo(ev.banquet_number)}
+                  {eventRef(ev.banquet_number, ev.booking_number)}
                 </div>
                 <div>
                   <span className="text-muted-foreground">Event: </span>

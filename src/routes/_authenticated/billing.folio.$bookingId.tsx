@@ -15,7 +15,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { billNo } from "@/lib/billNumber";
+import { billNo, hasBillNumber, PROVISIONAL_DOC_TITLE } from "@/lib/billNumber";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
@@ -1505,6 +1505,9 @@ function FolioPage() {
   }
 
   const isGst = folio.gst_mode === "gst";
+  // P1 — until the folio is settled it carries no number: show a proforma.
+  const isProvisional = !hasBillNumber(folio.invoice_number);
+  const provisionalRef = `Ref: ${booking.booking_number} (provisional)`;
   const propAddrLine = [property?.address, property?.city, property?.state, property?.pincode]
     .filter(Boolean).join(", ");
   const nights = booking.booking_rooms.reduce((acc, br) => {
@@ -2168,9 +2171,12 @@ function FolioPage() {
                 </div>
                 <div className="invoice-header-right shrink-0" style={{ textAlign: "right", color: "#ffffff", flex: "0 0 auto", minWidth: 205, whiteSpace: "nowrap" }}>
                   <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 2, lineHeight: 1, whiteSpace: "nowrap" }}>
-                    {draftMode ? "DRAFT BILL" : (isGst ? "TAX INVOICE" : "CASH BILL")}
+                    {isProvisional ? "PROVISIONAL BILL" : draftMode ? "DRAFT BILL" : (isGst ? "TAX INVOICE" : "CASH BILL")}
                   </div>
-                  <div style={{ fontSize: 13, marginTop: 8, fontWeight: 700 }}>Bill No: <span style={{ fontWeight: 700 }}>{draftMode ? "—" : billNo(folio.invoice_number, "—")}</span></div>
+                  {isProvisional && (
+                    <div style={{ fontSize: 11, marginTop: 4, fontWeight: 700, letterSpacing: 0.4 }}>{PROVISIONAL_DOC_TITLE}</div>
+                  )}
+                  <div style={{ fontSize: 13, marginTop: 8, fontWeight: 700 }}>Bill No: <span style={{ fontWeight: 700 }}>{isProvisional ? provisionalRef : draftMode ? "—" : billNo(folio.invoice_number, "—")}</span></div>
                   <div style={{ fontSize: 12 }}>Date: <b>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b></div>
                   <div style={{ fontSize: 12 }}>Booking: <b>{booking.booking_number}</b></div>
                 </div>
@@ -2203,10 +2209,10 @@ function FolioPage() {
           {!isPremium && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-y px-8 py-3" style={{ background: "#F0FAF6" }}>
             <div className="text-lg font-bold tracking-wide" style={{ color: TEAL_DARK }}>
-              {draftMode ? "DRAFT BILL" : (isGst ? "TAX INVOICE" : "CASH BILL / RECEIPT")}
+              {isProvisional ? PROVISIONAL_DOC_TITLE : draftMode ? "DRAFT BILL" : (isGst ? "TAX INVOICE" : "CASH BILL / RECEIPT")}
             </div>
             <div className="text-xs text-right">
-              <div><span className="text-muted-foreground">Invoice No:</span> <span className="font-semibold">{draftMode ? "—" : billNo(folio.invoice_number, "—")}</span>{!draftMode && isSettled && <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: TEAL }}>PAID</span>}</div>
+              <div><span className="text-muted-foreground">{isProvisional ? "Reference:" : "Invoice No:"}</span> <span className="font-semibold">{isProvisional ? provisionalRef : draftMode ? "—" : billNo(folio.invoice_number, "—")}</span>{!isProvisional && !draftMode && isSettled && <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: TEAL }}>PAID</span>}</div>
               <div><span className="text-muted-foreground">Date:</span> <span className="font-semibold">{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
               <div><span className="text-muted-foreground">Booking:</span> <span className="font-semibold">{booking.booking_number}</span></div>
               {foodBillNumber && (

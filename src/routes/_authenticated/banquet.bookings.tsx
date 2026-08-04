@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { billNo } from "@/lib/billNumber";
+import { billNo , eventRef, eventRefShort } from "@/lib/billNumber";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { BANQUET_STATUS_TONE } from "@/lib/banquet";
@@ -60,7 +60,7 @@ function BanquetBookingsPage() {
 
   const filtered = rows.filter((r) =>
     !q ||
-    billNo(r.banquet_number).toLowerCase().includes(q.toLowerCase()) ||
+    eventRefShort(r.banquet_number, r.booking_number).toLowerCase().includes(q.toLowerCase()) ||
     ((r.host_name ?? r.guest_name) ?? "").toLowerCase().includes(q.toLowerCase()) ||
     (r.hall_name ?? "").toLowerCase().includes(q.toLowerCase()));
 
@@ -120,11 +120,11 @@ function BanquetBookingsPage() {
       action_type: "BANQUET_EVENT_DELETED",
       module: "Banquet",
       reference_id: delTarget.booking_id,
-      reference_label: `${billNo(delTarget.banquet_number)} — ${delTarget.host_name ?? delTarget.guest_name ?? ""}`,
+      reference_label: `${eventRefShort(delTarget.banquet_number, delTarget.booking_number)} — ${delTarget.host_name ?? delTarget.guest_name ?? ""}`,
       details: {
         event_id: delTarget.booking_id,
         legacy_event_id: delTarget.legacy_id,
-        banquet_number: billNo(delTarget.banquet_number),
+        banquet_number: eventRefShort(delTarget.banquet_number, delTarget.booking_number),
         amount: delTarget.total_amount,
         event: eventRow ?? null,
         impact: impact ?? null,
@@ -149,7 +149,7 @@ function BanquetBookingsPage() {
         .in("id", Array.from(roomIds))
         .eq("status", "blocked");
     }
-    toast.success(`Event Bill ${billNo(delTarget.banquet_number)} permanently deleted`);
+    toast.success(`Event Bill ${eventRefShort(delTarget.banquet_number, delTarget.booking_number)} permanently deleted`);
     setDelTarget(null); setPwd(""); setDelStep(1);
     load();
   }
@@ -168,7 +168,7 @@ function BanquetBookingsPage() {
             <div key={r.booking_id} className="flex items-center gap-3 px-4 py-3 hover:bg-accent">
               <Link to="/banquet/event/$id" params={{ id: r.booking_id }} className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <div className="font-medium text-sm">{billNo(r.banquet_number)}</div>
+                  <div className="font-medium text-sm">{eventRef(r.banquet_number, r.booking_number)}</div>
                   <Badge variant="outline" className={BANQUET_STATUS_TONE[r.status]}>{r.status}</Badge>
                   <span className="text-xs text-muted-foreground">{r.function_type}</span>
                 </div>
@@ -196,7 +196,7 @@ function BanquetBookingsPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" />
-              {delStep === 1 ? `Delete Event Bill ${billNo(delTarget?.banquet_number)}?` : "Confirm with password"}
+              {delStep === 1 ? `Delete Event Bill ${eventRefShort(delTarget?.banquet_number, delTarget?.booking_number)}?` : "Confirm with password"}
             </DialogTitle>
           </DialogHeader>
           {delStep === 1 && (

@@ -34,3 +34,37 @@ export function isInvoiceStatus(status?: string | null): boolean {
 export function isClosedFolioStatus(status?: string | null): boolean {
   return status === "settled" || status === "due" || status === "void" || status === "refunded";
 }
+
+/**
+ * P1 — numbering happens at settlement. Until then a document is provisional
+ * and must reference the booking number, never a (missing) tax invoice number.
+ */
+export const PROVISIONAL_DOC_TITLE = "PROVISIONAL — NOT A TAX INVOICE";
+
+/** True when the document must be printed/displayed as a proforma. */
+export function isProvisional(invoiceOrEventNumber?: string | null): boolean {
+  return !hasBillNumber(invoiceOrEventNumber);
+}
+
+/**
+ * Event / invoice reference for display.
+ * Numbered → the real number. Unnumbered → `Ref: BK-… (provisional)`.
+ */
+export function eventRef(
+  number?: string | null,
+  bookingNumber?: string | null,
+): string {
+  if (hasBillNumber(number)) return (number as string).trim();
+  const bk = (bookingNumber ?? "").trim();
+  return bk ? `Ref: ${bk} (provisional)` : PROVISIONAL_BILL_LABEL;
+}
+
+/** Compact variant for tight table cells / titles. */
+export function eventRefShort(
+  number?: string | null,
+  bookingNumber?: string | null,
+): string {
+  if (hasBillNumber(number)) return (number as string).trim();
+  const bk = (bookingNumber ?? "").trim();
+  return bk ? `${bk} (prov.)` : PROVISIONAL_BILL_LABEL;
+}

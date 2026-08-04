@@ -4,7 +4,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { consolidateSegmentCharges, expandRoomNights, inr } from "@/lib/billing";
 import { resolveTaxType, splitGst } from "@/lib/gst";
-import { billNo } from "@/lib/billNumber";
+import { billNo, hasBillNumber, PROVISIONAL_DOC_TITLE } from "@/lib/billNumber";
 
 export interface InvoiceProperty {
   name: string;
@@ -245,12 +245,18 @@ function headerBlock(ctx: InvoiceContext): string {
 function metaBlock(ctx: InvoiceContext): string {
   const { booking, folio, property, draft } = ctx;
   const isGst = isGstBill(folio);
-  const docTitle = draft ? "DRAFT BILL" : isGst ? "TAX INVOICE" : "BILL OF SUPPLY";
+  // P1 — a folio without a number is not yet an invoice: print it as a proforma.
+  const provisional = !hasBillNumber(folio.invoice_number);
+  const docTitle = provisional
+    ? PROVISIONAL_DOC_TITLE
+    : draft ? "DRAFT BILL" : isGst ? "TAX INVOICE" : "BILL OF SUPPLY";
   const rooms = (booking.booking_rooms ?? []).map((r) => r.rooms?.room_number).filter(Boolean).join(", ");
   const ns = nights(booking.check_in, booking.check_out);
-  const billNoLabel = draft
-    ? `<span style="color:#9ca3af;letter-spacing:4px">- - - - -</span>`
-    : esc(billNo(folio.invoice_number));
+  const billNoLabel = provisional
+    ? `<span style="color:#6b7280">Ref: ${esc(booking.booking_number)} (provisional)</span>`
+    : draft
+      ? `<span style="color:#9ca3af;letter-spacing:4px">- - - - -</span>`
+      : esc(billNo(folio.invoice_number));
 
   // OTA / third-party channel name for "Company To" (priority: mapped OTA channel → manual partner name → generic "OTA")
   const otaName =
@@ -281,8 +287,9 @@ function metaBlock(ctx: InvoiceContext): string {
         ` : ""}
       </div>
       <div style="text-align:right">
-        <div class="stamp bg-accent">${docTitle}</div>
+        <div class="stamp bg-accent" style="${provisional ? "font-size:11px;letter-spacing:0.6px" : ""}">${docTitle}</div>
         <div style="margin-top:8px"><span class="small">No:</span> <strong>${billNoLabel}</strong></div>
+        ${provisional ? `<div class="small" style="max-width:220px;white-space:normal">Charges as of now — more may be added before checkout.</div>` : ""}
         <div class="small">Booking: ${esc(booking.booking_number)}</div>
         <div class="small">Date: ${new Date().toLocaleDateString("en-IN")}</div>
         ${rooms ? `<div class="small">Room: ${esc(rooms)}</div>` : ""}
@@ -450,14 +457,19 @@ function footerBlock(ctx: InvoiceContext): string {
 
 export function renderInvoiceHtml(ctx: InvoiceContext): string {
   const color = ctx.property.invoice_primary_color || "#1D9E75";
-  const draft = !!ctx.draft;
-  const watermark = draft
-    ? `<div class="draft-watermark">DRAFT</div>` : "";
+  const provisional = !hasBillNumber(ctx.folio.invoice_number);
+  const draft = !!ctx.draft || provisional;
+  const watermark = provisional
+    ? `<div class="draft-watermark" style="font-size:64px;letter-spacing:4px">PROVISIONAL</div>`
+    : ctx.draft
+      ? `<div class="draft-watermark">DRAFT</div>`
+      : "";
   return `<!doctype html><html><head><meta charset="utf-8"/>
-    <title>${esc(billNo(ctx.folio.invoice_number))}</title>
+    <title>${esc(provisional ? `PROVISIONAL — ${ctx.booking.booking_number}` : billNo(ctx.folio.invoice_number))}</title>
     <style>${commonStyles(color, draft)}</style>
     </head><body><div class="invoice">
       ${watermark}
+      ${provisional ? `<div style="text-align:center;font-weight:800;letter-spacing:1px;color:#b45309;border:1.5px solid #b45309;padding:6px;margin-bottom:10px">${PROVISIONAL_DOC_TITLE}</div>` : ""}
       ${headerBlock(ctx)}
       ${metaBlock(ctx)}
       ${chargesTable(ctx)}
