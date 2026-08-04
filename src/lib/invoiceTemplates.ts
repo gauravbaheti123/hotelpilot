@@ -4,7 +4,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { consolidateSegmentCharges, expandRoomNights, inr } from "@/lib/billing";
 import { resolveTaxType, splitGst } from "@/lib/gst";
-import { billNo } from "@/lib/billNumber";
+import { billNo, hasBillNumber, PROVISIONAL_DOC_TITLE } from "@/lib/billNumber";
 
 export interface InvoiceProperty {
   name: string;
@@ -245,12 +245,18 @@ function headerBlock(ctx: InvoiceContext): string {
 function metaBlock(ctx: InvoiceContext): string {
   const { booking, folio, property, draft } = ctx;
   const isGst = isGstBill(folio);
-  const docTitle = draft ? "DRAFT BILL" : isGst ? "TAX INVOICE" : "BILL OF SUPPLY";
+  // P1 — a folio without a number is not yet an invoice: print it as a proforma.
+  const provisional = !hasBillNumber(folio.invoice_number);
+  const docTitle = provisional
+    ? PROVISIONAL_DOC_TITLE
+    : draft ? "DRAFT BILL" : isGst ? "TAX INVOICE" : "BILL OF SUPPLY";
   const rooms = (booking.booking_rooms ?? []).map((r) => r.rooms?.room_number).filter(Boolean).join(", ");
   const ns = nights(booking.check_in, booking.check_out);
-  const billNoLabel = draft
-    ? `<span style="color:#9ca3af;letter-spacing:4px">- - - - -</span>`
-    : esc(billNo(folio.invoice_number));
+  const billNoLabel = provisional
+    ? `<span style="color:#6b7280">Ref: ${esc(booking.booking_number)} (provisional)</span>`
+    : draft
+      ? `<span style="color:#9ca3af;letter-spacing:4px">- - - - -</span>`
+      : esc(billNo(folio.invoice_number));
 
   // OTA / third-party channel name for "Company To" (priority: mapped OTA channel → manual partner name → generic "OTA")
   const otaName =
@@ -281,8 +287,9 @@ function metaBlock(ctx: InvoiceContext): string {
         ` : ""}
       </div>
       <div style="text-align:right">
-        <div class="stamp bg-accent">${docTitle}</div>
+        <div class="stamp bg-accent" style="${provisional ? "font-size:11px;letter-spacing:0.6px" : ""}">${docTitle}</div>
         <div style="margin-top:8px"><span class="small">No:</span> <strong>${billNoLabel}</strong></div>
+        ${provisional ? `<div class="small" style="max-width:220px;white-space:normal">Charges as of now — more may be added before checkout.</div>` : ""}
         <div class="small">Booking: ${esc(booking.booking_number)}</div>
         <div class="small">Date: ${new Date().toLocaleDateString("en-IN")}</div>
         ${rooms ? `<div class="small">Room: ${esc(rooms)}</div>` : ""}
