@@ -969,7 +969,7 @@ function OwnerDashboard({
           <ScheduleCard
             title="Today's Arrivals"
             rows={arrivals}
-            actionLabel="Check-in"
+            actionLabel="Open Booking"
             emptyText="No arrivals scheduled for today."
             showBalance={false}
           />
