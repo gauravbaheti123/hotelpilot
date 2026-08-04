@@ -1157,6 +1157,73 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         )}
 
         {step === 4 && (
+          <></>
+        )}
+        {step === 5 && (
+          <div className="space-y-4">
+            <div className="text-sm font-medium">Allocate Existing Payments</div>
+            <div className="rounded border bg-amber-50 p-3 text-xs text-amber-900">
+              This bill already has {parentPayments.length} recorded payment
+              {parentPayments.length > 1 ? "s" : ""} totalling{" "}
+              <b>{inr(parentPayments.reduce((s, p) => s + p.amount, 0))}</b>. Decide how each
+              payment should be shared across the new bills — the amounts must add up to the
+              original payment. Defaults are proportional to each bill's total.
+            </div>
+            {parentPayments.map((p) => {
+              const totals = childTargets.map((c) => c.total);
+              const alloc = allocFor(p, totals);
+              const sum = alloc.reduce((s, x) => s + x, 0);
+              const ok = Math.abs(sum - p.amount) < 0.01;
+              return (
+                <div key={p.id} className="rounded border p-3 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <div>
+                      <div className="font-semibold">{inr(p.amount)} · {formatPaymentMethodLabel(p.mode)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {p.paid_at ? new Date(p.paid_at).toLocaleString("en-IN") : ""}
+                        {p.reference_no ? ` · Ref ${p.reference_no}` : ""}
+                      </div>
+                    </div>
+                    <Badge variant="outline" className={ok ? "border-emerald-400 text-emerald-700" : "border-amber-400 text-amber-700"}>
+                      {ok ? "Balanced ✓" : `Off by ${inr(sum - p.amount)}`}
+                    </Badge>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {childTargets.map((c, i) => (
+                      <div key={i}>
+                        <Label className="text-xs">{c.label} · {inrRound(c.total)}</Label>
+                        <Input
+                          type="number"
+                          value={payAlloc[p.id]?.[i] ?? (alloc[i] ?? 0).toFixed(2)}
+                          onChange={(e) => setPayAlloc((prev) => {
+                            const cur = prev[p.id] ?? alloc.map((n) => n.toFixed(2));
+                            const next = [...cur];
+                            next[i] = e.target.value;
+                            return { ...prev, [p.id]: next };
+                          })}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setStep(splitMode === "item" ? 3 : 2)}>
+                <ArrowLeft className="h-4 w-4 mr-1" /> Back
+              </Button>
+              <Button
+                disabled={busy || !allocValid}
+                onClick={() => { allocConfirmedRef.current = true; void confirmSplit(); }}
+              >
+                {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+                Confirm &amp; Split
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {step === 4 && (
           <div className="space-y-4">
             <div className="text-sm font-medium">Step 4 — Collect Payment per Bill</div>
             {createdBills.map((b, i) => (
