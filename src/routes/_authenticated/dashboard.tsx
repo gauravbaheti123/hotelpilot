@@ -112,7 +112,7 @@ type OccInfo = {
 type RoomEventInfo = {
   blockId: string;
   bookingId: string;
-  banquetBookingId: string;
+  eventBookingId: string;
   eventName: string;
   guestName: string | null;
   guestMobile: string | null;
@@ -466,7 +466,7 @@ function OwnerDashboard({
           map.set(b.room_id, {
             blockId: b.id,
             bookingId: b.booking_id ?? "",
-            banquetBookingId: ev.event_booking_id,
+            eventBookingId: ev.event_booking_id,
             eventName: ev.event_name,
             guestName: b.guest_name,
             guestMobile: b.guest_mobile,
@@ -1511,7 +1511,7 @@ const RoomCard = memo(function RoomCard({
               <button type="button"
                 style={{ backgroundColor: "transparent", color: "#ffffff", border: "1px solid #ffffff", borderRadius: 4, padding: "3px 8px", fontSize: 11, fontWeight: 600 }}
                 onClick={(e) => { e.stopPropagation(); onAssignEvent({
-                  id: eventInfo!.blockId, event_booking_id: eventInfo!.banquetBookingId,
+                  id: eventInfo!.blockId, event_booking_id: eventInfo!.eventBookingId,
                   event_name: eventInfo!.eventName, room_id: room.id,
                   room_number: room.room_number, room_category: category,
                   guest_name: null, guest_mobile: null,
@@ -1529,7 +1529,7 @@ const RoomCard = memo(function RoomCard({
                   borderRadius: 4, padding: "3px 8px", fontSize: 11, fontWeight: 600, border: "none",
                 }}
                 onClick={(e) => { e.stopPropagation(); onEventCheckIn({
-                  id: eventInfo!.blockId, event_booking_id: eventInfo!.banquetBookingId,
+                  id: eventInfo!.blockId, event_booking_id: eventInfo!.eventBookingId,
                   event_name: eventInfo!.eventName, room_id: room.id,
                   room_number: room.room_number, room_category: category,
                   guest_name: eventInfo!.guestName, guest_mobile: eventInfo!.guestMobile,
