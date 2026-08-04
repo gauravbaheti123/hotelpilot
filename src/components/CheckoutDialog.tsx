@@ -21,7 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
-import { inr, inrRound, recomputeFolio } from "@/lib/billing";
+import { inr, inrRound, recomputeFolio, type BillDiscount } from "@/lib/billing";
 import { resolveGstRate } from "@/lib/gst";
 import { fireTrigger } from "@/lib/whatsapp";
 import { AlertTriangle, Plus, Trash2, Loader2, SplitSquareHorizontal } from "lucide-react";
@@ -430,12 +430,21 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     const foodTotal = sum(food);
     const otherTotal = sum(other);
     const gstMode = (folio?.gst_mode as "cash" | "gst") ?? "cash";
-    const recomp = recomputeFolio(charges as any, gstMode);
+    // Bill-level discount lives on the folio (not materialised as a charge line).
+    // Without it the client recompute inflates GST/total vs the stored totals.
+    const billDisc: BillDiscount | null =
+      (folio as any)?.discount_type && Number((folio as any)?.discount_value) > 0
+        ? {
+            type: (folio as any).discount_type as "percent" | "amount",
+            value: Number((folio as any).discount_value),
+          }
+        : null;
+    const recomp = recomputeFolio(charges as any, gstMode, billDisc);
     const grand = recomp.total_amount;
     const paid = payments.reduce((s, p) => s + Number(p.amount), 0);
     const balance = Math.max(0, grand - paid);
     return { rooms, food, other, roomTotal, foodTotal, otherTotal, grand, paid, balance };
-  }, [charges, payments, folio?.gst_mode]);
+  }, [charges, payments, folio?.gst_mode, (folio as any)?.discount_type, (folio as any)?.discount_value]);
 
   // Settled folio with zero balance: trust folios.balance_amount as the source
   // of truth and skip the client-side charge re-derivation entirely.
@@ -518,7 +527,11 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     // Recompute folio totals after inserting
     const { data: allCharges } = await supabase.from("folio_charges").select("*").eq("folio_id", folio.id);
     const mode = (folio.gst_mode as "cash" | "gst") ?? "gst";
-    const t = recomputeFolio((allCharges ?? []) as any[], mode);
+    const posBillDisc: BillDiscount | null =
+      (folio as any)?.discount_type && Number((folio as any)?.discount_value) > 0
+        ? { type: (folio as any).discount_type as "percent" | "amount", value: Number((folio as any).discount_value) }
+        : null;
+    const t = recomputeFolio((allCharges ?? []) as any[], mode, posBillDisc);
     const { data: pays } = await supabase.from("payments").select("amount").eq("folio_id", folio.id);
     const paid = (pays ?? []).reduce((s: number, p: any) => s + Number(p.amount), 0);
     await supabase.from("folios").update({
