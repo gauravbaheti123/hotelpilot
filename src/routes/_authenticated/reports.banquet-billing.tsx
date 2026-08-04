@@ -104,9 +104,10 @@ function Page() {
         supabase.from("bookings")
           .select("id,booking_number,guests(name),booking_rooms(rooms!booking_rooms_room_id_fkey(room_number))")
           .in("id", bookingIds),
-        supabase.from("banquet_bookings")
+        supabase.from("bookings")
           .select("id,banquet_number,event_name,event_date")
-          .eq("property_id", propertyId),
+          .eq("property_id", propertyId)
+          .eq("booking_type", "banquet" as any),
       ]);
       const meta = new Map<string, { room: string; guest: string }>();
       for (const b of (bks ?? []) as any[]) {
