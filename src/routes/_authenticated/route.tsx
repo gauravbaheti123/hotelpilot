@@ -1,6 +1,5 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { reportQueryError } from "@/lib/queryError";
 
 const SS_USER_KEY = "hp_authed_user";
 const SS_TOTP_KEY = "hp_totp_verified";
@@ -23,8 +22,7 @@ export const Route = createFileRoute("/_authenticated")({
       throw redirect({ to: "/login" });
     }
     try {
-      const { data: needs, error: __qe1 } = await supabase.rpc("current_user_totp_required");
-      if (__qe1) reportQueryError("current user totp required", __qe1);
+      const { data: needs } = await supabase.rpc("current_user_totp_required");
       if (needs === true) {
         const verifiedFor = typeof window !== "undefined"
           ? window.sessionStorage.getItem(SS_TOTP_KEY) : null;
