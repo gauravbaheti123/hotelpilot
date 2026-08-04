@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,15 @@ const SAMPLE_CSV = [
 
 const GUEST_FETCH_LIMIT = 15500;
 const GUEST_PAGE_SIZE = 1000;
+
+/**
+ * Part 3 (perf) — the list itself is now genuinely paginated: 100 rows per
+ * request, more fetched on scroll. The big page size above is only used by
+ * CSV export / import de-dupe, which legitimately need every row.
+ */
+const LIST_PAGE_SIZE = 100;
+/** Row height used by the virtualizer (px) — matches px-4 py-3 rows. */
+const ROW_HEIGHT = 61;
 
 async function fetchGuestsPaginated<T>(
   propertyId: string,
