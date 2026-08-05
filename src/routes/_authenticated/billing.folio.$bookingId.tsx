@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { ResponsiveTable } from "@/components/ResponsiveTable";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -2285,7 +2286,8 @@ function FolioPage() {
           {/* Charges */}
           <div className="px-8 py-5">
             <div className="mb-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Charges</div>
-            <table data-print-table="charges" data-print-has-hsn={isGst ? "1" : "0"}>
+            <ResponsiveTable minWidth={560}>
+<table data-print-table="charges" data-print-has-hsn={isGst ? "1" : "0"}>
               <thead>
                 <tr style={{ background: TEAL, color: "#fff" }}>
                   <th style={{ textAlign: "left", width: 40 }}>#</th>
@@ -2399,12 +2401,14 @@ function FolioPage() {
                 ))}
               </tbody>
             </table>
+</ResponsiveTable>
 
             {/* GST breakup */}
             {isGst && Number(folio.gst_amount) > 0 && (
               <div className="mt-5">
                 <div className="mb-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>GST Breakup</div>
-                <table data-print-table="gst-breakup">
+                <ResponsiveTable minWidth={480}>
+<table data-print-table="gst-breakup">
                   <thead>
                     <tr style={{ background: TEAL, color: "#fff" }}>
                       <th style={{ textAlign: "left" }}>Category</th>
@@ -2442,6 +2446,7 @@ function FolioPage() {
                     </tr>
                   </tbody>
                 </table>
+</ResponsiveTable>
               </div>
             )}
 
@@ -2504,6 +2509,7 @@ function FolioPage() {
               {payments.length === 0 ? (
                 <div className="text-xs text-gray-500">No payments recorded.</div>
               ) : (
+                <ResponsiveTable minWidth={480}>
                 <table>
                   <tbody className="zebra">
                     {payments.map((p) => {
@@ -2555,6 +2561,7 @@ function FolioPage() {
                     </tr>
                   </tbody>
                 </table>
+                </ResponsiveTable>
               )}
             </div>
 
