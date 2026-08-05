@@ -138,7 +138,7 @@ export async function loadBookingForEdit(bookingId: string): Promise<BookingEdit
   if (companyId) {
     const { data: c, error: cErr } = await supabase
       .from("billing_companies")
-      .select("id, name, gstin, gst_status, address, email, state, nation")
+      .select("id, name, gstin, gst_status, address, email, city, state, nation")
       .eq("id", companyId)
       .maybeSingle();
     if (cErr) reportQueryError("billing company", cErr);
@@ -153,6 +153,7 @@ export async function loadBookingForEdit(bookingId: string): Promise<BookingEdit
         gstStatus: (row.gst_status as string) ?? "",
         address: (row.address as string) ?? "",
         email: (row.email as string) ?? "",
+        city: (row.city as string) ?? billTo.city,
         state: (row.state as string) ?? billTo.state,
         nation: (row.nation as string) ?? billTo.nation,
       };
