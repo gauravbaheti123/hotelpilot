@@ -1363,8 +1363,8 @@ function SegmentRoomCard({
 }) {
   const amount = pending?.amount ?? 0;
   const hasPending = amount > 0.01;
-  // Palette-driven (property overrides apply): amber = pending, sky = clean.
-  const c = roomStatusColor(hasPending ? "segment_pending" : "segment_clear");
+  // Palette-driven (property overrides apply): amber = pending, Occupied green = clear.
+  const c = roomStatusColor(hasPending ? "segment_pending" : "occupied");
   const label = segment === "food" ? "Food" : "Laundry";
   return (
     <DropdownMenu>
@@ -1385,7 +1385,6 @@ function SegmentRoomCard({
             {label}
           </span>
         </div>
-        <div style={{ color: c.fgMuted, fontSize: 11, marginTop: 1 }}>{category}</div>
         <div className="truncate" style={{ color: c.fg, fontSize: 13, fontWeight: 700, marginTop: 2 }}>
           {occ?.guestName ?? "Guest"}
         </div>
@@ -1399,12 +1398,7 @@ function SegmentRoomCard({
                 {pending!.count} open bill{pending!.count > 1 ? "s" : ""} · tap to add more
               </div>
             </>
-          ) : (
-            <>
-              <div style={{ fontSize: 12, fontWeight: 700, color: c.fg }}>No pending</div>
-              <div style={{ fontSize: 10, color: c.fgMuted }}>Tap for {label.toLowerCase()} actions</div>
-            </>
-          )}
+          ) : null}
         </div>
       </div>
         </div>
