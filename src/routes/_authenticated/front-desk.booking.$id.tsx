@@ -403,17 +403,16 @@ function BookingDetailPage() {
   async function modifyDate() {
     if (!b) return;
     if (!isValidStayRange(b.check_in, newCheckOut)) return toast.error("Check-out must be after check-in");
-    const nights = nightsBetween(b.check_in, newCheckOut);
-    const br = b.booking_rooms[0];
-    const newTotal = nights * (br?.rate ?? 0);
-    const newBalance = Math.max(0, newTotal - b.advance_amount);
     const oldCheckOut = b.check_out;
-    const { error } = await supabase.from("bookings").update({
-      check_out: newCheckOut,
-      total_amount: newTotal,
-      balance_amount: newBalance,
-    }).eq("id", b.id);
-    if (error) return toastError(error);
+    try {
+      await modifyDatesOp({
+        bookingId: b.id,
+        checkIn: b.check_in,
+        newCheckOut,
+        advanceAmount: b.advance_amount,
+        rooms: b.booking_rooms.map((r) => ({ id: r.id, rate: Number(r.rate) })),
+      });
+    } catch (e) { return toastError(e); }
     logActivity({
       property_id: b.property_id,
       user_id: user?.id ?? "",
@@ -428,42 +427,6 @@ function BookingDetailPage() {
         new_checkout_date: newCheckOut,
       },
     });
-    for (const r of b.booking_rooms) {
-      await supabase.from("booking_rooms").update({ check_out: newCheckOut }).eq("id", r.id);
-    }
-
-    // === Recalculate folio room charges for the new night count ===
-    try {
-      const { data: folioId, error: __qe9 } = await supabase.rpc("get_or_create_folio", { _booking_id: b.id });
-      if (__qe9) reportQueryError("get or create folio", __qe9);
-      const fId = folioId as unknown as string;
-      // Refresh room charges through the guarded RPC — it recomputes nights,
-      // honours inclusive vs exclusive rate_type, and skips settled/void folios.
-      for (const br of b.booking_rooms) {
-        if (Number(br.rate) <= 0) continue;
-        const { error: seedErr } = await supabase.rpc("seed_room_charge_for_booking_room", {
-          _booking_room_id: br.id,
-        } as any);
-        if (seedErr) console.warn("room charge refresh failed", seedErr.message);
-      }
-      // Recompute folio totals
-      const { data: allCharges, error: __qe10 } = await supabase.from("folio_charges").select("*").eq("folio_id", fId);
-      if (__qe10) reportQueryError("folio charges", __qe10);
-      const { data: folio, error: __qe11 } = await supabase.from("folios").select("gst_mode,paid_amount,discount_type,discount_value").eq("id", fId).single();
-      if (__qe11) reportQueryError("folios", __qe11);
-      const mode = ((folio as any)?.gst_mode ?? "cash") as "cash" | "gst";
-      const billDisc = (folio as any)?.discount_type && Number((folio as any)?.discount_value) > 0
-        ? { type: (folio as any).discount_type as "percent" | "amount", value: Number((folio as any).discount_value) }
-        : null;
-      const t = recomputeFolio((allCharges ?? []) as any, mode, billDisc);
-      const paid = Number((folio as any)?.paid_amount ?? 0);
-      await supabase.from("folios").update({
-        ...t, balance_amount: Math.max(0, t.total_amount - paid),
-      }).eq("id", fId);
-    } catch (e) {
-      console.warn("folio extend-stay recalculation failed", e);
-    }
-
     toast.success("Dates updated");
     setDateOpen(false);
     load();
