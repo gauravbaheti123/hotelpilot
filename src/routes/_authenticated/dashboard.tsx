@@ -1120,9 +1120,10 @@ function OwnerDashboard({
         onAddExtraBed={(bid: string) => { setModalRoom(null); setExtraBedBookingId(bid); }}
         onCollectAdvance={(bid: string) => {
           setModalRoom(null);
-          navigate({ to: "/billing/folio/$bookingId", params: { bookingId: bid } });
+          void openFolio(bid);
         }}
       />
+      {folioPicker}
       <CheckoutDialog
         bookingId={checkoutBookingId}
         open={!!checkoutBookingId}
