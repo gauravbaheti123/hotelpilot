@@ -80,6 +80,7 @@ import { Route as AuthenticatedMastersMessageTemplatesRouteImport } from './rout
 import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenticated/masters.menu'
 import { Route as AuthenticatedMastersHallsRouteImport } from './routes/_authenticated/masters.halls'
 import { Route as AuthenticatedMastersExpenseCategoriesRouteImport } from './routes/_authenticated/masters.expense-categories'
+import { Route as AuthenticatedMastersEarlyCheckinSlabsRouteImport } from './routes/_authenticated/masters.early-checkin-slabs'
 import { Route as AuthenticatedMastersChannelsRouteImport } from './routes/_authenticated/masters.channels'
 import { Route as AuthenticatedInventoryVendorsRouteImport } from './routes/_authenticated/inventory.vendors'
 import { Route as AuthenticatedInventoryStockRouteImport } from './routes/_authenticated/inventory.stock'
@@ -518,6 +519,12 @@ const AuthenticatedMastersExpenseCategoriesRoute =
     path: '/masters/expense-categories',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMastersEarlyCheckinSlabsRoute =
+  AuthenticatedMastersEarlyCheckinSlabsRouteImport.update({
+    id: '/masters/early-checkin-slabs',
+    path: '/masters/early-checkin-slabs',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMastersChannelsRoute =
   AuthenticatedMastersChannelsRouteImport.update({
     id: '/masters/channels',
@@ -754,6 +761,7 @@ export interface FileRoutesByFullPath {
   '/inventory/stock': typeof AuthenticatedInventoryStockRoute
   '/inventory/vendors': typeof AuthenticatedInventoryVendorsRoute
   '/masters/channels': typeof AuthenticatedMastersChannelsRoute
+  '/masters/early-checkin-slabs': typeof AuthenticatedMastersEarlyCheckinSlabsRoute
   '/masters/expense-categories': typeof AuthenticatedMastersExpenseCategoriesRoute
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
@@ -859,6 +867,7 @@ export interface FileRoutesByTo {
   '/inventory/stock': typeof AuthenticatedInventoryStockRoute
   '/inventory/vendors': typeof AuthenticatedInventoryVendorsRoute
   '/masters/channels': typeof AuthenticatedMastersChannelsRoute
+  '/masters/early-checkin-slabs': typeof AuthenticatedMastersEarlyCheckinSlabsRoute
   '/masters/expense-categories': typeof AuthenticatedMastersExpenseCategoriesRoute
   '/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/masters/menu': typeof AuthenticatedMastersMenuRoute
@@ -966,6 +975,7 @@ export interface FileRoutesById {
   '/_authenticated/inventory/stock': typeof AuthenticatedInventoryStockRoute
   '/_authenticated/inventory/vendors': typeof AuthenticatedInventoryVendorsRoute
   '/_authenticated/masters/channels': typeof AuthenticatedMastersChannelsRoute
+  '/_authenticated/masters/early-checkin-slabs': typeof AuthenticatedMastersEarlyCheckinSlabsRoute
   '/_authenticated/masters/expense-categories': typeof AuthenticatedMastersExpenseCategoriesRoute
   '/_authenticated/masters/halls': typeof AuthenticatedMastersHallsRoute
   '/_authenticated/masters/menu': typeof AuthenticatedMastersMenuRoute
@@ -1073,6 +1083,7 @@ export interface FileRouteTypes {
     | '/inventory/stock'
     | '/inventory/vendors'
     | '/masters/channels'
+    | '/masters/early-checkin-slabs'
     | '/masters/expense-categories'
     | '/masters/halls'
     | '/masters/menu'
@@ -1178,6 +1189,7 @@ export interface FileRouteTypes {
     | '/inventory/stock'
     | '/inventory/vendors'
     | '/masters/channels'
+    | '/masters/early-checkin-slabs'
     | '/masters/expense-categories'
     | '/masters/halls'
     | '/masters/menu'
@@ -1284,6 +1296,7 @@ export interface FileRouteTypes {
     | '/_authenticated/inventory/stock'
     | '/_authenticated/inventory/vendors'
     | '/_authenticated/masters/channels'
+    | '/_authenticated/masters/early-checkin-slabs'
     | '/_authenticated/masters/expense-categories'
     | '/_authenticated/masters/halls'
     | '/_authenticated/masters/menu'
@@ -1864,6 +1877,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMastersExpenseCategoriesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/masters/early-checkin-slabs': {
+      id: '/_authenticated/masters/early-checkin-slabs'
+      path: '/masters/early-checkin-slabs'
+      fullPath: '/masters/early-checkin-slabs'
+      preLoaderRoute: typeof AuthenticatedMastersEarlyCheckinSlabsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/masters/channels': {
       id: '/_authenticated/masters/channels'
       path: '/masters/channels'
@@ -2149,6 +2169,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInventoryStockRoute: typeof AuthenticatedInventoryStockRoute
   AuthenticatedInventoryVendorsRoute: typeof AuthenticatedInventoryVendorsRoute
   AuthenticatedMastersChannelsRoute: typeof AuthenticatedMastersChannelsRoute
+  AuthenticatedMastersEarlyCheckinSlabsRoute: typeof AuthenticatedMastersEarlyCheckinSlabsRoute
   AuthenticatedMastersExpenseCategoriesRoute: typeof AuthenticatedMastersExpenseCategoriesRoute
   AuthenticatedMastersHallsRoute: typeof AuthenticatedMastersHallsRoute
   AuthenticatedMastersMenuRoute: typeof AuthenticatedMastersMenuRoute
@@ -2239,6 +2260,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInventoryStockRoute: AuthenticatedInventoryStockRoute,
   AuthenticatedInventoryVendorsRoute: AuthenticatedInventoryVendorsRoute,
   AuthenticatedMastersChannelsRoute: AuthenticatedMastersChannelsRoute,
+  AuthenticatedMastersEarlyCheckinSlabsRoute:
+    AuthenticatedMastersEarlyCheckinSlabsRoute,
   AuthenticatedMastersExpenseCategoriesRoute:
     AuthenticatedMastersExpenseCategoriesRoute,
   AuthenticatedMastersHallsRoute: AuthenticatedMastersHallsRoute,

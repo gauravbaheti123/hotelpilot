@@ -155,7 +155,17 @@ export interface WizardRoom {
   tariffId: string;
   rate: number;
   rateType: "exclusive" | "inclusive";
+  /** Step 4 — optional extra bed for this room line. */
+  extraBedEnabled: boolean;
+  extraBedQty: number;
+  extraBedRate: number;
+  /** Step 4 — optional early check-in charge for this room line. */
+  earlyCheckinEnabled: boolean;
+  earlyCheckinAmount: number;
+  /** Hours before the property's standard check-in time, computed in Step 4. */
+  earlyCheckinHours: number;
 }
+
 
 export const RELATION_OPTIONS = [
   "Spouse", "Child", "Parent", "Sibling", "Friend", "Colleague", "Other",
@@ -334,6 +344,12 @@ export function emptyRoom(from?: Partial<WizardRoom>): WizardRoom {
     tariffId: "",
     rate: 0,
     rateType: "exclusive",
+    extraBedEnabled: false,
+    extraBedQty: 1,
+    extraBedRate: 0,
+    earlyCheckinEnabled: false,
+    earlyCheckinAmount: 0,
+    earlyCheckinHours: 0,
     ...from,
     ...(from ? { key: nextKey("room") } : {}),
   };

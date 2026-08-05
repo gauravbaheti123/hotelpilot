@@ -1425,6 +1425,50 @@ export type Database = {
           },
         ]
       }
+      early_checkin_slabs: {
+        Row: {
+          charge_amount: number
+          created_at: string
+          effective_from: string
+          from_hours: number
+          id: string
+          is_active: boolean
+          property_id: string
+          to_hours: number
+          updated_at: string
+        }
+        Insert: {
+          charge_amount?: number
+          created_at?: string
+          effective_from?: string
+          from_hours?: number
+          id?: string
+          is_active?: boolean
+          property_id: string
+          to_hours?: number
+          updated_at?: string
+        }
+        Update: {
+          charge_amount?: number
+          created_at?: string
+          effective_from?: string
+          from_hours?: number
+          id?: string
+          is_active?: boolean
+          property_id?: string
+          to_hours?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "early_checkin_slabs_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_room_blocks: {
         Row: {
           booking_id: string | null
@@ -6212,6 +6256,10 @@ export type Database = {
         Returns: string
       }
       generate_system_reminders: { Args: never; Returns: number }
+      get_early_checkin_charge: {
+        Args: { p_hours_early: number; p_property_id: string }
+        Returns: number
+      }
       get_gst_rate: {
         Args: { p_amount: number; p_category: string; p_property_id: string }
         Returns: number
