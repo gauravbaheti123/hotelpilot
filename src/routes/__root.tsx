@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { logClientError, installGlobalErrorLogging } from "@/lib/client-error-log";
 import { Toaster } from "@/components/ui/sonner";
+import { OfflineGate } from "@/components/OfflineGate";
 import { useSessionTimeout } from "@/hooks/use-session-timeout";
 import { supabase } from "@/integrations/supabase/client";
 import { AUTH_QUERY_KEY } from "@/hooks/use-auth";
@@ -156,9 +157,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
-      <Toaster richColors position="top-right" />
+      <OfflineGate>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+        <Toaster richColors position="top-right" />
+      </OfflineGate>
     </QueryClientProvider>
   );
 }
