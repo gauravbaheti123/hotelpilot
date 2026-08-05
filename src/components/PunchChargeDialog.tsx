@@ -459,6 +459,7 @@ export function PunchChargeDialog({
         folio_id: walkin ? null : folioId,
         room_id: walkin ? null : roomId,
         is_walkin: walkin,
+        event_booking_id: walkin && segment === "food" ? eventId : null,
         guest_name: walkin ? walkinGuest.trim() : (guestName ?? null),
         total_amount: totals.total,
         gst_amount: totals.gst,
@@ -592,6 +593,45 @@ export function PunchChargeDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+        )}
+
+        {walkin && segment === "food" && (
+          <div>
+            <Label>Link to event (optional)</Label>
+            <Popover open={eventOpen} onOpenChange={setEventOpen}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" className="w-full justify-between font-normal">
+                  <span className="truncate">
+                    {eventId ? (events.find((e) => e.id === eventId)?.label ?? "Selected event") : "No event — regular food bill"}
+                  </span>
+                  <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+                <Command>
+                  <CommandInput placeholder="Search event…" />
+                  <CommandList>
+                    <CommandEmpty>No events found.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem value="none" onSelect={() => { setEventId(null); setEventOpen(false); }}>
+                        <Check className={`mr-2 h-4 w-4 ${eventId ? "opacity-0" : "opacity-100"}`} />
+                        No event — regular food bill
+                      </CommandItem>
+                      {events.map((e) => (
+                        <CommandItem key={e.id} value={e.label} onSelect={() => { setEventId(e.id); setEventOpen(false); }}>
+                          <Check className={`mr-2 h-4 w-4 ${eventId === e.id ? "opacity-100" : "opacity-0"}`} />
+                          <span className="truncate">{e.label}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Linking to an event numbers this bill in the banquet food series.
+            </p>
           </div>
         )}
 
