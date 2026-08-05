@@ -30,6 +30,8 @@ interface Props<T> {
   emptyText?: string;
   /** Additional className on <table>. */
   className?: string;
+  /** Stacked card layout on phones. "auto" (default) switches below 768px. */
+  cardMode?: "auto" | "never";
 }
 
 function inferType<T>(c: ReportColumn<T>): NonNullable<ReportColumn<T>["type"]> {
@@ -73,8 +75,10 @@ export function ReportDataTable<T>({
   totalsRow,
   emptyText = "No data",
   className,
+  cardMode = "auto",
 }: Props<T>) {
   const isMobile = useIsMobile();
+  const mobileCards = cardMode === "auto" && isMobile;
   const [sort, setSort] = useState<SortState>(null);
   const [filters, setFilters] = useState<Record<string, FilterValue>>({});
 
