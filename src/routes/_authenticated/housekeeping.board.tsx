@@ -18,6 +18,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { RequirePermission } from "@/components/RequirePermission";
+import { useRegisterRefresh } from "@/components/PullToRefresh";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 
@@ -97,6 +98,9 @@ function BoardPage() {
   }, [reloadRooms, loadNotes]);
 
   useEffect(() => { loadNotes(); }, [loadNotes]);
+
+  // Pull-to-refresh (native shell only) — reloads rooms + notes together.
+  useRegisterRefresh(load);
 
   const grouped = useMemo(() => {
     const filtered = filter === "all" ? rooms : rooms.filter((r) => r.housekeeping_status === filter);
