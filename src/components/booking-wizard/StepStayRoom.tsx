@@ -22,6 +22,9 @@ import { resolveGstRate, resolveGstRateInclusive } from "@/lib/gst";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { emptyRoom, type WizardRoom } from "@/lib/bookingWizard";
+import { useEarlyCheckinSlabs } from "@/hooks/use-early-checkin-slabs";
+import { hoursEarly, resolveEarlyCheckinCharge } from "@/lib/earlyCheckin";
+import { supabase as sb } from "@/integrations/supabase/client";
 
 const MEAL_PLAN_LABELS: Record<string, string> = {
   EP: "EP — Room only",
@@ -54,6 +57,19 @@ export function StepStayRoom({
   const { plans: tariffs } = useTariffPlans(propertyId);
   const [violations, setViolations] = useState<Record<string, string | null>>({});
   const { limit } = useDiscountLimit();
+  const [stdCheckinTime, setStdCheckinTime] = useState<string>("12:00");
+
+  useEffect(() => {
+    if (!propertyId) return;
+    let cancelled = false;
+    sb.from("properties").select("default_checkin_time").eq("id", propertyId).maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && (data as any)?.default_checkin_time) {
+          setStdCheckinTime(String((data as any).default_checkin_time).slice(0, 5));
+        }
+      });
+    return () => { cancelled = true; };
+  }, [propertyId]);
 
   useEffect(() => {
     onBlockedChange(Object.values(violations).some(Boolean));
@@ -92,7 +108,9 @@ export function StepStayRoom({
           room={r}
           cats={cats}
           tariffs={tariffs}
+          stdCheckinTime={stdCheckinTime}
           limitLabel={describeLimit(limit)}
+          limit={limit}
           checkRate={(standard, rate) =>
             standard > 0 && rate > 0 && rate < standard
               ? canApplyDiscount(limit, { discountRupees: standard - rate, base: standard })
@@ -137,7 +155,7 @@ export function StepStayRoom({
 }
 
 function RoomCard({
-  index, propertyId, reservation, room, cats, tariffs, limitLabel, checkRate, onChange, onRemove, onViolation,
+  index, propertyId, reservation, room, cats, tariffs, stdCheckinTime, limitLabel, limit, checkRate, onChange, onRemove, onViolation,
 }: {
   index: number;
   propertyId: string;
@@ -145,7 +163,9 @@ function RoomCard({
   room: WizardRoom;
   cats: Category[];
   tariffs: TariffPlan[];
+  stdCheckinTime: string;
   limitLabel: string;
+  limit: import("@/lib/discountLimit").DiscountLimit;
   checkRate: (standard: number, rate: number) => { allowed: boolean; reason?: string };
   onChange: (p: Partial<WizardRoom>) => void;
   onRemove?: () => void;
@@ -155,6 +175,7 @@ function RoomCard({
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [availError, setAvailError] = useState<string | null>(null);
   const { slabs: gstSlabs } = useGstSlabs(propertyId);
+  const { slabs: ecSlabs } = useEarlyCheckinSlabs(propertyId);
 
   const datesValid = isValidStayRange(room.checkIn, room.checkOut);
   const nights = datesValid ? nightsBetween(room.checkIn, room.checkOut) : 0;
