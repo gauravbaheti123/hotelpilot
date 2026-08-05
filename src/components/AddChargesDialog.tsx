@@ -302,22 +302,12 @@ export function AddChargesDialog({ bookingId, open, onOpenChange, onDone }: Prop
 
             {kind === "early_checkin" && (
               <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Hours early</Label>
-                    <Input
-                      type="number" min={0} step="0.5"
-                      value={hours === "" ? String(autoHours) : hours}
-                      onChange={(e) => { setHours(e.target.value); setAmount(""); }}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Amount (₹)</Label>
-                    <Input
-                      type="number" min={0} step="0.01" value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label>Amount (₹)</Label>
+                  <Input
+                    type="number" min={0} step="0.01" value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
                 </div>
                 <p className="text-[11px] text-muted-foreground">
                   Standard check-in {ctx.default_checkin_time ?? "12:00"}
