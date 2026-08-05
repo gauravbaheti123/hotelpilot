@@ -290,13 +290,13 @@ export function CrudPage<T extends { id: string }>({
   return (
     <AppShell title={title}>
       <div className="max-w-6xl space-y-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:flex sm:items-center sm:justify-between">
           {subtitle ? (
             <p className="text-sm text-muted-foreground">{subtitle}</p>
           ) : (
             <div />
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
             {headerActions}
             {canManage && selected.size > 0 && (
               <Button variant="destructive" onClick={() => setBulkOpen(true)}>

@@ -16,7 +16,14 @@ import { Plus, Trash2, Loader2 } from "lucide-react";
 import { toastError } from "@/lib/errorMessage";
 
 export const Route = createFileRoute("/_authenticated/masters/sundry-items")({
-  head: () => ({ meta: [{ title: "Sundry Items — HotelPilot" }] }),
+  head: () => ({ meta: [
+    { title: "Sundry / POS Items — HotelPilot" },
+    { name: "description", content: "Manage property Sundry and POS items, categories, rates, and taxes." },
+    { property: "og:title", content: "Sundry / POS Items — HotelPilot" },
+    { property: "og:description", content: "Manage property Sundry and POS items, categories, rates, and taxes." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: SundryItemsPage,
 });
 
@@ -169,7 +176,7 @@ function SundryItemsPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex">
             <Input
               placeholder="New category name…"
               value={newCat}
