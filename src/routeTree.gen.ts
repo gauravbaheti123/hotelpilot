@@ -71,6 +71,7 @@ import { Route as AuthenticatedMastersTariffRouteImport } from './routes/_authen
 import { Route as AuthenticatedMastersSundryItemsRouteImport } from './routes/_authenticated/masters.sundry-items'
 import { Route as AuthenticatedMastersStaffRouteImport } from './routes/_authenticated/masters.staff'
 import { Route as AuthenticatedMastersRoomsRouteImport } from './routes/_authenticated/masters.rooms'
+import { Route as AuthenticatedMastersRoomStatusColorsRouteImport } from './routes/_authenticated/masters.room-status-colors'
 import { Route as AuthenticatedMastersRestaurantOutletsRouteImport } from './routes/_authenticated/masters.restaurant-outlets'
 import { Route as AuthenticatedMastersRateSeasonsRouteImport } from './routes/_authenticated/masters.rate-seasons'
 import { Route as AuthenticatedMastersPrintersRouteImport } from './routes/_authenticated/masters.printers'
@@ -467,6 +468,12 @@ const AuthenticatedMastersRoomsRoute =
     path: '/masters/rooms',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMastersRoomStatusColorsRoute =
+  AuthenticatedMastersRoomStatusColorsRouteImport.update({
+    id: '/masters/room-status-colors',
+    path: '/masters/room-status-colors',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMastersRestaurantOutletsRoute =
   AuthenticatedMastersRestaurantOutletsRouteImport.update({
     id: '/masters/restaurant-outlets',
@@ -785,6 +792,7 @@ export interface FileRoutesByFullPath {
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
   '/masters/restaurant-outlets': typeof AuthenticatedMastersRestaurantOutletsRoute
+  '/masters/room-status-colors': typeof AuthenticatedMastersRoomStatusColorsRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/sundry-items': typeof AuthenticatedMastersSundryItemsRoute
@@ -893,6 +901,7 @@ export interface FileRoutesByTo {
   '/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
   '/masters/restaurant-outlets': typeof AuthenticatedMastersRestaurantOutletsRoute
+  '/masters/room-status-colors': typeof AuthenticatedMastersRoomStatusColorsRoute
   '/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/masters/sundry-items': typeof AuthenticatedMastersSundryItemsRoute
@@ -1003,6 +1012,7 @@ export interface FileRoutesById {
   '/_authenticated/masters/printers': typeof AuthenticatedMastersPrintersRoute
   '/_authenticated/masters/rate-seasons': typeof AuthenticatedMastersRateSeasonsRoute
   '/_authenticated/masters/restaurant-outlets': typeof AuthenticatedMastersRestaurantOutletsRoute
+  '/_authenticated/masters/room-status-colors': typeof AuthenticatedMastersRoomStatusColorsRoute
   '/_authenticated/masters/rooms': typeof AuthenticatedMastersRoomsRoute
   '/_authenticated/masters/staff': typeof AuthenticatedMastersStaffRoute
   '/_authenticated/masters/sundry-items': typeof AuthenticatedMastersSundryItemsRoute
@@ -1113,6 +1123,7 @@ export interface FileRouteTypes {
     | '/masters/printers'
     | '/masters/rate-seasons'
     | '/masters/restaurant-outlets'
+    | '/masters/room-status-colors'
     | '/masters/rooms'
     | '/masters/staff'
     | '/masters/sundry-items'
@@ -1221,6 +1232,7 @@ export interface FileRouteTypes {
     | '/masters/printers'
     | '/masters/rate-seasons'
     | '/masters/restaurant-outlets'
+    | '/masters/room-status-colors'
     | '/masters/rooms'
     | '/masters/staff'
     | '/masters/sundry-items'
@@ -1330,6 +1342,7 @@ export interface FileRouteTypes {
     | '/_authenticated/masters/printers'
     | '/_authenticated/masters/rate-seasons'
     | '/_authenticated/masters/restaurant-outlets'
+    | '/_authenticated/masters/room-status-colors'
     | '/_authenticated/masters/rooms'
     | '/_authenticated/masters/staff'
     | '/_authenticated/masters/sundry-items'
@@ -1840,6 +1853,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMastersRoomsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/masters/room-status-colors': {
+      id: '/_authenticated/masters/room-status-colors'
+      path: '/masters/room-status-colors'
+      fullPath: '/masters/room-status-colors'
+      preLoaderRoute: typeof AuthenticatedMastersRoomStatusColorsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/masters/restaurant-outlets': {
       id: '/_authenticated/masters/restaurant-outlets'
       path: '/masters/restaurant-outlets'
@@ -2234,6 +2254,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMastersPrintersRoute: typeof AuthenticatedMastersPrintersRoute
   AuthenticatedMastersRateSeasonsRoute: typeof AuthenticatedMastersRateSeasonsRoute
   AuthenticatedMastersRestaurantOutletsRoute: typeof AuthenticatedMastersRestaurantOutletsRoute
+  AuthenticatedMastersRoomStatusColorsRoute: typeof AuthenticatedMastersRoomStatusColorsRoute
   AuthenticatedMastersRoomsRoute: typeof AuthenticatedMastersRoomsRoute
   AuthenticatedMastersStaffRoute: typeof AuthenticatedMastersStaffRoute
   AuthenticatedMastersSundryItemsRoute: typeof AuthenticatedMastersSundryItemsRoute
@@ -2332,6 +2353,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedMastersRateSeasonsRoute: AuthenticatedMastersRateSeasonsRoute,
   AuthenticatedMastersRestaurantOutletsRoute:
     AuthenticatedMastersRestaurantOutletsRoute,
+  AuthenticatedMastersRoomStatusColorsRoute:
+    AuthenticatedMastersRoomStatusColorsRoute,
   AuthenticatedMastersRoomsRoute: AuthenticatedMastersRoomsRoute,
   AuthenticatedMastersStaffRoute: AuthenticatedMastersStaffRoute,
   AuthenticatedMastersSundryItemsRoute: AuthenticatedMastersSundryItemsRoute,
@@ -2414,13 +2437,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
