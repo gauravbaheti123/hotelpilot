@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { fetchEventRevenue } from "@/lib/banquetEvent";
@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { FolioOpenButton } from "@/components/FolioOpenButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -460,12 +461,12 @@ function NightAuditPage() {
               )}
               <div className="max-h-40 overflow-auto text-xs space-y-1">
                 {unsettled.slice(0, 10).map((u) => (
-                  <Link key={u.id} to="/billing/folio/$bookingId" params={{ bookingId: u.booking_id }}
-                    className="flex justify-between hover:bg-accent rounded px-1">
+                  <FolioOpenButton key={u.id} unstyled bookingId={u.booking_id}
+                    className="w-full flex justify-between hover:bg-accent rounded px-1 text-left">
                     <span className="font-medium">{billNo(u.invoice_number)}</span>
                     <span className="ml-2 text-muted-foreground truncate">{u.guest_name ?? "—"}</span>
                     <span className="ml-2 font-medium">{inr(u.balance_amount)}</span>
-                  </Link>
+                  </FolioOpenButton>
                 ))}
               </div>
             </CardContent>

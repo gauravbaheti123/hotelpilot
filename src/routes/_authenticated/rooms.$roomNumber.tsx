@@ -6,6 +6,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { FolioOpenButton } from "@/components/FolioOpenButton";
 import { BackButton } from "@/components/BackButton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -267,9 +268,9 @@ function RoomDetailPage() {
                   </Button>
                 )}
                 {isOccupied && booking && (
-                  <Button asChild size="sm" variant="outline">
-                    <Link to="/billing/folio/$bookingId" params={{ bookingId: booking.id }}>View Bill</Link>
-                  </Button>
+                  <FolioOpenButton bookingId={booking.id} size="sm" variant="outline">
+                    View Bill
+                  </FolioOpenButton>
                 )}
                 {isOccupied && booking && (
                   <Button size="sm" onClick={() => setCheckoutOpen(true)}>
@@ -323,9 +324,9 @@ function RoomDetailPage() {
             </div>
             {folioId && (
               <div className="mt-3">
-                <Button asChild size="sm" variant="outline">
-                  <Link to="/billing/folio/$bookingId" params={{ bookingId: booking.id }}>Open folio</Link>
-                </Button>
+                <FolioOpenButton bookingId={booking.id} size="sm" variant="outline">
+                  Open folio
+                </FolioOpenButton>
               </div>
             )}
           </Section>

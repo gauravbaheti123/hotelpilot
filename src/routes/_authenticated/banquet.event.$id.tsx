@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { FolioOpenButton } from "@/components/FolioOpenButton";
 import { BackButton } from "@/components/BackButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1103,19 +1104,14 @@ function BanquetEventPage() {
                           </>
                         )}
                         {blk.status === "checked_out" && blk.booking_id && (
-                          <Button
+                          <FolioOpenButton
+                            bookingId={blk.booking_id}
                             size="sm"
                             variant="outline"
-                            onClick={() =>
-                              router.navigate({
-                                to: "/billing/folio/$bookingId",
-                                params: { bookingId: blk.booking_id! },
-                              })
-                            }
                           >
                             <FileText className="h-3.5 w-3.5 mr-1" />
                             Bill
-                          </Button>
+                          </FolioOpenButton>
                         )}
                         {isBlocked && (
                           <Button
