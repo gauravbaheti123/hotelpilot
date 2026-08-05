@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { FolioOpenButton } from "@/components/FolioOpenButton";
 import { BackButton } from "@/components/BackButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
