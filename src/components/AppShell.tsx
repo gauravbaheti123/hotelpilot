@@ -477,7 +477,9 @@ function AppShellInner({
           side="left"
           className="w-72 p-0 bg-sidebar text-sidebar-foreground flex flex-col md:hidden"
         >
-          {sidebarBody}
+          {/* Mobile drawer always renders the expanded sidebar (labels, email/roles,
+              property selector) regardless of the persisted desktop collapse flag. */}
+          {renderSidebarBody(false)}
         </SheetContent>
       </Sheet>
 
@@ -538,7 +540,7 @@ function AppShellInner({
             ) : (
               <h1 className="text-base sm:text-lg font-semibold truncate">{headerTitle}</h1>
             )}
-            {titleSlot}
+            <div className="hidden sm:flex items-center">{titleSlot}</div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {qzMounted ? (
@@ -602,6 +604,11 @@ function AppShellInner({
             </DropdownMenu>
           </div>
         </header>
+        {titleSlot && (
+          <div className="sm:hidden border-b bg-card px-3 py-2 overflow-x-auto">
+            {titleSlot}
+          </div>
+        )}
         <main className="flex-1 p-3 sm:p-6 overflow-auto">{children}</main>
       </div>
       {user?.id && (
