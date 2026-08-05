@@ -484,6 +484,7 @@ function RoomCard({
                     onCheckedChange={(c) =>
                       onChange({
                         earlyCheckinEnabled: c === true,
+                        earlyCheckinHours: hrs,
                         earlyCheckinAmount:
                           c === true && !room.earlyCheckinAmount ? (suggested ?? 0) : room.earlyCheckinAmount,
                       })
