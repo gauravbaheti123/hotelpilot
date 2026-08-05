@@ -35,7 +35,10 @@ export async function resolveBillingCompanyId(
 ): Promise<string | null> {
   const b = s.billTo;
   if (s.reservation || !b.enabled) return null;
-  if (b.companyId) return b.companyId;
+  if (b.companyId) {
+    await syncBillingCompanyRecord(b.companyId, b);
+    return b.companyId;
+  }
   if (!b.name.trim()) return null;
   const { data, error } = await supabase
     .from("billing_companies")
