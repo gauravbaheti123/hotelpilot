@@ -1678,12 +1678,8 @@ function tileKind(r: Room, isOccupied: boolean): TileKind {
 }
 
 function roomTileStyle(r: Room, isOccupied: boolean): { bg: string; label: string } {
-  switch (tileKind(r, isOccupied)) {
-    case "occupied": return { bg: "bg-[#dc2626]", label: "Occupied" };
-    case "maintenance": return { bg: "bg-[#6b7280]", label: "Maintenance" };
-    case "dirty": return { bg: "bg-[#d97706]", label: "Dirty" };
-    default: return { bg: "bg-[#16a34a]", label: "Vacant" };
-  }
+  const c = ROOM_STATUS_COLORS[tileKind(r, isOccupied) as keyof typeof ROOM_STATUS_COLORS] ?? ROOM_STATUS_COLORS.vacant;
+  return { bg: c.bg, label: c.label };
 }
 
 function RoomStatusModal({
