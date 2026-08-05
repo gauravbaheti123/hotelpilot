@@ -81,6 +81,10 @@ export interface CreateBookingPayload {
 
   extra_bed_qty?: number;
   extra_bed_rate?: number;
+  /** Per-room extra beds (wizard). Each becomes a booking_extra_beds row. */
+  extra_beds?: Array<{ qty: number; rate: number; from_date?: string | null }>;
+  /** Early check-in charges posted to the folio in the same transaction. */
+  early_checkins?: Array<{ amount: number; description?: string | null; charged_on?: string | null }>;
 
   total_amount?: number;
   balance_amount?: number;
