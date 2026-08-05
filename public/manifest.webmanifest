@@ -1,0 +1,13 @@
+{
+  "name": "HotelPilot",
+  "short_name": "HotelPilot",
+  "description": "Hotel front desk, billing and operations management.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "icons": [
+    { "src": "/favicon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

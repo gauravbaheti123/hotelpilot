@@ -85,7 +85,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "HotelPilot — Hotel Management Platform" },
       { name: "description", content: "HotelPilot is an end-to-end hotel management platform: front desk, rooms, billing, kitchen, housekeeping and reports. Powered by Growth Story Company." },
       { name: "author", content: "Lovable" },
