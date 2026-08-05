@@ -387,14 +387,22 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         const idxs = alloc.map((a, i) => ({ a, i })).filter((x) => x.a > 0);
         if (idxs.length === 0) continue;
         const [first, ...rest] = idxs;
-        const { error: upErr } = await supabase.from("payments").update({
+        const { data: movedRow, error: upErr } = await supabase.from("payments").update({
           folio_id: childFolioIds[first.i],
           amount: first.a,
           notes: rest.length > 0
             ? `${p.notes ? `${p.notes} · ` : ""}Split from ${billNo(folio.invoice_number)} (₹${p.amount.toFixed(2)})`
             : p.notes,
-        } as any).eq("id", p.id);
+        } as any).eq("id", p.id).select("id").maybeSingle();
         if (upErr) throw upErr;
+        // A silent no-op update (e.g. blocked by row-level security) used to
+        // leave the payment stranded on the parent folio, which then refused
+        // to void and survived the split as a duplicate full-value bill.
+        if (!movedRow) {
+          throw new Error(
+            "Could not move an existing payment onto the new bills — split aborted so no duplicate bill is created.",
+          );
+        }
         moved.push({ id: p.id, amount: p.amount });
         for (const r of rest) {
           const { data: ins, error: insErr } = await supabase.from("payments").insert({
