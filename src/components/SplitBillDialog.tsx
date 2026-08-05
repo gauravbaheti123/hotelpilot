@@ -387,14 +387,22 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         const idxs = alloc.map((a, i) => ({ a, i })).filter((x) => x.a > 0);
         if (idxs.length === 0) continue;
         const [first, ...rest] = idxs;
-        const { error: upErr } = await supabase.from("payments").update({
+        const { data: movedRow, error: upErr } = await supabase.from("payments").update({
           folio_id: childFolioIds[first.i],
           amount: first.a,
           notes: rest.length > 0
             ? `${p.notes ? `${p.notes} · ` : ""}Split from ${billNo(folio.invoice_number)} (₹${p.amount.toFixed(2)})`
             : p.notes,
-        } as any).eq("id", p.id);
+        } as any).eq("id", p.id).select("id").maybeSingle();
         if (upErr) throw upErr;
+        // A silent no-op update (e.g. blocked by row-level security) used to
+        // leave the payment stranded on the parent folio, which then refused
+        // to void and survived the split as a duplicate full-value bill.
+        if (!movedRow) {
+          throw new Error(
+            "Could not move an existing payment onto the new bills — split aborted so no duplicate bill is created.",
+          );
+        }
         moved.push({ id: p.id, amount: p.amount });
         for (const r of rest) {
           const { data: ins, error: insErr } = await supabase.from("payments").insert({
@@ -420,6 +428,23 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   }
 
   function moveToBill1(id: string) { setBill1Ids((s) => new Set([...s, id])); }
+
+  /**
+   * `void_folio_safe` can return without an error yet leave the parent alive
+   * (nothing matched, or the update was filtered). If that goes unnoticed the
+   * booking ends up with the parent AND its portions live, and every
+   * single-folio sum (check-out above all) double-counts the bill. Verify and
+   * roll back instead.
+   */
+  async function assertParentVoided(undoPayments: () => Promise<void>, newFolioIds: string[]) {
+    const { data: after } = await supabase
+      .from("folios").select("status").eq("id", folio.id).maybeSingle();
+    if (String((after as any)?.status ?? "") === "void") return;
+    await undoPayments();
+    await supabase.from("folios").delete().in("id", newFolioIds);
+    throw new Error("The original bill could not be voided — split cancelled so no duplicate bill remains.");
+  }
+
   function moveToBill2(id: string) {
     setBill1Ids((s) => { const n = new Set(s); n.delete(id); return n; });
   }
@@ -569,6 +594,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         await supabase.from("folios").delete().in("id", newFolioIds);
         throw voidErr;
       }
+      await assertParentVoided(undoPayments, newFolioIds);
       await repointBills(folio.id, newFolioIds);
 
       setCreatedBills(created);
@@ -756,6 +782,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         await supabase.from("folios").delete().in("id", newFolioIds);
         throw voidErr;
       }
+      await assertParentVoided(undoPayments, newFolioIds);
       await repointBills(folio.id, newFolioIds);
 
       setCreatedBills(created);

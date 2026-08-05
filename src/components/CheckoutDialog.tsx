@@ -34,6 +34,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
+import { payableFolios } from "@/lib/folioSelect";
 
 interface Props {
   bookingId: string | null;
@@ -96,9 +97,11 @@ function checkoutFolioRank(f: any) {
 }
 
 function pickCheckoutFolio(rows: any[]) {
-  return [...rows]
-    .filter((f) => !f?.is_deleted && !["void", "refunded"].includes(String(f?.status ?? "")))
-    .sort((a, b) => {
+  // `payableFolios` drops any folio that has been split into live child
+  // portions — its charges were cloned onto the children, so summing it
+  // double-counts the bill and invents a phantom balance at check-out.
+  return payableFolios([...rows] as any[])
+    .sort((a: any, b: any) => {
       const ar = checkoutFolioRank(a);
       const br = checkoutFolioRank(b);
       return (
@@ -126,6 +129,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
   const [busy, setBusy] = useState(false);
   const [booking, setBooking] = useState<any>(null);
   const [folio, setFolio] = useState<any>(null);
+  // The booking's other live bill portions (after a Split Bill). Kept so the
+  // dialog can show the TRUE combined state instead of one portion in isolation.
+  const [otherFolios, setOtherFolios] = useState<any[]>([]);
   const [charges, setCharges] = useState<any[]>([]);
   // Separate flag: does a late-checkout charge row exist on this folio,
   // INCLUDING soft-deleted (wiped) ones? `charges` only holds live rows, so
@@ -221,6 +227,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     }
 
     let selectedFolio = pickCheckoutFolio((liveFolios ?? []) as any[]);
+    setOtherFolios(
+      payableFolios((liveFolios ?? []) as any[]).filter((f: any) => f.id !== selectedFolio?.id),
+    );
     if (!selectedFolio) {
       const { data: folioId, error: fErr } = await supabase.rpc("get_or_create_folio", {
         _booking_id: bookingId,
@@ -1188,6 +1197,31 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
                   {inrRound(totals.balance)}
                 </span>
               </div>
+              {otherFolios.length > 0 && (
+                <div className="border-t pt-2 space-y-1">
+                  <div className="text-[11px] uppercase text-muted-foreground">
+                    Other portions of this booking
+                  </div>
+                  {otherFolios.map((f: any) => (
+                    <div key={f.id} className="flex justify-between text-xs">
+                      <span>
+                        {f.invoice_number ? billNo(f.invoice_number) : "Provisional"}
+                        {" · "}
+                        <span className="capitalize">{f.status}</span>
+                      </span>
+                      <span className={Number(f.balance_amount ?? 0) > 0.01 ? "text-destructive" : "text-emerald-600"}>
+                        {inrRound(Number(f.total_amount ?? 0))}
+                        {Number(f.balance_amount ?? 0) > 0.01
+                          ? ` · due ${inrRound(Number(f.balance_amount))}`
+                          : " · paid"}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="text-[11px] text-muted-foreground">
+                    This portion only is being collected here; settled portions are not re-charged.
+                  </div>
+                </div>
+              )}
             </div>
 
             {totals.balance > 0.01 && (
