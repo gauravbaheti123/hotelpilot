@@ -50,7 +50,8 @@ export function createBackHandler(deps: {
 }) {
   const now = deps.now ?? (() => Date.now());
   const closeOverlay = deps.closeOverlay ?? closeTopOverlay;
-  let lastBackAt = 0;
+  // -Infinity so the very first press can never satisfy the exit window.
+  let lastBackAt = Number.NEGATIVE_INFINITY;
 
   return function handleBack() {
     // 1. Topmost overlay.
