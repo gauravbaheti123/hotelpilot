@@ -18,6 +18,7 @@ import { StepRemarks } from "@/components/booking-wizard/StepRemarks";
 import { StepEditStayRoom } from "@/components/booking-wizard/StepEditStayRoom";
 import { StepEditReview } from "@/components/booking-wizard/StepEditReview";
 import { useAuth } from "@/hooks/use-auth";
+import { useBackIntent } from "@/hooks/use-back-intent";
 import { userDisplayName } from "@/lib/activityLog";
 import { isValidMobile } from "@/lib/mobile";
 import { isValidOrEmptyGSTIN } from "@/lib/gstin";
@@ -63,6 +64,12 @@ export function BookingEditWizard({ bookingId, onSaved, onCancel }: Props) {
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [stayBlocked, setStayBlocked] = useState(false);
+
+  // Android back steps through the wizard instead of leaving the booking.
+  useBackIntent(step > 0, () => {
+    setStep((s) => s - 1);
+    return true;
+  });
 
   useEffect(() => {
     let alive = true;
