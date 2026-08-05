@@ -6454,6 +6454,7 @@ export type Database = {
         Returns: string
       }
       undo_checkout: { Args: { _booking_id: string }; Returns: Json }
+      update_booking_safe_fields: { Args: { payload: Json }; Returns: Json }
       user_discount_limit: {
         Args: { _property_id: string; _user_id: string }
         Returns: {
