@@ -602,11 +602,14 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
             ).length === 0 && (
               <p className="p-4 text-sm text-muted-foreground">No {segTab} bills.</p>
             )}
-            {segRows
-              .filter((r) => !q ||
+            {groupBySettledDate(segRows.filter((r) => !q ||
                 r.bill_number.toLowerCase().includes(q.toLowerCase()) ||
                 (r.guest_name ?? "").toLowerCase().includes(q.toLowerCase()))
-              .map((r) => {
+            ).map((g) => (
+              <div key={g.key}>
+                <DateDivider label={g.label} />
+                <div className="divide-y">
+              {g.items.map((r) => {
                 const balance = Math.max(0, Number(r.total_amount || 0) - Number(r.paid_amount || 0));
                 return (
                   <div key={r.id} className="flex items-center gap-3 px-4 py-3">
@@ -658,6 +661,9 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
                   </div>
                 );
               })}
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}
