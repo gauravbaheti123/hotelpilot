@@ -25,6 +25,7 @@ import {
 import { inr } from "@/lib/billing";
 import { billNo, isProvisional } from "@/lib/billNumber";
 import { reportQueryError } from "@/lib/queryError";
+import { payableFolios } from "@/lib/folioSelect";
 import { cn } from "@/lib/utils";
 
 interface FolioRow {
@@ -88,7 +89,9 @@ export function useFolioOpener() {
           .neq("status", "void")
           .order("created_at", { ascending: true });
         if (error) reportQueryError("folios", error);
-        const rows = ((data ?? []) as unknown as FolioRow[]);
+        // Hide a split parent that was left alive by a failed void — its
+        // charges already live on the child portions listed below it.
+        const rows = payableFolios((data ?? []) as unknown as FolioRow[]);
         // 0 folios -> let the folio page create one (unchanged behaviour).
         // 1 folio  -> straight through, zero extra clicks.
         if (rows.length <= 1) {
