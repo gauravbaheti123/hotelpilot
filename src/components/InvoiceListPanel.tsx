@@ -502,7 +502,11 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
       <Card>
         <CardContent className="p-0 divide-y">
           {filtered.length === 0 && <p className="p-4 text-sm text-muted-foreground">No invoices.</p>}
-          {filtered.map((r) => {
+          {groupBySettledDate(filtered).map((g) => (
+            <div key={g.key}>
+              <DateDivider label={g.label} />
+              <div className="divide-y">
+          {g.items.map((r) => {
             const voided = !!r.is_deleted;
             return (
               <div key={r.id} className={`flex items-center gap-3 px-4 py-3 cursor-pointer ${voided ? "bg-rose-50/30" : "hover:bg-muted/50"}`}>
@@ -582,6 +586,9 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
               </div>
             );
           })}
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
       )}
