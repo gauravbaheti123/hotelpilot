@@ -29,6 +29,7 @@ import { BOOKING_STATUS_LABEL, BOOKING_STATUS_TONE } from "@/lib/front-desk";
 import { PlusCircle, FileText } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { useRegisterRefresh } from "@/components/PullToRefresh";
 import { istDateISO } from "@/lib/date";
 import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/front-desk/bookings")({
@@ -80,6 +81,9 @@ function BookingsPage() {
     if (current) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, status]);
+
+  // Pull-to-refresh (native shell only).
+  useRegisterRefresh(load);
 
   const filtered = rows.filter((r) => {
     if (!search.trim()) return true;
