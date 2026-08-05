@@ -158,6 +158,33 @@ export async function loadBookingForEdit(bookingId: string): Promise<BookingEdit
     }
   }
 
+  // Active room lines only — `shifted` rows are closed-out audit history.
+  const { data: brData, error: brErr } = await supabase
+    .from("booking_rooms")
+    .select("id, room_id, category_id, rate, status, rooms(room_number), room_categories(name)")
+    .eq("booking_id", bookingId)
+    .order("created_at", { ascending: true });
+  if (brErr) reportQueryError("booking rooms", brErr);
+  const stayRooms: StayRoomEdit[] = ((brData ?? []) as Array<Record<string, unknown>>)
+    .filter((r) => ((r.status as string) ?? "active") !== "shifted" && (r.status as string) !== "cancelled")
+    .map((r) => {
+      const roomId = (r.room_id as string) ?? null;
+      const categoryId = (r.category_id as string) ?? null;
+      const roomNumber = ((r.rooms ?? null) as { room_number?: string } | null)?.room_number ?? null;
+      const categoryName = ((r.room_categories ?? null) as { name?: string } | null)?.name ?? null;
+      const rate = Number(r.rate ?? 0);
+      return {
+        bookingRoomId: r.id as string,
+        roomId, categoryId, rate, roomNumber, categoryName,
+        origRoomId: roomId, origCategoryId: categoryId,
+        origRoomNumber: roomNumber, origCategoryName: categoryName,
+        origRate: rate,
+      };
+    });
+
+  const checkIn = String(b.check_in ?? "").slice(0, 10);
+  const checkOut = String(b.check_out ?? "").slice(0, 10);
+
   return {
     bookingId: b.id as string,
     propertyId: b.property_id as string,
@@ -169,6 +196,13 @@ export async function loadBookingForEdit(bookingId: string): Promise<BookingEdit
     extraGuests,
     billTo,
     customRemark: (b.custom_remark as string) ?? "",
+    stay: {
+      checkIn, checkOut,
+      origCheckIn: checkIn, origCheckOut: checkOut,
+      advanceAmount: Number(b.advance_amount ?? 0),
+      rooms: stayRooms,
+      reason: "",
+    },
   };
 }
 
