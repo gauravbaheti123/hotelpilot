@@ -74,6 +74,7 @@ import { toast } from "sonner";
 import { PropertySelector } from "./PropertySelector";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useCurrentProperty } from "@/hooks/use-property";
+import { useRoomStatusColorOverrides } from "@/hooks/use-room-status-colors";
 import { RemindersBell } from "./Reminders";
 import { useSuperadminView } from "@/lib/superadmin-view";
 const QZStatusIndicator = lazy(() =>
