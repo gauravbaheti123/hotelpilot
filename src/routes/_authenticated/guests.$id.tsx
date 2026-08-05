@@ -518,28 +518,30 @@ function GuestDetail() {
         </TabsContent>
 
         <TabsContent value="documents">
-          <Card>
-            <CardHeader><CardTitle className="text-base">ID Document</CardTitle></CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {g.id_document_url ? (
-                <div className="space-y-2">
-                  <div className="text-xs text-muted-foreground">
-                    {g.id_document_name ?? "Document"}
-                    {g.id_document_uploaded_at && (
-                      <> · uploaded {new Date(g.id_document_uploaded_at).toLocaleString()}</>
-                    )}
-                  </div>
-                  <DrivePreview url={g.id_document_url} name={g.id_document_name ?? "Document"} />
-                </div>
-              ) : g.id_document_name ? (
-                <div className="text-xs text-muted-foreground">
-                  {g.id_document_name} (document link unavailable)
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No document uploaded</p>
-              )}
-            </CardContent>
-          </Card>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <IdSideCard
+              title="ID Front"
+              side="front"
+              guestId={g.id}
+              guestName={g.name}
+              propertyId={(g as any).property_id ?? null}
+              url={g.id_document_url ?? null}
+              name={g.id_document_name ?? null}
+              uploadedAt={g.id_document_uploaded_at ?? null}
+              onSaved={load}
+            />
+            <IdSideCard
+              title="ID Back"
+              side="back"
+              guestId={g.id}
+              guestName={g.name}
+              propertyId={(g as any).property_id ?? null}
+              url={(g as any).id_document_back_url ?? null}
+              name={(g as any).id_document_back_name ?? null}
+              uploadedAt={(g as any).id_document_back_uploaded_at ?? null}
+              onSaved={load}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="feedback">
