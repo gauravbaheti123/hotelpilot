@@ -22,6 +22,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { listEventBookings, deleteEventBooking, type EventRow } from "@/lib/banquetEvent";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { useRegisterRefresh } from "@/components/PullToRefresh";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/banquet/bookings")({
@@ -55,6 +56,19 @@ function BanquetBookingsPage() {
     })();
   };
   useEffect(load, [propertyId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * Pull-to-refresh (native shell only). `load` fires and forgets, so the
+   * gesture awaits the fetch directly to keep the spinner honest.
+   */
+  useRegisterRefresh(async () => {
+    if (!propertyId) return;
+    try {
+      setRows(await listEventBookings(propertyId, { limit: 200 }));
+    } catch (e: any) {
+      toastError(e, "Failed to load events");
+    }
+  });
 
   if (!propertyId) return <AppShell title="Banquet Events"><EmptyPropertyState /></AppShell>;
 
