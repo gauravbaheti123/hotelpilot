@@ -18,6 +18,7 @@ interface Tariff {
   name: string;
   category_id: string | null;
   meal_plan: string;
+  plan_type: string | null;
   rate: number;
   extra_adult_rate: number;
   extra_child_rate: number;
@@ -44,6 +45,17 @@ function TariffPage() {
 
   const fields: FieldDef[] = [
     { name: "name", label: "Plan name", type: "text", required: true },
+    {
+      name: "plan_type",
+      label: "Plan type",
+      type: "select",
+      required: true,
+      options: [
+        { value: "regular", label: "Regular" },
+        { value: "corporate", label: "Corporate" },
+      ],
+      defaultValue: "regular",
+    },
     {
       name: "category_id",
       label: "Room category",

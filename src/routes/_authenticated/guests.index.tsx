@@ -34,6 +34,7 @@ interface Row {
   id: string; name: string; mobile: string | null; email: string | null;
   city: string | null; tags: string[] | null; is_blacklisted: boolean;
   gst_number: string | null; company: string | null;
+  guest_type: string | null;
 }
 
 const EXPORT_COLUMNS = [
@@ -151,10 +152,10 @@ function GuestsListPage() {
   const fetchPage = useCallback(async (offset: number) => {
     const term = debouncedQ.replace(/[,()]/g, " ").trim();
     let query = supabase.from("guests")
-      .select("id,name,mobile,email,city,tags,is_blacklisted,gst_number,company", { count: "exact" })
+      .select("id,name,mobile,email,city,tags,is_blacklisted,gst_number,company,guest_type", { count: "exact" })
       .eq("property_id", propertyId!);
     if (filter === "blacklist") query = query.eq("is_blacklisted", true);
-    if (filter === "corporate") query = query.not("gst_number", "is", null);
+    if (filter === "corporate") query = query.eq("guest_type", "corporate");
     if (term) {
       const like = `%${term}%`;
       query = query.or(
@@ -278,7 +279,7 @@ function GuestsListPage() {
     try {
       data = await fetchGuestsPaginated<any>(
         propertyId,
-        "name,mobile,email,company,gst_number,id_proof_type,id_proof_number,address,tags,visit_count,notes,created_at",
+        "name,mobile,email,company,gst_number,id_proof_type,id_proof_number,address,tags,guest_type,visit_count,notes,created_at",
         "name",
         true,
       );
@@ -290,7 +291,7 @@ function GuestsListPage() {
     void ids;
     const lines = [EXPORT_COLUMNS.join(",")];
     for (const g of (data ?? []) as any[]) {
-      const guestType = Array.isArray(g.tags) && g.tags.length ? String(g.tags[0]) : "regular";
+      const guestType = g.guest_type === "corporate" ? "corporate" : "regular";
       lines.push([
         csvEscape(g.name), csvEscape(g.mobile), csvEscape(g.email),
         csvEscape(g.company), csvEscape(g.gst_number),
@@ -361,7 +362,7 @@ function GuestsListPage() {
         id_proof_number: r["ID Proof Number"]?.trim() || null,
         address: r["Address"]?.trim() || null,
         notes: r["Notes"]?.trim() || null,
-        tags: guestType && guestType !== "regular" ? [guestType] : [],
+        guest_type: guestType === "corporate" ? "corporate" : "regular",
       };
       const exId = byMobile.get(mobile);
       if (exId) {
