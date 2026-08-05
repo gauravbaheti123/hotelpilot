@@ -110,6 +110,16 @@ export function humanizeError(error: unknown, action?: string): HumanError {
     e.status === 403 ||
     /row-level security|violates row level|permission denied|not authorized|unauthorized|insufficient privilege|access denied/.test(text)
   ) {
+    // Server-side RAISE with a written-for-humans sentence: show it verbatim.
+    const own = typeof e.message === "string" ? e.message.trim() : "";
+    if (
+      own &&
+      /^[A-Z]/.test(own) &&
+      /\s/.test(own) &&
+      !/row-level security|violates|permission denied for|prest|pgrst/i.test(own)
+    ) {
+      return { message: own, details };
+    }
     return {
       message: "You don't have permission to do this. Contact your Owner/Admin if you think this is a mistake.",
       details,
