@@ -359,70 +359,24 @@ function BookingDetailPage() {
     const fromRoomId = br.room_id;
     setShiftBusy(true);
 
-    // Atomic shift: closes old booking_room, creates new one, logs shift,
-    // updates room statuses, and validates target room availability — all in one DB tx.
-    const { error: shiftErr } = await supabase.rpc("shift_room" as any, {
-      _booking_room_id: br.id,
-      _to_room_id: shiftToRoom,
-      _new_rate: newRate,
-      _tariff_choice: tariffChoice,
-      _reason: shiftReason,
-      _shifted_by: user?.id ?? null,
-    });
-    if (shiftErr) { setShiftBusy(false); return toastError(shiftErr); }
-
-    // Recompute folio totals at new rate for any still-unposted future nights (existing historical charges remain).
+    // Atomic shift + folio recompute + KOT transfer — see src/lib/roomOps.ts.
+    let moved = { movedKots: 0, toRoomNumber: null as string | null };
     try {
-      const { data: folioId, error: __qe3 } = await supabase.rpc("get_or_create_folio", { _booking_id: b.id });
-      if (__qe3) reportQueryError("get or create folio", __qe3);
-      const fId = folioId as unknown as string;
-      const { data: allCharges, error: __qe4 } = await supabase.from("folio_charges").select("*").eq("folio_id", fId);
-      if (__qe4) reportQueryError("folio charges", __qe4);
-      const { data: folio, error: __qe5 } = await supabase.from("folios").select("gst_mode,paid_amount,discount_type,discount_value").eq("id", fId).single();
-      if (__qe5) reportQueryError("folios", __qe5);
-      const mode = ((folio as any)?.gst_mode ?? "cash") as "cash" | "gst";
-      const billDisc = (folio as any)?.discount_type && Number((folio as any)?.discount_value) > 0
-        ? { type: (folio as any).discount_type as "percent" | "amount", value: Number((folio as any).discount_value) }
-        : null;
-      const t = recomputeFolio((allCharges ?? []) as any, mode, billDisc);
-      const paid = Number((folio as any)?.paid_amount ?? 0);
-      await supabase.from("folios").update({
-        ...t, balance_amount: Math.max(0, t.total_amount - paid),
-      }).eq("id", fId);
-    } catch (e) { console.warn("folio rate update failed", e); }
-
-    // === Transfer open/printed KOTs to new room and log ===
-    if (transferKots) try {
-      if (!fromRoomId) throw new Error("no from room");
-      const fromId: string = fromRoomId;
-      const { data: openKots, error: __qe6 } = await supabase
-        .from("kot_orders")
-        .select("id,kot_number")
-        .eq("booking_id", b.id)
-        .eq("room_id", fromId)
-        .in("status", ["open", "printed", "served"]);
-      if (__qe6) reportQueryError("kot orders", __qe6);
-      const ids = (openKots ?? []).map((k: any) => k.id);
-      if (ids.length > 0) {
-        await supabase.from("kot_orders")
-          .update({ room_id: shiftToRoom } as any)
-          .in("id", ids);
-        const { data: toRoom, error: __qe7 } = await supabase.from("rooms").select("room_number").eq("id", shiftToRoom).single();
-        if (__qe7) reportQueryError("rooms", __qe7);
-        const { data: frRoom, error: __qe8 } = await supabase.from("rooms").select("room_number").eq("id", fromId).single();
-        if (__qe8) reportQueryError("rooms", __qe8);
-        await (supabase as any).from("kot_audit_log").insert(ids.map((kid: string) => ({
-          property_id: b.property_id,
-          kot_order_id: kid,
-          event_type: "room_shift",
-          message: `Orders transferred from Room ${frRoom?.room_number ?? "?"} to Room ${toRoom?.room_number ?? "?"}`,
-          meta: { from_room_id: fromId, to_room_id: shiftToRoom },
-          actor: user?.id ?? null,
-        })));
-        toast.success(`Kitchen alert: ${ids.length} order${ids.length > 1 ? "s" : ""} moved to Room ${toRoom?.room_number ?? ""}`);
-      }
-    } catch (e) {
-      console.warn("KOT transfer failed", e);
+      moved = await shiftRoomOp({
+        bookingId: b.id,
+        propertyId: b.property_id,
+        bookingRoomId: br.id,
+        fromRoomId,
+        toRoomId: shiftToRoom,
+        newRate,
+        tariffChoice,
+        reason: shiftReason,
+        actorId: user?.id ?? null,
+        transferKots,
+      });
+    } catch (e) { setShiftBusy(false); return toastError(e); }
+    if (moved.movedKots > 0) {
+      toast.success(`Kitchen alert: ${moved.movedKots} order${moved.movedKots > 1 ? "s" : ""} moved to Room ${moved.toRoomNumber ?? ""}`);
     }
 
     // WhatsApp notify guest
