@@ -19,7 +19,10 @@ export interface GuestIdLookupResult {
     guestType: "regular" | "corporate" | null;
   };
   matchedOn: "mobile" | "id";
+  /** Front side (legacy single-document uploads land here). */
   doc: ExistingIdDoc | null;
+  /** Back side, when one was uploaded. */
+  docBack: ExistingIdDoc | null;
 }
 
 /** Google Drive thumbnail URL for a file stored on Drive. */
@@ -156,7 +159,7 @@ export async function lookupExistingGuestId(
   for (const a of attempts) {
     const { data, error: __qe2 } = await supabase
       .from("guests")
-      .select("id,name,mobile,id_proof_number,tags,guest_type,id_document_url,id_document_name,id_document_uploaded_at")
+      .select("id,name,mobile,id_proof_number,tags,guest_type,id_document_url,id_document_name,id_document_uploaded_at,id_document_back_url,id_document_back_name,id_document_back_uploaded_at")
       .eq("property_id", propertyId)
       .eq(a.col, a.val)
       .order("updated_at", { ascending: false })
@@ -167,29 +170,41 @@ export async function lookupExistingGuestId(
 
     const { data: docs, error: __qe3 } = await supabase
       .from("guest_documents")
-      .select("document_name,drive_file_id,drive_view_url,drive_folder_path,uploaded_at")
+      .select("document_name,drive_file_id,drive_view_url,drive_folder_path,uploaded_at,side")
       .eq("guest_id", g.id)
       .order("uploaded_at", { ascending: false })
-      .limit(1);
+      .limit(10);
     if (__qe3) reportQueryError("guest documents", __qe3);
-    const d = (docs ?? [])[0] as any;
+    const rows = (docs ?? []) as any[];
+    const toDoc = (d: any): ExistingIdDoc | null =>
+      d && (d.drive_view_url || d.drive_file_id)
+        ? {
+            documentName: d.document_name ?? null,
+            driveFileId: d.drive_file_id ?? null,
+            driveViewUrl: d.drive_view_url ?? null,
+            driveFolderPath: d.drive_folder_path ?? null,
+            uploadedAt: d.uploaded_at ?? null,
+          }
+        : null;
 
-    let doc: ExistingIdDoc | null = null;
-    if (d?.drive_view_url || d?.drive_file_id) {
-      doc = {
-        documentName: d.document_name ?? null,
-        driveFileId: d.drive_file_id ?? null,
-        driveViewUrl: d.drive_view_url ?? null,
-        driveFolderPath: d.drive_folder_path ?? null,
-        uploadedAt: d.uploaded_at ?? null,
-      };
-    } else if (g.id_document_url) {
+    let doc = toDoc(rows.find((r) => (r.side ?? "front") === "front"));
+    let docBack = toDoc(rows.find((r) => r.side === "back"));
+    if (!doc && g.id_document_url) {
       doc = {
         documentName: g.id_document_name ?? null,
         driveFileId: null,
         driveViewUrl: g.id_document_url,
         driveFolderPath: null,
         uploadedAt: g.id_document_uploaded_at ?? null,
+      };
+    }
+    if (!docBack && g.id_document_back_url) {
+      docBack = {
+        documentName: g.id_document_back_name ?? null,
+        driveFileId: null,
+        driveViewUrl: g.id_document_back_url,
+        driveFolderPath: null,
+        uploadedAt: g.id_document_back_uploaded_at ?? null,
       };
     }
 
@@ -205,6 +220,7 @@ export async function lookupExistingGuestId(
       },
       matchedOn: a.matchedOn,
       doc,
+      docBack,
     };
   }
   return null;
