@@ -13,7 +13,7 @@ import {
   type WizardBillTo, type WizardExtraGuest, type WizardGuest,
 } from "@/lib/bookingWizard";
 import { DEFAULT_NATION } from "@/lib/indiaGeo";
-import { syncBillingCompanyRecord } from "@/lib/bookingWizardSubmit";
+import { syncBillingCompanyRecord, upsertBillingCompany } from "@/lib/bookingWizardSubmit";
 import { reportQueryError } from "@/lib/queryError";
 import { changeRoomRateOp, modifyDatesOp, shiftRoomOp } from "@/lib/roomOps";
 import { istToday } from "@/lib/date";
