@@ -101,13 +101,14 @@ function Page() {
 
       const vis: BanquetVisibilityRow[] = await fetchBanquetVisibility(propertyId);
       const bookingIds = vis.map((v) => v.booking_id);
-      if (bookingIds.length === 0) { setGroups([]); return; }
       const visByBooking = new Map(vis.map((v) => [v.booking_id, v]));
 
       const [{ data: bks, error: __qp1 }, events] = await Promise.all([
-        supabase.from("bookings")
-          .select("id,booking_number,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number))")
-          .in("id", bookingIds),
+        bookingIds.length
+          ? supabase.from("bookings")
+              .select("id,booking_number,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number))")
+              .in("id", bookingIds)
+          : Promise.resolve({ data: [] as any[], error: null } as any),
         listEventBookings(propertyId),
       ]);
       if (__qp1) reportQueryError("banquet bookings", __qp1);
@@ -130,25 +131,43 @@ function Page() {
         if (e.legacy_id) eventMeta.set(e.legacy_id, m);
       }
 
-      const [{ data: folios, error: __qp2 }, { data: segs, error: __qp3 }, { data: masters, error: __qp4 }] = await Promise.all([
-        supabase.from("folios")
-          .select("id,booking_id,invoice_number,created_at,status,guest_company,guest_gstin,notes,total_amount,paid_amount")
-          .in("booking_id", bookingIds)
-          .gte("created_at", fromIso).lte("created_at", toIso)
-          .order("created_at", { ascending: false }),
-        supabase.from("segment_bills")
-          .select("id,booking_id,bill_number,segment,created_at,status,total_amount,paid_amount")
-          .in("booking_id", bookingIds)
-          .gte("created_at", fromIso).lte("created_at", toIso)
-          .order("created_at", { ascending: false }),
+      // Event booking ids cover both id spaces so event-linked walk-in bills group correctly.
+      const eventBookingIds = Array.from(new Set(events.flatMap((e) => [e.booking_id, e.legacy_id].filter(Boolean) as string[])));
+      const [{ data: folios, error: __qp2 }, { data: segsLinked, error: __qp3 }, { data: masters, error: __qp4 }, { data: segsEvent, error: __qp7 }] = await Promise.all([
+        bookingIds.length
+          ? supabase.from("folios")
+              .select("id,booking_id,invoice_number,created_at,status,guest_company,guest_gstin,notes,total_amount,paid_amount")
+              .in("booking_id", bookingIds)
+              .gte("created_at", fromIso).lte("created_at", toIso)
+              .order("created_at", { ascending: false })
+          : Promise.resolve({ data: [] as any[], error: null } as any),
+        bookingIds.length
+          ? supabase.from("segment_bills")
+              .select("id,booking_id,event_booking_id,bill_number,segment,created_at,status,total_amount,paid_amount,is_walkin,guest_name")
+              .in("booking_id", bookingIds)
+              .gte("created_at", fromIso).lte("created_at", toIso)
+              .order("created_at", { ascending: false })
+          : Promise.resolve({ data: [] as any[], error: null } as any),
         supabase.from("banquet_master_bills")
           .select("id,booking_id,bill_number,created_at,status,total_amount")
           .eq("property_id", propertyId)
           .gte("created_at", fromIso).lte("created_at", toIso),
+        eventBookingIds.length
+          ? supabase.from("segment_bills")
+              .select("id,booking_id,event_booking_id,bill_number,segment,created_at,status,total_amount,paid_amount,is_walkin,guest_name")
+              .in("event_booking_id", eventBookingIds)
+              .gte("created_at", fromIso).lte("created_at", toIso)
+              .order("created_at", { ascending: false })
+          : Promise.resolve({ data: [] as any[], error: null } as any),
       ]);
       if (__qp2) reportQueryError("folios", __qp2);
       if (__qp3) reportQueryError("segment bills", __qp3);
       if (__qp4) reportQueryError("masters", __qp4);
+      if (__qp7) reportQueryError("event walk-in bills", __qp7);
+      const seenSeg = new Set<string>();
+      const segs = [...((segsLinked ?? []) as any[]), ...((segsEvent ?? []) as any[])]
+        .filter((s) => (seenSeg.has(s.id) ? false : (seenSeg.add(s.id), true)));
+      if (bookingIds.length === 0 && segs.length === 0) { setGroups([]); return; }
 
       const folioIds = ((folios ?? []) as any[]).map((f) => f.id as string);
       const billIds = ((segs ?? []) as any[]).map((s) => s.id as string);
@@ -199,6 +218,21 @@ function Page() {
         }
         return g;
       };
+      // Walk-in bills have no booking_id — they attach directly to the event booking.
+      const groupForEvent = (eventBookingId: string): EventGroup => {
+        let g = byKey.get(eventBookingId);
+        if (g) return g;
+        const em = eventMeta.get(eventBookingId);
+        g = {
+          key: eventBookingId, event_id: eventBookingId,
+          title: em?.title ?? "Event",
+          event_date: em?.date ?? null,
+          expired: false, expires_at: null, last_checkout_at: null,
+          folios: [], bills: [], masters: [],
+        };
+        byKey.set(eventBookingId, g);
+        return g;
+      };
 
       for (const f of (folios ?? []) as any[]) {
         const info = meta.get(f.booking_id) ?? { room: "", guest: "" };
@@ -211,7 +245,8 @@ function Page() {
         });
       }
       for (const s of (segs ?? []) as any[]) {
-        groupFor(s.booking_id).bills.push({
+        const g = s.event_booking_id ? groupForEvent(s.event_booking_id) : groupFor(s.booking_id);
+        g.bills.push({
           id: s.id, bill_number: s.bill_number, created_at: s.created_at,
           segment: s.segment ?? "food", status: s.status ?? "open",
           total_amount: Number(s.total_amount ?? 0), paid_amount: Number(s.paid_amount ?? 0),

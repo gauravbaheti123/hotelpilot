@@ -8,7 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, Printer } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Trash2, Plus, Printer, Check, ChevronsUpDown } from "lucide-react";
 import { inr } from "@/lib/billing";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useAuth } from "@/hooks/use-auth";
@@ -73,13 +75,41 @@ export function PunchChargeDialog({
   const [defaultGst, setDefaultGst] = useState<number>(segment === "food" ? 5 : 5);
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [printerByItem, setPrinterByItem] = useState<Map<string, string | null>>(new Map());
+  /** Optional banquet event link for walk-in food sales (routes numbering to the EVT-F series). */
+  const [events, setEvents] = useState<{ id: string; label: string }[]>([]);
+  const [eventId, setEventId] = useState<string | null>(null);
+  const [eventOpen, setEventOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setLines([{ key: uid(), description: "", qty: 1, rate: 0, gst_rate: segment === "food" ? 5 : 5, note: "" }]);
     setWalkin(!bookingId);
     setWalkinGuest("");
+    setEventId(null);
   }, [open, segment, bookingId]);
+
+  useEffect(() => {
+    if (!open || !propertyId || segment !== "food") { setEvents([]); return; }
+    let cancelled = false;
+    supabase.from("bookings")
+      .select("id,banquet_number,event_name,event_date,host_name,event_status")
+      .eq("property_id", propertyId)
+      .eq("booking_type", "banquet" as any)
+      .gte("event_date", new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10))
+      .order("event_date", { ascending: true })
+      .limit(200)
+      .then(guardQuery("banquet events")).then(({ data }) => {
+        if (cancelled) return;
+        setEvents(((data ?? []) as any[])
+          .filter((b) => !["cancelled"].includes(String(b.event_status ?? "")))
+          .map((b) => ({
+            id: b.id,
+            label: [b.banquet_number ?? "Event", b.event_name, b.host_name, b.event_date]
+              .filter(Boolean).join(" · "),
+          })));
+      });
+    return () => { cancelled = true; };
+  }, [open, propertyId, segment]);
 
   useEffect(() => {
     if (!open || !propertyId) return;
@@ -429,6 +459,7 @@ export function PunchChargeDialog({
         folio_id: walkin ? null : folioId,
         room_id: walkin ? null : roomId,
         is_walkin: walkin,
+        event_booking_id: walkin && segment === "food" ? eventId : null,
         guest_name: walkin ? walkinGuest.trim() : (guestName ?? null),
         total_amount: totals.total,
         gst_amount: totals.gst,
@@ -562,6 +593,45 @@ export function PunchChargeDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+        )}
+
+        {walkin && segment === "food" && (
+          <div>
+            <Label>Link to event (optional)</Label>
+            <Popover open={eventOpen} onOpenChange={setEventOpen}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" className="w-full justify-between font-normal">
+                  <span className="truncate">
+                    {eventId ? (events.find((e) => e.id === eventId)?.label ?? "Selected event") : "No event — regular food bill"}
+                  </span>
+                  <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-[--radix-popover-trigger-width]" align="start">
+                <Command>
+                  <CommandInput placeholder="Search event…" />
+                  <CommandList>
+                    <CommandEmpty>No events found.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem value="none" onSelect={() => { setEventId(null); setEventOpen(false); }}>
+                        <Check className={`mr-2 h-4 w-4 ${eventId ? "opacity-0" : "opacity-100"}`} />
+                        No event — regular food bill
+                      </CommandItem>
+                      {events.map((e) => (
+                        <CommandItem key={e.id} value={e.label} onSelect={() => { setEventId(e.id); setEventOpen(false); }}>
+                          <Check className={`mr-2 h-4 w-4 ${eventId === e.id ? "opacity-100" : "opacity-0"}`} />
+                          <span className="truncate">{e.label}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Linking to an event numbers this bill in the banquet food series.
+            </p>
           </div>
         )}
 
