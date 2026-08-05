@@ -88,7 +88,7 @@ function Stepper({
             )}
           >
             {i < step ? <Check className="h-3 w-3" /> : <span className="font-semibold">{i + 1}</span>}
-            <span className="hidden sm:inline">{label}</span>
+            <span className={cn(i === step ? "inline" : "hidden sm:inline")}>{label}</span>
           </div>
         ))}
       </div>
