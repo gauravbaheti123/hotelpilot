@@ -1,4 +1,5 @@
 import { useEffect, useState, ReactNode } from "react";
+import { ResponsiveTable } from "@/components/ResponsiveTable";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -376,6 +377,7 @@ export function CrudPage<T extends { id: string }>({
             ) : visibleRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">No records yet.</p>
             ) : (
+              <ResponsiveTable stickyFirstColumn>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -440,6 +442,7 @@ export function CrudPage<T extends { id: string }>({
                   })}
                 </TableBody>
               </Table>
+              </ResponsiveTable>
             )}
           </CardContent>
         </Card>
