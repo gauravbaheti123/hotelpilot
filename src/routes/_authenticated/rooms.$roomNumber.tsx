@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { FolioOpenButton } from "@/components/FolioOpenButton";
 import { BackButton } from "@/components/BackButton";
 import { Badge } from "@/components/ui/badge";
+import { ROOM_STATUS_TONE, HK_STATUS_TONE } from "@/lib/housekeeping";
 import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronLeft, LogOut } from "lucide-react";
