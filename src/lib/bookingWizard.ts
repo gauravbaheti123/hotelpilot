@@ -157,6 +157,7 @@ export interface WizardRoom {
   rateType: "exclusive" | "inclusive";
 }
 
+
 export const RELATION_OPTIONS = [
   "Spouse", "Child", "Parent", "Sibling", "Friend", "Colleague", "Other",
 ];
