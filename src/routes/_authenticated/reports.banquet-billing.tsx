@@ -218,6 +218,21 @@ function Page() {
         }
         return g;
       };
+      // Walk-in bills have no booking_id — they attach directly to the event booking.
+      const groupForEvent = (eventBookingId: string): EventGroup => {
+        let g = byKey.get(eventBookingId);
+        if (g) return g;
+        const em = eventMeta.get(eventBookingId);
+        g = {
+          key: eventBookingId, event_id: eventBookingId,
+          title: em?.title ?? "Event",
+          event_date: em?.date ?? null,
+          expired: false, expires_at: null, last_checkout_at: null,
+          folios: [], bills: [], masters: [],
+        };
+        byKey.set(eventBookingId, g);
+        return g;
+      };
 
       for (const f of (folios ?? []) as any[]) {
         const info = meta.get(f.booking_id) ?? { room: "", guest: "" };
@@ -230,7 +245,8 @@ function Page() {
         });
       }
       for (const s of (segs ?? []) as any[]) {
-        groupFor(s.booking_id).bills.push({
+        const g = s.event_booking_id ? groupForEvent(s.event_booking_id) : groupFor(s.booking_id);
+        g.bills.push({
           id: s.id, bill_number: s.bill_number, created_at: s.created_at,
           segment: s.segment ?? "food", status: s.status ?? "open",
           total_amount: Number(s.total_amount ?? 0), paid_amount: Number(s.paid_amount ?? 0),
