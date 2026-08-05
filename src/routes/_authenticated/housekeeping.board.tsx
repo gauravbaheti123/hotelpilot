@@ -12,6 +12,7 @@ import { useRooms } from "@/hooks/use-rooms";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 import { HK_STATUSES, type HkStatus } from "@/lib/housekeeping";
+import { ROOM_STATUS_COLORS, roomStatusColor } from "@/lib/roomStatusColors";
 import { StickyNote, Save, Trash2, X } from "lucide-react";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { useAuth } from "@/hooks/use-auth";
