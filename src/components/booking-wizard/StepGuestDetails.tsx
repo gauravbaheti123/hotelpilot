@@ -96,11 +96,18 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
 
   async function attachExistingDoc(mobile: string, idNumber: string) {
     const hit = await lookupExistingGuestId(propertyId, mobile, idNumber);
-    if (hit?.doc) {
+    if (hit?.doc || hit?.docBack) {
       onChange({
-        idDocFileId: hit.doc.driveFileId,
-        idDocViewUrl: hit.doc.driveViewUrl,
-        idDocName: hit.doc.documentName ?? "Existing ID on file",
+        ...(hit.doc ? {
+          idDocFileId: hit.doc.driveFileId,
+          idDocViewUrl: hit.doc.driveViewUrl,
+          idDocName: hit.doc.documentName ?? "Existing ID on file",
+        } : {}),
+        ...(hit.docBack ? {
+          idDocBackFileId: hit.docBack.driveFileId,
+          idDocBackViewUrl: hit.docBack.driveViewUrl,
+          idDocBackName: hit.docBack.documentName ?? "Existing ID (back) on file",
+        } : {}),
       });
     }
   }
@@ -117,6 +124,13 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
             idDocFileId: dupe.doc.driveFileId,
             idDocViewUrl: dupe.doc.driveViewUrl,
             idDocName: dupe.doc.documentName ?? "Existing ID on file",
+          }
+        : {}),
+      ...(dupe.docBack
+        ? {
+            idDocBackFileId: dupe.docBack.driveFileId,
+            idDocBackViewUrl: dupe.docBack.driveViewUrl,
+            idDocBackName: dupe.docBack.documentName ?? "Existing ID (back) on file",
           }
         : {}),
     });

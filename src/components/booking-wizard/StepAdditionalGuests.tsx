@@ -143,6 +143,13 @@ function ExtraGuestCard({
             idDocName: hit.doc.documentName ?? "Existing ID on file",
           }
         : {}),
+      ...(hit?.docBack
+        ? {
+            idDocBackFileId: hit.docBack.driveFileId,
+            idDocBackViewUrl: hit.docBack.driveViewUrl,
+            idDocBackName: hit.docBack.documentName ?? "Existing ID (back) on file",
+          }
+        : {}),
     });
     setDupe(null);
   }
