@@ -2213,6 +2213,7 @@ export type Database = {
           guest_id: string | null
           id: string
           property_id: string
+          side: string
           uploaded_at: string
           uploaded_by: string | null
         }
@@ -2225,6 +2226,7 @@ export type Database = {
           guest_id?: string | null
           id?: string
           property_id: string
+          side?: string
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -2237,6 +2239,7 @@ export type Database = {
           guest_id?: string | null
           id?: string
           property_id?: string
+          side?: string
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -2393,6 +2396,9 @@ export type Database = {
           gst_number: string | null
           guest_type: string
           id: string
+          id_document_back_name: string | null
+          id_document_back_uploaded_at: string | null
+          id_document_back_url: string | null
           id_document_name: string | null
           id_document_uploaded_at: string | null
           id_document_url: string | null
@@ -2428,6 +2434,9 @@ export type Database = {
           gst_number?: string | null
           guest_type?: string
           id?: string
+          id_document_back_name?: string | null
+          id_document_back_uploaded_at?: string | null
+          id_document_back_url?: string | null
           id_document_name?: string | null
           id_document_uploaded_at?: string | null
           id_document_url?: string | null
@@ -2463,6 +2472,9 @@ export type Database = {
           gst_number?: string | null
           guest_type?: string
           id?: string
+          id_document_back_name?: string | null
+          id_document_back_uploaded_at?: string | null
+          id_document_back_url?: string | null
           id_document_name?: string | null
           id_document_uploaded_at?: string | null
           id_document_url?: string | null

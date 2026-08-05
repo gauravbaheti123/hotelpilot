@@ -23,6 +23,7 @@ import { inr } from "@/lib/billing";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { fetchGuestLedger, type GuestLedger } from "@/lib/guestLedger";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { IdDocUpload, type UploadedIdDoc } from "@/components/booking-wizard/IdDocUpload";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { reportQueryError } from "@/lib/queryError";
@@ -518,28 +519,30 @@ function GuestDetail() {
         </TabsContent>
 
         <TabsContent value="documents">
-          <Card>
-            <CardHeader><CardTitle className="text-base">ID Document</CardTitle></CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {g.id_document_url ? (
-                <div className="space-y-2">
-                  <div className="text-xs text-muted-foreground">
-                    {g.id_document_name ?? "Document"}
-                    {g.id_document_uploaded_at && (
-                      <> · uploaded {new Date(g.id_document_uploaded_at).toLocaleString()}</>
-                    )}
-                  </div>
-                  <DrivePreview url={g.id_document_url} name={g.id_document_name ?? "Document"} />
-                </div>
-              ) : g.id_document_name ? (
-                <div className="text-xs text-muted-foreground">
-                  {g.id_document_name} (document link unavailable)
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No document uploaded</p>
-              )}
-            </CardContent>
-          </Card>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <IdSideCard
+              title="ID Front"
+              side="front"
+              guestId={g.id}
+              guestName={g.name}
+              propertyId={(g as any).property_id ?? null}
+              url={g.id_document_url ?? null}
+              name={g.id_document_name ?? null}
+              uploadedAt={g.id_document_uploaded_at ?? null}
+              onSaved={load}
+            />
+            <IdSideCard
+              title="ID Back"
+              side="back"
+              guestId={g.id}
+              guestName={g.name}
+              propertyId={(g as any).property_id ?? null}
+              url={(g as any).id_document_back_url ?? null}
+              name={(g as any).id_document_back_name ?? null}
+              uploadedAt={(g as any).id_document_back_uploaded_at ?? null}
+              onSaved={load}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="feedback">
@@ -669,5 +672,75 @@ function Stat({ label, value }: { label: string; value: string }) {
       <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="text-2xl font-semibold mt-1">{value}</div>
     </CardContent></Card>
+  );
+}
+/** One ID side (front/back): preview when present, plus an upload/replace slot. */
+function IdSideCard({
+  title, side, guestId, guestName, propertyId, url, name, uploadedAt, onSaved,
+}: {
+  title: string;
+  side: "front" | "back";
+  guestId: string;
+  guestName: string;
+  propertyId: string | null;
+  url: string | null;
+  name: string | null;
+  uploadedAt: string | null;
+  onSaved: () => void | Promise<void>;
+}) {
+  const [saving, setSaving] = useState(false);
+
+  async function handleUploaded(doc: UploadedIdDoc) {
+    if (!doc.fileId || !doc.viewUrl) return;
+    setSaving(true);
+    try {
+      const now = new Date().toISOString();
+      const patch = side === "front"
+        ? { id_document_url: doc.viewUrl, id_document_name: doc.name, id_document_uploaded_at: now }
+        : { id_document_back_url: doc.viewUrl, id_document_back_name: doc.name, id_document_back_uploaded_at: now };
+      const { error } = await supabase.from("guests").update(patch as never).eq("id", guestId);
+      if (error) throw error;
+      if (propertyId) {
+        await supabase.from("guest_documents").insert({
+          property_id: propertyId, guest_id: guestId, side,
+          document_name: doc.name, drive_file_id: doc.fileId, drive_view_url: doc.viewUrl,
+        } as never);
+      }
+      toast.success(`${title} saved`);
+      await onSaved();
+    } catch (e) {
+      toastError(e, "saving the ID document");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        {url ? (
+          <div className="space-y-2">
+            <div className="text-xs text-muted-foreground">
+              {name ?? "Document"}
+              {uploadedAt && <> · uploaded {new Date(uploadedAt).toLocaleString()}</>}
+            </div>
+            <DrivePreview url={url} name={name ?? "Document"} />
+          </div>
+        ) : name ? (
+          <div className="text-xs text-muted-foreground">{name} (document link unavailable)</div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No document uploaded</p>
+        )}
+        <IdDocUpload
+          label={url ? "Replace document" : "Upload document"}
+          side={side}
+          guestName={guestName}
+          disabled={saving}
+          value={{ fileId: null, viewUrl: null, name: null }}
+          onChange={(d) => void handleUploaded(d)}
+        />
+      </CardContent>
+    </Card>
   );
 }

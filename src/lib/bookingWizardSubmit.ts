@@ -190,6 +190,49 @@ export function buildBookingPayload(opts: {
   };
 }
 
+/** Front/back ID document persistence shared by primary and accompanying guests. */
+async function saveIdDocs(
+  propertyId: string,
+  bookingId: string,
+  guestId: string,
+  g: {
+    idDocFileId: string | null; idDocViewUrl: string | null; idDocName: string | null;
+    idDocBackFileId: string | null; idDocBackViewUrl: string | null; idDocBackName: string | null;
+  },
+) {
+  const now = new Date().toISOString();
+  const patch: Record<string, unknown> = {};
+  if (g.idDocFileId && g.idDocViewUrl) {
+    patch.id_document_url = g.idDocViewUrl;
+    patch.id_document_name = g.idDocName;
+    patch.id_document_uploaded_at = now;
+  }
+  if (g.idDocBackFileId && g.idDocBackViewUrl) {
+    patch.id_document_back_url = g.idDocBackViewUrl;
+    patch.id_document_back_name = g.idDocBackName;
+    patch.id_document_back_uploaded_at = now;
+  }
+  if (Object.keys(patch).length === 0) return;
+  await supabase.from("guests").update(patch as never).eq("id", guestId);
+
+  const rows: Record<string, unknown>[] = [];
+  if (g.idDocFileId && g.idDocViewUrl) {
+    rows.push({
+      property_id: propertyId, guest_id: guestId, booking_id: bookingId, side: "front",
+      document_name: g.idDocName, drive_file_id: g.idDocFileId,
+      drive_view_url: g.idDocViewUrl, drive_folder_path: null,
+    });
+  }
+  if (g.idDocBackFileId && g.idDocBackViewUrl) {
+    rows.push({
+      property_id: propertyId, guest_id: guestId, booking_id: bookingId, side: "back",
+      document_name: g.idDocBackName, drive_file_id: g.idDocBackFileId,
+      drive_view_url: g.idDocBackViewUrl, drive_folder_path: null,
+    });
+  }
+  if (rows.length) await supabase.from("guest_documents").insert(rows as never);
+}
+
 /**
  * Links the already-uploaded Drive documents (Steps 1 and 2) to the saved
  * guests/booking. Best-effort: never throws.
@@ -202,24 +245,9 @@ export async function linkIdDocuments(
 ) {
   const g = s.guest;
   try {
-    if (g.idDocFileId && g.idDocViewUrl) {
-      await supabase.from("guests").update({
-        id_document_url: g.idDocViewUrl,
-        id_document_name: g.idDocName,
-        id_document_uploaded_at: new Date().toISOString(),
-      } as never).eq("id", primaryGuestId);
-      await supabase.from("guest_documents").insert({
-        property_id: propertyId,
-        guest_id: primaryGuestId,
-        booking_id: bookingId,
-        document_name: g.idDocName,
-        drive_file_id: g.idDocFileId,
-        drive_view_url: g.idDocViewUrl,
-        drive_folder_path: null,
-      } as never);
-    }
+    await saveIdDocs(propertyId, bookingId, primaryGuestId, g);
 
-    const withDocs = s.extraGuests.filter((x) => x.idDocFileId && x.name.trim());
+    const withDocs = s.extraGuests.filter((x) => (x.idDocFileId || x.idDocBackFileId) && x.name.trim());
     if (withDocs.length === 0) return;
     // The RPC creates the accompanying guests; match them back by name.
     const { data, error: __qe1 } = await supabase
@@ -232,20 +260,7 @@ export async function linkIdDocuments(
     for (const x of withDocs) {
       const hit = rows.find((r) => (r.guests?.name ?? "").trim().toLowerCase() === x.name.trim().toLowerCase());
       if (!hit) continue;
-      await supabase.from("guests").update({
-        id_document_url: x.idDocViewUrl,
-        id_document_name: x.idDocName,
-        id_document_uploaded_at: new Date().toISOString(),
-      } as never).eq("id", hit.guest_id);
-      await supabase.from("guest_documents").insert({
-        property_id: propertyId,
-        guest_id: hit.guest_id,
-        booking_id: bookingId,
-        document_name: x.idDocName,
-        drive_file_id: x.idDocFileId,
-        drive_view_url: x.idDocViewUrl,
-        drive_folder_path: null,
-      } as never);
+      await saveIdDocs(propertyId, bookingId, hit.guest_id, x);
     }
   } catch (e) {
     console.warn("ID document linking failed", e);

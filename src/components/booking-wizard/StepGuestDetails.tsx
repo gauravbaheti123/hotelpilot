@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { CityInput, StateSelect } from "@/components/AddressFields";
-import { IdDocUpload } from "@/components/booking-wizard/IdDocUpload";
+import { IdDocUploadPair } from "@/components/booking-wizard/IdDocUploadPair";
 import { NATIONS, DEFAULT_NATION, titleCase } from "@/lib/indiaGeo";
 import { ID_PROOF_TYPES, ID_PROOF_LABELS } from "@/lib/guests";
 import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
@@ -96,11 +96,18 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
 
   async function attachExistingDoc(mobile: string, idNumber: string) {
     const hit = await lookupExistingGuestId(propertyId, mobile, idNumber);
-    if (hit?.doc) {
+    if (hit?.doc || hit?.docBack) {
       onChange({
-        idDocFileId: hit.doc.driveFileId,
-        idDocViewUrl: hit.doc.driveViewUrl,
-        idDocName: hit.doc.documentName ?? "Existing ID on file",
+        ...(hit.doc ? {
+          idDocFileId: hit.doc.driveFileId,
+          idDocViewUrl: hit.doc.driveViewUrl,
+          idDocName: hit.doc.documentName ?? "Existing ID on file",
+        } : {}),
+        ...(hit.docBack ? {
+          idDocBackFileId: hit.docBack.driveFileId,
+          idDocBackViewUrl: hit.docBack.driveViewUrl,
+          idDocBackName: hit.docBack.documentName ?? "Existing ID (back) on file",
+        } : {}),
       });
     }
   }
@@ -117,6 +124,13 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
             idDocFileId: dupe.doc.driveFileId,
             idDocViewUrl: dupe.doc.driveViewUrl,
             idDocName: dupe.doc.documentName ?? "Existing ID on file",
+          }
+        : {}),
+      ...(dupe.docBack
+        ? {
+            idDocBackFileId: dupe.docBack.driveFileId,
+            idDocBackViewUrl: dupe.docBack.driveViewUrl,
+            idDocBackName: dupe.docBack.documentName ?? "Existing ID (back) on file",
           }
         : {}),
     });
@@ -319,10 +333,16 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
           )}
 
           <div className="sm:col-span-2">
-            <IdDocUpload
+            <IdDocUploadPair
               guestName={guest.name}
-              value={{ fileId: guest.idDocFileId, viewUrl: guest.idDocViewUrl, name: guest.idDocName }}
-              onChange={(d) => onChange({ idDocFileId: d.fileId, idDocViewUrl: d.viewUrl, idDocName: d.name })}
+              value={{
+                front: { fileId: guest.idDocFileId, viewUrl: guest.idDocViewUrl, name: guest.idDocName },
+                back: { fileId: guest.idDocBackFileId, viewUrl: guest.idDocBackViewUrl, name: guest.idDocBackName },
+              }}
+              onChange={(d) => onChange({
+                idDocFileId: d.front.fileId, idDocViewUrl: d.front.viewUrl, idDocName: d.front.name,
+                idDocBackFileId: d.back.fileId, idDocBackViewUrl: d.back.viewUrl, idDocBackName: d.back.name,
+              })}
             />
           </div>
         </div>

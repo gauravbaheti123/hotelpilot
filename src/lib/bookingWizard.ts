@@ -33,6 +33,10 @@ export interface WizardGuest {
   idDocFileId: string | null;
   idDocViewUrl: string | null;
   idDocName: string | null;
+  /** Back side of the ID document (optional, independent of the front). */
+  idDocBackFileId: string | null;
+  idDocBackViewUrl: string | null;
+  idDocBackName: string | null;
 }
 
 export interface WizardState {
@@ -139,6 +143,10 @@ export interface WizardExtraGuest {
   idDocFileId: string | null;
   idDocViewUrl: string | null;
   idDocName: string | null;
+  /** Back side of the ID document (optional, independent of the front). */
+  idDocBackFileId: string | null;
+  idDocBackViewUrl: string | null;
+  idDocBackName: string | null;
 }
 
 /** Part 3 — one room line of the booking. */
@@ -199,6 +207,9 @@ export function emptyGuest(): WizardGuest {
     idDocFileId: null,
     idDocViewUrl: null,
     idDocName: null,
+    idDocBackFileId: null,
+    idDocBackViewUrl: null,
+    idDocBackName: null,
   };
 }
 
@@ -374,6 +385,9 @@ export function emptyExtraGuest(kind: "adult" | "child" = "adult"): WizardExtraG
     idDocFileId: null,
     idDocViewUrl: null,
     idDocName: null,
+    idDocBackFileId: null,
+    idDocBackViewUrl: null,
+    idDocBackName: null,
   };
 }
 
@@ -404,7 +418,7 @@ export function isPristine(s: WizardState) {
     !s.billTo?.enabled && !s.customRemark && !(Number(s.payment?.advance) > 0) &&
     !g.name && !g.mobile && !g.email && !g.dob && !g.address && !g.pincode &&
     !g.idProofNumber && !g.passportNumber && !g.visaNumber && !g.visaExpiry &&
-    !g.company && !g.gstNumber && !g.idDocFileId && !g.guestId
+    !g.company && !g.gstNumber && !g.idDocFileId && !g.idDocBackFileId && !g.guestId
   );
 }
 
