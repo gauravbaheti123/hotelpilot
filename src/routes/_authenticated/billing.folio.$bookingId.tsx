@@ -2509,6 +2509,7 @@ function FolioPage() {
               {payments.length === 0 ? (
                 <div className="text-xs text-gray-500">No payments recorded.</div>
               ) : (
+                <ResponsiveTable minWidth={480}>
                 <table>
                   <tbody className="zebra">
                     {payments.map((p) => {
@@ -2560,6 +2561,7 @@ function FolioPage() {
                     </tr>
                   </tbody>
                 </table>
+                </ResponsiveTable>
               )}
             </div>
 
