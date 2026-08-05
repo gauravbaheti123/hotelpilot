@@ -577,6 +577,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         await supabase.from("folios").delete().in("id", newFolioIds);
         throw voidErr;
       }
+      await assertParentVoided(undoPayments, newFolioIds);
       await repointBills(folio.id, newFolioIds);
 
       setCreatedBills(created);
