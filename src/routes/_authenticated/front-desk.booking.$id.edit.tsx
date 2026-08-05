@@ -1,11 +1,12 @@
-// Booking edit (Phase 1) — a trimmed wizard that reuses the New Booking steps
-// for the fields that are safe to change after a booking exists: guest
-// details, additional guests, Bill To and the custom remark.
+// Booking edit — a trimmed wizard for the fields that are safe to change after
+// a booking exists: guest details, additional guests, Bill To, the custom
+// remark, and (Phase 2) stay dates, room and tariff.
 //
-// Dates, rooms, rates, taxes and payments are intentionally NOT editable here;
-// they keep their dedicated flows on the booking detail page.
+// Stay & Room changes are not written here: they are replayed through the same
+// "Shift room" / "Modify dates" operations the booking page uses.
+// Taxes and payments remain out of scope.
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -17,12 +18,15 @@ import { StepGuestDetails } from "@/components/booking-wizard/StepGuestDetails";
 import { StepAdditionalGuests } from "@/components/booking-wizard/StepAdditionalGuests";
 import { StepBillTo } from "@/components/booking-wizard/StepBillTo";
 import { StepRemarks } from "@/components/booking-wizard/StepRemarks";
+import { StepEditStayRoom } from "@/components/booking-wizard/StepEditStayRoom";
+import { StepEditReview } from "@/components/booking-wizard/StepEditReview";
 import { useAuth } from "@/hooks/use-auth";
 import { userDisplayName } from "@/lib/activityLog";
 import { isValidMobile } from "@/lib/mobile";
 import { isValidOrEmptyGSTIN } from "@/lib/gstin";
 import {
-  isBookingEditable, loadBookingForEdit, saveBookingEdit, type BookingEditState,
+  isBookingEditable, loadBookingForEdit, saveBookingEdit, saveStayEdits,
+  type BookingEditState, type StayEdit,
 } from "@/lib/bookingEdit";
 import { toastError } from "@/lib/errorMessage";
 import type { WizardBillTo, WizardExtraGuest, WizardGuest } from "@/lib/bookingWizard";
@@ -36,9 +40,9 @@ export const Route = createFileRoute("/_authenticated/front-desk/booking/$id/edi
   ),
 });
 
-const STEPS = ["Guest Details", "Additional Guests", "Bill To", "Remarks"];
+const STEPS = ["Guest Details", "Additional Guests", "Stay & Room", "Bill To", "Remarks", "Review"];
 
-function stepValid(step: number, s: BookingEditState): boolean {
+function stepValid(step: number, s: BookingEditState, stayBlocked: boolean): boolean {
   if (step === 0) return s.guest.name.trim().length > 0 && isValidMobile(s.guest.mobile);
   if (step === 1) {
     if (s.adults < 1) return false;
@@ -46,7 +50,8 @@ function stepValid(step: number, s: BookingEditState): boolean {
       (g) => g.name.trim().length > 0 && (g.mobile.length === 0 || isValidMobile(g.mobile)),
     );
   }
-  if (step === 2) {
+  if (step === 2) return !stayBlocked;
+  if (step === 3) {
     if (!s.billTo.enabled) return true;
     if (s.billTo.companyId) return true;
     return s.billTo.name.trim().length > 0 && isValidOrEmptyGSTIN(s.billTo.gstin);
