@@ -722,6 +722,8 @@ function BookingDetailPage() {
             )}
           </CardContent>
         </Card>
+        </>
+        )}
 
         {/* SHIFT DIALOG */}
         <Dialog open={shiftOpen} onOpenChange={setShiftOpen}>
