@@ -307,7 +307,8 @@ function GrcPage() {
   const guest = booking.guests ?? {};
   const billCo = booking.billing_companies ?? {};
   // GSTIN: the Bill-To company's number wins; fall back to the guest's own.
-  const gstinValue: string = (billCo.gstin || guest.gst_number || "").trim() || "—";
+  const gstinValue: string =
+    (billCo.gstin || folioGstin || guest.gst_number || "").trim() || "—";
   // Address: staff-declared GRC values win, then the guest master, then the
   // Bill-To company. Pincode comes from the guest record (no GRC column).
   const pick = (...vals: Array<string | null | undefined>) =>
