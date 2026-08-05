@@ -31,13 +31,14 @@ interface RoomRow {
   room_categories: { name: string } | null;
 }
 
-// Match main Dashboard palette exactly (STATUS_META in dashboard.tsx)
+// Palette comes from the shared room-status module so this board always
+// matches the dashboard grid and room detail page.
 const COLOR = {
-  vacant:      "#16a34a",
-  occupied:    "#dc2626",
-  dirty:       "#d97706",
-  maintenance: "#6b7280",
-  blocked:     "#7c3aed",
+  vacant:      ROOM_STATUS_COLORS.vacant.bg,
+  occupied:    ROOM_STATUS_COLORS.occupied.bg,
+  dirty:       ROOM_STATUS_COLORS.dirty.bg,
+  maintenance: ROOM_STATUS_COLORS.maintenance.bg,
+  blocked:     ROOM_STATUS_COLORS.blocked.bg,
 } as const;
 
 type TileKind = "vacant" | "occupied" | "dirty" | "maintenance" | "blocked" | "occupied_dirty";
@@ -207,9 +208,10 @@ function RoomTile({
   useEffect(() => { setDraft(note); }, [note]);
 
   const isSplit = kind === "occupied_dirty";
+  const c = roomStatusColor(kind);
   const style: React.CSSProperties = isSplit
-    ? { background: `linear-gradient(to bottom, ${COLOR.occupied} 0 25%, ${COLOR.dirty} 25% 100%)` }
-    : { background: COLOR[kind as Exclude<TileKind, "occupied_dirty">] };
+    ? { background: `linear-gradient(to bottom, ${COLOR.occupied} 0 25%, ${COLOR.dirty} 25% 100%)`, color: c.fg, borderColor: c.border }
+    : { background: COLOR[kind as Exclude<TileKind, "occupied_dirty">], color: c.fg, borderColor: c.border };
 
   return (
     <div
@@ -217,7 +219,7 @@ function RoomTile({
       tabIndex={0}
       onClick={() => { if (!editing) setPickerOpen(true); }}
       onKeyDown={(e) => { if (!editing && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setPickerOpen(true); } }}
-      className="rounded-md overflow-hidden text-white shadow-sm border border-black/10 cursor-pointer focus:outline-none focus:ring-2 focus:ring-white/40"
+      className="rounded-md overflow-hidden shadow-sm border cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40"
       style={style}
     >
       <div className="p-3">
@@ -229,7 +231,7 @@ function RoomTile({
         <div className="text-[10px] font-medium mt-1 opacity-95">{tileLabel(kind)}</div>
 
         <div
-          className="mt-2 pt-2 border-t border-white/25"
+          className="mt-2 pt-2 border-t border-current/25"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
@@ -261,7 +263,7 @@ function RoomTile({
                 )}
                 <Button
                   size="sm" variant="ghost"
-                  className="h-6 px-2 text-[10px] text-white hover:bg-white/20 hover:text-white"
+                  className="h-6 px-2 text-[10px] hover:bg-current/10"
                   onClick={() => { setDraft(note); setEditing(false); }}
                 >
                   <X className="h-3 w-3" />
