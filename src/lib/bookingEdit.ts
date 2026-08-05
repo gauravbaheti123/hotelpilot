@@ -1,9 +1,12 @@
-// Booking edit (Phase 1) — loads an existing booking into the wizard's guest /
+// Booking edit — loads an existing booking into the wizard's guest /
 // occupancy / bill-to / remark shape, and saves it back through the
 // `update_booking_safe_fields` RPC.
 //
-// Deliberately out of scope: dates, rooms, rates, taxes, payments. Those still
-// go through the dedicated dialogs on the booking detail page.
+// Phase 2 adds Stay & Room (dates / room / rate). Those changes are NOT saved
+// by that RPC: they are replayed through the same operations the booking
+// page's "Shift room" and "Modify dates" dialogs use (src/lib/roomOps.ts).
+//
+// Still out of scope here: taxes and payments.
 import { supabase } from "@/integrations/supabase/client";
 import {
   emptyBillTo, emptyExtraGuest, emptyGuest,
@@ -11,6 +14,35 @@ import {
 } from "@/lib/bookingWizard";
 import { DEFAULT_NATION } from "@/lib/indiaGeo";
 import { reportQueryError } from "@/lib/queryError";
+import { changeRoomRateOp, modifyDatesOp, shiftRoomOp } from "@/lib/roomOps";
+import { istToday } from "@/lib/date";
+
+/** One editable room line of an existing booking. */
+export interface StayRoomEdit {
+  bookingRoomId: string;
+  roomId: string | null;
+  categoryId: string | null;
+  rate: number;
+  roomNumber: string | null;
+  categoryName: string | null;
+  /** Snapshot of the values as loaded, for the review diff and change detection. */
+  origRoomId: string | null;
+  origCategoryId: string | null;
+  origRoomNumber: string | null;
+  origCategoryName: string | null;
+  origRate: number;
+}
+
+export interface StayEdit {
+  checkIn: string;
+  checkOut: string;
+  origCheckIn: string;
+  origCheckOut: string;
+  advanceAmount: number;
+  rooms: StayRoomEdit[];
+  /** Required by the shift_room RPC whenever a checked-in guest is moved. */
+  reason: string;
+}
 
 export interface BookingEditState {
   bookingId: string;
@@ -23,6 +55,14 @@ export interface BookingEditState {
   extraGuests: WizardExtraGuest[];
   billTo: WizardBillTo;
   customRemark: string;
+  stay: StayEdit;
+}
+
+export function stayHasChanges(s: StayEdit): boolean {
+  if (s.checkIn !== s.origCheckIn || s.checkOut !== s.origCheckOut) return true;
+  return s.rooms.some(
+    (r) => r.roomId !== r.origRoomId || Math.abs(r.rate - r.origRate) > 0.009,
+  );
 }
 
 /** True when the booking is still in an editable state. Mirrors the RPC guard. */
@@ -35,6 +75,7 @@ export async function loadBookingForEdit(bookingId: string): Promise<BookingEdit
     .from("bookings")
     .select(
       `id, property_id, booking_number, status, adults, children, custom_remark, billing_company_id,
+       check_in, check_out, advance_amount,
        guests!bookings_guest_id_fkey (
          id, name, mobile, email, dob, city, state, country, nationality, address, pincode,
          id_proof_type, id_proof_number, company, gst_number,
