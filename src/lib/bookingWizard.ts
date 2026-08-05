@@ -162,6 +162,8 @@ export interface WizardRoom {
   /** Step 4 — optional early check-in charge for this room line. */
   earlyCheckinEnabled: boolean;
   earlyCheckinAmount: number;
+  /** Hours before the property's standard check-in time, computed in Step 4. */
+  earlyCheckinHours: number;
 }
 
 
@@ -347,6 +349,7 @@ export function emptyRoom(from?: Partial<WizardRoom>): WizardRoom {
     extraBedRate: 0,
     earlyCheckinEnabled: false,
     earlyCheckinAmount: 0,
+    earlyCheckinHours: 0,
     ...from,
     ...(from ? { key: nextKey("room") } : {}),
   };
