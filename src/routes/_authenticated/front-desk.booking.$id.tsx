@@ -3,6 +3,12 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { FolioOpenButton } from "@/components/FolioOpenButton";
 import { BackButton } from "@/components/BackButton";
 import { Input } from "@/components/ui/input";
@@ -499,7 +505,9 @@ function BookingDetailPage() {
           </div>
           <div className="flex-1" />
           {canAct && (
-            <div className="flex gap-2">
+            <>
+            {/* Desktop: full action row. */}
+            <div className="hidden md:flex flex-wrap gap-2">
               <FolioOpenButton bookingId={b.id} variant="outline">
                 <Receipt className="h-4 w-4 mr-1" /> Folio
               </FolioOpenButton>
@@ -533,6 +541,59 @@ function BookingDetailPage() {
                 </Button>
               )}
             </div>
+
+            {/* Mobile: primary action + Folio inline, everything else under "More". */}
+            <div className="flex md:hidden w-full items-center gap-2">
+              {canCheckIn && (
+                <Button className="flex-1" onClick={checkIn}>
+                  <LogIn className="h-4 w-4 mr-1" /> Check-in
+                </Button>
+              )}
+              {canCheckOut && (
+                <Button className="flex-1" onClick={() => setCheckoutOpen(true)}>
+                  <LogOut className="h-4 w-4 mr-1" /> Check-out
+                </Button>
+              )}
+              <FolioOpenButton bookingId={b.id} variant="outline" className="flex-1">
+                <Receipt className="h-4 w-4 mr-1" /> Folio
+              </FolioOpenButton>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-10 w-10 shrink-0" aria-label="More actions">
+                    <MoreHorizontal className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem asChild>
+                    <Link to="/bookings/$bookingId/grc" params={{ bookingId: b.id }}>
+                      <FileText className="h-4 w-4 mr-2" /> Print GRC
+                    </Link>
+                  </DropdownMenuItem>
+                  {(b.status === "reserved" || b.status === "checked_in") && (
+                    <DropdownMenuItem onClick={() => setMode((m) => (m === "edit" ? "overview" : "edit"))}>
+                      <Pencil className="h-4 w-4 mr-2" />
+                      {mode === "edit" ? "Back to overview" : "Edit details"}
+                    </DropdownMenuItem>
+                  )}
+                  {canShift && b.booking_rooms[0] && (
+                    <DropdownMenuItem onClick={() => openShift(b.booking_rooms[0].id)}>
+                      <ArrowLeftRight className="h-4 w-4 mr-2" /> Shift room
+                    </DropdownMenuItem>
+                  )}
+                  {canCheckOut && (
+                    <DropdownMenuItem onClick={() => setDateOpen(true)}>
+                      <CalendarClock className="h-4 w-4 mr-2" /> Modify dates
+                    </DropdownMenuItem>
+                  )}
+                  {canCancel && (
+                    <DropdownMenuItem className="text-destructive" onClick={() => setCancelOpen(true)}>
+                      <Ban className="h-4 w-4 mr-2" /> Cancel booking
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            </>
           )}
         </div>
 
