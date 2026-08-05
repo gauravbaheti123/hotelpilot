@@ -70,8 +70,10 @@ export async function fetchEarlyCheckinSlabs(propertyId: string): Promise<EarlyC
   return ((data ?? []) as unknown) as EarlyCheckinSlab[];
 }
 
-export function earlyCheckinDescription(hours: number): string {
-  const h = Number(hours) || 0;
-  const label = Number.isInteger(h) ? String(h) : h.toFixed(1);
-  return `Early Check-in (${label} hour${h === 1 ? "" : "s"} early)`;
+/**
+ * Bill/folio line label. Hours-early is still used internally for slab
+ * lookup, but is deliberately kept OFF the printed description.
+ */
+export function earlyCheckinDescription(_hours?: number): string {
+  return "Early Check-in";
 }

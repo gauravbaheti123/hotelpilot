@@ -60,7 +60,7 @@ export function AddChargesDialog({ bookingId, open, onOpenChange, onDone }: Prop
   const [qty, setQty] = useState(1);
   const [bedRate, setBedRate] = useState(0);
   const [amount, setAmount] = useState("");
-  const [hours, setHours] = useState("");
+  // Hours-early is auto-detected only (no staff-facing input) — see below.
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -70,7 +70,7 @@ export function AddChargesDialog({ bookingId, open, onOpenChange, onDone }: Prop
 
   useEffect(() => {
     if (!open || !bookingId) {
-      setCtx(null); setQty(1); setBedRate(0); setAmount(""); setHours("");
+      setCtx(null); setQty(1); setBedRate(0); setAmount("");
       setDescription(""); setKind("early_checkin");
       return;
     }
@@ -146,8 +146,7 @@ export function AddChargesDialog({ bookingId, open, onOpenChange, onDone }: Prop
   const autoHours = ctx
     ? hoursEarly(ctx.default_checkin_time ?? "12:00", ctx.actual_checkin_time)
     : 0;
-  const effHours = hours === "" ? autoHours : Number(hours) || 0;
-  const suggested = resolveEarlyCheckinCharge(ecSlabs, effHours);
+  const suggested = resolveEarlyCheckinCharge(ecSlabs, autoHours);
 
   useEffect(() => {
     if (kind !== "early_checkin") return;
@@ -220,8 +219,7 @@ export function AddChargesDialog({ bookingId, open, onOpenChange, onDone }: Prop
       if (kind === "extra_bed") {
         await saveExtraBed();
       } else if (kind === "early_checkin") {
-        if (effHours <= 0) { toast.error("Hours early must be greater than 0"); return; }
-        await saveFolioCharge("early_checkin", earlyCheckinDescription(effHours));
+        await saveFolioCharge("early_checkin", earlyCheckinDescription());
       } else {
         const desc = description.trim();
         if (!desc) { toast.error("Enter a description"); return; }
@@ -302,22 +300,12 @@ export function AddChargesDialog({ bookingId, open, onOpenChange, onDone }: Prop
 
             {kind === "early_checkin" && (
               <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label>Hours early</Label>
-                    <Input
-                      type="number" min={0} step="0.5"
-                      value={hours === "" ? String(autoHours) : hours}
-                      onChange={(e) => { setHours(e.target.value); setAmount(""); }}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Amount (₹)</Label>
-                    <Input
-                      type="number" min={0} step="0.01" value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                    />
-                  </div>
+                <div className="space-y-1.5">
+                  <Label>Amount (₹)</Label>
+                  <Input
+                    type="number" min={0} step="0.01" value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
                 </div>
                 <p className="text-[11px] text-muted-foreground">
                   Standard check-in {ctx.default_checkin_time ?? "12:00"}
