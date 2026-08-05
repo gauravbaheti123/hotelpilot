@@ -21,9 +21,15 @@ interface Props {
   onChange: (next: UploadedIdDoc) => void;
   guestName?: string;
   disabled?: boolean;
+  /** Slot label, e.g. "ID Front" / "ID Back". */
+  label?: string;
+  /** Filename suffix so front/back uploads stay distinguishable on Drive. */
+  side?: "front" | "back";
 }
 
-export function IdDocUpload({ value, onChange, guestName, disabled }: Props) {
+export function IdDocUpload({
+  value, onChange, guestName, disabled, label = "ID Document (optional)", side,
+}: Props) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -42,7 +48,8 @@ export function IdDocUpload({ value, onChange, guestName, disabled }: Props) {
     setBusy(true);
     try {
       const ext = driveFileExtension(f);
-      const fileName = `${safeName(guestName || "Guest")}_${Date.now()}.${ext}`;
+      const suffix = side ? `_${side}` : "";
+      const fileName = `${safeName(guestName || "Guest")}${suffix}_${Date.now()}.${ext}`;
       const res = await uploadFileToDrive(f, "id_doc", fileName);
       onChange({ fileId: res.fileId, viewUrl: res.viewUrl, name: f.name });
     } catch (e: any) {
@@ -59,7 +66,7 @@ export function IdDocUpload({ value, onChange, guestName, disabled }: Props) {
 
   return (
     <div className="space-y-2">
-      <div className="text-sm font-medium">ID Document (optional)</div>
+      <div className="text-sm font-medium">{label}</div>
       {has && (
         <div className="flex items-center gap-3 rounded-md border bg-muted/40 px-3 py-2">
           {thumb ? (
