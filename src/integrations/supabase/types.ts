@@ -5257,6 +5257,7 @@ export type Database = {
           booking_id: string | null
           created_at: string
           created_by: string | null
+          event_booking_id: string | null
           folio_id: string | null
           gst_amount: number
           guest_id: string | null
@@ -5279,6 +5280,7 @@ export type Database = {
           booking_id?: string | null
           created_at?: string
           created_by?: string | null
+          event_booking_id?: string | null
           folio_id?: string | null
           gst_amount?: number
           guest_id?: string | null
@@ -5301,6 +5303,7 @@ export type Database = {
           booking_id?: string | null
           created_at?: string
           created_by?: string | null
+          event_booking_id?: string | null
           folio_id?: string | null
           gst_amount?: number
           guest_id?: string | null
@@ -5329,6 +5332,20 @@ export type Database = {
           {
             foreignKeyName: "segment_bills_booking_id_fkey"
             columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "segment_bills_event_booking_id_fkey"
+            columns: ["event_booking_id"]
+            isOneToOne: false
+            referencedRelation: "booking_financials"
+            referencedColumns: ["booking_id"]
+          },
+          {
+            foreignKeyName: "segment_bills_event_booking_id_fkey"
+            columns: ["event_booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
             referencedColumns: ["id"]
