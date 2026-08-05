@@ -283,8 +283,8 @@ function metaBlock(ctx: InvoiceContext): string {
         ${booking.guests?.id_proof_type && booking.guests?.id_proof_number
           ? `<div class="small">${esc(booking.guests.id_proof_type)}: ${esc(booking.guests.id_proof_number)}</div>` : ""}
         ${otaName ? `
-          <div class="small" style="text-transform:uppercase;letter-spacing:1px;margin-top:8px">Company To</div>
-          <div style="font-weight:600;font-size:12px;margin-top:2px">${esc(otaName)}</div>
+          <div class="small" style="text-transform:uppercase;letter-spacing:1px;margin-top:8px;font-weight:700">Company To</div>
+          <div style="font-weight:700;font-size:12px;margin-top:2px">${esc(otaName)}</div>
         ` : ""}
       </div>
       <div style="text-align:right">
