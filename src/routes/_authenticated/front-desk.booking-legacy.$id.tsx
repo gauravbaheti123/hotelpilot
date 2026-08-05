@@ -41,7 +41,6 @@ import { fetchTariffPlans, pickTariffPlan, type TariffPlan } from "@/lib/tariff"
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { RequirePermission } from "@/components/RequirePermission";
 import { AssignRoomDialog } from "@/components/AssignRoomDialog";
-import { BookingEditWizard } from "@/components/booking-wizard/BookingEditWizard";
 import {
   LogIn,
   LogOut,
@@ -60,7 +59,7 @@ import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 
-export const Route = createFileRoute("/_authenticated/front-desk/booking/$id")({
+export const Route = createFileRoute("/_authenticated/front-desk/booking-legacy/$id")({
   head: () => ({ meta: [{ title: "Booking — HotelPilot" }] }),
   component: () => (<RequirePermission module="bookings"><BookingDetailPage /></RequirePermission>),
 });
@@ -175,10 +174,6 @@ function BookingDetailPage() {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [assignBrId, setAssignBrId] = useState<string | null>(null);
-  // Phase 3 — one page, two modes. "overview" is the read-only summary,
-  // "edit" swaps the summary (only) for the step wizard; the header action bar
-  // stays visible and unchanged in both.
-  const [mode, setMode] = useState<"overview" | "edit">("overview");
 
   async function load() {
     setLoading(true);
@@ -506,13 +501,9 @@ function BookingDetailPage() {
                 <Button variant="outline"><FileText className="h-4 w-4 mr-1" /> Print GRC</Button>
               </Link>
               {(b.status === "reserved" || b.status === "checked_in") && (
-                <Button
-                  variant={mode === "edit" ? "secondary" : "outline"}
-                  onClick={() => setMode((m) => (m === "edit" ? "overview" : "edit"))}
-                >
-                  <Pencil className="h-4 w-4 mr-1" />
-                  {mode === "edit" ? "Back to overview" : "Edit details"}
-                </Button>
+                <Link to="/front-desk/booking/$id/edit" params={{ id: b.id }}>
+                  <Button variant="outline"><Pencil className="h-4 w-4 mr-1" /> Edit details</Button>
+                </Link>
               )}
               {canCheckIn && <Button onClick={checkIn}><LogIn className="h-4 w-4 mr-1" /> Check-in</Button>}
               {canCheckOut && <Button onClick={() => setCheckoutOpen(true)}><LogOut className="h-4 w-4 mr-1" /> Check-out</Button>}
@@ -535,14 +526,6 @@ function BookingDetailPage() {
           )}
         </div>
 
-        {mode === "edit" ? (
-          <BookingEditWizard
-            bookingId={b.id}
-            onSaved={() => { setMode("overview"); load(); }}
-            onCancel={() => setMode("overview")}
-          />
-        ) : (
-        <>
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader><CardTitle className="text-base">Guest</CardTitle></CardHeader>
@@ -722,8 +705,6 @@ function BookingDetailPage() {
             )}
           </CardContent>
         </Card>
-        </>
-        )}
 
         {/* SHIFT DIALOG */}
         <Dialog open={shiftOpen} onOpenChange={setShiftOpen}>
