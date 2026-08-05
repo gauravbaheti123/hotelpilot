@@ -1103,19 +1103,14 @@ function BanquetEventPage() {
                           </>
                         )}
                         {blk.status === "checked_out" && blk.booking_id && (
-                          <Button
+                          <FolioOpenButton
+                            bookingId={blk.booking_id}
                             size="sm"
                             variant="outline"
-                            onClick={() =>
-                              router.navigate({
-                                to: "/billing/folio/$bookingId",
-                                params: { bookingId: blk.booking_id! },
-                              })
-                            }
                           >
                             <FileText className="h-3.5 w-3.5 mr-1" />
                             Bill
-                          </Button>
+                          </FolioOpenButton>
                         )}
                         {isBlocked && (
                           <Button
