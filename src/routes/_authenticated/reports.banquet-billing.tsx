@@ -131,25 +131,43 @@ function Page() {
         if (e.legacy_id) eventMeta.set(e.legacy_id, m);
       }
 
-      const [{ data: folios, error: __qp2 }, { data: segs, error: __qp3 }, { data: masters, error: __qp4 }] = await Promise.all([
-        supabase.from("folios")
-          .select("id,booking_id,invoice_number,created_at,status,guest_company,guest_gstin,notes,total_amount,paid_amount")
-          .in("booking_id", bookingIds)
-          .gte("created_at", fromIso).lte("created_at", toIso)
-          .order("created_at", { ascending: false }),
-        supabase.from("segment_bills")
-          .select("id,booking_id,bill_number,segment,created_at,status,total_amount,paid_amount")
-          .in("booking_id", bookingIds)
-          .gte("created_at", fromIso).lte("created_at", toIso)
-          .order("created_at", { ascending: false }),
+      // Event booking ids cover both id spaces so event-linked walk-in bills group correctly.
+      const eventBookingIds = Array.from(new Set(events.flatMap((e) => [e.booking_id, e.legacy_id].filter(Boolean) as string[])));
+      const [{ data: folios, error: __qp2 }, { data: segsLinked, error: __qp3 }, { data: masters, error: __qp4 }, { data: segsEvent, error: __qp7 }] = await Promise.all([
+        bookingIds.length
+          ? supabase.from("folios")
+              .select("id,booking_id,invoice_number,created_at,status,guest_company,guest_gstin,notes,total_amount,paid_amount")
+              .in("booking_id", bookingIds)
+              .gte("created_at", fromIso).lte("created_at", toIso)
+              .order("created_at", { ascending: false })
+          : Promise.resolve({ data: [] as any[], error: null } as any),
+        bookingIds.length
+          ? supabase.from("segment_bills")
+              .select("id,booking_id,event_booking_id,bill_number,segment,created_at,status,total_amount,paid_amount,is_walkin,guest_name")
+              .in("booking_id", bookingIds)
+              .gte("created_at", fromIso).lte("created_at", toIso)
+              .order("created_at", { ascending: false })
+          : Promise.resolve({ data: [] as any[], error: null } as any),
         supabase.from("banquet_master_bills")
           .select("id,booking_id,bill_number,created_at,status,total_amount")
           .eq("property_id", propertyId)
           .gte("created_at", fromIso).lte("created_at", toIso),
+        eventBookingIds.length
+          ? supabase.from("segment_bills")
+              .select("id,booking_id,event_booking_id,bill_number,segment,created_at,status,total_amount,paid_amount,is_walkin,guest_name")
+              .in("event_booking_id", eventBookingIds)
+              .gte("created_at", fromIso).lte("created_at", toIso)
+              .order("created_at", { ascending: false })
+          : Promise.resolve({ data: [] as any[], error: null } as any),
       ]);
       if (__qp2) reportQueryError("folios", __qp2);
       if (__qp3) reportQueryError("segment bills", __qp3);
       if (__qp4) reportQueryError("masters", __qp4);
+      if (__qp7) reportQueryError("event walk-in bills", __qp7);
+      const seenSeg = new Set<string>();
+      const segs = [...((segsLinked ?? []) as any[]), ...((segsEvent ?? []) as any[])]
+        .filter((s) => (seenSeg.has(s.id) ? false : (seenSeg.add(s.id), true)));
+      if (bookingIds.length === 0 && segs.length === 0) { setGroups([]); return; }
 
       const folioIds = ((folios ?? []) as any[]).map((f) => f.id as string);
       const billIds = ((segs ?? []) as any[]).map((s) => s.id as string);
