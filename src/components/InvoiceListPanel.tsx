@@ -28,7 +28,7 @@ import {
 } from "@/components/SegmentBillActionsDialog";
 
 import { RequirePermission } from "@/components/RequirePermission";
-import { istToday } from "@/lib/date";
+import { istToday, istDateISO, IST_TZ } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 
@@ -36,6 +36,7 @@ interface Row {
   id: string; invoice_number: string | null; gst_mode: string; status: string;
   total_amount: number; paid_amount: number; balance_amount: number;
   created_at: string;
+  settled_at?: string | null;
   booking_id: string;
   is_deleted?: boolean;
   deleted_at?: string | null;
@@ -52,6 +53,47 @@ export interface InvoiceListPanelProps {
   seg?: "lodge" | "food" | "laundry";
   /** Prefilled search term (e.g. a bill number deep-link). */
   bill?: string;
+}
+
+/** Settlement instant for grouping/sorting — falls back to creation time. */
+const settledAt = (r: { settled_at?: string | null; created_at: string }) =>
+  r.settled_at ?? r.created_at;
+
+/** "4 August 2026" style header label for a YYYY-MM-DD key. */
+function dateHeaderLabel(iso: string) {
+  const d = new Date(`${iso}T12:00:00Z`);
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: IST_TZ, day: "numeric", month: "long", year: "numeric",
+  }).format(d);
+}
+
+/**
+ * Sort newest-first by settlement time and split into date buckets
+ * (chat-app style date dividers). Runs on the already-filtered list so
+ * search/filter keeps working inside the grouped view.
+ */
+function groupBySettledDate<T extends { settled_at?: string | null; created_at: string }>(
+  list: T[],
+): Array<{ key: string; label: string; items: T[] }> {
+  const sorted = [...list].sort(
+    (a, b) => new Date(settledAt(b)).getTime() - new Date(settledAt(a)).getTime(),
+  );
+  const out: Array<{ key: string; label: string; items: T[] }> = [];
+  for (const item of sorted) {
+    const key = istDateISO(settledAt(item));
+    const last = out[out.length - 1];
+    if (last && last.key === key) last.items.push(item);
+    else out.push({ key, label: dateHeaderLabel(key), items: [item] });
+  }
+  return out;
+}
+
+function DateDivider({ label }: { label: string }) {
+  return (
+    <div className="px-4 py-1.5 bg-muted/40 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      {label}
+    </div>
+  );
 }
 
 export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceListPanelProps) {
@@ -84,6 +126,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
     is_walkin: boolean; guest_name: string | null; room_id: string | null;
     folio_id: string | null; booking_id: string | null;
     created_at: string;
+    settled_at?: string | null;
   }>>([]);
   const [audit, setAudit] = useState(false);
   const [delTarget, setDelTarget] = useState<Row | null>(null);
@@ -115,10 +158,12 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
     if (!propertyId) return;
     (async () => {
       let qb = supabase.from("folios")
-        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number)))" as any)
+        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,settled_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number)))" as any)
         .eq("property_id", propertyId);
       if (!audit) qb = qb.eq("is_deleted" as any, false);
-      const { data, error } = await qb.order("created_at", { ascending: false })
+      const { data, error } = await qb
+        .order("settled_at" as any, { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
         .limit(300);
       // Surface PostgREST failures instead of silently rendering "No invoices."
       if (error) {
@@ -158,9 +203,10 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
     (async () => {
       const { data, error } = await supabase
         .from("segment_bills" as any)
-        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,folio_id,booking_id,created_at")
+        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,folio_id,booking_id,created_at,settled_at")
         .eq("property_id", propertyId)
         .eq("segment", segTab)
+        .order("settled_at" as any, { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
         .limit(300);
       if (cancelled) return;
@@ -456,7 +502,11 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
       <Card>
         <CardContent className="p-0 divide-y">
           {filtered.length === 0 && <p className="p-4 text-sm text-muted-foreground">No invoices.</p>}
-          {filtered.map((r) => {
+          {groupBySettledDate(filtered).map((g) => (
+            <div key={g.key}>
+              <DateDivider label={g.label} />
+              <div className="divide-y">
+          {g.items.map((r) => {
             const voided = !!r.is_deleted;
             return (
               <div key={r.id} className={`flex items-center gap-3 px-4 py-3 cursor-pointer ${voided ? "bg-rose-50/30" : "hover:bg-muted/50"}`}>
@@ -536,6 +586,9 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
               </div>
             );
           })}
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
       )}
@@ -549,11 +602,14 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
             ).length === 0 && (
               <p className="p-4 text-sm text-muted-foreground">No {segTab} bills.</p>
             )}
-            {segRows
-              .filter((r) => !q ||
+            {groupBySettledDate(segRows.filter((r) => !q ||
                 r.bill_number.toLowerCase().includes(q.toLowerCase()) ||
                 (r.guest_name ?? "").toLowerCase().includes(q.toLowerCase()))
-              .map((r) => {
+            ).map((g) => (
+              <div key={g.key}>
+                <DateDivider label={g.label} />
+                <div className="divide-y">
+              {g.items.map((r) => {
                 const balance = Math.max(0, Number(r.total_amount || 0) - Number(r.paid_amount || 0));
                 return (
                   <div key={r.id} className="flex items-center gap-3 px-4 py-3">
@@ -605,6 +661,9 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
                   </div>
                 );
               })}
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}
