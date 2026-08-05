@@ -494,7 +494,7 @@ function BookingDetailPage() {
           </div>
           <div className="flex-1" />
           {canAct && (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <FolioOpenButton bookingId={b.id} variant="outline">
                 <Receipt className="h-4 w-4 mr-1" /> Folio
               </FolioOpenButton>
@@ -855,7 +855,7 @@ function BookingDetailPage() {
             })()}
             <DialogFooter className="flex justify-between gap-2">
               <Button variant="outline" onClick={() => setShiftOpen(false)} disabled={shiftBusy}>Cancel</Button>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {shiftStep > 1 && (
                   <Button variant="outline" onClick={() => setShiftStep((s) => (s - 1) as 1 | 2 | 3 | 4)} disabled={shiftBusy}>Back</Button>
                 )}
@@ -952,7 +952,7 @@ function BookingDetailPage() {
 
 function Row({ k, v, highlight }: { k: string; v: React.ReactNode; highlight?: boolean }) {
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       <div className="w-28 text-xs text-muted-foreground">{k}</div>
       <div className={`flex-1 ${highlight ? "font-semibold text-amber-700 dark:text-amber-300" : ""}`}>{v}</div>
     </div>
