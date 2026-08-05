@@ -74,6 +74,7 @@ import { toast } from "sonner";
 import { PropertySelector } from "./PropertySelector";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useCurrentProperty } from "@/hooks/use-property";
+import { useRoomStatusColorOverrides } from "@/hooks/use-room-status-colors";
 import { RemindersBell } from "./Reminders";
 import { useSuperadminView } from "@/lib/superadmin-view";
 const QZStatusIndicator = lazy(() =>
@@ -307,6 +308,8 @@ function AppShellInner({
   const { current } = useCurrentProperty();
   const propertyPaused = current?.status === "paused";
   const propertyId = current?.id ?? null;
+  // Applies the property's custom room-status palette app-wide.
+  useRoomStatusColorOverrides();
 
   // Sidebar collapsed state, persisted per-user in localStorage.
   const storageKey = user?.id ? `hp:sidebar_collapsed:${user.id}` : "hp:sidebar_collapsed";

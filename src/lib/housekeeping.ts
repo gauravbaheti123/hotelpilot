@@ -1,3 +1,5 @@
+import { roomStatusColor } from "./roomStatusColors";
+
 export const TASK_TYPES = ["cleaning", "inspection", "maintenance", "laundry", "other"] as const;
 export type TaskType = (typeof TASK_TYPES)[number];
 
@@ -39,3 +41,24 @@ export const HK_STATUS_TONE: Record<string, string> = {
 
 export const HK_STATUSES = ["clean", "dirty", "inspected", "out_of_order"] as const;
 export type HkStatus = (typeof HK_STATUSES)[number];
+
+/**
+ * Inline badge styles derived from the live (override-aware) room-status
+ * palette. Prefer these over the Tailwind *_TONE maps above when a property
+ * may have customised its colours.
+ */
+export function roomStatusBadgeStyle(status: string) {
+  const c = roomStatusColor(
+    status === "occupied" || status === "blocked" || status === "maintenance"
+      ? status
+      : "vacant",
+  );
+  return { backgroundColor: c.bg, color: c.fg, borderColor: c.border };
+}
+
+export function hkStatusBadgeStyle(hk: string) {
+  const kind =
+    hk === "dirty" ? "dirty" : hk === "out_of_order" ? "maintenance" : hk === "inspected" ? "occupied" : "vacant";
+  const c = roomStatusColor(kind);
+  return { backgroundColor: c.bg, color: c.fg, borderColor: c.border };
+}

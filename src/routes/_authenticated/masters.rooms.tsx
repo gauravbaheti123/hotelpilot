@@ -32,6 +32,7 @@ import {
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { roomStatusBadgeStyle } from "@/lib/housekeeping";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
@@ -69,14 +70,6 @@ interface Room {
   housekeeping_status: string;
   is_active: boolean;
 }
-
-// Mirrors the shared room-status palette (see src/lib/roomStatusColors.ts).
-const STATUS_COLORS: Record<string, string> = {
-  vacant: "bg-white text-slate-900 border border-slate-300",
-  occupied: "bg-green-600 text-white",
-  blocked: "bg-pink-500 text-white",
-  maintenance: "bg-gray-500 text-white",
-};
 
 function RoomsMasterPage() {
   const { roles, user } = useAuth();
@@ -594,7 +587,7 @@ function RoomsMasterPage() {
                         <TableCell>
                           <Badge
                             variant="outline"
-                            className={STATUS_COLORS[r.status] ?? ""}
+                            style={roomStatusBadgeStyle(r.status)}
                           >
                             {r.status === "blocked" ? "event" : r.status}
                           </Badge>
