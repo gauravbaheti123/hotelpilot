@@ -39,7 +39,8 @@ const DARK_MUTED = "#4b5563";
 const WHITE = "#ffffff";
 const WHITE_MUTED = "rgba(255,255,255,0.85)";
 
-export const ROOM_STATUS_COLORS: Record<RoomStatusKind, RoomStatusColor> = {
+/** Built-in palette — used whenever a property has no override saved. */
+export const DEFAULT_ROOM_STATUS_COLORS: Record<RoomStatusKind, RoomStatusColor> = {
   // Vacant / Ready — very light blue tile, dark text for contrast.
   vacant: {
     label: "Vacant", bg: "#e0f2fe", fg: DARK, fgMuted: DARK_MUTED,
@@ -80,6 +81,83 @@ export const ROOM_STATUS_COLORS: Record<RoomStatusKind, RoomStatusColor> = {
 
 export function roomStatusColor(kind: string): RoomStatusColor {
   return ROOM_STATUS_COLORS[kind as RoomStatusKind] ?? ROOM_STATUS_COLORS.vacant;
+}
+
+/**
+ * Live palette. This object is mutated in place by
+ * `applyRoomStatusColorOverrides` so every module that already imported it
+ * (dashboard grid, housekeeping board, room detail, rooms master) picks up
+ * the property-level override without any call-site change.
+ */
+export const ROOM_STATUS_COLORS: Record<RoomStatusKind, RoomStatusColor> =
+  Object.fromEntries(
+    Object.entries(DEFAULT_ROOM_STATUS_COLORS).map(([k, v]) => [k, { ...v }]),
+  ) as Record<RoomStatusKind, RoomStatusColor>;
+
+/** Status keys that are user-customisable (persisted per property). */
+export type CustomizableStatus =
+  | "vacant" | "occupied" | "dirty" | "maintenance" | "overdue" | "event" | "event_in";
+
+export const CUSTOMIZABLE_STATUSES: CustomizableStatus[] = [
+  "vacant", "occupied", "dirty", "maintenance", "overdue", "event", "event_in",
+];
+
+/** DB status key -> palette key(s) it drives. */
+const STATUS_TO_KINDS: Record<CustomizableStatus, RoomStatusKind[]> = {
+  vacant: ["vacant"],
+  occupied: ["occupied"],
+  dirty: ["dirty", "occupied_dirty"],
+  maintenance: ["maintenance"],
+  overdue: ["overdue"],
+  event: ["blocked"],
+  event_in: ["event_in"],
+};
+
+function mix(color: string, other: string, pct: number) {
+  return `color-mix(in srgb, ${color} ${100 - pct}%, ${other} ${pct}%)`;
+}
+
+/** Derive a full tile colour set from just a background + text colour. */
+export function deriveRoomStatusColor(
+  base: RoomStatusColor,
+  bg?: string | null,
+  fg?: string | null,
+): RoomStatusColor {
+  if (!bg && !fg) return { ...base };
+  const nextBg = bg || base.bg;
+  const nextFg = fg || base.fg;
+  return {
+    label: base.label,
+    bg: nextBg,
+    fg: nextFg,
+    fgMuted: mix(nextFg, nextBg, 25),
+    border: mix(nextBg, nextFg, 18),
+    btnBg: nextFg,
+    btnFg: nextBg,
+  };
+}
+
+export interface RoomStatusColorOverride {
+  status: string;
+  bg_color: string | null;
+  fg_color: string | null;
+}
+
+/** Replace the live palette with defaults + the given property overrides. */
+export function applyRoomStatusColorOverrides(rows: RoomStatusColorOverride[]) {
+  for (const [k, v] of Object.entries(DEFAULT_ROOM_STATUS_COLORS)) {
+    Object.assign(ROOM_STATUS_COLORS[k as RoomStatusKind], v);
+  }
+  for (const row of rows) {
+    const kinds = STATUS_TO_KINDS[row.status as CustomizableStatus];
+    if (!kinds) continue;
+    for (const kind of kinds) {
+      Object.assign(
+        ROOM_STATUS_COLORS[kind],
+        deriveRoomStatusColor(DEFAULT_ROOM_STATUS_COLORS[kind], row.bg_color, row.fg_color),
+      );
+    }
+  }
 }
 
 /** Pending-food overlay badge — unchanged amber pill, kept here for reuse. */
