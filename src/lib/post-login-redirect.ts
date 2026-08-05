@@ -32,7 +32,7 @@ export async function resolvePostLoginRedirect(userId: string): Promise<string> 
   // 1. Roles: owner/superadmin bypass the permission grid.
   const { data: userRoles, error: __qe1 } = await supabase
     .from("user_roles")
-    .select("role, role_id")
+    .select("role, role_id, roles:roles!user_roles_role_id_fkey(default_route)")
     .eq("user_id", userId);
   if (__qe1) reportQueryError("user roles", __qe1);
 
@@ -50,6 +50,12 @@ export async function resolvePostLoginRedirect(userId: string): Promise<string> 
         .filter(Boolean) as string[],
     ),
   );
+  // Explicit per-role landing page wins when configured.
+  const explicit = ((userRoles ?? []) as Array<{ roles?: { default_route?: string | null } | null }>)
+    .map((r) => r.roles?.default_route)
+    .find((v) => typeof v === "string" && v.trim().startsWith("/"));
+  if (explicit) return explicit.trim();
+
   if (roleIds.length === 0) return "/access-denied";
 
   // 2. Permission map from role_permissions.

@@ -1,0 +1,1 @@
+ALTER TABLE public.roles ADD COLUMN IF NOT EXISTS default_route text;

@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { ResponsiveTable } from "@/components/ResponsiveTable";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ReportColumn, fmtINR } from "@/lib/reportExports";
 
 type FilterValue =
@@ -29,6 +30,8 @@ interface Props<T> {
   emptyText?: string;
   /** Additional className on <table>. */
   className?: string;
+  /** Stacked card layout on phones. "auto" (default) switches below 768px. */
+  cardMode?: "auto" | "never";
 }
 
 function inferType<T>(c: ReportColumn<T>): NonNullable<ReportColumn<T>["type"]> {
@@ -72,7 +75,10 @@ export function ReportDataTable<T>({
   totalsRow,
   emptyText = "No data",
   className,
+  cardMode = "auto",
 }: Props<T>) {
+  const isMobile = useIsMobile();
+  const mobileCards = cardMode === "auto" && isMobile;
   const [sort, setSort] = useState<SortState>(null);
   const [filters, setFilters] = useState<Record<string, FilterValue>>({});
 
@@ -168,6 +174,31 @@ export function ReportDataTable<T>({
           </Button>
         </div>
       )}
+      {mobileCards && !renderRow ? (
+        <div className="space-y-2 print:hidden">
+          {derived.length === 0 && (
+            <p className="py-6 text-center text-sm text-muted-foreground">{emptyText}</p>
+          )}
+          {derived.map((r, i) => (
+            <div key={rowKey ? rowKey(r, i) : i} className="rounded-lg border bg-card p-3 text-xs">
+              {columns.map((c) => {
+                const v = c.get(r);
+                const shown = c.currency
+                  ? (v === "" || v === null || v === undefined ? "" : fmtINR(v as number))
+                  : v;
+                return (
+                  <div key={c.key} className="flex items-start justify-between gap-3 py-0.5">
+                    <span className="text-muted-foreground">{c.header}</span>
+                    <span className={cn("text-right font-medium", (c.currency || c.numeric) && "tabular-nums")}>
+                      {shown}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      ) : (
       <ResponsiveTable stickyFirstColumn>
         <table className={cn("w-full text-xs", className)}>
           <thead className="bg-muted/40">
@@ -250,6 +281,7 @@ export function ReportDataTable<T>({
           )}
         </table>
       </ResponsiveTable>
+      )}
     </div>
   );
 }

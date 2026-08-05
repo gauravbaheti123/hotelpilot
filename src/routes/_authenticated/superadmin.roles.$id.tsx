@@ -105,6 +105,8 @@ function EditRolePage() {
   const [savedMaxDiscountType, setSavedMaxDiscountType] = useState<"percentage" | "fixed_amount" | "none">("percentage");
   const [maxDiscountAmount, setMaxDiscountAmount] = useState<string>("0");
   const [savedMaxDiscountAmount, setSavedMaxDiscountAmount] = useState<string>("0");
+  const [defaultRoute, setDefaultRoute] = useState<string>("");
+  const [savedDefaultRoute, setSavedDefaultRoute] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   // Owner's own effective permissions — used to gate what they can grant.
@@ -119,7 +121,7 @@ function EditRolePage() {
 
   async function loadAll() {
     const [{ data: r, error: __qp1 }, { data: ps, error: __qp2 }, { data: rps, error: __qp3 }] = await Promise.all([
-      supabase.from("roles").select("id,name,description,is_system,max_discount_pct,max_discount_type,max_discount_amount").eq("id", id).maybeSingle(),
+      supabase.from("roles").select("id,name,description,is_system,max_discount_pct,max_discount_type,max_discount_amount,default_route").eq("id", id).maybeSingle(),
       supabase.from("permissions").select("id,module,action"),
       supabase.from("role_permissions").select("permission_id,allowed").eq("role_id", id),
     ]);
@@ -139,6 +141,8 @@ function EditRolePage() {
     setMaxDiscountType(mdt); setSavedMaxDiscountType(mdt);
     const mda = String((r as any)?.max_discount_amount ?? 0);
     setMaxDiscountAmount(mda); setSavedMaxDiscountAmount(mda);
+    const dr = String((r as any)?.default_route ?? "");
+    setDefaultRoute(dr); setSavedDefaultRoute(dr);
     setPerms((ps ?? []) as Perm[]);
     const next: Record<string, boolean> = {};
     for (const rp of rps ?? []) next[rp.permission_id as string] = !!rp.allowed;
@@ -240,8 +244,9 @@ function EditRolePage() {
     () => perms.some((p) => isDirty(p.id))
       || maxDiscount !== savedMaxDiscount
       || maxDiscountType !== savedMaxDiscountType
-      || maxDiscountAmount !== savedMaxDiscountAmount,
-    [perms, allowed, savedAllowed, maxDiscount, savedMaxDiscount, maxDiscountType, savedMaxDiscountType, maxDiscountAmount, savedMaxDiscountAmount],
+      || maxDiscountAmount !== savedMaxDiscountAmount
+      || defaultRoute !== savedDefaultRoute,
+    [perms, allowed, savedAllowed, maxDiscount, savedMaxDiscount, maxDiscountType, savedMaxDiscountType, maxDiscountAmount, savedMaxDiscountAmount, defaultRoute, savedDefaultRoute],
   );
 
   function resetToDefaults() {
@@ -279,7 +284,13 @@ function EditRolePage() {
         max_discount_type: isOwnerRole ? undefined : maxDiscountType,
         max_discount_amount: isOwnerRole ? undefined : Math.max(0, Number(maxDiscountAmount) || 0),
       } });
+      if (defaultRoute !== savedDefaultRoute) {
+        const { error: drErr } = await supabase.from("roles")
+          .update({ default_route: defaultRoute.trim() || null } as never).eq("id", id);
+        if (drErr) throw drErr;
+      }
       invalidatePermissions();
+      setSavedDefaultRoute(defaultRoute);
       setSavedAllowed({ ...allowed });
       setSavedMaxDiscount(maxDiscount);
       setSavedMaxDiscountType(maxDiscountType);
@@ -329,6 +340,24 @@ function EditRolePage() {
               )}
             </div>
           </div>
+
+          {!readOnly && (
+            <Card>
+              <CardContent className="py-3 flex flex-wrap items-center gap-3">
+                <span className="text-sm font-medium">Default landing page</span>
+                <Input
+                  value={defaultRoute}
+                  onChange={(e) => setDefaultRoute(e.target.value)}
+                  placeholder="/front-desk/bookings"
+                  className={`w-64 ${defaultRoute !== savedDefaultRoute ? "bg-amber-100 dark:bg-amber-950/40" : ""}`}
+                />
+                <span className="text-xs text-muted-foreground">
+                  Where users with this role land after sign-in. Leave blank to use the first
+                  permitted module.
+                </span>
+              </CardContent>
+            </Card>
+          )}
 
           {!readOnly && !/owner/i.test(role?.name ?? "") && (
             <Card>

@@ -1248,7 +1248,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
                 </div>
 
                 {!splitMode ? (
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     <div>
                       <Label className="text-xs">Amount</Label>
                       <Input
@@ -1278,7 +1278,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
                 ) : (
                   <div className="space-y-2">
                     {splits.map((s, i) => (
-                      <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
+                      <div key={i} className="grid grid-cols-1 gap-2 items-end sm:grid-cols-[1fr_1fr_1fr_auto]">
                         <div>
                           <Label className="text-xs">Mode</Label>
                           <Select value={s.mode} onValueChange={(v) => setSplit(i, { mode: v })}>
