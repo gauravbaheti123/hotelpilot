@@ -175,8 +175,9 @@ function RoomStatusColorsPage() {
           <p className="text-sm text-muted-foreground max-w-2xl">
             These colours are used for room tiles on the Dashboard (Lodge, Food and
             Laundry tabs), the Housekeeping board, room detail pages and the rooms
-            master list for this property. Food and Laundry share the same
-            Pending / Clear pair.
+            master list for this property. Food and Laundry rooms use the
+            Pending colour when a bill is outstanding, and the Occupied colour
+            otherwise.
           </p>
           <div className="flex gap-2">
             <Button variant="outline" onClick={resetAll} disabled={saving || isLoading}>
