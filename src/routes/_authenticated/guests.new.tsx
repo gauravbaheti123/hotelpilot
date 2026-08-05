@@ -64,7 +64,7 @@ function NewGuestPage() {
     if (!isValidMobile(mobile)) { toast.error(MOBILE_ERROR); return; }
     if (!isValidOrEmptyGSTIN(gstNumber)) { toast.error(GSTIN_ERROR); return; }
     setBusy(true);
-    const tags = guestType === "regular" ? [] : [guestType];
+    const tags: string[] = [];
     const { data, error } = await supabase.from("guests").insert({
       property_id: propertyId!,
       name: name.trim(),
@@ -81,7 +81,8 @@ function NewGuestPage() {
       gst_number: gstNumber.trim().toUpperCase() || null,
       notes: notes.trim() || null,
       tags,
-    }).select("id").single();
+      guest_type: guestType,
+    } as never).select("id").single();
     setBusy(false);
     if (error) { toastError(error); return; }
     const { data: u } = await supabase.auth.getUser();
