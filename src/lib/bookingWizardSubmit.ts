@@ -4,6 +4,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createBooking, type CreateBookingPayload, type CreateBookingResult } from "@/lib/bookingCreate";
 import { roomsTotal, stayRange, type WizardState } from "@/lib/bookingWizard";
+import { earlyCheckinDescription } from "@/lib/earlyCheckin";
 import { eventTotals } from "@/lib/bookingWizard";
 import { createEventBooking, seedEventFolioCharges } from "@/lib/banquetEvent";
 import { commitRoomBlocks } from "@/lib/eventRoomBlocks";
@@ -108,6 +109,20 @@ export function buildBookingPayload(opts: {
     })),
     total_amount: total,
     balance_amount: Math.max(0, total - advance),
+    extra_beds: s.rooms
+      .filter((r) => r.extraBedEnabled && Number(r.extraBedQty) > 0 && Number(r.extraBedRate) > 0)
+      .map((r) => ({
+        qty: Number(r.extraBedQty) || 1,
+        rate: Number(r.extraBedRate) || 0,
+        from_date: r.checkIn || range.checkIn,
+      })),
+    early_checkins: s.rooms
+      .filter((r) => r.earlyCheckinEnabled && Number(r.earlyCheckinAmount) > 0)
+      .map((r) => ({
+        amount: Number(r.earlyCheckinAmount) || 0,
+        description: earlyCheckinDescription(Number(r.earlyCheckinHours) || 0),
+        charged_on: r.checkIn || range.checkIn,
+      })),
     advance,
     payment_mode: s.payment.mode,
     payment_ref: s.payment.reference.trim() || null,
