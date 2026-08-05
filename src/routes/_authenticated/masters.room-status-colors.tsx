@@ -50,7 +50,6 @@ const STATUS_KIND: Record<CustomizableStatus, RoomStatusKind> = {
   event: "blocked",
   event_in: "event_in",
   segment_pending: "segment_pending",
-  segment_clear: "segment_clear",
 };
 
 const STATUS_LABEL: Record<CustomizableStatus, string> = {
@@ -62,7 +61,6 @@ const STATUS_LABEL: Record<CustomizableStatus, string> = {
   event: "Event (Blocked)",
   event_in: "Event · In",
   segment_pending: "Food/Laundry · Pending",
-  segment_clear: "Food/Laundry · Clear",
 };
 
 type Draft = Record<CustomizableStatus, { bg: string; fg: string }>;
