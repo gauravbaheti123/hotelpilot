@@ -28,6 +28,7 @@ import {
 } from "@/components/SegmentBillActionsDialog";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { useRegisterRefresh } from "@/components/PullToRefresh";
 import { istToday, istDateISO, IST_TZ } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
@@ -53,6 +54,12 @@ export interface InvoiceListPanelProps {
   seg?: "lodge" | "food" | "laundry";
   /** Prefilled search term (e.g. a bill number deep-link). */
   bill?: string;
+  /**
+   * Opt into native pull-to-refresh. Only the standalone /billing/invoices
+   * route sets this; the Dashboard embed leaves the gesture to the
+   * Dashboard's own reload.
+   */
+  pullToRefresh?: boolean;
 }
 
 /** Settlement instant for grouping/sorting — falls back to creation time. */
@@ -96,7 +103,7 @@ function DateDivider({ label }: { label: string }) {
   );
 }
 
-export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceListPanelProps) {
+export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh }: InvoiceListPanelProps) {
   // Room number(s) for a folio's booking — comma-joined, "—" when unassigned.
   const roomLabel = (r: Row) => {
     const nums = (r.bookings?.booking_rooms ?? [])
