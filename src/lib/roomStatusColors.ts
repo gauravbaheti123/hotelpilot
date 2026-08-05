@@ -38,9 +38,7 @@ export interface RoomStatusColor {
 }
 
 const DARK = "#111827";
-const DARK_MUTED = "#4b5563";
 const WHITE = "#ffffff";
-const WHITE_MUTED = "rgba(255,255,255,0.85)";
 
 /**
  * Build a full tile colour set from a soft background + its paired text colour.
