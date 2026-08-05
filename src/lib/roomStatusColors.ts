@@ -38,58 +38,43 @@ export interface RoomStatusColor {
 }
 
 const DARK = "#111827";
-const DARK_MUTED = "#4b5563";
 const WHITE = "#ffffff";
-const WHITE_MUTED = "rgba(255,255,255,0.85)";
 
-/** Built-in palette — used whenever a property has no override saved. */
+/**
+ * Build a full tile colour set from a soft background + its paired text colour.
+ * Muted text, border and button colours are derived so the tile stays coherent.
+ */
+function tile(label: string, bg: string, fg: string): RoomStatusColor {
+  return {
+    label,
+    bg,
+    fg,
+    fgMuted: mix(fg, bg, 30),
+    border: mix(bg, fg, 20),
+    btnBg: fg,
+    btnFg: bg,
+  };
+}
+
+/**
+ * Built-in palette — soft pastel tiles with dark paired text.
+ * Used whenever a property has no override saved, and as the
+ * "Reset to default" values in Masters → Room Status Colours.
+ */
 export const DEFAULT_ROOM_STATUS_COLORS: Record<RoomStatusKind, RoomStatusColor> = {
-  // Vacant / Ready — very light blue tile, dark text for contrast.
-  vacant: {
-    label: "Vacant", bg: "#e0f2fe", fg: DARK, fgMuted: DARK_MUTED,
-    border: "#bae6fd", btnBg: DARK, btnFg: WHITE,
-  },
-  occupied: {
-    label: "Occupied", bg: "#16a34a", fg: WHITE, fgMuted: WHITE_MUTED,
-    border: "#15803d", btnBg: WHITE, btnFg: "#166534",
-  },
-  // Dirty — yellow tile, dark text for contrast.
-  dirty: {
-    label: "Dirty", bg: "#facc15", fg: "#3f2d00", fgMuted: "#6b5200",
-    border: "#eab308", btnBg: "#3f2d00", btnFg: WHITE,
-  },
-  maintenance: {
-    label: "Maintenance", bg: "#6b7280", fg: WHITE, fgMuted: WHITE_MUTED,
-    border: "#4b5563", btnBg: WHITE, btnFg: "#374151",
-  },
-  // Overdue — unchanged from the previous palette.
-  overdue: {
-    label: "OVERDUE", bg: "#b45309", fg: WHITE, fgMuted: "#fed7aa",
-    border: "#92400e", btnBg: "#dc2626", btnFg: WHITE,
-  },
-  blocked: {
-    label: "Event", bg: "#ec4899", fg: WHITE, fgMuted: WHITE_MUTED,
-    border: "#db2777", btnBg: WHITE, btnFg: "#9d174d",
-  },
-  event_in: {
-    label: "Event·In", bg: "#db2777", fg: WHITE, fgMuted: WHITE_MUTED,
-    border: "#be185d", btnBg: WHITE, btnFg: "#9d174d",
-  },
-  // Housekeeping board composite tile.
-  occupied_dirty: {
-    label: "Occupied · Dirty", bg: "#facc15", fg: "#3f2d00", fgMuted: "#6b5200",
-    border: "#eab308", btnBg: "#3f2d00", btnFg: WHITE,
-  },
+  vacant: tile("Vacant", "#F0F9FF", "#0C4A6E"),
+  occupied: tile("Occupied", "#DCFCE7", "#166534"),
+  dirty: tile("Dirty", "#FEF9C3", "#854D0E"),
+  maintenance: tile("Maintenance", "#F1F5F9", "#334155"),
+  overdue: tile("OVERDUE", "#FED7AA", "#7C2D12"),
+  blocked: tile("Event", "#FCE7F3", "#9D174D"),
+  event_in: tile("Event·In", "#FBCFE8", "#831843"),
+  // Housekeeping board composite tile — shares the Dirty palette.
+  occupied_dirty: tile("Occupied · Dirty", "#FEF9C3", "#854D0E"),
   // Food / Laundry tabs — room has an open segment bill with a balance.
-  segment_pending: {
-    label: "Pending", bg: "#f59e0b", fg: WHITE, fgMuted: WHITE_MUTED,
-    border: "#d97706", btnBg: WHITE, btnFg: "#b45309",
-  },
+  segment_pending: tile("Pending", "#FEF3C7", "#92400E"),
   // Food / Laundry tabs — nothing outstanding.
-  segment_clear: {
-    label: "Clear", bg: "#0ea5e9", fg: WHITE, fgMuted: WHITE_MUTED,
-    border: "#0284c7", btnBg: WHITE, btnFg: "#075985",
-  },
+  segment_clear: tile("Clear", "#E0F2FE", "#075985"),
 };
 
 export function roomStatusColor(kind: string): RoomStatusColor {
