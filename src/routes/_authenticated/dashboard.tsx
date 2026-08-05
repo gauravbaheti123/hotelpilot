@@ -1581,38 +1581,38 @@ const RoomCard = memo(function RoomCard({
       onClick={onPick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPick(); }}
       className="relative transition cursor-pointer overflow-hidden flex flex-col"
-      style={{ backgroundColor: meta.bg, color: "#ffffff", minHeight: 118, borderRadius: 10 }}
+      style={{ backgroundColor: meta.bg, color: meta.fg, minHeight: 118, borderRadius: 10, border: `1px solid ${meta.border}` }}
     >
       <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
         <div className="flex items-start justify-between gap-2">
-          <span style={{ color: "#ffffff", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
+          <span style={{ color: meta.fg, fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
         </div>
 
         {(kind === "occupied" || kind === "overdue") && occ && (
           <>
-            <div className="truncate" style={{ color: "#ffffff", fontSize: 13, fontWeight: 700, marginTop: 2 }}>
+            <div className="truncate" style={{ color: meta.fg, fontSize: 13, fontWeight: 700, marginTop: 2 }}>
               {occ.guestName ?? "Guest"}
             </div>
             {kind === "overdue" ? (
-              <div style={{ color: "#fecaca", fontSize: 11, fontWeight: 600 }}>
+              <div style={{ color: meta.fgMuted, fontSize: 11, fontWeight: 600 }}>
                 <div>{fmtShortDT(occ.checkIn, occ.checkInTime)} →</div>
                 <div>Due: {fmtShortDT(occ.checkOut, occ.checkOutTime)} → ⚠️</div>
               </div>
             ) : (
-              <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 11 }}>
+              <div style={{ color: meta.fgMuted, fontSize: 11 }}>
                 <div>{fmtShortDT(occ.checkIn, occ.checkInTime)} →</div>
                 <div>{fmtShortDT(occ.checkOut, occ.checkOutTime)} →</div>
               </div>
             )}
-            <div style={{ fontSize: 12, fontWeight: 700, color: kind === "overdue" ? "#fecaca" : (pending > 0 ? "#fbbf24" : "rgba(255,255,255,0.9)") }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: kind === "overdue" ? meta.fgMuted : (pending > 0 ? "#fde047" : meta.fgMuted) }}>
               {pending > 0 ? `₹${pending.toLocaleString("en-IN")} pending` : "Balance ₹0"}
             </div>
             <div className="mt-auto pt-1">
               <button
                 type="button"
                 style={{
-                  backgroundColor: kind === "overdue" ? "#dc2626" : "#ffffff",
-                  color: kind === "overdue" ? "#ffffff" : meta.bg,
+                  backgroundColor: meta.btnBg,
+                  color: meta.btnFg,
                   borderRadius: 4, padding: "3px 10px", fontSize: 11, fontWeight: 700, border: "none",
                 }}
                 onClick={(e) => { e.stopPropagation(); onCheckout(occ.bookingId); }}
@@ -1624,7 +1624,7 @@ const RoomCard = memo(function RoomCard({
         )}
 
         {hintText && (
-          <div className="mt-auto" style={{ color: "rgba(255,255,255,0.7)", fontSize: 11 }}>
+          <div className="mt-auto" style={{ color: meta.fgMuted, fontSize: 11 }}>
             {hintText}
           </div>
         )}
@@ -1636,7 +1636,7 @@ const RoomCard = memo(function RoomCard({
           onClick={(e) => { e.stopPropagation(); onPickFood(); }}
           className="absolute flex items-center gap-1 font-semibold"
           style={{
-            right: 6, bottom: 6, backgroundColor: "#fbbf24", color: "#78350f",
+            right: 6, bottom: 6, backgroundColor: PENDING_FOOD_BADGE.bg, color: PENDING_FOOD_BADGE.fg,
             borderRadius: 999, padding: "2px 8px", fontSize: 10, border: "none",
           }}
           title={`${pendingFood!.count} pending KOT${pendingFood!.count === 1 ? "" : "s"}`}
