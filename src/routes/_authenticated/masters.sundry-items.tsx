@@ -24,6 +24,7 @@ interface Item {
   id: string;
   name: string;
   category: string;
+  category_id: string;
   rate: number;
   gst_rate: number;
   unit: string;
@@ -37,7 +38,7 @@ function makeFields(categoryOptions: { value: string; label: string }[]): FieldD
     { name: "name", label: "Item name", type: "text", required: true, colSpan: 2 },
     { name: "short_code", label: "Short Code (optional)", type: "text" },
     {
-      name: "category",
+      name: "category_id",
       label: "Category",
       type: "select",
       options: categoryOptions,
@@ -57,7 +58,7 @@ function makeFields(categoryOptions: { value: string; label: string }[]): FieldD
   ];
 }
 
-const makeColumns = (labelFor: (v: string) => string): ColumnDef<Item>[] => [
+const makeColumns = (labelFor: (id: string, fallback: string) => string): ColumnDef<Item>[] => [
   {
     header: "Item",
     render: (r) => (
@@ -74,7 +75,7 @@ const makeColumns = (labelFor: (v: string) => string): ColumnDef<Item>[] => [
         ? <Badge variant="outline" className="text-[10px] uppercase font-mono">{r.short_code}</Badge>
         : <span className="text-xs text-muted-foreground">—</span>,
   },
-  { header: "Category", render: (r) => <Badge variant="outline">{labelFor(r.category)}</Badge> },
+  { header: "Category", render: (r) => <Badge variant="outline">{labelFor(r.category_id, r.category)}</Badge> },
   { header: "Rate", render: (r) => `₹${Number(r.rate).toLocaleString("en-IN")}` },
   { header: "GST", render: (r) => `${r.gst_rate}%` },
   { header: "Unit", render: (r) => r.unit },
@@ -97,7 +98,7 @@ function SundryItemsPage() {
     if (!current) return;
     setCatLoading(true);
     const { data, error } = await supabase
-      .from("pos_categories")
+      .from("sundry_categories")
       .select("id,name,is_active")
       .eq("property_id", current.id)
       .order("name", { ascending: true });
@@ -115,7 +116,7 @@ function SundryItemsPage() {
     if (!current || !newCat.trim()) return;
     setSavingCat(true);
     const { error } = await supabase
-      .from("pos_categories")
+      .from("sundry_categories")
       .insert({ property_id: current.id, name: newCat.trim(), is_active: true } as any);
     setSavingCat(false);
     if (error) return toastError(error);
@@ -125,14 +126,14 @@ function SundryItemsPage() {
     setReloadKey((k) => k + 1);
   }
   async function toggleCat(id: string, next: boolean) {
-    const { error } = await supabase.from("pos_categories").update({ is_active: next } as any).eq("id", id);
+    const { error } = await supabase.from("sundry_categories").update({ is_active: next }).eq("id", id);
     if (error) return toastError(error);
     await loadCats();
     setReloadKey((k) => k + 1);
   }
   async function removeCat(id: string) {
-    if (!confirm("Delete this category? Items assigned to it will keep the name but lose the link.")) return;
-    const { error } = await supabase.from("pos_categories").delete().eq("id", id);
+    if (!confirm("Delete this category? Categories assigned to items cannot be deleted; deactivate them instead.")) return;
+    const { error } = await supabase.from("sundry_categories").delete().eq("id", id);
     if (error) return toastError(error);
     await loadCats();
     setReloadKey((k) => k + 1);
@@ -140,18 +141,26 @@ function SundryItemsPage() {
 
   const activeCats = useMemo(() => cats.filter((c) => c.is_active), [cats]);
   const categoryOptions = useMemo(
-    () => activeCats.map((c) => ({ value: c.name, label: c.name })),
+    () => activeCats.map((c) => ({ value: c.id, label: c.name })),
     [activeCats],
   );
-  const labelFor = (v: string) => cats.find((c) => c.name === v)?.name ?? v;
+  const labelFor = (id: string, fallback: string) => cats.find((c) => c.id === id)?.name ?? fallback;
   const fields = useMemo(() => makeFields(categoryOptions), [categoryOptions]);
   const columns = useMemo(() => makeColumns(labelFor), [cats]);
 
   return (
     <RequirePermission module="master_data">
-    <div className="max-w-6xl space-y-4">
-      <Card>
-        <CardContent className="p-4 space-y-3">
+    <CrudPage<Item>
+      key={`items-${reloadKey}`}
+      title="Sundry / POS Items"
+      subtitle="Mini-bar, laundry, spa and other extras posted from the POS module."
+      table="sundry_items"
+      fields={fields}
+      columns={columns}
+      orderBy={{ column: "name", ascending: true }}
+      contentAfterHeader={
+      <Card className="w-full overflow-hidden">
+        <CardContent className="space-y-4 p-4 sm:p-5">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold">POS Categories</h2>
@@ -192,15 +201,7 @@ function SundryItemsPage() {
           )}
         </CardContent>
       </Card>
-    </div>
-    <CrudPage<Item>
-      key={`items-${reloadKey}`}
-      title="Sundry / POS Items"
-      subtitle="Mini-bar, laundry, spa and other extras posted from the POS module."
-      table="sundry_items"
-      fields={fields}
-      columns={columns}
-      orderBy={{ column: "name", ascending: true }}
+      }
       headerActions={current ? (
         <BulkCsvButtons
           table="sundry_items"

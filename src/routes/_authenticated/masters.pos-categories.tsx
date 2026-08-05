@@ -31,14 +31,14 @@ function PosCategoriesPage() {
     <CrudPage<Cat>
       title="POS Categories"
       subtitle="Categories used when posting custom POS / sundry expenses (Laundry, Mini Bar, Damage, etc.)"
-      table="pos_categories"
+      table="sundry_categories"
       fields={fields}
       columns={columns}
       orderBy={{ column: "name", ascending: true }}
       headerActions={
         current ? (
           <BulkCsvButtons
-            table="pos_categories"
+            table="sundry_categories"
             propertyId={current.id}
             module="pos-categories"
             hotelName={current.name}

@@ -84,6 +84,8 @@ export interface CrudPageProps<T extends { id: string }> {
   initialNew?: Record<string, any>;
   filterEq?: Record<string, any>;
   headerActions?: ReactNode;
+  /** Optional contained management/configuration section between the page header and data list. */
+  contentAfterHeader?: ReactNode;
   /** Row fields searched by the toolbar search box (defaults to all string values). */
   searchFields?: string[];
   /** Optional data-quality flag: return a reason string to mark a row as suspicious. */
@@ -105,6 +107,7 @@ export function CrudPage<T extends { id: string }>({
   initialNew,
   filterEq,
   headerActions,
+  contentAfterHeader,
   searchFields,
   flagRow,
   validate,
@@ -342,6 +345,8 @@ export function CrudPage<T extends { id: string }>({
             )}
           </div>
         </div>
+
+        {contentAfterHeader}
 
         <Card>
           <CardContent className="pt-6">
