@@ -5669,9 +5669,45 @@ export type Database = {
           },
         ]
       }
+      sundry_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sundry_categories_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sundry_items: {
         Row: {
           category: string
+          category_id: string
           created_at: string
           gst_rate: number
           id: string
@@ -5685,7 +5721,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          category?: string
+          category: string
+          category_id: string
           created_at?: string
           gst_rate?: number
           id?: string
@@ -5700,6 +5737,7 @@ export type Database = {
         }
         Update: {
           category?: string
+          category_id?: string
           created_at?: string
           gst_rate?: number
           id?: string
@@ -5713,6 +5751,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sundry_items_category_property_fkey"
+            columns: ["category_id", "property_id"]
+            isOneToOne: false
+            referencedRelation: "sundry_categories"
+            referencedColumns: ["id", "property_id"]
+          },
           {
             foreignKeyName: "sundry_items_property_id_fkey"
             columns: ["property_id"]
