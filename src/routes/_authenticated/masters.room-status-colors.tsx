@@ -175,8 +175,10 @@ function RoomStatusColorsPage() {
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground max-w-2xl">
-            These colours are used for room tiles on the Dashboard, the Housekeeping
-            board, room detail pages and the rooms master list for this property.
+            These colours are used for room tiles on the Dashboard (Lodge, Food and
+            Laundry tabs), the Housekeeping board, room detail pages and the rooms
+            master list for this property. Food and Laundry share the same
+            Pending / Clear pair.
           </p>
           <div className="flex gap-2">
             <Button variant="outline" onClick={resetAll} disabled={saving || isLoading}>
