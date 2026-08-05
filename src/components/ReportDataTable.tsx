@@ -167,7 +167,7 @@ export function ReportDataTable<T>({
           </Button>
         </div>
       )}
-      <div className="overflow-x-auto">
+      <ResponsiveTable stickyFirstColumn>
         <table className={cn("w-full text-xs", className)}>
           <thead className="bg-muted/40">
             <tr>
