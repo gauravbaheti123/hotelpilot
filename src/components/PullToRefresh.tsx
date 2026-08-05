@@ -10,6 +10,7 @@ import {
 } from "react";
 import { Loader2, ArrowDown } from "lucide-react";
 import { usePullToRefresh, PTR_THRESHOLD } from "@/hooks/use-pull-to-refresh";
+import { isNativeApp } from "@/lib/native";
 
 type RefreshFn = () => unknown | Promise<unknown>;
 
@@ -50,6 +51,11 @@ export function PullToRefresh({ children }: { children: ReactNode }) {
   const anchorRef = useRef<HTMLDivElement | null>(null);
   const handlerRef = useRef<RefreshFn | null>(null);
   const [hasHandler, setHasHandler] = useState(false);
+  // Resolved after mount so SSR and the first client render agree.
+  const [native, setNative] = useState(false);
+  useEffect(() => {
+    setNative(isNativeApp());
+  }, []);
 
   // The wrapper renders *inside* <main>, so resolve the scroller upward.
   useEffect(() => {
@@ -81,6 +87,14 @@ export function PullToRefresh({ children }: { children: ReactNode }) {
   const ctx = useMemo<Ctx>(() => ({ register, enabled: hasHandler }), [register, hasHandler]);
   const progress = Math.min(distance / PTR_THRESHOLD, 1);
   const active = phase !== "idle";
+
+  // Plain web (desktop + mobile browser): no gesture, no extra wrappers, no
+  // transforms — the page must scroll exactly as it did before PTR existed.
+  if (!native) {
+    return (
+      <PullToRefreshContext.Provider value={ctx}>{children}</PullToRefreshContext.Provider>
+    );
+  }
 
   return (
     <PullToRefreshContext.Provider value={ctx}>

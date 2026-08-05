@@ -13,7 +13,7 @@ import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { FOLIO_STATUS_TONE, inr } from "@/lib/billing";
-import { billNo, hasBillNumber } from "@/lib/billNumber";
+import { billNo, hasBillNumber, segmentBillNo } from "@/lib/billNumber";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
@@ -523,8 +523,8 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
             return (
               <div key={r.id} className={`flex items-center gap-3 px-4 py-3 cursor-pointer ${voided ? "bg-rose-50/30" : "hover:bg-muted/50"}`}>
                 <Link to="/billing/folio/$bookingId" params={{ bookingId: r.booking_id }} search={{ folio: r.id }} className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className={`font-medium text-sm ${voided ? "line-through text-destructive" : ""}`}>{billNo(r.invoice_number)}</div>
+                  <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
+                    <div className={`font-medium text-sm break-all ${voided ? "line-through text-destructive" : ""}`}>{billNo(r.invoice_number)}</div>
                     {voided ? (
                       <Badge variant="outline" className="bg-rose-100 text-rose-800 border-rose-300">VOIDED</Badge>
                     ) : (
@@ -539,7 +539,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                     )}
                   </div>
                 </Link>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <div className={`text-sm font-medium ${voided ? "line-through text-muted-foreground" : ""}`}>{inr(r.total_amount)}</div>
                   <div className="text-xs text-muted-foreground">Bal {inr(r.balance_amount)}</div>
                 </div>
@@ -626,8 +626,8 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                 return (
                   <div key={r.id} className="flex items-center gap-3 px-4 py-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <div className="font-medium text-sm">{r.bill_number}</div>
+                      <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
+                        <div className="font-medium text-sm break-all">{segmentBillNo(r.bill_number)}</div>
                         <Badge variant="outline" className="uppercase text-[10px]">{r.status}</Badge>
                         <Badge variant="outline" className="text-[10px] uppercase">{segTab}</Badge>
                         {r.is_walkin && <Badge variant="outline" className="text-[10px]">Walk-in</Badge>}
@@ -636,7 +636,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                         {r.guest_name ?? "—"} · {new Date(r.created_at).toLocaleString("en-IN")}
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <div className="text-sm font-medium">{inr(r.total_amount)}</div>
                       <div className="text-xs text-muted-foreground">Bal {inr(balance)}</div>
                     </div>

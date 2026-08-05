@@ -69,6 +69,24 @@ export function eventRef(
 }
 
 /** Compact variant for tight table cells / titles. */
+/**
+ * Legacy placeholder numbers (`<PREFIX>-PENDING-<6 hex>`) were stamped on a
+ * handful of open food bills by a since-removed numbering path. They are not
+ * real bill numbers, so show them as the un-numbered bills they are.
+ */
+const PLACEHOLDER_RE = /-PENDING-[0-9a-f]{6}$/i;
+
+export function isPlaceholderBillNo(n?: string | null): boolean {
+  return PLACEHOLDER_RE.test((n ?? "").trim());
+}
+
+/** Display-safe segment (food/laundry) bill reference. */
+export function segmentBillNo(n?: string | null): string {
+  const t = (n ?? "").trim();
+  if (!t || isPlaceholderBillNo(t)) return PROVISIONAL_BILL_LABEL;
+  return t;
+}
+
 export function eventRefShort(
   number?: string | null,
   bookingNumber?: string | null,

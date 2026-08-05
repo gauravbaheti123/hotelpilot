@@ -610,10 +610,7 @@ function AppShellInner({
             {titleSlot}
           </div>
         )}
-        <main
-          data-scroll-container
-          className="flex-1 p-3 sm:p-6 overflow-auto [overscroll-behavior-y:contain]"
-        >
+        <main data-scroll-container className="flex-1 p-3 sm:p-6 overflow-auto">
           <PullToRefresh>{children}</PullToRefresh>
         </main>
       </div>
