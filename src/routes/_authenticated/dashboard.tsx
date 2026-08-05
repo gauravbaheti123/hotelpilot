@@ -44,7 +44,7 @@ import {
 import { RequirePermission } from "@/components/RequirePermission";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
-import { ROOM_STATUS_COLORS, PENDING_FOOD_BADGE } from "@/lib/roomStatusColors";
+import { ROOM_STATUS_COLORS, PENDING_FOOD_BADGE, roomStatusColor } from "@/lib/roomStatusColors";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — HotelPilot" }] }),
   component: () => (<RequirePermission module="dashboard"><DashboardRouter /></RequirePermission>),
@@ -1363,7 +1363,8 @@ function SegmentRoomCard({
 }) {
   const amount = pending?.amount ?? 0;
   const hasPending = amount > 0.01;
-  const bg = hasPending ? "#f59e0b" : "#0ea5e9"; // amber = pending, sky = clean
+  // Palette-driven (property overrides apply): amber = pending, sky = clean.
+  const c = roomStatusColor(hasPending ? "segment_pending" : "segment_clear");
   const label = segment === "food" ? "Food" : "Laundry";
   return (
     <DropdownMenu>
@@ -1372,36 +1373,36 @@ function SegmentRoomCard({
           role="button"
           tabIndex={0}
           className="relative transition cursor-pointer overflow-hidden flex flex-col text-left"
-          style={{ backgroundColor: bg, color: "#ffffff", minHeight: 118, borderRadius: 10 }}
+          style={{ backgroundColor: c.bg, color: c.fg, minHeight: 118, borderRadius: 10 }}
         >
       <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
         <div className="flex items-start justify-between gap-2">
-          <span style={{ color: "#ffffff", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
+          <span style={{ color: c.fg, fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
           <span
             className="font-semibold uppercase tracking-wide rounded-full"
-            style={{ backgroundColor: "rgba(255,255,255,0.25)", color: "#ffffff", fontSize: 10, padding: "2px 7px" }}
+            style={{ backgroundColor: c.btnBg, color: c.btnFg, fontSize: 10, padding: "2px 7px" }}
           >
             {label}
           </span>
         </div>
-        <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 11, marginTop: 1 }}>{category}</div>
-        <div className="truncate" style={{ color: "#ffffff", fontSize: 13, fontWeight: 700, marginTop: 2 }}>
+        <div style={{ color: c.fgMuted, fontSize: 11, marginTop: 1 }}>{category}</div>
+        <div className="truncate" style={{ color: c.fg, fontSize: 13, fontWeight: 700, marginTop: 2 }}>
           {occ?.guestName ?? "Guest"}
         </div>
         <div className="mt-auto pt-1">
           {hasPending ? (
             <>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#ffffff" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: c.fg }}>
                 ₹{amount.toLocaleString("en-IN")} pending
               </div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>
+              <div style={{ fontSize: 10, color: c.fgMuted }}>
                 {pending!.count} open bill{pending!.count > 1 ? "s" : ""} · tap to add more
               </div>
             </>
           ) : (
             <>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.95)" }}>No pending</div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.85)" }}>Tap for {label.toLowerCase()} actions</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: c.fg }}>No pending</div>
+              <div style={{ fontSize: 10, color: c.fgMuted }}>Tap for {label.toLowerCase()} actions</div>
             </>
           )}
         </div>

@@ -49,6 +49,8 @@ const STATUS_KIND: Record<CustomizableStatus, RoomStatusKind> = {
   overdue: "overdue",
   event: "blocked",
   event_in: "event_in",
+  segment_pending: "segment_pending",
+  segment_clear: "segment_clear",
 };
 
 const STATUS_LABEL: Record<CustomizableStatus, string> = {
@@ -59,6 +61,8 @@ const STATUS_LABEL: Record<CustomizableStatus, string> = {
   overdue: "Overdue",
   event: "Event (Blocked)",
   event_in: "Event · In",
+  segment_pending: "Food/Laundry · Pending",
+  segment_clear: "Food/Laundry · Clear",
 };
 
 type Draft = Record<CustomizableStatus, { bg: string; fg: string }>;
@@ -171,8 +175,10 @@ function RoomStatusColorsPage() {
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground max-w-2xl">
-            These colours are used for room tiles on the Dashboard, the Housekeeping
-            board, room detail pages and the rooms master list for this property.
+            These colours are used for room tiles on the Dashboard (Lodge, Food and
+            Laundry tabs), the Housekeeping board, room detail pages and the rooms
+            master list for this property. Food and Laundry share the same
+            Pending / Clear pair.
           </p>
           <div className="flex gap-2">
             <Button variant="outline" onClick={resetAll} disabled={saving || isLoading}>
