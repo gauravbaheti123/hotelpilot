@@ -6,7 +6,14 @@ import { useCurrentProperty } from "@/hooks/use-property";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/masters/pos-categories")({
-  head: () => ({ meta: [{ title: "POS Categories — HotelPilot" }] }),
+  head: () => ({ meta: [
+    { title: "POS Categories — HotelPilot" },
+    { name: "description", content: "Manage active Sundry and POS categories for the current property." },
+    { property: "og:title", content: "POS Categories — HotelPilot" },
+    { property: "og:description", content: "Manage active Sundry and POS categories for the current property." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: () => (<RequirePermission module="master_data"><PosCategoriesPage /></RequirePermission>),
 });
 
@@ -31,14 +38,14 @@ function PosCategoriesPage() {
     <CrudPage<Cat>
       title="POS Categories"
       subtitle="Categories used when posting custom POS / sundry expenses (Laundry, Mini Bar, Damage, etc.)"
-      table="pos_categories"
+      table="sundry_categories"
       fields={fields}
       columns={columns}
       orderBy={{ column: "name", ascending: true }}
       headerActions={
         current ? (
           <BulkCsvButtons
-            table="pos_categories"
+            table="sundry_categories"
             propertyId={current.id}
             module="pos-categories"
             hotelName={current.name}
