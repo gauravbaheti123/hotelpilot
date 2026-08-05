@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { BedDouble, LogIn, LogOut, IndianRupee, Building2, Users, UtensilsCrossed, ChevronDown, ChevronRight, DoorOpen, Sparkles, Wrench, PartyPopper, CheckCircle2, Receipt } from "lucide-react";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
-import { AddExtraBedDialog } from "@/components/AddExtraBedDialog";
+import { AddChargesDialog } from "@/components/AddChargesDialog";
 import { PunchChargeDialog } from "@/components/PunchChargeDialog";
 import { KotHistoryDialog } from "@/components/KotHistoryDialog";
 import {
@@ -1143,7 +1143,7 @@ function OwnerDashboard({
           reload();
         }}
       />
-      <AddExtraBedDialog
+      <AddChargesDialog
         bookingId={extraBedBookingId}
         open={!!extraBedBookingId}
         onOpenChange={(o: boolean) => { if (!o) setExtraBedBookingId(null); }}
@@ -1804,7 +1804,7 @@ function RoomStatusModal({
             </Button>
             {showExtraBed && (
               <Button variant="outline" onClick={() => bookingId && onAddExtraBed(bookingId)}>
-                <BedDouble className="h-4 w-4 mr-2" /> Add Extra Bed
+                <BedDouble className="h-4 w-4 mr-2" /> Add Charges
               </Button>
             )}
           </div>
