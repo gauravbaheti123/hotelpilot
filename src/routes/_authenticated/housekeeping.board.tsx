@@ -34,13 +34,15 @@ interface RoomRow {
 
 // Palette comes from the shared room-status module so this board always
 // matches the dashboard grid and room detail page.
+// Read lazily: the palette object is mutated in place when a property has
+// custom room-status colours, so snapshotting hex values would go stale.
 const COLOR = {
-  vacant:      ROOM_STATUS_COLORS.vacant.bg,
-  occupied:    ROOM_STATUS_COLORS.occupied.bg,
-  dirty:       ROOM_STATUS_COLORS.dirty.bg,
-  maintenance: ROOM_STATUS_COLORS.maintenance.bg,
-  blocked:     ROOM_STATUS_COLORS.blocked.bg,
-} as const;
+  get vacant() { return ROOM_STATUS_COLORS.vacant.bg; },
+  get occupied() { return ROOM_STATUS_COLORS.occupied.bg; },
+  get dirty() { return ROOM_STATUS_COLORS.dirty.bg; },
+  get maintenance() { return ROOM_STATUS_COLORS.maintenance.bg; },
+  get blocked() { return ROOM_STATUS_COLORS.blocked.bg; },
+};
 
 type TileKind = "vacant" | "occupied" | "dirty" | "maintenance" | "blocked" | "occupied_dirty";
 
