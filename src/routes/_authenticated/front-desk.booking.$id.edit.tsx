@@ -68,6 +68,7 @@ function EditBookingPage() {
   const [saving, setSaving] = useState(false);
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [stayBlocked, setStayBlocked] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -102,12 +103,20 @@ function EditBookingPage() {
   function setExtraGuests(next: WizardExtraGuest[]) {
     setState((s) => (s ? { ...s, extraGuests: next } : s));
   }
+  function patchStay(p: Partial<StayEdit>) {
+    setState((s) => (s ? { ...s, stay: { ...s.stay, ...p } } : s));
+  }
+  const handleStayBlocked = useCallback((b: boolean) => setStayBlocked(b), []);
 
   async function handleSave() {
     if (!state) return;
     setSaving(true);
     try {
       await saveBookingEdit(state, userDisplayName(user));
+      // Stay & Room replays the existing shift / date operations. Any blocking
+      // condition they raise (unsettled bill, night-audit lock, room overlap,
+      // missing permission) surfaces here with its original message.
+      await saveStayEdits(state, user?.id ?? null);
       toast.success("Booking updated");
       router.navigate({ to: "/front-desk/booking/$id", params: { id } });
     } catch (e) {
@@ -131,7 +140,7 @@ function EditBookingPage() {
     );
   }
 
-  const valid = stepValid(step, state);
+  const valid = stepValid(step, state, stayBlocked);
   const last = step === STEPS.length - 1;
 
   return (
@@ -140,8 +149,8 @@ function EditBookingPage() {
         <div className="flex flex-wrap items-center gap-3">
           <BackButton fallbackTo="/front-desk/bookings" />
           <p className="text-sm text-muted-foreground">
-            Guest details, additional guests, Bill To and remarks only. Dates, rooms, rates and payments
-            are changed from the booking page.
+            Guest details, stay dates, room, tariff, Bill To and remarks. Taxes and payments are
+            still changed from the booking page.
           </p>
         </div>
 
@@ -185,12 +194,24 @@ function EditBookingPage() {
             )}
 
             {step === 2 && (
-              <StepBillTo propertyId={state.propertyId} value={state.billTo} onChange={patchBillTo} />
+              <StepEditStayRoom
+                propertyId={state.propertyId}
+                status={state.status}
+                stay={state.stay}
+                onChange={patchStay}
+                onBlockedChange={handleStayBlocked}
+              />
             )}
 
             {step === 3 && (
+              <StepBillTo propertyId={state.propertyId} value={state.billTo} onChange={patchBillTo} />
+            )}
+
+            {step === 4 && (
               <StepRemarks value={state.customRemark} onChange={(customRemark) => patch({ customRemark })} />
             )}
+
+            {step === 5 && <StepEditReview state={state} />}
 
             <div className="flex items-center justify-between border-t pt-4">
               <Button
