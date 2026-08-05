@@ -418,6 +418,106 @@ function RoomCard({
           {nights > 0 && `${nights} night${nights === 1 ? "" : "s"} · ₹${((Number(room.rate) || 0) * nights).toLocaleString("en-IN")}`}
         </div>
       </div>
+
+      {/* Optional add-on charges for this room line. */}
+      <div className="grid gap-3 border-t pt-3 sm:grid-cols-2">
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-xs">
+            <Checkbox
+              checked={room.extraBedEnabled}
+              onCheckedChange={(c) =>
+                onChange({
+                  extraBedEnabled: c === true,
+                  extraBedRate:
+                    c === true && !room.extraBedRate
+                      ? Number(resolvedPlan?.extra_adult_rate) || 0
+                      : room.extraBedRate,
+                })
+              }
+            />
+            Add extra bed
+          </label>
+          {room.extraBedEnabled && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="number" min={1} max={4} value={room.extraBedQty || 1}
+                  onChange={(e) => onChange({ extraBedQty: Math.max(1, Number(e.target.value) || 1) })}
+                  aria-label="Extra bed quantity"
+                />
+                <Input
+                  type="number" min={0} step="0.01" value={room.extraBedRate || ""}
+                  onChange={(e) => onChange({ extraBedRate: Number(e.target.value) || 0 })}
+                  aria-label="Extra bed rate per night"
+                />
+              </div>
+              {(() => {
+                const std = Number(resolvedPlan?.extra_adult_rate) || 0;
+                const rate = Number(room.extraBedRate) || 0;
+                const chk = std > 0 && rate > 0 && rate < std
+                  ? canApplyDiscount(limit, { discountRupees: std - rate, base: std })
+                  : { allowed: true as boolean, reason: undefined as string | undefined };
+                return (
+                  <>
+                    <p className="text-[11px] text-muted-foreground">
+                      {std > 0
+                        ? `Tariff extra bed rate ₹${std.toLocaleString("en-IN")}/night × ${nights || 0} night(s).`
+                        : "No extra bed rate on this tariff plan — enter one manually."}
+                    </p>
+                    {!chk.allowed && <p className="text-xs text-destructive">{chk.reason}</p>}
+                  </>
+                );
+              })()}
+            </>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          {(() => {
+            const hrs = hoursEarly(stdCheckinTime, room.checkInTime);
+            const suggested = resolveEarlyCheckinCharge(ecSlabs, hrs);
+            return (
+              <>
+                <label className="flex items-center gap-2 text-xs">
+                  <Checkbox
+                    checked={room.earlyCheckinEnabled}
+                    onCheckedChange={(c) =>
+                      onChange({
+                        earlyCheckinEnabled: c === true,
+                        earlyCheckinAmount:
+                          c === true && !room.earlyCheckinAmount ? (suggested ?? 0) : room.earlyCheckinAmount,
+                      })
+                    }
+                    disabled={hrs <= 0}
+                  />
+                  Early check-in
+                </label>
+                {hrs <= 0 ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Arrival at/after standard check-in {stdCheckinTime} — no early check-in charge.
+                  </p>
+                ) : (
+                  <>
+                    {room.earlyCheckinEnabled && (
+                      <Input
+                        type="number" min={0} step="0.01" value={room.earlyCheckinAmount || ""}
+                        onChange={(e) => onChange({ earlyCheckinAmount: Number(e.target.value) || 0 })}
+                        aria-label="Early check-in amount"
+                      />
+                    )}
+                    <p className="text-[11px] text-muted-foreground">
+                      {hrs} hour(s) before standard check-in {stdCheckinTime}.{" "}
+                      {suggested != null
+                        ? `Suggested ₹${suggested.toLocaleString("en-IN")} (editable).`
+                        : "No matching slab — set one up in Master Data → Early Check-in Slabs."}
+                    </p>
+                  </>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      </div>
     </div>
   );
 }
