@@ -307,6 +307,8 @@ function AppShellInner({
   const { current } = useCurrentProperty();
   const propertyPaused = current?.status === "paused";
   const propertyId = current?.id ?? null;
+  // Applies the property's custom room-status palette app-wide.
+  useRoomStatusColorOverrides();
 
   // Sidebar collapsed state, persisted per-user in localStorage.
   const storageKey = user?.id ? `hp:sidebar_collapsed:${user.id}` : "hp:sidebar_collapsed";
