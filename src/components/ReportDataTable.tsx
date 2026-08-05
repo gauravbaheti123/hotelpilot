@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { ResponsiveTable } from "@/components/ResponsiveTable";
 import { ReportColumn, fmtINR } from "@/lib/reportExports";
 
 type FilterValue =
@@ -248,7 +249,7 @@ export function ReportDataTable<T>({
             <tfoot className="bg-emerald-50 font-semibold">{totalsRow(derived)}</tfoot>
           )}
         </table>
-      </div>
+      </ResponsiveTable>
     </div>
   );
 }
