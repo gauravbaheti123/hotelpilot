@@ -8,7 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, Printer } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Trash2, Plus, Printer, Check, ChevronsUpDown } from "lucide-react";
 import { inr } from "@/lib/billing";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useAuth } from "@/hooks/use-auth";
@@ -73,13 +75,41 @@ export function PunchChargeDialog({
   const [defaultGst, setDefaultGst] = useState<number>(segment === "food" ? 5 : 5);
   const [printers, setPrinters] = useState<PrinterInfo[]>([]);
   const [printerByItem, setPrinterByItem] = useState<Map<string, string | null>>(new Map());
+  /** Optional banquet event link for walk-in food sales (routes numbering to the EVT-F series). */
+  const [events, setEvents] = useState<{ id: string; label: string }[]>([]);
+  const [eventId, setEventId] = useState<string | null>(null);
+  const [eventOpen, setEventOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setLines([{ key: uid(), description: "", qty: 1, rate: 0, gst_rate: segment === "food" ? 5 : 5, note: "" }]);
     setWalkin(!bookingId);
     setWalkinGuest("");
+    setEventId(null);
   }, [open, segment, bookingId]);
+
+  useEffect(() => {
+    if (!open || !propertyId || segment !== "food") { setEvents([]); return; }
+    let cancelled = false;
+    supabase.from("bookings")
+      .select("id,banquet_number,event_name,event_date,host_name,event_status")
+      .eq("property_id", propertyId)
+      .eq("booking_type", "banquet" as any)
+      .gte("event_date", new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10))
+      .order("event_date", { ascending: true })
+      .limit(200)
+      .then(guardQuery("banquet events")).then(({ data }) => {
+        if (cancelled) return;
+        setEvents(((data ?? []) as any[])
+          .filter((b) => !["cancelled"].includes(String(b.event_status ?? "")))
+          .map((b) => ({
+            id: b.id,
+            label: [b.banquet_number ?? "Event", b.event_name, b.host_name, b.event_date]
+              .filter(Boolean).join(" · "),
+          })));
+      });
+    return () => { cancelled = true; };
+  }, [open, propertyId, segment]);
 
   useEffect(() => {
     if (!open || !propertyId) return;
