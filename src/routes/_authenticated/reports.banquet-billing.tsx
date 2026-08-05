@@ -101,13 +101,14 @@ function Page() {
 
       const vis: BanquetVisibilityRow[] = await fetchBanquetVisibility(propertyId);
       const bookingIds = vis.map((v) => v.booking_id);
-      if (bookingIds.length === 0) { setGroups([]); return; }
       const visByBooking = new Map(vis.map((v) => [v.booking_id, v]));
 
       const [{ data: bks, error: __qp1 }, events] = await Promise.all([
-        supabase.from("bookings")
-          .select("id,booking_number,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number))")
-          .in("id", bookingIds),
+        bookingIds.length
+          ? supabase.from("bookings")
+              .select("id,booking_number,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number))")
+              .in("id", bookingIds)
+          : Promise.resolve({ data: [] as any[], error: null } as any),
         listEventBookings(propertyId),
       ]);
       if (__qp1) reportQueryError("banquet bookings", __qp1);
