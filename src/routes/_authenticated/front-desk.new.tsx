@@ -255,6 +255,16 @@ function NewBookingWizardPage() {
 
   const dirty = !isPristine(state);
 
+  // Android back: step back through the wizard, then confirm before leaving.
+  useBackIntent(step > 0, () => {
+    setStep((s) => prevStepIndex(s, state));
+    return true;
+  });
+  useBackIntent(step === 0 && dirty, () => {
+    setExitOpen(true);
+    return true;
+  });
+
   const leave = useCallback(() => {
     draft.clear();
     router.history.back();
