@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { useRoomCategories, useRooms, useTariffPlans } from "@/hooks/use-rooms";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
+import { useBackIntent } from "@/hooks/use-back-intent";
 import { useFormDraft } from "@/hooks/use-form-draft";
 import { StepBookingType } from "@/components/booking-wizard/StepBookingType";
 import { StepGuestDetails } from "@/components/booking-wizard/StepGuestDetails";
