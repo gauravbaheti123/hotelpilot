@@ -70,11 +70,12 @@ interface Room {
   is_active: boolean;
 }
 
+// Mirrors the shared room-status palette (see src/lib/roomStatusColors.ts).
 const STATUS_COLORS: Record<string, string> = {
-  vacant: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  occupied: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  blocked: "bg-purple-500/10 text-purple-700 dark:text-purple-300",
-  maintenance: "bg-slate-500/10 text-slate-700 dark:text-slate-300",
+  vacant: "bg-white text-slate-900 border border-slate-300",
+  occupied: "bg-green-600 text-white",
+  blocked: "bg-pink-500 text-white",
+  maintenance: "bg-gray-500 text-white",
 };
 
 function RoomsMasterPage() {

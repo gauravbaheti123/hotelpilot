@@ -21,18 +21,20 @@ export const PRIORITY_TONE: Record<string, string> = {
   urgent: "bg-rose-100 text-rose-800 border-rose-300",
 };
 
+// Badge tones mirror the shared room-status palette
+// (white vacant, green occupied, yellow dirty, grey maintenance, pink event).
 export const ROOM_STATUS_TONE: Record<string, string> = {
-  vacant: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  occupied: "bg-sky-100 text-sky-800 border-sky-300",
-  blocked: "bg-purple-100 text-purple-800 border-purple-300",
-  maintenance: "bg-rose-100 text-rose-800 border-rose-300",
+  vacant: "bg-white text-slate-900 border-slate-300",
+  occupied: "bg-green-600 text-white border-green-700",
+  blocked: "bg-pink-500 text-white border-pink-600",
+  maintenance: "bg-gray-500 text-white border-gray-600",
 };
 
 export const HK_STATUS_TONE: Record<string, string> = {
-  clean: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  dirty: "bg-rose-100 text-rose-800 border-rose-300",
-  inspected: "bg-sky-100 text-sky-800 border-sky-300",
-  out_of_order: "bg-slate-200 text-slate-800 border-slate-300",
+  clean: "bg-white text-slate-900 border-slate-300",
+  dirty: "bg-yellow-400 text-yellow-950 border-yellow-500",
+  inspected: "bg-green-600 text-white border-green-700",
+  out_of_order: "bg-gray-500 text-white border-gray-600",
 };
 
 export const HK_STATUSES = ["clean", "dirty", "inspected", "out_of_order"] as const;

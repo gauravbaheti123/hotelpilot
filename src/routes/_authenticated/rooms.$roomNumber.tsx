@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { FolioOpenButton } from "@/components/FolioOpenButton";
 import { BackButton } from "@/components/BackButton";
 import { Badge } from "@/components/ui/badge";
+import { ROOM_STATUS_TONE, HK_STATUS_TONE } from "@/lib/housekeeping";
 import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronLeft, LogOut } from "lucide-react";
@@ -250,8 +251,10 @@ function RoomDetailPage() {
                   {room.category?.name ?? "Uncategorised"}{room.floor != null ? ` · Floor ${room.floor}` : ""}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <StatusBadge label={room.status} variant={isOccupied ? "destructive" : isMaintenance ? "secondary" : "default"} />
-                  <Badge variant={isDirty ? "secondary" : "outline"} className={isDirty ? "bg-amber-100 text-amber-800" : ""}>
+                  <Badge variant="outline" className={`uppercase ${ROOM_STATUS_TONE[room.status] ?? ROOM_STATUS_TONE.vacant}`}>
+                    {room.status}
+                  </Badge>
+                  <Badge variant="outline" className={HK_STATUS_TONE[room.housekeeping_status] ?? ""}>
                     HK: {room.housekeeping_status}
                   </Badge>
                 </div>
