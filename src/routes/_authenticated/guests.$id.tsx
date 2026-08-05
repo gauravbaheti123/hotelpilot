@@ -41,6 +41,7 @@ interface Guest {
   company: string | null; gst_number: string | null;
   id_proof_type: string | null; id_proof_number: string | null;
   notes: string | null; tags: string[] | null; is_blacklisted: boolean;
+  guest_type: string | null;
   id_document_url?: string | null;
   id_document_name?: string | null;
   id_document_uploaded_at?: string | null;
@@ -144,7 +145,9 @@ function GuestDetail() {
       const changed = Object.keys(newMap).filter(
         (k) => (beforeMap[k] ?? null) !== (newMap[k] ?? null),
       );
-      const { error } = await supabase.from("guests").update({ name, ...payload, tags }).eq("id", g.id);
+      const { error } = await supabase.from("guests")
+        .update({ name, ...payload, tags, guest_type: g.guest_type === "corporate" ? "corporate" : "regular" } as never)
+        .eq("id", g.id);
       if (error) throw error;
       const { data: u } = await supabase.auth.getUser();
       logActivity({
@@ -286,6 +289,9 @@ function GuestDetail() {
                 <Ban className="h-3 w-3 mr-1" />Blacklisted
               </Badge>
             )}
+            <Badge variant={g.guest_type === "corporate" ? "default" : "secondary"}>
+              {g.guest_type === "corporate" ? "Corporate" : "Regular"}
+            </Badge>
             {(g.tags ?? []).map((t) => <Badge key={t} variant="secondary">{t}</Badge>)}
           </div>
         </div>
@@ -399,6 +405,25 @@ function GuestDetail() {
             )}
             <Field label="Pincode"><Input readOnly={ro} value={g.pincode ?? ""} onChange={(e) => patch("pincode", e.target.value)} maxLength={12} /></Field>
             <div className="md:col-span-2"><Field label="Address Line"><Textarea readOnly={ro} rows={2} value={g.address ?? ""} onChange={(e) => patch("address", e.target.value)} maxLength={500} /></Field></div>
+            <Field label="Guest Type">
+              {ro ? (
+                <Input readOnly value={g.guest_type === "corporate" ? "Corporate" : "Regular"} />
+              ) : (
+                <Select
+                  value={g.guest_type === "corporate" ? "corporate" : "regular"}
+                  onValueChange={(v) => patch("guest_type", v)}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="regular">Regular</SelectItem>
+                    <SelectItem value="corporate">Corporate</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Auto-set to Corporate when a booking uses a Corporate tariff plan.
+              </p>
+            </Field>
             <div className="md:col-span-2"><Field label="Tags (comma separated)"><Input readOnly={ro} value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} /></Field></div>
             <div className="md:col-span-2"><Field label="Notes"><Textarea readOnly={ro} rows={2} value={g.notes ?? ""} onChange={(e) => patch("notes", e.target.value)} maxLength={1000} /></Field></div>
           </div>

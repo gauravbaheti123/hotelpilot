@@ -199,7 +199,7 @@ export async function lookupExistingGuestId(
         name: g.name ?? null,
         mobile: g.mobile ?? null,
         idProofNumber: g.id_proof_number ?? null,
-        guestType: ((g.tags ?? []) as string[]).includes("corporate")
+        guestType: (g as { guest_type?: string | null }).guest_type === "corporate"
           ? "corporate"
           : "regular",
       },
