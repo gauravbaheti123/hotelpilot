@@ -96,8 +96,10 @@ function checkoutFolioRank(f: any) {
 }
 
 function pickCheckoutFolio(rows: any[]) {
-  return [...rows]
-    .filter((f) => !f?.is_deleted && !["void", "refunded"].includes(String(f?.status ?? "")))
+  // `payableFolios` drops any folio that has been split into live child
+  // portions — its charges were cloned onto the children, so summing it
+  // double-counts the bill and invents a phantom balance at check-out.
+  return payableFolios([...rows] as any[])
     .sort((a, b) => {
       const ar = checkoutFolioRank(a);
       const br = checkoutFolioRank(b);
