@@ -161,7 +161,9 @@ export async function loadBookingForEdit(bookingId: string): Promise<BookingEdit
   // Active room lines only — `shifted` rows are closed-out audit history.
   const { data: brData, error: brErr } = await supabase
     .from("booking_rooms")
-    .select("id, room_id, category_id, rate, status, rooms(room_number), room_categories(name)")
+    .select(
+      "id, room_id, category_id, rate, status, rooms:rooms!booking_rooms_room_id_fkey(room_number), room_categories(name)",
+    )
     .eq("booking_id", bookingId)
     .order("created_at", { ascending: true });
   if (brErr) reportQueryError("booking rooms", brErr);
