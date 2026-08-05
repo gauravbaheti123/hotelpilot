@@ -154,9 +154,9 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
     details: Record<string, unknown> | null;
   }>>([]);
 
-  const load = () => {
+  /** Awaitable loader — pull-to-refresh needs to know when the fetch ends. */
+  const runLoad = async () => {
     if (!propertyId) return;
-    (async () => {
       let qb = supabase.from("folios")
         .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,settled_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number)))" as any)
         .eq("property_id", propertyId);
@@ -185,9 +185,14 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
           !isBanquetRecord(scope, { booking_id: f.booking_id, folio_id: f.id }),
       );
       setRows(visible as unknown as Row[]);
-    })();
   };
+  const load = () => { void runLoad(); };
   useEffect(load, [propertyId, audit]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pull-to-refresh (native shell only). Opt-in via prop so the copy embedded
+  // in the Dashboard doesn't steal registration from the Dashboard's own
+  // reload.
+  useRegisterRefresh(pullToRefresh ? runLoad : null);
 
   // Deep-link support: /billing/invoices?seg=food&bill=FB-0007 lands on the
   // right tab with the bill pre-filtered (used by the dashboard action menu).
