@@ -80,7 +80,8 @@ export async function loadBookingForEdit(bookingId: string): Promise<BookingEdit
        guests!bookings_guest_id_fkey (
          id, name, mobile, email, dob, city, state, country, nationality, address, pincode,
          id_proof_type, id_proof_number, company, gst_number,
-         id_document_url, id_document_name
+         id_document_url, id_document_name,
+         id_document_back_url, id_document_back_name
        )`,
     )
     .eq("id", bookingId)
@@ -111,6 +112,8 @@ export async function loadBookingForEdit(bookingId: string): Promise<BookingEdit
     gstNumber: (g?.gst_number as string) ?? "",
     idDocViewUrl: (g?.id_document_url as string) ?? null,
     idDocName: (g?.id_document_name as string) ?? null,
+    idDocBackViewUrl: (g?.id_document_back_url as string) ?? null,
+    idDocBackName: (g?.id_document_back_name as string) ?? null,
   };
 
   const { data: bgData, error: bgErr } = await supabase
@@ -262,6 +265,46 @@ export async function saveBookingEdit(s: BookingEditState, actorName: string | n
     },
   } as never);
   if (error) throw error;
+  await persistGuestIdDocs(s);
+}
+
+/**
+ * Best-effort persistence of the front/back ID document links captured in the
+ * edit wizard's Guest Details step. Never blocks the save.
+ */
+async function persistGuestIdDocs(s: BookingEditState) {
+  const g = s.guest;
+  if (!g.guestId) return;
+  const now = new Date().toISOString();
+  const patch: Record<string, unknown> = {};
+  if (g.idDocViewUrl) {
+    patch.id_document_url = g.idDocViewUrl;
+    patch.id_document_name = g.idDocName;
+    patch.id_document_uploaded_at = now;
+  }
+  if (g.idDocBackViewUrl) {
+    patch.id_document_back_url = g.idDocBackViewUrl;
+    patch.id_document_back_name = g.idDocBackName;
+    patch.id_document_back_uploaded_at = now;
+  }
+  if (!Object.keys(patch).length) return;
+  try {
+    await supabase.from("guests").update(patch as never).eq("id", g.guestId);
+    const rows: Record<string, unknown>[] = [];
+    if (g.idDocFileId && g.idDocViewUrl) {
+      rows.push({
+        property_id: s.propertyId, guest_id: g.guestId, booking_id: s.bookingId, side: "front",
+        document_name: g.idDocName, drive_file_id: g.idDocFileId, drive_view_url: g.idDocViewUrl,
+      });
+    }
+    if (g.idDocBackFileId && g.idDocBackViewUrl) {
+      rows.push({
+        property_id: s.propertyId, guest_id: g.guestId, booking_id: s.bookingId, side: "back",
+        document_name: g.idDocBackName, drive_file_id: g.idDocBackFileId, drive_view_url: g.idDocBackViewUrl,
+      });
+    }
+    if (rows.length) await supabase.from("guest_documents").insert(rows as never);
+  } catch { /* non-blocking */ }
 }
 
 /**
