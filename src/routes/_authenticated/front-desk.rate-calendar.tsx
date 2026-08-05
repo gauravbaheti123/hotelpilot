@@ -13,6 +13,7 @@ import { TARIFF_PLAN_SELECT, pickTariffPlan, type TariffPlan } from "@/lib/tarif
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { useRegisterRefresh } from "@/components/PullToRefresh";
 import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/front-desk/rate-calendar")({
   head: () => ({ meta: [{ title: "Rate Calendar — HotelPilot" }] }),
@@ -65,6 +66,9 @@ function RateCalendarPage() {
     if (current) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, start]);
+
+  // Pull-to-refresh (native shell only).
+  useRegisterRefresh(load);
 
   /**
    * Phase 27b — the base rate is the tariff plan that is valid on that very
