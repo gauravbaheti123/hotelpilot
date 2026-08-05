@@ -60,7 +60,7 @@ export function AddChargesDialog({ bookingId, open, onOpenChange, onDone }: Prop
   const [qty, setQty] = useState(1);
   const [bedRate, setBedRate] = useState(0);
   const [amount, setAmount] = useState("");
-  const [hours, setHours] = useState("");
+  // Hours-early is auto-detected only (no staff-facing input) — see below.
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
 
