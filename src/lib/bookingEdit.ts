@@ -211,7 +211,11 @@ export async function loadBookingForEdit(bookingId: string): Promise<BookingEdit
 /** Creates (or reuses) the Bill To company row selected in the edit form. */
 async function resolveEditBillingCompanyId(propertyId: string, b: WizardBillTo): Promise<string | null> {
   if (!b.enabled) return null;
-  if (b.companyId) return b.companyId;
+  if (b.companyId) {
+    // Persist any GST-verified refresh back onto the master company record.
+    await syncBillingCompanyRecord(b.companyId, b);
+    return b.companyId;
+  }
   if (!b.name.trim()) return null;
   const { data, error } = await supabase
     .from("billing_companies")
