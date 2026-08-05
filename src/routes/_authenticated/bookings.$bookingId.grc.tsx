@@ -18,6 +18,22 @@ import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 
+/** Display-only Title Case for stored ID proof types ("aadhaar" → "Aadhaar"). */
+const ID_PROOF_LABELS: Record<string, string> = {
+  aadhaar: "Aadhaar", aadhar: "Aadhaar", pan: "PAN", passport: "Passport",
+  voter_id: "Voter Id", voterid: "Voter Id", "voter id": "Voter Id",
+  driving_license: "Driving License", driving_licence: "Driving License",
+  dl: "Driving License", other: "Other",
+};
+function formatIdProof(raw: string): string {
+  const key = raw.trim().toLowerCase();
+  if (ID_PROOF_LABELS[key]) return ID_PROOF_LABELS[key];
+  return raw
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\S+/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
 function fmtDateTime(value: string | null | undefined, fallbackTime?: string | null): string {
   if (!value) return "—";
   const isTs = value.includes("T") || value.length > 10;
@@ -421,7 +437,7 @@ function GrcPage() {
         </Card>
 
         {/* Print layout */}
-        <div id="grc-print-area" className="grc-print bg-white text-black border-2 border-black p-6 text-[13px] leading-relaxed">
+        <div id="grc-print-area" className="grc-print flex min-h-[1000px] flex-col bg-white text-black border-2 border-black p-6 text-[13px] leading-relaxed">
           <div className="flex items-start gap-4 border-b-2 border-black pb-3 mb-4">
             {property?.logo_url && (
               <img src={property.logo_url} alt="" className="h-24 w-24 object-contain" />
