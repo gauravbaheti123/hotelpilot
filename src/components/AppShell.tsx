@@ -609,7 +609,12 @@ function AppShellInner({
             {titleSlot}
           </div>
         )}
-        <main className="flex-1 p-3 sm:p-6 overflow-auto">{children}</main>
+        <main
+          data-scroll-container
+          className="flex-1 p-3 sm:p-6 overflow-auto [overscroll-behavior-y:contain]"
+        >
+          <PullToRefresh>{children}</PullToRefresh>
+        </main>
       </div>
       {user?.id && (
         <ProfileDialog
