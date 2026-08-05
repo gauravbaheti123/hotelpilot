@@ -2250,7 +2250,7 @@ function FolioPage() {
                         <div className="text-xs text-gray-700">Ph: {linkedCo?.phone || linkedGuest?.mobile}</div>
                       )}
                       {otaName && (
-                        <div className="text-[11px] text-gray-500 mt-1">Booking via: {otaName}</div>
+                        <div className="text-[11px] text-gray-500 mt-1 font-bold">Booking via: {otaName}</div>
                       )}
                     </>
                   );
@@ -2261,7 +2261,7 @@ function FolioPage() {
                     {booking.guests?.mobile && <div className="text-xs text-gray-700">Mobile: {booking.guests.mobile}</div>}
                     {booking.guests?.address && <div className="text-xs text-gray-700">{booking.guests.address}</div>}
                     {otaName && (
-                      <div className="text-[11px] text-gray-500 mt-1">Booking via: {otaName}</div>
+                      <div className="text-[11px] text-gray-500 mt-1 font-bold">Booking via: {otaName}</div>
                     )}
                   </>
                 );
