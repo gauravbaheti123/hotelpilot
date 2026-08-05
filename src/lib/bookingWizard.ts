@@ -342,6 +342,11 @@ export function emptyRoom(from?: Partial<WizardRoom>): WizardRoom {
     tariffId: "",
     rate: 0,
     rateType: "exclusive",
+    extraBedEnabled: false,
+    extraBedQty: 1,
+    extraBedRate: 0,
+    earlyCheckinEnabled: false,
+    earlyCheckinAmount: 0,
     ...from,
     ...(from ? { key: nextKey("room") } : {}),
   };
