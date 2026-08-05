@@ -83,6 +83,9 @@ function GrcPage() {
   const [property, setProperty] = useState<any>(null);
   const [grc, setGrc] = useState<GrcState>(empty);
   const [staffOptions, setStaffOptions] = useState<string[]>([]);
+  // Bill-To GSTIN snapshot taken on the folio at booking time — used when the
+  // master company row predates GST capture (name-only imports).
+  const [folioGstin, setFolioGstin] = useState<string>("");
 
   useEffect(() => {
     (async () => {
@@ -113,6 +116,16 @@ function GrcPage() {
         .from("grc_records")
         .select("*").eq("booking_id", bookingId).maybeSingle();
       if (__qe2) reportQueryError("grc records", __qe2);
+      const { data: fol, error: __qeF } = await supabase
+        .from("folios")
+        .select("guest_gstin")
+        .eq("booking_id", bookingId)
+        .neq("status", "void")
+        .not("guest_gstin", "is", null)
+        .limit(1)
+        .maybeSingle();
+      if (__qeF) reportQueryError("folio", __qeF);
+      setFolioGstin(((fol as { guest_gstin?: string } | null)?.guest_gstin ?? "").trim());
       // Duty Manager defaults to the logged-in user; a saved value always wins.
       let signedInName = "";
       const uid = (await supabase.auth.getSession()).data.session?.user?.id ?? null;
