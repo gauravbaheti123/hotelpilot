@@ -4,6 +4,7 @@
 import { DEFAULT_NATION } from "@/lib/indiaGeo";
 import { isValidMobile } from "@/lib/mobile";
 import { addDaysIso, isValidStayRange, nightsBetween, todayIso } from "@/lib/front-desk";
+import { istTimeHHmm } from "@/lib/date";
 import { isValidOrEmptyGSTIN } from "@/lib/gstin";
 
 export type BookingKind = "lodge" | "banquet";
@@ -250,7 +251,7 @@ export function emptyEventRoomRow(from?: Partial<WizardEventRoomRow>): WizardEve
     guestName: "",
     guestMobile: "",
     checkIn: today,
-    checkInTime: "12:00",
+    checkInTime: istTimeHHmm(),
     checkOut: addDaysIso(today, 1),
     checkOutTime: "11:00",
     specialRate: "",
@@ -336,7 +337,7 @@ export function emptyRoom(from?: Partial<WizardRoom>): WizardRoom {
     roomId: "",
     assignLater: false,
     checkIn: todayIso(),
-    checkInTime: "12:00",
+    checkInTime: istTimeHHmm(),
     checkOut: addDaysIso(todayIso(), 1),
     checkOutTime: "11:00",
     planName: "",

@@ -243,12 +243,28 @@ function RoomCard({
 
   // Keep the stored hours-early in sync when the arrival time is edited.
   const hrsEarly = hoursEarly(stdCheckinTime, room.checkInTime);
+  const suggestedEc = resolveEarlyCheckinCharge(ecSlabs, hrsEarly);
   useEffect(() => {
-    if (!room.earlyCheckinEnabled) return;
     if (room.earlyCheckinHours === hrsEarly) return;
     onChange({ earlyCheckinHours: hrsEarly });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hrsEarly, room.earlyCheckinEnabled]);
+  }, [hrsEarly]);
+
+  // Auto-tick early check-in when detected and a slab matches, until the user
+  // decides for themselves (unchecking must stick).
+  const [ecTouched, setEcTouched] = useState(false);
+  useEffect(() => {
+    if (ecTouched) return;
+    const applicable = hrsEarly > 0 && suggestedEc != null && suggestedEc > 0;
+    if (applicable && !room.earlyCheckinEnabled) {
+      onChange({ earlyCheckinEnabled: true, earlyCheckinHours: hrsEarly, earlyCheckinAmount: suggestedEc });
+    } else if (applicable && !room.earlyCheckinAmount) {
+      onChange({ earlyCheckinAmount: suggestedEc });
+    } else if (!applicable && room.earlyCheckinEnabled) {
+      onChange({ earlyCheckinEnabled: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hrsEarly, suggestedEc, ecTouched]);
 
   useEffect(() => {
     onViolation(rateCheck.allowed ? null : rateCheck.reason ?? "Rate below your discount limit");
@@ -491,15 +507,16 @@ function RoomCard({
                 <label className="flex items-center gap-2 text-xs">
                   <Checkbox
                     checked={room.earlyCheckinEnabled}
-                    onCheckedChange={(c) =>
+                    onCheckedChange={(c) => {
+                      setEcTouched(true);
                       onChange({
                         earlyCheckinEnabled: c === true,
                         earlyCheckinHours: hrs,
                         earlyCheckinAmount:
                           c === true && !room.earlyCheckinAmount ? (suggested ?? 0) : room.earlyCheckinAmount,
-                      })
-                    }
-                    disabled={hrs <= 0}
+                      });
+                    }}
+                    disabled={hrs <= 0 || suggested == null || suggested <= 0}
                   />
                   Early check-in
                 </label>
