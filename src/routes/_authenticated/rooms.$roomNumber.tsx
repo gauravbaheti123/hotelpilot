@@ -267,9 +267,9 @@ function RoomDetailPage() {
                   </Button>
                 )}
                 {isOccupied && booking && (
-                  <Button asChild size="sm" variant="outline">
-                    <Link to="/billing/folio/$bookingId" params={{ bookingId: booking.id }}>View Bill</Link>
-                  </Button>
+                  <FolioOpenButton bookingId={booking.id} size="sm" variant="outline">
+                    View Bill
+                  </FolioOpenButton>
                 )}
                 {isOccupied && booking && (
                   <Button size="sm" onClick={() => setCheckoutOpen(true)}>
@@ -323,9 +323,9 @@ function RoomDetailPage() {
             </div>
             {folioId && (
               <div className="mt-3">
-                <Button asChild size="sm" variant="outline">
-                  <Link to="/billing/folio/$bookingId" params={{ bookingId: booking.id }}>Open folio</Link>
-                </Button>
+                <FolioOpenButton bookingId={booking.id} size="sm" variant="outline">
+                  Open folio
+                </FolioOpenButton>
               </div>
             )}
           </Section>
