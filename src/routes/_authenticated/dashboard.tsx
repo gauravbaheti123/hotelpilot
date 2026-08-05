@@ -44,7 +44,7 @@ import {
 import { RequirePermission } from "@/components/RequirePermission";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
-import { ROOM_STATUS_COLORS, PENDING_FOOD_BADGE } from "@/lib/roomStatusColors";
+import { ROOM_STATUS_COLORS, PENDING_FOOD_BADGE, roomStatusColor } from "@/lib/roomStatusColors";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — HotelPilot" }] }),
   component: () => (<RequirePermission module="dashboard"><DashboardRouter /></RequirePermission>),
