@@ -1422,19 +1422,12 @@ function SegmentRoomCard({
   );
 }
 
-// === Batch 2: solid-colour room tiles. Each kind paints its full background.
-// Hex only — these values are read directly by inline style so we never depend
-// on Tailwind color utilities (and we keep the same palette the user signed off).
-const STATUS_META: Record<string, { label: string; bg: string }> = {
-  vacant:      { label: "Vacant",      bg: "#16a34a" },
-  occupied:    { label: "Occupied",    bg: "#dc2626" },
-  dirty:       { label: "Dirty",       bg: "#d97706" },
-  maintenance: { label: "Maintenance", bg: "#6b7280" },
-  blocked:     { label: "Event",       bg: "#7c3aed" },
-  overdue:     { label: "OVERDUE",     bg: "#b45309" },
-};
-const EVENT_BLOCK_BG = "#7c3aed";
-const EVENT_IN_BG = "#6d28d9";
+// === Solid-colour room tiles. The palette itself lives in one shared module
+// (src/lib/roomStatusColors.ts) so the dashboard, housekeeping board and room
+// detail page never drift apart.
+const STATUS_META = ROOM_STATUS_COLORS;
+const EVENT_BLOCK_BG = ROOM_STATUS_COLORS.blocked.bg;
+const EVENT_IN_BG = ROOM_STATUS_COLORS.event_in.bg;
 // Back-compat alias used elsewhere in this file.
 const EVENT_BG = EVENT_BLOCK_BG;
 
