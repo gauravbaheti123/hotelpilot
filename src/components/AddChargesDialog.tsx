@@ -70,7 +70,7 @@ export function AddChargesDialog({ bookingId, open, onOpenChange, onDone }: Prop
 
   useEffect(() => {
     if (!open || !bookingId) {
-      setCtx(null); setQty(1); setBedRate(0); setAmount(""); setHours("");
+      setCtx(null); setQty(1); setBedRate(0); setAmount("");
       setDescription(""); setKind("early_checkin");
       return;
     }
@@ -146,8 +146,7 @@ export function AddChargesDialog({ bookingId, open, onOpenChange, onDone }: Prop
   const autoHours = ctx
     ? hoursEarly(ctx.default_checkin_time ?? "12:00", ctx.actual_checkin_time)
     : 0;
-  const effHours = hours === "" ? autoHours : Number(hours) || 0;
-  const suggested = resolveEarlyCheckinCharge(ecSlabs, effHours);
+  const suggested = resolveEarlyCheckinCharge(ecSlabs, autoHours);
 
   useEffect(() => {
     if (kind !== "early_checkin") return;
@@ -220,8 +219,7 @@ export function AddChargesDialog({ bookingId, open, onOpenChange, onDone }: Prop
       if (kind === "extra_bed") {
         await saveExtraBed();
       } else if (kind === "early_checkin") {
-        if (effHours <= 0) { toast.error("Hours early must be greater than 0"); return; }
-        await saveFolioCharge("early_checkin", earlyCheckinDescription(effHours));
+        await saveFolioCharge("early_checkin", earlyCheckinDescription());
       } else {
         const desc = description.trim();
         if (!desc) { toast.error("Enter a description"); return; }
