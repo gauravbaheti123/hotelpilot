@@ -3,7 +3,7 @@
 // deliberately live OUTSIDE the DB transaction.
 import { supabase } from "@/integrations/supabase/client";
 import { createBooking, type CreateBookingPayload, type CreateBookingResult } from "@/lib/bookingCreate";
-import { roomsTotal, stayRange, type WizardState } from "@/lib/bookingWizard";
+import { roomsTotal, stayRange, type WizardBillTo, type WizardState } from "@/lib/bookingWizard";
 import { earlyCheckinDescription } from "@/lib/earlyCheckin";
 import { eventTotals } from "@/lib/bookingWizard";
 import { createEventBooking, seedEventFolioCharges } from "@/lib/banquetEvent";
