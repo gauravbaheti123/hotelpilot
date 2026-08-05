@@ -251,6 +251,7 @@ function OwnerDashboard({
     guestName: string | null;
   } | null>(null);
   const navigate = useNavigate();
+  const { openFolio, picker: folioPicker } = useFolioOpener();
 
   useEffect(() => {
     if (!userId) return;
