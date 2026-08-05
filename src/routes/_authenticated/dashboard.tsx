@@ -841,14 +841,14 @@ function OwnerDashboard({
               />
             )}
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
-              <LegendDot style={{ backgroundColor: "#16a34a" }} label="Vacant" />
-              <LegendDot style={{ backgroundColor: "#dc2626" }} label="Occupied" />
-              <LegendDot style={{ backgroundColor: "#b45309" }} label="Overdue" />
-              <LegendDot style={{ backgroundColor: "#d97706" }} label="Dirty" />
-              <LegendDot style={{ backgroundColor: "#6b7280" }} label="Maintenance" />
-              <LegendDot style={{ backgroundColor: "#7c3aed" }} label="Event" />
-              <LegendDot style={{ backgroundColor: "#6d28d9" }} label="Event·In" />
-              <LegendDot style={{ backgroundColor: "#fbbf24" }} label="Pending food" />
+              <LegendDot style={{ backgroundColor: ROOM_STATUS_COLORS.vacant.bg, border: `1px solid ${ROOM_STATUS_COLORS.vacant.border}` }} label="Vacant" />
+              <LegendDot style={{ backgroundColor: ROOM_STATUS_COLORS.occupied.bg }} label="Occupied" />
+              <LegendDot style={{ backgroundColor: ROOM_STATUS_COLORS.overdue.bg }} label="Overdue" />
+              <LegendDot style={{ backgroundColor: ROOM_STATUS_COLORS.dirty.bg }} label="Dirty" />
+              <LegendDot style={{ backgroundColor: ROOM_STATUS_COLORS.maintenance.bg }} label="Maintenance" />
+              <LegendDot style={{ backgroundColor: ROOM_STATUS_COLORS.blocked.bg }} label="Event" />
+              <LegendDot style={{ backgroundColor: ROOM_STATUS_COLORS.event_in.bg }} label="Event·In" />
+              <LegendDot style={{ backgroundColor: PENDING_FOOD_BADGE.bg }} label="Pending food" />
             </div>
             <div className="mt-4 flex items-center gap-2 border-t pt-3">
               <Label className="text-xs text-muted-foreground">Group rooms by</Label>
