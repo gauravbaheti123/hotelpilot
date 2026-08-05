@@ -108,6 +108,7 @@ import { Route as AuthenticatedBanquetBookingsRouteImport } from './routes/_auth
 import { Route as AuthenticatedSuperadminRolesIndexRouteImport } from './routes/_authenticated/superadmin.roles.index'
 import { Route as AuthenticatedSuperadminRolesIdRouteImport } from './routes/_authenticated/superadmin.roles.$id'
 import { Route as AuthenticatedFrontDeskBookingIdRouteImport } from './routes/_authenticated/front-desk.booking.$id'
+import { Route as AuthenticatedFrontDeskBookingLegacyIdRouteImport } from './routes/_authenticated/front-desk.booking-legacy.$id'
 import { Route as AuthenticatedFoodKotIdRouteImport } from './routes/_authenticated/food.kot.$id'
 import { Route as AuthenticatedBookingsBookingIdGrcRouteImport } from './routes/_authenticated/bookings.$bookingId.grc'
 import { Route as AuthenticatedBillingFolioBookingIdRouteImport } from './routes/_authenticated/billing.folio.$bookingId'
@@ -684,6 +685,12 @@ const AuthenticatedFrontDeskBookingIdRoute =
     path: '/front-desk/booking/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFrontDeskBookingLegacyIdRoute =
+  AuthenticatedFrontDeskBookingLegacyIdRouteImport.update({
+    id: '/front-desk/booking-legacy/$id',
+    path: '/front-desk/booking-legacy/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFoodKotIdRoute = AuthenticatedFoodKotIdRouteImport.update({
   id: '/food/kot/$id',
   path: '/food/kot/$id',
@@ -828,6 +835,7 @@ export interface FileRoutesByFullPath {
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/bookings/$bookingId/grc': typeof AuthenticatedBookingsBookingIdGrcRoute
   '/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
+  '/front-desk/booking-legacy/$id': typeof AuthenticatedFrontDeskBookingLegacyIdRoute
   '/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRouteWithChildren
   '/superadmin/roles/$id': typeof AuthenticatedSuperadminRolesIdRoute
   '/superadmin/roles/': typeof AuthenticatedSuperadminRolesIndexRoute
@@ -935,6 +943,7 @@ export interface FileRoutesByTo {
   '/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/bookings/$bookingId/grc': typeof AuthenticatedBookingsBookingIdGrcRoute
   '/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
+  '/front-desk/booking-legacy/$id': typeof AuthenticatedFrontDeskBookingLegacyIdRoute
   '/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRouteWithChildren
   '/superadmin/roles/$id': typeof AuthenticatedSuperadminRolesIdRoute
   '/superadmin/roles': typeof AuthenticatedSuperadminRolesIndexRoute
@@ -1044,6 +1053,7 @@ export interface FileRoutesById {
   '/_authenticated/billing/folio/$bookingId': typeof AuthenticatedBillingFolioBookingIdRoute
   '/_authenticated/bookings/$bookingId/grc': typeof AuthenticatedBookingsBookingIdGrcRoute
   '/_authenticated/food/kot/$id': typeof AuthenticatedFoodKotIdRoute
+  '/_authenticated/front-desk/booking-legacy/$id': typeof AuthenticatedFrontDeskBookingLegacyIdRoute
   '/_authenticated/front-desk/booking/$id': typeof AuthenticatedFrontDeskBookingIdRouteWithChildren
   '/_authenticated/superadmin/roles/$id': typeof AuthenticatedSuperadminRolesIdRoute
   '/_authenticated/superadmin/roles/': typeof AuthenticatedSuperadminRolesIndexRoute
@@ -1153,6 +1163,7 @@ export interface FileRouteTypes {
     | '/billing/folio/$bookingId'
     | '/bookings/$bookingId/grc'
     | '/food/kot/$id'
+    | '/front-desk/booking-legacy/$id'
     | '/front-desk/booking/$id'
     | '/superadmin/roles/$id'
     | '/superadmin/roles/'
@@ -1260,6 +1271,7 @@ export interface FileRouteTypes {
     | '/billing/folio/$bookingId'
     | '/bookings/$bookingId/grc'
     | '/food/kot/$id'
+    | '/front-desk/booking-legacy/$id'
     | '/front-desk/booking/$id'
     | '/superadmin/roles/$id'
     | '/superadmin/roles'
@@ -1368,6 +1380,7 @@ export interface FileRouteTypes {
     | '/_authenticated/billing/folio/$bookingId'
     | '/_authenticated/bookings/$bookingId/grc'
     | '/_authenticated/food/kot/$id'
+    | '/_authenticated/front-desk/booking-legacy/$id'
     | '/_authenticated/front-desk/booking/$id'
     | '/_authenticated/superadmin/roles/$id'
     | '/_authenticated/superadmin/roles/'
@@ -2086,6 +2099,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrontDeskBookingIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/front-desk/booking-legacy/$id': {
+      id: '/_authenticated/front-desk/booking-legacy/$id'
+      path: '/front-desk/booking-legacy/$id'
+      fullPath: '/front-desk/booking-legacy/$id'
+      preLoaderRoute: typeof AuthenticatedFrontDeskBookingLegacyIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/food/kot/$id': {
       id: '/_authenticated/food/kot/$id'
       path: '/food/kot/$id'
@@ -2262,6 +2282,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBillingFolioBookingIdRoute: typeof AuthenticatedBillingFolioBookingIdRoute
   AuthenticatedBookingsBookingIdGrcRoute: typeof AuthenticatedBookingsBookingIdGrcRoute
   AuthenticatedFoodKotIdRoute: typeof AuthenticatedFoodKotIdRoute
+  AuthenticatedFrontDeskBookingLegacyIdRoute: typeof AuthenticatedFrontDeskBookingLegacyIdRoute
   AuthenticatedFrontDeskBookingIdRoute: typeof AuthenticatedFrontDeskBookingIdRouteWithChildren
 }
 
@@ -2365,6 +2386,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBookingsBookingIdGrcRoute:
     AuthenticatedBookingsBookingIdGrcRoute,
   AuthenticatedFoodKotIdRoute: AuthenticatedFoodKotIdRoute,
+  AuthenticatedFrontDeskBookingLegacyIdRoute:
+    AuthenticatedFrontDeskBookingLegacyIdRoute,
   AuthenticatedFrontDeskBookingIdRoute:
     AuthenticatedFrontDeskBookingIdRouteWithChildren,
 }
@@ -2391,3 +2414,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
