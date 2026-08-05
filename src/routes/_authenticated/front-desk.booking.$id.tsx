@@ -52,6 +52,7 @@ import { BookingEditWizard } from "@/components/booking-wizard/BookingEditWizard
 import {
   LogIn,
   LogOut,
+  MoreHorizontal,
   ArrowLeftRight,
   CalendarClock,
   Ban,
