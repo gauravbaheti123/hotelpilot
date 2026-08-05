@@ -52,6 +52,7 @@ import {
   Check,
   BedDouble,
   FileText,
+  Pencil,
   AlertTriangle,
 } from "lucide-react";
 import { istToday } from "@/lib/date";
@@ -582,6 +583,11 @@ function BookingDetailPage() {
               <Link to="/bookings/$bookingId/grc" params={{ bookingId: b.id }}>
                 <Button variant="outline"><FileText className="h-4 w-4 mr-1" /> Print GRC</Button>
               </Link>
+              {(b.status === "reserved" || b.status === "checked_in") && (
+                <Link to="/front-desk/booking/$id/edit" params={{ id: b.id }}>
+                  <Button variant="outline"><Pencil className="h-4 w-4 mr-1" /> Edit details</Button>
+                </Link>
+              )}
               {canCheckIn && <Button onClick={checkIn}><LogIn className="h-4 w-4 mr-1" /> Check-in</Button>}
               {canCheckOut && <Button onClick={() => setCheckoutOpen(true)}><LogOut className="h-4 w-4 mr-1" /> Check-out</Button>}
               {canShift && b.booking_rooms[0] && (
