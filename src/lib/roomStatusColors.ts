@@ -40,10 +40,10 @@ const WHITE = "#ffffff";
 const WHITE_MUTED = "rgba(255,255,255,0.85)";
 
 export const ROOM_STATUS_COLORS: Record<RoomStatusKind, RoomStatusColor> = {
-  // Vacant / Ready — white tile, dark text for contrast.
+  // Vacant / Ready — very light blue tile, dark text for contrast.
   vacant: {
-    label: "Vacant", bg: "#ffffff", fg: DARK, fgMuted: DARK_MUTED,
-    border: "#d1d5db", btnBg: DARK, btnFg: WHITE,
+    label: "Vacant", bg: "#e0f2fe", fg: DARK, fgMuted: DARK_MUTED,
+    border: "#bae6fd", btnBg: DARK, btnFg: WHITE,
   },
   occupied: {
     label: "Occupied", bg: "#16a34a", fg: WHITE, fgMuted: WHITE_MUTED,
