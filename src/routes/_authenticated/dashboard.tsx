@@ -1605,7 +1605,7 @@ const RoomCard = memo(function RoomCard({
                 <div>{fmtShortDT(occ.checkOut, occ.checkOutTime)} →</div>
               </div>
             )}
-            <div style={{ fontSize: 12, fontWeight: 700, color: kind === "overdue" ? meta.fgMuted : (pending > 0 ? "#fde047" : meta.fgMuted) }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: pending > 0 ? "#DC2626" : meta.fgMuted }}>
               {pending > 0 ? `₹${pending.toLocaleString("en-IN")} pending` : "Balance ₹0"}
             </div>
             <div className="mt-auto pt-1">
