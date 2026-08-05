@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { logClientError, installGlobalErrorLogging } from "@/lib/client-error-log";
 import { Toaster } from "@/components/ui/sonner";
 import { OfflineGate } from "@/components/OfflineGate";
+import { BackIntentProvider } from "@/hooks/use-back-intent";
+import { AndroidBackHandler } from "@/components/AndroidBackHandler";
 import { useSessionTimeout } from "@/hooks/use-session-timeout";
 import { supabase } from "@/integrations/supabase/client";
 import { AUTH_QUERY_KEY } from "@/hooks/use-auth";
@@ -157,11 +159,15 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <OfflineGate>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <Toaster richColors position="top-right" />
-      </OfflineGate>
+      <BackIntentProvider>
+        <OfflineGate>
+          {/* Android hardware/gesture back. No-op outside the native shell. */}
+          <AndroidBackHandler />
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+          <Toaster richColors position="top-right" />
+        </OfflineGate>
+      </BackIntentProvider>
     </QueryClientProvider>
   );
 }

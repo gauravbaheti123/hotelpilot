@@ -25,6 +25,7 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { useRegisterRefresh } from "@/components/PullToRefresh";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { istToday } from "@/lib/date";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
@@ -72,6 +73,9 @@ function InHousePage() {
     if (current) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id]);
+
+  // Pull-to-refresh (native shell only).
+  useRegisterRefresh(load);
 
   const today = istToday();
 

@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { useRoomCategories, useRooms, useTariffPlans } from "@/hooks/use-rooms";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
+import { useBackIntent } from "@/hooks/use-back-intent";
 import { useFormDraft } from "@/hooks/use-form-draft";
 import { StepBookingType } from "@/components/booking-wizard/StepBookingType";
 import { StepGuestDetails } from "@/components/booking-wizard/StepGuestDetails";
@@ -254,6 +255,16 @@ function NewBookingWizardPage() {
   }, [search?.roomId, search?.categoryId, search?.checkIn, search?.checkOut]);
 
   const dirty = !isPristine(state);
+
+  // Android back: step back through the wizard, then confirm before leaving.
+  useBackIntent(step > 0, () => {
+    setStep((s) => prevStepIndex(s, state));
+    return true;
+  });
+  useBackIntent(step === 0 && dirty, () => {
+    setExitOpen(true);
+    return true;
+  });
 
   const leave = useCallback(() => {
     draft.clear();

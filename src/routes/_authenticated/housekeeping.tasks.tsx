@@ -22,6 +22,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { useAuth } from "@/hooks/use-auth";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { useRegisterRefresh } from "@/components/PullToRefresh";
 import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/housekeeping/tasks")({
   head: () => ({ meta: [{ title: "Housekeeping Tasks — HotelPilot" }] }),
@@ -56,6 +57,9 @@ function TasksPage() {
   }, [propertyId, status]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Pull-to-refresh (native shell only).
+  useRegisterRefresh(load);
 
   const filtered = useMemo(() => rows.filter((r) =>
     !q || (r.rooms?.room_number ?? "").includes(q) ||

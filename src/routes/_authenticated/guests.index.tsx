@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { useRegisterRefresh } from "@/components/PullToRefresh";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
@@ -220,6 +221,25 @@ function GuestsListPage() {
       }
     })();
   }, [propertyId, fetchPage]);
+
+  /**
+   * Pull-to-refresh (native shell only). This list is virtualized with
+   * infinite scroll, so the refresh must collapse back to page 0 rather than
+   * refetch on top of the accumulated rows — otherwise the user keeps every
+   * previously loaded page plus a stale scroll offset.
+   */
+  useRegisterRefresh(async () => {
+    if (!propertyId) return;
+    try {
+      const { batch, count } = await fetchPage(0);
+      setRows(batch);
+      setTotal(count);
+      setHasMore(batch.length === LIST_PAGE_SIZE);
+      setSelected(new Set());
+    } catch (error: any) {
+      toastError(error, "Could not refresh guests");
+    }
+  });
 
   async function confirmDelete() {
     if (!toDelete) return;

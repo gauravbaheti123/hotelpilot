@@ -21,6 +21,7 @@ import { useAuth, hasRole } from "@/hooks/use-auth";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { useRegisterRefresh } from "@/components/PullToRefresh";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
@@ -592,6 +593,9 @@ function RestaurantPage() {
   }
 
   useEffect(() => { if (current) load(); /* eslint-disable-next-line */ }, [current?.id]);
+
+  // Pull-to-refresh (native shell only).
+  useRegisterRefresh(load);
 
   // Tab 1 — active credits (unsettled only) for current month
   const monthRows = useMemo(() => {

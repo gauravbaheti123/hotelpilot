@@ -17,7 +17,7 @@ function InvoicesRoute() {
   return (
     <AppShell title="Invoices">
       <RequirePermission module="invoices">
-        <InvoiceListPanel seg={seg} bill={bill} />
+        <InvoiceListPanel seg={seg} bill={bill} pullToRefresh />
       </RequirePermission>
     </AppShell>
   );

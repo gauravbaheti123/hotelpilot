@@ -1,6 +1,7 @@
 import { Link, useRouter } from "@tanstack/react-router";
 import { ReactNode, Suspense, lazy, useEffect, useState } from "react";
 import { Logo } from "./Logo";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -609,7 +610,12 @@ function AppShellInner({
             {titleSlot}
           </div>
         )}
-        <main className="flex-1 p-3 sm:p-6 overflow-auto">{children}</main>
+        <main
+          data-scroll-container
+          className="flex-1 p-3 sm:p-6 overflow-auto [overscroll-behavior-y:contain]"
+        >
+          <PullToRefresh>{children}</PullToRefresh>
+        </main>
       </div>
       {user?.id && (
         <ProfileDialog

@@ -42,6 +42,7 @@ import {
 } from "@/components/AssignRoomDialog";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { useRegisterRefresh } from "@/components/PullToRefresh";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 import { ROOM_STATUS_COLORS, PENDING_FOOD_BADGE, roomStatusColor } from "@/lib/roomStatusColors";
@@ -503,6 +504,9 @@ function OwnerDashboard({
   }, [propertyId, viewDate]);
 
   useEffect(() => { reload(); }, [reload]);
+
+  // Pull-to-refresh (native shell only).
+  useRegisterRefresh(reload);
 
   // Segment view: load per-room open Food/Laundry bill totals when the
   // Food or Laundry tab is active. Only room-linked (non-walkin) OPEN bills
