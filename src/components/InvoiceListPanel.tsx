@@ -126,6 +126,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
     is_walkin: boolean; guest_name: string | null; room_id: string | null;
     folio_id: string | null; booking_id: string | null;
     created_at: string;
+    settled_at?: string | null;
   }>>([]);
   const [audit, setAudit] = useState(false);
   const [delTarget, setDelTarget] = useState<Row | null>(null);
@@ -157,10 +158,12 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
     if (!propertyId) return;
     (async () => {
       let qb = supabase.from("folios")
-        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number)))" as any)
+        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,settled_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number)))" as any)
         .eq("property_id", propertyId);
       if (!audit) qb = qb.eq("is_deleted" as any, false);
-      const { data, error } = await qb.order("created_at", { ascending: false })
+      const { data, error } = await qb
+        .order("settled_at" as any, { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
         .limit(300);
       // Surface PostgREST failures instead of silently rendering "No invoices."
       if (error) {
@@ -200,9 +203,10 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam }: InvoiceList
     (async () => {
       const { data, error } = await supabase
         .from("segment_bills" as any)
-        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,folio_id,booking_id,created_at")
+        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,folio_id,booking_id,created_at,settled_at")
         .eq("property_id", propertyId)
         .eq("segment", segTab)
+        .order("settled_at" as any, { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
         .limit(300);
       if (cancelled) return;
