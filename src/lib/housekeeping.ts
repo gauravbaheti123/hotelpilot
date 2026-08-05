@@ -1,3 +1,5 @@
+import { roomStatusColor } from "./roomStatusColors";
+
 export const TASK_TYPES = ["cleaning", "inspection", "maintenance", "laundry", "other"] as const;
 export type TaskType = (typeof TASK_TYPES)[number];
 
