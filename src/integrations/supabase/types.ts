@@ -2391,6 +2391,7 @@ export type Database = {
           email: string | null
           gender: string | null
           gst_number: string | null
+          guest_type: string
           id: string
           id_document_name: string | null
           id_document_uploaded_at: string | null
@@ -2425,6 +2426,7 @@ export type Database = {
           email?: string | null
           gender?: string | null
           gst_number?: string | null
+          guest_type?: string
           id?: string
           id_document_name?: string | null
           id_document_uploaded_at?: string | null
@@ -2459,6 +2461,7 @@ export type Database = {
           email?: string | null
           gender?: string | null
           gst_number?: string | null
+          guest_type?: string
           id?: string
           id_document_name?: string | null
           id_document_uploaded_at?: string | null
@@ -5703,6 +5706,7 @@ export type Database = {
           is_default: boolean
           meal_plan: Database["public"]["Enums"]["meal_plan"]
           name: string
+          plan_type: string | null
           property_id: string
           rate: number
           updated_at: string
@@ -5720,6 +5724,7 @@ export type Database = {
           is_default?: boolean
           meal_plan?: Database["public"]["Enums"]["meal_plan"]
           name: string
+          plan_type?: string | null
           property_id: string
           rate?: number
           updated_at?: string
@@ -5737,6 +5742,7 @@ export type Database = {
           is_default?: boolean
           meal_plan?: Database["public"]["Enums"]["meal_plan"]
           name?: string
+          plan_type?: string | null
           property_id?: string
           rate?: number
           updated_at?: string

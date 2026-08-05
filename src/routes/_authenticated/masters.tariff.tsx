@@ -18,6 +18,7 @@ interface Tariff {
   name: string;
   category_id: string | null;
   meal_plan: string;
+  plan_type: string | null;
   rate: number;
   extra_adult_rate: number;
   extra_child_rate: number;
@@ -44,6 +45,17 @@ function TariffPage() {
 
   const fields: FieldDef[] = [
     { name: "name", label: "Plan name", type: "text", required: true },
+    {
+      name: "plan_type",
+      label: "Plan type",
+      type: "select",
+      required: true,
+      options: [
+        { value: "regular", label: "Regular" },
+        { value: "corporate", label: "Corporate" },
+      ],
+      defaultValue: "regular",
+    },
     {
       name: "category_id",
       label: "Room category",
@@ -84,6 +96,14 @@ function TariffPage() {
       render: (r) => cats.find((c) => c.id === r.category_id)?.name ?? "—",
     },
     { header: "Plan", render: (r) => <Badge variant="outline">{r.meal_plan}</Badge> },
+    {
+      header: "Type",
+      render: (r) => (
+        <Badge variant={r.plan_type === "corporate" ? "default" : "secondary"}>
+          {r.plan_type === "corporate" ? "Corporate" : "Regular"}
+        </Badge>
+      ),
+    },
     { header: "Rate", render: (r) => `₹${r.rate}` },
     { header: "Extra adult", render: (r) => `₹${r.extra_adult_rate}` },
     {
@@ -121,6 +141,9 @@ function TariffPage() {
                 format: (_v, row) =>
                   cats.find((c) => c.id === (row as { category_id?: string }).category_id)?.name ?? "" },
               { header: "meal_plan", field: "meal_plan" },
+              { header: "plan_type", field: "plan_type",
+                parse: (v) => (v.trim().toLowerCase() === "corporate" ? "corporate" : "regular"),
+                format: (v) => (v === "corporate" ? "corporate" : "regular") },
               { header: "rate", field: "rate",
                 parse: (v) => Number(v || 0),
                 format: (v) => (v == null ? "" : String(v)) },

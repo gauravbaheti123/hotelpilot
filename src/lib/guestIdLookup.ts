@@ -156,7 +156,7 @@ export async function lookupExistingGuestId(
   for (const a of attempts) {
     const { data, error: __qe2 } = await supabase
       .from("guests")
-      .select("id,name,mobile,id_proof_number,tags,id_document_url,id_document_name,id_document_uploaded_at")
+      .select("id,name,mobile,id_proof_number,tags,guest_type,id_document_url,id_document_name,id_document_uploaded_at")
       .eq("property_id", propertyId)
       .eq(a.col, a.val)
       .order("updated_at", { ascending: false })
@@ -199,7 +199,7 @@ export async function lookupExistingGuestId(
         name: g.name ?? null,
         mobile: g.mobile ?? null,
         idProofNumber: g.id_proof_number ?? null,
-        guestType: ((g.tags ?? []) as string[]).includes("corporate")
+        guestType: (g as { guest_type?: string | null }).guest_type === "corporate"
           ? "corporate"
           : "regular",
       },
