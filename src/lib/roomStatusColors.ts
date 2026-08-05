@@ -18,8 +18,7 @@ export type RoomStatusKind =
   | "event_in"
   | "occupied_dirty"
   // Food / Laundry segment tiles on the dashboard.
-  | "segment_pending"
-  | "segment_clear";
+  | "segment_pending";
 
 export interface RoomStatusColor {
   label: string;
@@ -73,8 +72,6 @@ export const DEFAULT_ROOM_STATUS_COLORS: Record<RoomStatusKind, RoomStatusColor>
   occupied_dirty: tile("Occupied · Dirty", "#FEF9C3", "#854D0E"),
   // Food / Laundry tabs — room has an open segment bill with a balance.
   segment_pending: tile("Pending", "#FEF3C7", "#92400E"),
-  // Food / Laundry tabs — nothing outstanding.
-  segment_clear: tile("Clear", "#E0F2FE", "#075985"),
 };
 
 export function roomStatusColor(kind: string): RoomStatusColor {
@@ -95,11 +92,11 @@ export const ROOM_STATUS_COLORS: Record<RoomStatusKind, RoomStatusColor> =
 /** Status keys that are user-customisable (persisted per property). */
 export type CustomizableStatus =
   | "vacant" | "occupied" | "dirty" | "maintenance" | "overdue" | "event" | "event_in"
-  | "segment_pending" | "segment_clear";
+  | "segment_pending";
 
 export const CUSTOMIZABLE_STATUSES: CustomizableStatus[] = [
   "vacant", "occupied", "dirty", "maintenance", "overdue", "event", "event_in",
-  "segment_pending", "segment_clear",
+  "segment_pending",
 ];
 
 /** DB status key -> palette key(s) it drives. */
@@ -112,7 +109,6 @@ const STATUS_TO_KINDS: Record<CustomizableStatus, RoomStatusKind[]> = {
   event: ["blocked"],
   event_in: ["event_in"],
   segment_pending: ["segment_pending"],
-  segment_clear: ["segment_clear"],
 };
 
 function mix(color: string, other: string, pct: number) {
