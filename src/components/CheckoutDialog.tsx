@@ -1197,6 +1197,31 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
                   {inrRound(totals.balance)}
                 </span>
               </div>
+              {otherFolios.length > 0 && (
+                <div className="border-t pt-2 space-y-1">
+                  <div className="text-[11px] uppercase text-muted-foreground">
+                    Other portions of this booking
+                  </div>
+                  {otherFolios.map((f: any) => (
+                    <div key={f.id} className="flex justify-between text-xs">
+                      <span>
+                        {f.invoice_number ? billNo(f.invoice_number) : "Provisional"}
+                        {" · "}
+                        <span className="capitalize">{f.status}</span>
+                      </span>
+                      <span className={Number(f.balance_amount ?? 0) > 0.01 ? "text-destructive" : "text-emerald-600"}>
+                        {inrRound(Number(f.total_amount ?? 0))}
+                        {Number(f.balance_amount ?? 0) > 0.01
+                          ? ` · due ${inrRound(Number(f.balance_amount))}`
+                          : " · paid"}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="text-[11px] text-muted-foreground">
+                    This portion only is being collected here; settled portions are not re-charged.
+                  </div>
+                </div>
+              )}
             </div>
 
             {totals.balance > 0.01 && (
