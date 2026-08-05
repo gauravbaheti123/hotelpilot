@@ -271,3 +271,90 @@ export async function saveBookingEdit(s: BookingEditState, actorName: string | n
   } as never);
   if (error) throw error;
 }
+
+/**
+ * Applies the Stay & Room changes by REPLAYING the existing, proven operations —
+ * never by writing bespoke folio logic:
+ *
+ *  - date change      -> modifyDatesOp()  (the "Modify dates" dialog's path)
+ *  - room change      -> reserved: direct assignment (no folio/live state yet)
+ *                        checked_in: shiftRoomOp() (the "Shift room" RPC, which
+ *                        keeps the audit trail, room statuses and KOT transfer)
+ *  - rate change      -> changeRoomRateOp(): whole-segment reprice while
+ *                        reserved, forward-only night slicing once checked in
+ *
+ * Any blocking condition raised by those RPCs propagates unchanged so the caller
+ * can show the same message the dialogs show.
+ */
+export async function saveStayEdits(s: BookingEditState, actorId: string | null): Promise<void> {
+  const stay = s.stay;
+  const checkedIn = s.status === "checked_in";
+  if (!stayHasChanges(stay)) return;
+
+  // 1. Dates first — booking_room ids survive this, rate slicing does not.
+  if (stay.checkOut !== stay.origCheckOut || stay.checkIn !== stay.origCheckIn) {
+    if (!checkedIn && stay.checkIn !== stay.origCheckIn) {
+      for (const r of stay.rooms) {
+        const { error } = await supabase.from("booking_rooms")
+          .update({ check_in: stay.checkIn } as never).eq("id", r.bookingRoomId);
+        if (error) throw error;
+      }
+      const { error: bErr } = await supabase.from("bookings")
+        .update({ check_in: stay.checkIn } as never).eq("id", s.bookingId);
+      if (bErr) throw bErr;
+    }
+    await modifyDatesOp({
+      bookingId: s.bookingId,
+      checkIn: checkedIn ? stay.origCheckIn : stay.checkIn,
+      newCheckOut: stay.checkOut,
+      advanceAmount: stay.advanceAmount,
+      rooms: stay.rooms.map((r) => ({ id: r.bookingRoomId, rate: r.rate })),
+    });
+  }
+
+  // 2. Per-room room / rate changes, each through its own mechanism.
+  for (const r of stay.rooms) {
+    const roomChanged = r.roomId !== r.origRoomId;
+    const rateChanged = Math.abs(r.rate - r.origRate) > 0.009;
+    if (!roomChanged && !rateChanged) continue;
+
+    if (roomChanged && checkedIn) {
+      if (!r.roomId) throw new Error("Pick a room to move this guest into");
+      // shift_room carries the new rate for the new segment, so a combined
+      // room + rate change is a single atomic operation.
+      await shiftRoomOp({
+        bookingId: s.bookingId,
+        propertyId: s.propertyId,
+        bookingRoomId: r.bookingRoomId,
+        fromRoomId: r.origRoomId,
+        toRoomId: r.roomId,
+        newRate: r.rate,
+        tariffChoice: rateChanged ? "custom" : "keep",
+        reason: stay.reason.trim(),
+        actorId,
+        transferKots: true,
+      });
+      continue;
+    }
+
+    if (roomChanged) {
+      // Reserved: no folio consumption yet, so a direct reassignment is safe.
+      const { error } = await supabase.from("booking_rooms").update({
+        room_id: r.roomId,
+        category_id: r.categoryId,
+      } as never).eq("id", r.bookingRoomId);
+      if (error) throw error;
+    }
+
+    if (rateChanged || roomChanged) {
+      await changeRoomRateOp({
+        bookingId: s.bookingId,
+        bookingRoomId: r.bookingRoomId,
+        roomId: r.roomId,
+        newRate: r.rate,
+        fromDate: checkedIn ? istToday() : null,
+        checkOut: stay.checkOut,
+      });
+    }
+  }
+}
