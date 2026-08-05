@@ -35,6 +35,7 @@ import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 import { payableFolios } from "@/lib/folioSelect";
+import { finalizeFolioSettlement } from "@/lib/folioFinalize";
 
 interface Props {
   bookingId: string | null;
@@ -729,6 +730,11 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       setBusy(false);
       return toast.error(`Pending balance ${inr(liveBalance)}. Collect payment first.`);
     }
+
+    // Balance is zero — explicitly finalize the folio. A re-opened folio that
+    // needs no payment never triggers recompute_folio_totals, so it would
+    // otherwise stay stuck in 'open' and vanish from the invoice list.
+    await finalizeFolioSettlement(folio.id);
 
     const now = new Date().toISOString();
 
