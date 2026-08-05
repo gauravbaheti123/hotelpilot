@@ -709,7 +709,7 @@ function IdSideCard({
       toast.success(`${title} saved`);
       await onSaved();
     } catch (e) {
-      toast.error(errorMessage(e, "saving the ID document"));
+      toastError(e, "saving the ID document");
     } finally {
       setSaving(false);
     }
