@@ -215,27 +215,11 @@ async function resolveEditBillingCompanyId(propertyId: string, b: WizardBillTo):
   if (!b.enabled) return null;
   if (b.companyId) {
     // Persist any GST-verified refresh back onto the master company record.
-    await syncBillingCompanyRecord(b.companyId, b);
+    await syncBillingCompanyRecord(b.companyId, b, propertyId);
     return b.companyId;
   }
   if (!b.name.trim()) return null;
-  const { data, error } = await supabase
-    .from("billing_companies")
-    .insert({
-      property_id: propertyId,
-      name: b.name.trim(),
-      gstin: b.gstin.trim() || null,
-      gst_status: b.gstStatus || null,
-      address: b.address.trim() || null,
-      email: b.email.trim() || null,
-      state: b.state.trim() || null,
-      nation: b.nation.trim() || "India",
-      is_active: true,
-    } as never)
-    .select("id")
-    .single();
-  if (error) throw error;
-  return (data as { id: string }).id;
+  return upsertBillingCompany(propertyId, b, null);
 }
 
 export async function saveBookingEdit(s: BookingEditState, actorName: string | null): Promise<void> {
