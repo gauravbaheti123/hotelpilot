@@ -292,6 +292,23 @@ function GrcPage() {
   if (!booking) return <AppShell title="Guest Registration Card"><p className="text-sm text-muted-foreground">Not found.</p></AppShell>;
 
   const guest = booking.guests ?? {};
+  const billCo = booking.billing_companies ?? {};
+  // GSTIN: the Bill-To company's number wins; fall back to the guest's own.
+  const gstinValue: string = (billCo.gstin || guest.gst_number || "").trim() || "—";
+  // Address: staff-declared GRC values win, then the guest master, then the
+  // Bill-To company. Pincode comes from the guest record (no GRC column).
+  const pick = (...vals: Array<string | null | undefined>) =>
+    vals.map((v) => (v ?? "").trim()).find(Boolean) ?? "";
+  const guestAddress =
+    [
+      pick(grc.address, guest.address, billCo.address),
+      pick(grc.city, guest.city, billCo.city),
+      pick(grc.state, guest.state, billCo.state),
+      pick(guest.pincode),
+      pick(guest.country, billCo.nation, grc.country),
+    ]
+      .filter(Boolean)
+      .join(", ") || "—";
   const room0 = booking.booking_rooms?.[0] ?? {};
   const terms = property?.grc_terms || DEFAULT_TERMS;
   const propAddress = [property?.address_line1, property?.address_line2, property?.city, property?.state, property?.pin_code].filter(Boolean).join(", ");
@@ -421,17 +438,17 @@ function GrcPage() {
             <PrintRow k="Name" v={guest.name ?? "—"} />
             <PrintRow k="Mobile" v={guest.mobile ?? "—"} />
             <PrintRow k="Email" v={guest.email ?? "—"} />
-            <PrintRow k="Gender / DOB" v={`${guest.gender ?? "—"}${guest.dob ? " · " + guest.dob : ""}`} />
+            <PrintRow k="DOB" v={guest.dob || "—"} />
             <PrintRow k="Nationality" v={guest.nationality ?? "—"} />
             <PrintRow k="ID Proof" v={guest.id_proof_type ? `${guest.id_proof_type} · ${guest.id_proof_number ?? ""}` : "—"} />
-            <PrintRow k="GSTIN" v={guest.gst_number ?? "—"} />
-            <PrintRow k="Company" v={grc.company || guest.company || "—"} />
+            <PrintRow k="GSTIN" v={gstinValue} />
+            <PrintRow k="Company" v={grc.company || billCo.name || guest.company || "—"} />
             <PrintRow k="Purpose of Visit" v={grc.purpose_of_visit || "—"} />
             <PrintRow k="Billing Instruction" v={grc.billing_instruction || "—"} />
             <PrintRow k="Discount / Concession" v={grc.discount_note || "—"} />
           </div>
           <div className="mb-4">
-            <div className="text-[12px]"><span className="font-semibold">Address:</span> {[grc.address, grc.city, grc.state, grc.country].filter(Boolean).join(", ") || "—"}</div>
+            <div className="text-[12px]"><span className="font-semibold">Address:</span> {guestAddress}</div>
           </div>
 
           <div className="grc-section-label border-t border-black pt-2 mt-2 mb-2 font-semibold text-[12px] uppercase tracking-wide">Terms &amp; Conditions</div>
