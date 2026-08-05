@@ -34,26 +34,50 @@ export interface WizardEventContext {
  * billing_companies row so the record stays current for next time. Never
  * throws — a failed refresh must not block the booking save.
  */
+export function billingCompanyPayload(b: WizardBillTo): Record<string, string> {
+  const p: Record<string, string> = {};
+  if (b.name.trim()) p.name = b.name.trim();
+  if (b.gstin.trim()) p.gstin = b.gstin.trim().toUpperCase();
+  if (b.gstStatus) p.gst_status = b.gstStatus;
+  if (b.address.trim()) p.address = b.address.trim();
+  if (b.email.trim()) p.email = b.email.trim();
+  if (b.city.trim()) p.city = b.city.trim();
+  if (b.state.trim()) p.state = b.state.trim();
+  if (b.nation.trim()) p.nation = b.nation.trim();
+  return p;
+}
+
+/**
+ * Creates or refreshes the Bill-To company through the
+ * `ensure_billing_company` security-definer RPC. Front-desk staff can add a
+ * company while booking without needing direct master-data rights; the RPC
+ * still rejects users with no booking permission.
+ */
+export async function upsertBillingCompany(
+  propertyId: string,
+  b: WizardBillTo,
+  companyId?: string | null,
+): Promise<string | null> {
+  const payload = billingCompanyPayload(b);
+  if (!companyId && !payload.name) return null;
+  const { data, error } = await supabase.rpc("ensure_billing_company" as never, {
+    _property_id: propertyId,
+    _payload: payload,
+    _company_id: companyId ?? null,
+  } as never);
+  if (error) throw error;
+  return (data as string | null) ?? companyId ?? null;
+}
+
+/** Refreshes the master company record; never blocks the booking save. */
 export async function syncBillingCompanyRecord(
   companyId: string,
   b: WizardBillTo,
+  propertyId?: string,
 ): Promise<void> {
+  if (!propertyId) return;
   try {
-    const patch: Record<string, unknown> = {};
-    if (b.name.trim()) patch.name = b.name.trim();
-    if (b.gstin.trim()) patch.gstin = b.gstin.trim().toUpperCase();
-    if (b.gstStatus) patch.gst_status = b.gstStatus;
-    if (b.address.trim()) patch.address = b.address.trim();
-    if (b.email.trim()) patch.email = b.email.trim();
-    if (b.city.trim()) patch.city = b.city.trim();
-    if (b.state.trim()) patch.state = b.state.trim();
-    if (b.nation.trim()) patch.nation = b.nation.trim();
-    if (Object.keys(patch).length === 0) return;
-    const { error } = await supabase
-      .from("billing_companies")
-      .update(patch as never)
-      .eq("id", companyId);
-    if (error) console.warn("billing company refresh failed", error.message);
+    await upsertBillingCompany(propertyId, b, companyId);
   } catch (e) {
     console.warn("billing company refresh failed", e);
   }
@@ -66,27 +90,11 @@ export async function resolveBillingCompanyId(
   const b = s.billTo;
   if (s.reservation || !b.enabled) return null;
   if (b.companyId) {
-    await syncBillingCompanyRecord(b.companyId, b);
+    await syncBillingCompanyRecord(b.companyId, b, propertyId);
     return b.companyId;
   }
   if (!b.name.trim()) return null;
-  const { data, error } = await supabase
-    .from("billing_companies")
-    .insert({
-      property_id: propertyId,
-      name: b.name.trim(),
-      gstin: b.gstin.trim() || null,
-      gst_status: b.gstStatus || null,
-      address: b.address.trim() || null,
-      email: b.email.trim() || null,
-      state: b.state.trim() || null,
-      nation: b.nation.trim() || "India",
-      is_active: true,
-    } as never)
-    .select("id")
-    .single();
-  if (error) throw error;
-  return (data as { id: string }).id;
+  return upsertBillingCompany(propertyId, b, null);
 }
 
 export function buildBookingPayload(opts: {
