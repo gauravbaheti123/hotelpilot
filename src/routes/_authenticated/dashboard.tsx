@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FolioOpenButton, useFolioOpener } from "@/components/FolioOpenButton";
+import { useFolioOpener } from "@/components/FolioOpenButton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";

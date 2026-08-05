@@ -6,7 +6,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FolioOpenButton, useFolioOpener } from "@/components/FolioOpenButton";
+import { FolioOpenButton } from "@/components/FolioOpenButton";
 import { BackButton } from "@/components/BackButton";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
