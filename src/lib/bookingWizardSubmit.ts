@@ -3,7 +3,7 @@
 // deliberately live OUTSIDE the DB transaction.
 import { supabase } from "@/integrations/supabase/client";
 import { createBooking, type CreateBookingPayload, type CreateBookingResult } from "@/lib/bookingCreate";
-import { roomsTotal, stayRange, type WizardState } from "@/lib/bookingWizard";
+import { roomsTotal, stayRange, type WizardBillTo, type WizardState } from "@/lib/bookingWizard";
 import { earlyCheckinDescription } from "@/lib/earlyCheckin";
 import { eventTotals } from "@/lib/bookingWizard";
 import { createEventBooking, seedEventFolioCharges } from "@/lib/banquetEvent";
@@ -29,13 +29,46 @@ export interface WizardEventContext {
 }
 
 /** Creates (or reuses) the billing company row selected in Step 4. */
+/**
+ * Writes the (possibly GST-verified) Bill-To details back onto the master
+ * billing_companies row so the record stays current for next time. Never
+ * throws — a failed refresh must not block the booking save.
+ */
+export async function syncBillingCompanyRecord(
+  companyId: string,
+  b: WizardBillTo,
+): Promise<void> {
+  try {
+    const patch: Record<string, unknown> = {};
+    if (b.name.trim()) patch.name = b.name.trim();
+    if (b.gstin.trim()) patch.gstin = b.gstin.trim().toUpperCase();
+    if (b.gstStatus) patch.gst_status = b.gstStatus;
+    if (b.address.trim()) patch.address = b.address.trim();
+    if (b.email.trim()) patch.email = b.email.trim();
+    if (b.city.trim()) patch.city = b.city.trim();
+    if (b.state.trim()) patch.state = b.state.trim();
+    if (b.nation.trim()) patch.nation = b.nation.trim();
+    if (Object.keys(patch).length === 0) return;
+    const { error } = await supabase
+      .from("billing_companies")
+      .update(patch as never)
+      .eq("id", companyId);
+    if (error) console.warn("billing company refresh failed", error.message);
+  } catch (e) {
+    console.warn("billing company refresh failed", e);
+  }
+}
+
 export async function resolveBillingCompanyId(
   propertyId: string,
   s: WizardState,
 ): Promise<string | null> {
   const b = s.billTo;
   if (s.reservation || !b.enabled) return null;
-  if (b.companyId) return b.companyId;
+  if (b.companyId) {
+    await syncBillingCompanyRecord(b.companyId, b);
+    return b.companyId;
+  }
   if (!b.name.trim()) return null;
   const { data, error } = await supabase
     .from("billing_companies")

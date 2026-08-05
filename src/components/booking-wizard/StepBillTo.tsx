@@ -1,6 +1,6 @@
 // Part 4 — Step 4: optional "Bill To" (company or third party).
 // One Bill-To applies to the whole booking, including multi-room bookings.
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -9,13 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
 import { useBillingCompanies } from "@/hooks/use-billing-companies";
 import { GSTIN_ERROR, isValidGSTIN, isValidOrEmptyGSTIN } from "@/lib/gstin";
 import { gstinLookup } from "@/lib/gstinLookup.functions";
 import { parseGstinProfile } from "@/lib/gstinProfile";
 import type { WizardBillTo } from "@/lib/bookingWizard";
-import { reportQueryError } from "@/lib/queryError";
 
 const NEW_COMPANY = "__new__";
 
@@ -30,34 +28,52 @@ export function StepBillTo({ propertyId, value, onChange }: Props) {
   // to be re-fetched on every wizard mount.
   const { companies } = useBillingCompanies(propertyId);
   const [looking, setLooking] = useState(false);
+  // Fields refreshed from the GST portal on the last automatic verification,
+  // and whether that verification failed (shown as a non-blocking notice).
+  const [refreshed, setRefreshed] = useState<string[]>([]);
+  const [verifyFailed, setVerifyFailed] = useState<string>("");
   const lastLookedUp = useRef<string>("");
   const runLookup = useServerFn(gstinLookup);
 
   function pick(id: string) {
+    setRefreshed([]);
+    setVerifyFailed("");
     if (id === NEW_COMPANY) {
       onChange({ companyId: "", name: "", gstin: "", gstStatus: "", address: "", email: "" });
       return;
     }
     const c = companies.find((x) => x.id === id);
     if (!c) return;
-    onChange({
+    const stored: Partial<WizardBillTo> = {
       companyId: c.id,
       name: c.name ?? "",
       gstin: c.gstin ?? "",
       gstStatus: c.gst_status ?? "",
       address: c.address ?? "",
       email: c.email ?? "",
+      city: c.city ?? value.city,
       state: c.state ?? value.state,
       nation: c.nation ?? value.nation,
-    });
+    };
+    onChange(stored);
+    // Auto-verify against the GST portal so the master record is refreshed
+    // without the staff member clicking anything.
+    const gstin = (c.gstin ?? "").trim().toUpperCase();
+    if (isValidGSTIN(gstin)) void verifyGstin(gstin, stored, true);
   }
 
   const gstinBad = value.gstin.trim().length > 0 && !isValidOrEmptyGSTIN(value.gstin);
 
-  async function handleGstinBlur() {
-    const gstin = value.gstin.trim().toUpperCase();
-    if (!isValidGSTIN(gstin) || gstin === lastLookedUp.current || looking) return;
+  /** Fetches the latest GST-portal details and applies them to the form.
+   *  `auto` = triggered by selecting a company (silent-ish, diff-annotated). */
+  async function verifyGstin(
+    gstin: string,
+    current: Partial<WizardBillTo>,
+    auto: boolean,
+  ): Promise<void> {
+    if (looking) return;
     setLooking(true);
+    setVerifyFailed("");
     try {
       const res = await runLookup({ data: { gstin } });
       if (res.status < 200 || res.status >= 300) {
@@ -65,27 +81,49 @@ export function StepBillTo({ propertyId, value, onChange }: Props) {
           (res.body as { error?: string; message?: string } | null)?.error ??
           (res.body as { message?: string } | null)?.message ??
           "Could not fetch GST details.";
-        toast.error(msg);
+        if (auto) setVerifyFailed(msg);
+        else toast.error(msg);
         return;
       }
       lastLookedUp.current = gstin;
       const profile = parseGstinProfile(res.body);
       const patch: Partial<WizardBillTo> = {};
-      if (profile.name) patch.name = profile.name;
-      if (profile.address) patch.address = profile.address;
-      if (profile.state) patch.state = profile.state;
-      if (profile.gstStatus) patch.gstStatus = profile.gstStatus;
+      const changed: string[] = [];
+      const consider = (
+        key: "name" | "address" | "state" | "gstStatus",
+        label: string,
+        next: string,
+      ) => {
+        if (!next) return;
+        patch[key] = next;
+        const before = (current[key] ?? "").toString().trim();
+        if (before.toLowerCase() !== next.trim().toLowerCase()) changed.push(label);
+      };
+      consider("name", "Name", profile.name);
+      consider("address", "Address", profile.address);
+      consider("state", "State", profile.state);
+      consider("gstStatus", "GST status", profile.gstStatus);
+
       if (Object.keys(patch).length === 0) {
-        toast.info("No details returned for this GSTIN.");
+        if (auto) setVerifyFailed("No details returned for this GSTIN.");
+        else toast.info("No details returned for this GSTIN.");
         return;
       }
       onChange(patch);
-      toast.success("GST details fetched.");
+      setRefreshed(changed);
+      if (!auto) toast.success("GST details fetched.");
     } catch {
-      toast.error("Could not reach the GST lookup service.");
+      if (auto) setVerifyFailed("Could not reach the GST lookup service.");
+      else toast.error("Could not reach the GST lookup service.");
     } finally {
       setLooking(false);
     }
+  }
+
+  async function handleGstinBlur() {
+    const gstin = value.gstin.trim().toUpperCase();
+    if (!isValidGSTIN(gstin) || gstin === lastLookedUp.current || looking) return;
+    await verifyGstin(gstin, value, false);
   }
 
   return (
@@ -126,6 +164,14 @@ export function StepBillTo({ propertyId, value, onChange }: Props) {
               ]}
             />
           </div>
+
+          {(refreshed.length > 0 || verifyFailed) && (
+            <p className="text-xs text-muted-foreground">
+              {refreshed.length > 0
+                ? `Updated from GST records: ${refreshed.join(", ")}. Edit if needed.`
+                : `GST verification unavailable — using saved details. (${verifyFailed})`}
+            </p>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
