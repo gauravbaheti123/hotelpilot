@@ -5147,6 +5147,44 @@ export type Database = {
           },
         ]
       }
+      room_status_color_settings: {
+        Row: {
+          bg_color: string | null
+          created_at: string
+          fg_color: string | null
+          id: string
+          property_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          bg_color?: string | null
+          created_at?: string
+          fg_color?: string | null
+          id?: string
+          property_id: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          bg_color?: string | null
+          created_at?: string
+          fg_color?: string | null
+          id?: string
+          property_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_status_color_settings_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rooms: {
         Row: {
           category_id: string | null
