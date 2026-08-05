@@ -16,7 +16,10 @@ export type RoomStatusKind =
   | "overdue"
   | "blocked"
   | "event_in"
-  | "occupied_dirty";
+  | "occupied_dirty"
+  // Food / Laundry segment tiles on the dashboard.
+  | "segment_pending"
+  | "segment_clear";
 
 export interface RoomStatusColor {
   label: string;
@@ -77,6 +80,16 @@ export const DEFAULT_ROOM_STATUS_COLORS: Record<RoomStatusKind, RoomStatusColor>
     label: "Occupied · Dirty", bg: "#facc15", fg: "#3f2d00", fgMuted: "#6b5200",
     border: "#eab308", btnBg: "#3f2d00", btnFg: WHITE,
   },
+  // Food / Laundry tabs — room has an open segment bill with a balance.
+  segment_pending: {
+    label: "Pending", bg: "#f59e0b", fg: WHITE, fgMuted: WHITE_MUTED,
+    border: "#d97706", btnBg: WHITE, btnFg: "#b45309",
+  },
+  // Food / Laundry tabs — nothing outstanding.
+  segment_clear: {
+    label: "Clear", bg: "#0ea5e9", fg: WHITE, fgMuted: WHITE_MUTED,
+    border: "#0284c7", btnBg: WHITE, btnFg: "#075985",
+  },
 };
 
 export function roomStatusColor(kind: string): RoomStatusColor {
@@ -96,10 +109,12 @@ export const ROOM_STATUS_COLORS: Record<RoomStatusKind, RoomStatusColor> =
 
 /** Status keys that are user-customisable (persisted per property). */
 export type CustomizableStatus =
-  | "vacant" | "occupied" | "dirty" | "maintenance" | "overdue" | "event" | "event_in";
+  | "vacant" | "occupied" | "dirty" | "maintenance" | "overdue" | "event" | "event_in"
+  | "segment_pending" | "segment_clear";
 
 export const CUSTOMIZABLE_STATUSES: CustomizableStatus[] = [
   "vacant", "occupied", "dirty", "maintenance", "overdue", "event", "event_in",
+  "segment_pending", "segment_clear",
 ];
 
 /** DB status key -> palette key(s) it drives. */
@@ -111,10 +126,40 @@ const STATUS_TO_KINDS: Record<CustomizableStatus, RoomStatusKind[]> = {
   overdue: ["overdue"],
   event: ["blocked"],
   event_in: ["event_in"],
+  segment_pending: ["segment_pending"],
+  segment_clear: ["segment_clear"],
 };
 
 function mix(color: string, other: string, pct: number) {
   return `color-mix(in srgb, ${color} ${100 - pct}%, ${other} ${pct}%)`;
+}
+
+/** Parse #rgb / #rrggbb into [r,g,b]; null for anything else. */
+function parseHex(hex: string): [number, number, number] | null {
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+}
+
+/**
+ * Pick dark or light text for a given background using relative luminance,
+ * so a custom colour never ends up with unreadable text.
+ */
+export function readableTextOn(bg: string): string {
+  const rgb = parseHex(bg);
+  if (!rgb) return WHITE;
+  const [r, g, b] = rgb.map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  }) as [number, number, number];
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return lum > 0.45 ? DARK : WHITE;
 }
 
 /** Derive a full tile colour set from just a background + text colour. */
@@ -125,7 +170,8 @@ export function deriveRoomStatusColor(
 ): RoomStatusColor {
   if (!bg && !fg) return { ...base };
   const nextBg = bg || base.bg;
-  const nextFg = fg || base.fg;
+  // No explicit text colour: auto-pick one that stays readable on `nextBg`.
+  const nextFg = fg || (bg ? readableTextOn(nextBg) : base.fg);
   return {
     label: base.label,
     bg: nextBg,
