@@ -34,6 +34,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
+import { payableFolios } from "@/lib/folioSelect";
 
 interface Props {
   bookingId: string | null;
@@ -100,7 +101,7 @@ function pickCheckoutFolio(rows: any[]) {
   // portions — its charges were cloned onto the children, so summing it
   // double-counts the bill and invents a phantom balance at check-out.
   return payableFolios([...rows] as any[])
-    .sort((a, b) => {
+    .sort((a: any, b: any) => {
       const ar = checkoutFolioRank(a);
       const br = checkoutFolioRank(b);
       return (
