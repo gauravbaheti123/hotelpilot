@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RequirePermission } from "@/components/RequirePermission";
 import {
   BedDouble, IndianRupee, TrendingUp, UtensilsCrossed, PartyPopper,
-  Users, Printer, Tags, MessageSquare, ShoppingCart, Cloud, CalendarDays, Wallet,
+  Users, Printer, Tags, MessageSquare, ShoppingCart, Cloud, CalendarDays, Wallet, Clock,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/masters/")({
