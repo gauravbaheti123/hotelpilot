@@ -500,9 +500,9 @@ function BookingDetailPage() {
           <div className="flex-1" />
           {canAct && (
             <div className="flex gap-2">
-              <Link to="/billing/folio/$bookingId" params={{ bookingId: b.id }}>
-                <Button variant="outline"><Receipt className="h-4 w-4 mr-1" /> Folio</Button>
-              </Link>
+              <FolioOpenButton bookingId={b.id} variant="outline">
+                <Receipt className="h-4 w-4 mr-1" /> Folio
+              </FolioOpenButton>
               <Link to="/bookings/$bookingId/grc" params={{ bookingId: b.id }}>
                 <Button variant="outline"><FileText className="h-4 w-4 mr-1" /> Print GRC</Button>
               </Link>
