@@ -36,6 +36,11 @@ interface Charge {
   gst_rate: number; gst_amount: number;
   hsn_code?: string | null;
   source_table?: string | null; source_id?: string | null;
+  /** Ref of the segment (food/laundry) bill this charge came from — must be
+   *  carried onto split copies, otherwise the folio print can no longer
+   *  consolidate the items into one "Food Bill (Ref: …)" line. */
+  segment_bill_ref?: string | null;
+  charged_on?: string | null;
   discount_type?: DiscType | null;
   discount_value?: number | null;
   discount_amount?: number | null;
@@ -532,6 +537,8 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           gst_rate: c.gst_rate,
           gst_amount: c.gst_amount,
           hsn_code: (c as any).hsn_code ?? null,
+          segment_bill_ref: c.segment_bill_ref ?? null,
+          ...(c.charged_on ? { charged_on: c.charged_on } : {}),
           source_table: c.source_table ?? null,
           source_id: c.source_id ?? null,
           discount_type: c.discount_type ?? null,
