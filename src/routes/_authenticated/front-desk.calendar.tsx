@@ -12,6 +12,7 @@ import { addDaysIso, todayIso, BOOKING_STATUS_TONE } from "@/lib/front-desk";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { useRegisterRefresh } from "@/components/PullToRefresh";
 import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/front-desk/calendar")({
   head: () => ({ meta: [{ title: "Reservation Calendar — HotelPilot" }] }),
@@ -105,6 +106,9 @@ function CalendarPage() {
     if (current) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, start]);
+
+  // Pull-to-refresh (native shell only).
+  useRegisterRefresh(load);
 
   if (propLoading)
     return <AppShell title="Reservation Calendar"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
