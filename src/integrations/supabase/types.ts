@@ -6247,6 +6247,10 @@ export type Database = {
         Args: { _id: string; _reason: string }
         Returns: Json
       }
+      ensure_billing_company: {
+        Args: { _company_id?: string; _payload: Json; _property_id: string }
+        Returns: string
+      }
       event_gst_rate: {
         Args: { _amount: number; _property_id: string }
         Returns: number
