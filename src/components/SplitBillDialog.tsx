@@ -864,6 +864,12 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           });
         }
       }
+      // Explicitly finalize each split bill that has nothing left to collect —
+      // a zero-balance (or re-opened) folio never triggers a payment insert,
+      // so the recompute trigger would never settle it.
+      for (const b of createdBills) {
+        if (b.folio_id) await finalizeFolioSettlement(b.folio_id);
+      }
       // Mark booking checked-out.
       if (booking.status !== "checked_out" && booking.status !== "cancelled") {
         const now = new Date().toISOString();
