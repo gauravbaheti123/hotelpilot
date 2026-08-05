@@ -461,12 +461,12 @@ function NightAuditPage() {
               )}
               <div className="max-h-40 overflow-auto text-xs space-y-1">
                 {unsettled.slice(0, 10).map((u) => (
-                  <Link key={u.id} to="/billing/folio/$bookingId" params={{ bookingId: u.booking_id }}
-                    className="flex justify-between hover:bg-accent rounded px-1">
+                  <FolioOpenButton key={u.id} unstyled bookingId={u.booking_id}
+                    className="w-full flex justify-between hover:bg-accent rounded px-1 text-left">
                     <span className="font-medium">{billNo(u.invoice_number)}</span>
                     <span className="ml-2 text-muted-foreground truncate">{u.guest_name ?? "—"}</span>
                     <span className="ml-2 font-medium">{inr(u.balance_amount)}</span>
-                  </Link>
+                  </FolioOpenButton>
                 ))}
               </div>
             </CardContent>
