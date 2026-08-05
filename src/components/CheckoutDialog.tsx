@@ -129,6 +129,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
   const [busy, setBusy] = useState(false);
   const [booking, setBooking] = useState<any>(null);
   const [folio, setFolio] = useState<any>(null);
+  // The booking's other live bill portions (after a Split Bill). Kept so the
+  // dialog can show the TRUE combined state instead of one portion in isolation.
+  const [otherFolios, setOtherFolios] = useState<any[]>([]);
   const [charges, setCharges] = useState<any[]>([]);
   // Separate flag: does a late-checkout charge row exist on this folio,
   // INCLUDING soft-deleted (wiped) ones? `charges` only holds live rows, so
@@ -224,6 +227,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     }
 
     let selectedFolio = pickCheckoutFolio((liveFolios ?? []) as any[]);
+    setOtherFolios(
+      payableFolios((liveFolios ?? []) as any[]).filter((f: any) => f.id !== selectedFolio?.id),
+    );
     if (!selectedFolio) {
       const { data: folioId, error: fErr } = await supabase.rpc("get_or_create_folio", {
         _booking_id: bookingId,
