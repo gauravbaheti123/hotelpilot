@@ -240,6 +240,16 @@ function RoomCard({
   }, [resolvedPlan?.id]);
 
   const rateCheck = checkRate(standardRate, Number(room.rate) || 0);
+
+  // Keep the stored hours-early in sync when the arrival time is edited.
+  const hrsEarly = hoursEarly(stdCheckinTime, room.checkInTime);
+  useEffect(() => {
+    if (!room.earlyCheckinEnabled) return;
+    if (room.earlyCheckinHours === hrsEarly) return;
+    onChange({ earlyCheckinHours: hrsEarly });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hrsEarly, room.earlyCheckinEnabled]);
+
   useEffect(() => {
     onViolation(rateCheck.allowed ? null : rateCheck.reason ?? "Rate below your discount limit");
     // eslint-disable-next-line react-hooks/exhaustive-deps
