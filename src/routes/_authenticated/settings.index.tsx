@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { RequirePermission } from "@/components/RequirePermission";
 import {
-  Building2, MessageCircle, Cloud, Receipt, ShieldCheck,
+  Building2, MessageCircle, Cloud, Receipt, ShieldCheck, Palette,
   Lock,
 } from "lucide-react";
 
@@ -21,6 +21,7 @@ const ITEMS: Array<{ to: string; label: string; icon: any; desc: string; soon?: 
   { to: "/settings/hotel", label: "Invoice Settings", icon: Receipt, desc: "Numbering, layout, footer" },
   { to: "/superadmin/users", label: "Users & Roles", icon: ShieldCheck, desc: "Manage users, roles & permissions", ownerOnly: true },
   { to: "/properties", label: "Properties", icon: Building2, desc: "Manage properties" },
+  { to: "/masters/room-status-colors", label: "Room Status Colours", icon: Palette, desc: "Customize room tile colours" },
 ];
 
 function SettingsIndex() {
