@@ -36,7 +36,7 @@ import {
 } from "@/lib/front-desk";
 import { fireTrigger } from "@/lib/whatsapp";
 import { verifyManagerPassword } from "@/lib/manager-verify";
-import { recomputeFolio } from "@/lib/billing";
+import { shiftRoomOp, modifyDatesOp } from "@/lib/roomOps";
 import { fetchTariffPlans, pickTariffPlan, type TariffPlan } from "@/lib/tariff";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { RequirePermission } from "@/components/RequirePermission";
