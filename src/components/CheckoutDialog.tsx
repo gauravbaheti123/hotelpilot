@@ -22,7 +22,7 @@ import { billNo } from "@/lib/billNumber";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
-import { inr, inrRound, recomputeFolio, type BillDiscount } from "@/lib/billing";
+import { inr, inrRound, recomputeFolio, consolidateSegmentCharges, type BillDiscount } from "@/lib/billing";
 import { computeRoomChargeTax } from "@/lib/gst";
 import { fireTrigger } from "@/lib/whatsapp";
 import { AlertTriangle, Plus, Trash2, Loader2, SplitSquareHorizontal } from "lucide-react";
@@ -444,7 +444,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     const rooms: SummaryRow[] = [];
     const food: SummaryRow[] = [];
     const other: SummaryRow[] = [];
-    for (const c of charges) {
+    // Display-only: roll segment (food/laundry) items up into one line per bill
+    // ref, matching the folio print / invoice templates. Totals below still
+    // recompute from the raw charge rows.
+    for (const c of consolidateSegmentCharges(charges as any)) {
       const row: SummaryRow = { label: c.description, amount: Number(c.amount) };
       if (c.charge_type === "room") rooms.push(row);
       else if (c.charge_type === "food") food.push(row);
