@@ -29,6 +29,7 @@ import { ArrowLeft, ArrowRight, Loader2, SplitSquareHorizontal, Plus, Trash2 } f
 import { Percent } from "lucide-react";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
+import { finalizeFolioSettlement } from "@/lib/folioFinalize";
 
 interface Charge {
   id: string; charge_type: string; description: string;
