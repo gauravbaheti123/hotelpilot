@@ -155,6 +155,13 @@ export interface WizardRoom {
   tariffId: string;
   rate: number;
   rateType: "exclusive" | "inclusive";
+  /** Step 4 — optional extra bed for this room line. */
+  extraBedEnabled: boolean;
+  extraBedQty: number;
+  extraBedRate: number;
+  /** Step 4 — optional early check-in charge for this room line. */
+  earlyCheckinEnabled: boolean;
+  earlyCheckinAmount: number;
 }
 
 
