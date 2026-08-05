@@ -409,7 +409,7 @@ function AppShellInner({
     setTimeout(() => window.location.reload(), 50);
   }
 
-  const sidebarBody = (
+  const renderSidebarBody = (collapsed: boolean) => (
     <>
       <div className={`flex items-center border-b border-sidebar-border ${collapsed ? "justify-center px-2 py-4" : "gap-3 px-5 py-5"}`}>
         <Logo size={collapsed ? 30 : 36} />
@@ -460,6 +460,8 @@ function AppShellInner({
       </div>
     </>
   );
+
+  const sidebarBody = renderSidebarBody(collapsed);
 
   return (
     <div className="min-h-screen flex bg-background">
