@@ -1427,10 +1427,10 @@ function SegmentRoomCard({
 // (src/lib/roomStatusColors.ts) so the dashboard, housekeeping board and room
 // detail page never drift apart.
 const STATUS_META = ROOM_STATUS_COLORS;
-const EVENT_BLOCK_BG = ROOM_STATUS_COLORS.blocked.bg;
-const EVENT_IN_BG = ROOM_STATUS_COLORS.event_in.bg;
-// Back-compat alias used elsewhere in this file.
-const EVENT_BG = EVENT_BLOCK_BG;
+// Read lazily — the palette object is mutated in place when a property has
+// custom room-status colours, so snapshotting the hex here would go stale.
+const eventBlockBg = () => ROOM_STATUS_COLORS.blocked.bg;
+const eventInBg = () => ROOM_STATUS_COLORS.event_in.bg;
 
 function tileKindExt(r: Room, isOccupied: boolean): keyof typeof STATUS_META {
   // Only treat as occupied when an actual active booking covers this room
@@ -1500,7 +1500,7 @@ const RoomCard = memo(function RoomCard({
   const pending = baseBalance + (hasFood ? pendingFood!.amount : 0);
 
   if (isEventBlock || isEventCheckedIn) {
-    const evBg = isEventCheckedIn ? EVENT_IN_BG : EVENT_BLOCK_BG;
+    const evBg = isEventCheckedIn ? eventInBg() : eventBlockBg();
     return (
       <div
         role={isEventCheckedIn ? "button" : undefined}
