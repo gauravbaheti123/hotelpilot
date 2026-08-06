@@ -410,150 +410,99 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     }));
   }
 
-  /**
-   * Re-home every parent-folio payment onto the child folios BEFORE the parent
-   * is voided, so void_folio_safe() succeeds normally with _force:false and no
-   * payment history is orphaned or lost.
-   *
-   * A payment allocated entirely to one child is simply repointed (same row,
-   * same id — reconciliation history preserved). A payment spanning several
-   * children keeps its original row for the first share and gets sibling rows
-   * for the rest, each tagged with the source payment id in `notes`.
-   *
-   * Returns an undo() that restores the original state, used if the void fails.
-   */
-  async function movePaymentsToChildren(childFolioIds: string[]) {
+  /** Payment re-home instructions handed to the atomic split RPC. */
+  function paymentPayload() {
     const totals = childTargets.map((c) => c.total);
-    const insertedIds: string[] = [];
-    const moved: { id: string; amount: number }[] = [];
-    const undo = async () => {
-      if (insertedIds.length > 0) await supabase.from("payments").delete().in("id", insertedIds);
-      for (const m of moved) {
-        await supabase.from("payments")
-          .update({ folio_id: folio.id, amount: m.amount } as any).eq("id", m.id);
-      }
-    };
+    return parentPayments.map((p) => {
+      const alloc = allocFor(p, totals);
+      const spans = alloc.filter((a) => a > 0).length > 1;
+      return {
+        payment_id: p.id,
+        notes: spans
+          ? `${p.notes ? `${p.notes} · ` : ""}Split from ${billNo(folio.invoice_number)} (₹${p.amount.toFixed(2)})`
+          : p.notes,
+        allocations: alloc
+          .map((amount, child_index) => ({ child_index, amount: round2(amount) }))
+          .filter((a) => a.amount > 0),
+      };
+    });
+  }
+
+  /**
+   * The whole split now happens inside ONE SECURITY DEFINER transaction:
+   * child folios, their charges, payment re-homing and the parent void either
+   * all commit or none do. A single permission check runs at the top of the
+   * function, so no sub-step can silently no-op under RLS and leave orphan
+   * duplicate bills behind (the cause of the 6 Aug double-payment incident).
+   */
+  async function runAtomicSplit(children: any[], reason: string) {
+    const { data, error } = await supabase.rpc("split_folio_bill" as any, {
+      _folio_id: folio.id,
+      _payload: { reason, children, payments: paymentPayload() },
+    } as any);
+    if (error) {
+      throw new BusinessError(
+        error.message?.trim() || "The bill could not be split. Nothing was changed.",
+      );
+    }
+    const rows = (((data as any)?.children ?? []) as Array<{
+      folio_id: string; invoice_number: string | null;
+      total_amount: number; balance_amount: number;
+    }>);
+    if (rows.length !== children.length) {
+      throw new BusinessError("The bill could not be split. Nothing was changed — please refresh and try again.");
+    }
+    return rows;
+  }
+
+  /**
+   * Safeguard run after EVERY split attempt (success or failure): if the parent
+   * plus its live children now add up to more than the parent's pre-split
+   * total, money is double-counted — record it immediately instead of waiting
+   * for someone to notice on a screenshot.
+   */
+  async function checkSplitIntegrity(parentTotalBefore: number) {
     try {
-      for (const p of parentPayments) {
-        const alloc = allocFor(p, totals);
-        const idxs = alloc.map((a, i) => ({ a, i })).filter((x) => x.a > 0);
-        if (idxs.length === 0) continue;
-        const [first, ...rest] = idxs;
-        const { data: movedRow, error: upErr } = await supabase.from("payments").update({
-          folio_id: childFolioIds[first.i],
-          amount: first.a,
-          notes: rest.length > 0
-            ? `${p.notes ? `${p.notes} · ` : ""}Split from ${billNo(folio.invoice_number)} (₹${p.amount.toFixed(2)})`
-            : p.notes,
-        } as any).eq("id", p.id).select("id").maybeSingle();
-        if (upErr) throw upErr;
-        // A silent no-op update (e.g. blocked by row-level security) used to
-        // leave the payment stranded on the parent folio, which then refused
-        // to void and survived the split as a duplicate full-value bill.
-        if (!movedRow) {
-          // Nothing was logged the last time this happened, so the cause was
-          // undiagnosable. Leave a trail before aborting.
-          await logActivity({
-            property_id: booking.property_id,
-            user_id: user?.id ?? "",
-            user_name: userDisplayName(user as any),
-            action_type: "BILL_SPLIT_FAILED",
-            module: "Billing",
-            reference_id: booking.id,
-            reference_label: `${billNo(folio.invoice_number)} — payment move returned 0 rows`,
-            details: {
-              reason: "payments update affected 0 rows",
-              payment_id: p.id,
-              payment_amount: p.amount,
-              parent_folio_id: folio.id,
-              target_folio_id: childFolioIds[first.i],
-              child_folio_ids: childFolioIds,
-              supabase_response: { data: movedRow ?? null, error: upErr ?? null },
-            },
-          });
-          throw new BusinessError(
-            "Could not move an existing payment onto the new bills — split cancelled so no duplicate bill is created.",
-          );
-        }
-        moved.push({ id: p.id, amount: p.amount });
-        for (const r of rest) {
-          const { data: ins, error: insErr } = await supabase.from("payments").insert({
-            property_id: p.property_id,
-            folio_id: childFolioIds[r.i],
-            booking_id: p.booking_id ?? booking.id,
-            amount: r.a,
-            mode: p.mode,
-            reference_no: p.reference_no,
-            paid_at: p.paid_at ?? undefined,
-            notes: `${p.notes ? `${p.notes} · ` : ""}Split from ${billNo(folio.invoice_number)} (₹${p.amount.toFixed(2)}, source payment ${p.id})`,
-            created_by: user?.id ?? null,
-          } as any).select("id").single();
-          if (insErr) throw insErr;
-          insertedIds.push((ins as any).id);
-        }
-      }
-      return { undo };
-    } catch (e) {
-      await undo();
-      throw e;
+      const { data, error } = await supabase
+        .from("folios")
+        .select("id,total_amount,status,is_deleted,parent_folio_id,invoice_number")
+        .or(`id.eq.${folio.id},parent_folio_id.eq.${folio.id}`);
+      if (error) return;
+      const live = ((data ?? []) as any[]).filter(
+        (f) => !f.is_deleted && !["void", "refunded"].includes(String(f.status ?? "")),
+      );
+      const sum = live.reduce((s, f) => s + (Number(f.total_amount) || 0), 0);
+      if (sum <= parentTotalBefore + 1) return;
+      await logActivity({
+        property_id: booking.property_id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "BILL_INTEGRITY_WARNING",
+        module: "Billing",
+        reference_id: booking.id,
+        reference_label: `${billNo(folio.invoice_number)} — live bills total ₹${sum.toFixed(2)} vs original ₹${parentTotalBefore.toFixed(2)}`,
+        details: {
+          parent_folio_id: folio.id,
+          parent_total_before: parentTotalBefore,
+          live_total_after: sum,
+          live_folios: live.map((f) => ({
+            id: f.id, invoice_number: f.invoice_number,
+            total_amount: f.total_amount, status: f.status,
+            is_child: !!f.parent_folio_id,
+          })),
+        },
+      });
+      toast.error(
+        "Bill integrity warning: the bills for this stay now add up to more than the original. This has been logged — please verify before collecting payment.",
+      );
+    } catch {
+      /* never block the user on the safety net itself */
     }
   }
 
-  function moveToBill1(id: string) { setBill1Ids((s) => new Set([...s, id])); }
-
-  /**
-   * `void_folio_safe` can return without an error yet leave the parent alive
-   * (nothing matched, or the update was filtered). If that goes unnoticed the
-   * booking ends up with the parent AND its portions live, and every
-   * single-folio sum (check-out above all) double-counts the bill. Verify and
-   * roll back instead.
-   */
-  /**
-   * Delete child folios (and their copied charges) created during a split
-   * attempt. Called from every failure path so a half-finished split can never
-   * leave unnumbered duplicate bills behind.
-   */
-  async function cleanupChildFolios(ids: string[]) {
-    if (!ids || ids.length === 0) return;
-    try {
-      await supabase.from("folio_charges").delete().in("folio_id", ids);
-      await supabase.from("folios").delete().in("id", ids);
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error("[split] child folio cleanup failed", { ids, e });
-    }
+  function moveToBill1(id: string) {
+    setBill1Ids((s) => new Set(s).add(id));
   }
-
-  /**
-   * Guard against compounding a previous failure: if the parent already has
-   * live, unnumbered child folios from an aborted attempt, refuse to start a
-   * new split until they are cleared.
-   */
-  async function assertNoOrphanChildren(): Promise<boolean> {
-    const { data, error } = await supabase
-      .from("folios")
-      .select("id,invoice_number,status,is_deleted")
-      .eq("parent_folio_id", folio.id);
-    if (error) { reportQueryError("existing split bills", error); return false; }
-    const orphans = ((data ?? []) as any[]).filter(
-      (f) => !f.is_deleted && !["void", "refunded"].includes(String(f.status ?? "")) && !f.invoice_number,
-    );
-    if (orphans.length === 0) return true;
-    toast.error(
-      `A previous split attempt on ${billNo(folio.invoice_number)} didn't complete — ${orphans.length} incomplete bill${orphans.length > 1 ? "s" : ""} left behind. Retry cleanup or contact support before splitting again.`,
-    );
-    return false;
-  }
-
-  async function assertParentVoided(undoPayments: () => Promise<void>, newFolioIds: string[]) {
-    const { data: after } = await supabase
-      .from("folios").select("status").eq("id", folio.id).maybeSingle();
-    if (String((after as any)?.status ?? "") === "void") return;
-    await undoPayments();
-    await cleanupChildFolios(newFolioIds);
-    throw new BusinessError("The original bill could not be voided — split cancelled so no duplicate bill remains.");
-  }
-
   function moveToBill2(id: string) {
     setBill1Ids((s) => { const n = new Set(s); n.delete(id); return n; });
   }
@@ -598,33 +547,28 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     }
     if (!isValidOrEmptyGSTIN(party1.gstin ?? "")) return toast.error(`Party 1: ${GSTIN_ERROR}`);
     if (splitType === "different" && !isValidOrEmptyGSTIN(party2.gstin ?? "")) return toast.error(`Party 2: ${GSTIN_ERROR}`);
-    if (!(await assertNoOrphanChildren())) return;
     setBusy(true);
-    // Tracked outside the try so ANY failure can remove the folios this
-    // attempt created — no orphan duplicate bills, ever.
-    const newFolioIds: string[] = [];
-    let completed = false;
+    const parentTotalBefore = Number(folio?.total_amount) || 0;
     try {
-      // 1) Create Invoice A + Invoice B FIRST. Only void the original after both succeed.
-      const created: typeof createdBills = [];
-      for (let i = 0; i < 2; i++) {
-        const party = i === 0 ? party1 : (splitType === "same" ? party1 : party2);
+      // Build both child bills, then hand the WHOLE split to one atomic RPC.
+      const parentBillDisc: BillDiscount | null =
+        folio?.discount_type && Number(folio?.discount_value) > 0
+          ? { type: folio.discount_type, value: Number(folio.discount_value) }
+          : null;
+      const netSubOf = (arr: Charge[]) => arr.reduce((s, c) => {
+        if (c.charge_type === "discount" || c.charge_type === "tax") return s;
+        const amt = Math.abs(Number(c.amount) || 0);
+        const ld = Math.min(Number(c.discount_amount) || 0, amt);
+        return s + (amt - ld);
+      }, 0);
+      const parentNet = netSubOf(charges);
+      const parentBillDiscAmt = computeBillDiscountAmount(parentNet, parentBillDisc);
+
+      const parties = [0, 1].map((i) => (i === 0 ? party1 : (splitType === "same" ? party1 : party2)));
+      const children = [0, 1].map((i) => {
+        const party = parties[i];
         const mode = party.bill_type === "gst_invoice" ? "gst" : "cash";
         const items = i === 0 ? bill1Charges : bill2Charges;
-        // Carry forward parent's bill-level discount proportionally to this split's net subtotal.
-        const parentBillDisc: BillDiscount | null =
-          folio?.discount_type && Number(folio?.discount_value) > 0
-            ? { type: folio.discount_type, value: Number(folio.discount_value) }
-            : null;
-        // Parent-wide net subtotal (after per-line discs)
-        const netSubOf = (arr: Charge[]) => arr.reduce((s, c) => {
-          if (c.charge_type === "discount" || c.charge_type === "tax") return s;
-          const amt = Math.abs(Number(c.amount) || 0);
-          const ld = Math.min(Number(c.discount_amount) || 0, amt);
-          return s + (amt - ld);
-        }, 0);
-        const parentNet = netSubOf(charges);
-        const parentBillDiscAmt = computeBillDiscountAmount(parentNet, parentBillDisc);
         const thisNet = netSubOf(items);
         const shareAmt =
           parentBillDiscAmt > 0 && parentNet > 0
@@ -632,10 +576,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
             : 0;
         const carryDisc: BillDiscount | null = shareAmt > 0 ? { type: "amount", value: shareAmt } : null;
         const totals = recomputeFolio(items as any, mode, carryDisc);
-        const { data: f, error: fErr } = await supabase.from("folios").insert({
-          property_id: booking.property_id,
-          booking_id: booking.id,
-          parent_folio_id: folio.id,
+        return {
           gst_mode: mode,
           bill_type: party.bill_type,
           guest_gstin: party.gstin || null,
@@ -647,77 +588,37 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           discount_type: carryDisc?.type ?? null,
           discount_value: carryDisc?.value ?? 0,
           ...totals,
-          paid_amount: 0,
-          balance_amount: totals.total_amount,
-          created_by: user?.id ?? null,
-        } as any).select("id,invoice_number,total_amount").single();
-        if (fErr) {
-          // Rollback any folio we just created so we don't leak orphans.
-          if (newFolioIds.length > 0) {
-            await supabase.from("folios").delete().in("id", newFolioIds);
-          }
-          throw fErr;
-        }
-        const newId = (f as any).id as string;
-        newFolioIds.push(newId);
-        created.push({
-          folio_id: newId,
-          invoice_number: (f as any).invoice_number,
-          party,
-          total: Number((f as any).total_amount),
-        });
+          charges: items.map((c) => ({
+            charge_type: c.charge_type,
+            description: c.description,
+            qty: c.qty,
+            rate: c.rate,
+            amount: c.amount,
+            gst_rate: c.gst_rate,
+            gst_amount: c.gst_amount,
+            hsn_code: (c as any).hsn_code ?? null,
+            segment_bill_ref: c.segment_bill_ref ?? null,
+            charged_on: c.charged_on ?? null,
+            source_table: c.source_table ?? null,
+            source_id: c.source_id ?? null,
+            discount_type: c.discount_type ?? null,
+            discount_value: c.discount_value ?? 0,
+            discount_amount: c.discount_amount ?? 0,
+          })),
+        };
+      });
 
-        // 2) Copy charges to the new folio (originals stay on the source folio for audit).
-        const rows = items.map((c) => ({
-          folio_id: newId,
-          charge_type: c.charge_type,
-          description: c.description,
-          qty: c.qty,
-          rate: c.rate,
-          amount: c.amount,
-          gst_rate: c.gst_rate,
-          gst_amount: c.gst_amount,
-          hsn_code: (c as any).hsn_code ?? null,
-          segment_bill_ref: c.segment_bill_ref ?? null,
-          ...(c.charged_on ? { charged_on: c.charged_on } : {}),
-          source_table: c.source_table ?? null,
-          source_id: c.source_id ?? null,
-          discount_type: c.discount_type ?? null,
-          discount_value: c.discount_value ?? 0,
-          discount_amount: c.discount_amount ?? 0,
-          created_by: user?.id ?? null,
-        }));
-        const { error: cErr } = await supabase.from("folio_charges").insert(rows as any);
-        if (cErr) {
-          await supabase.from("folios").delete().in("id", newFolioIds);
-          throw cErr;
-        }
-      }
-
-      // 3) Move any existing parent payments onto the children, then void the
-      //    original via the safe helper (which refuses to void a folio that
-      //    still has payments — by now it has none).
-      const { undo: undoPayments } = await movePaymentsToChildren(newFolioIds);
-      const { error: voidErr } = await supabase.rpc("void_folio_safe" as any, {
-        _folio_id: folio.id,
-        _reason: `Split into 2 bills (${splitType})`,
-        _user_id: user?.id ?? null,
-        _force: false,
-      } as any);
-      if (voidErr) {
-        // Rollback the newly created folios so we don't end up with 3 active bills.
-        await undoPayments();
-        await supabase.from("folios").delete().in("id", newFolioIds);
-        throw voidErr;
-      }
-      await assertParentVoided(undoPayments, newFolioIds);
-      await repointBills(folio.id, newFolioIds);
-      completed = true;
+      const rows = await runAtomicSplit(children, `Split into 2 bills (${splitType})`);
+      const created: typeof createdBills = rows.map((r, i) => ({
+        folio_id: r.folio_id,
+        invoice_number: r.invoice_number,
+        party: parties[i],
+        total: Number(r.total_amount) || 0,
+      }));
+      const newFolioIds = created.map((c) => c.folio_id);
 
       setCreatedBills(created);
-      setPayRows(
-        created.map((cb) => ({ mode: "cash", amount: cb.total.toFixed(2), reference: "" })),
-      );
+      setPayRows(seedPayRows(created));
       logActivity({
         property_id: booking.property_id,
         user_id: user?.id ?? "",
@@ -737,9 +638,9 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       setStep(4);
       onDone?.(newFolioIds);
     } catch (e: any) {
-      if (!completed) await cleanupChildFolios(newFolioIds);
       toastError(e, "Could not split bill");
     } finally {
+      await checkSplitIntegrity(parentTotalBefore);
       setBusy(false);
     }
   }
@@ -758,41 +659,6 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     return confirmShareSplitInner();
   }
 
-  /**
-   * After a split, segment_bills / food_bills rows still point at the voided
-   * parent folio. Repoint them to the child folio that actually received the
-   * matching food charge rows (fallback: the largest child).
-   */
-  async function repointBills(parentFolioId: string, childFolioIds: string[]) {
-    try {
-      if (childFolioIds.length === 0) return;
-      const { data: childCharges, error: __qe3 } = await supabase
-        .from("folio_charges")
-        .select("folio_id,source_table,source_id")
-        .in("folio_id", childFolioIds);
-      if (__qe3) reportQueryError("folio charges", __qe3);
-      const bySegment = new Map<string, string>();
-      for (const c of (childCharges ?? []) as any[]) {
-        if (c.source_table === "segment_bills" && c.source_id) bySegment.set(c.source_id, c.folio_id);
-      }
-      const fallback = bySegment.size > 0
-        ? [...bySegment.values()][0]
-        : childFolioIds[childFolioIds.length - 1];
-
-      const { data: segs, error: __qe4 } = await supabase
-        .from("segment_bills")
-        .select("id")
-        .eq("folio_id", parentFolioId);
-      if (__qe4) reportQueryError("segment bills", __qe4);
-      for (const s of (segs ?? []) as any[]) {
-        await supabase.from("segment_bills")
-          .update({ folio_id: bySegment.get(s.id) ?? fallback } as any).eq("id", s.id);
-      }
-      await supabase.from("food_bills")
-        .update({ folio_id: fallback } as any).eq("folio_id", parentFolioId);
-    } catch { /* non-fatal — split already succeeded */ }
-  }
-
   async function confirmShareSplitInner() {
     if (!folio || !booking) return;
     if (parties.length < 2) return toast.error("Add at least two parties");
@@ -808,33 +674,25 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       );
     }
 
-    if (!(await assertNoOrphanChildren())) return;
     setBusy(true);
-    const newFolioIds: string[] = [];
-    let completed = false;
+    const parentTotalBefore = Number(folio?.total_amount) || 0;
     try {
       const scopeLabel = splitScope === "charge"
         ? (baseCharges[0]?.description ?? "charge")
         : "Bill";
       const nets = shareDistribution.nets; // rupees, sums exactly to baseNet
       const gstRate = baseGstRate;
-      const created: typeof createdBills = [];
-      for (let i = 0; i < parties.length; i++) {
-        const party = parties[i];
+
+      const children = parties.map((party, i) => {
         const mode = party.bill_type === "gst_invoice" ? "gst" : "cash";
         const partyNet = Number(nets[i] ?? 0);
-        const partyGst = mode === "gst"
-          ? round2(partyNet * gstRate / 100)
-          : 0;
+        const partyGst = mode === "gst" ? round2(partyNet * gstRate / 100) : 0;
         const partyPct = round2(shareDistribution.pcts[i] ?? 0);
+        const partyTotal = mode === "gst" ? round2(partyNet + partyGst) : round2(partyNet);
         const description = splitScope === "charge"
           ? `Share of ${scopeLabel} — ${partyPct}% of ${billNo(folio.invoice_number)}`
           : `Share of Bill — ${partyPct}% of ${billNo(folio.invoice_number)}`;
-        const partyTotal = mode === "gst" ? round2(partyNet + partyGst) : round2(partyNet);
-        const { data: f, error: fErr } = await supabase.from("folios").insert({
-          property_id: booking.property_id,
-          booking_id: booking.id,
-          parent_folio_id: folio.id,
+        return {
           gst_mode: mode,
           bill_type: party.bill_type,
           guest_gstin: party.gstin || null,
@@ -848,69 +706,34 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           gst_amount: partyGst,
           total_amount: partyTotal,
           round_off_amount: 0,
-          paid_amount: 0,
-          balance_amount: partyTotal,
-          created_by: user?.id ?? null,
-        } as any).select("id,invoice_number,total_amount").single();
-        if (fErr) {
-          if (newFolioIds.length > 0) {
-            await supabase.from("folios").delete().in("id", newFolioIds);
-          }
-          throw fErr;
-        }
-        const newId = (f as any).id as string;
-        newFolioIds.push(newId);
-
-        // Single lump-sum charge line describing this party's share.
-        const chargeRow = {
-          folio_id: newId,
-          charge_type: "share",
-          description,
-          qty: 1,
-          rate: partyNet,
-          amount: partyNet,
-          gst_rate: gstRate,
-          gst_amount: partyGst,
-          source_table: "folios",
-          source_id: folio.id,
-          created_by: user?.id ?? null,
+          charges: [{
+            charge_type: "share",
+            description,
+            qty: 1,
+            rate: partyNet,
+            amount: partyNet,
+            gst_rate: gstRate,
+            gst_amount: partyGst,
+            source_table: "folios",
+            source_id: folio.id,
+          }],
         };
-        const { error: cErr } = await supabase.from("folio_charges").insert([chargeRow] as any);
-        if (cErr) {
-          await supabase.from("folios").delete().in("id", newFolioIds);
-          throw cErr;
-        }
+      });
 
-        created.push({
-          folio_id: newId,
-          invoice_number: (f as any).invoice_number,
-          party,
-          total: Number((f as any).total_amount ?? partyTotal),
-        });
-      }
-
-      // Move existing parent payments onto the children, then void the source
-      // only after every share folio is safely persisted.
-      const { undo: undoPayments } = await movePaymentsToChildren(newFolioIds);
-      const { error: voidErr } = await supabase.rpc("void_folio_safe" as any, {
-        _folio_id: folio.id,
-        _reason: `Split by ${splitMode} into ${parties.length} bills (${splitScope})`,
-        _user_id: user?.id ?? null,
-        _force: false,
-      } as any);
-      if (voidErr) {
-        await undoPayments();
-        await supabase.from("folios").delete().in("id", newFolioIds);
-        throw voidErr;
-      }
-      await assertParentVoided(undoPayments, newFolioIds);
-      await repointBills(folio.id, newFolioIds);
-      completed = true;
+      const rows = await runAtomicSplit(
+        children,
+        `Split by ${splitMode} into ${parties.length} bills (${splitScope})`,
+      );
+      const created: typeof createdBills = rows.map((r, i) => ({
+        folio_id: r.folio_id,
+        invoice_number: r.invoice_number,
+        party: parties[i],
+        total: Number(r.total_amount) || 0,
+      }));
+      const newFolioIds = created.map((c) => c.folio_id);
 
       setCreatedBills(created);
-      setPayRows(
-        created.map((cb) => ({ mode: "cash", amount: cb.total.toFixed(2), reference: "" })),
-      );
+      setPayRows(seedPayRows(created));
       logActivity({
         property_id: booking.property_id,
         user_id: user?.id ?? "",
@@ -937,9 +760,9 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       setStep(4);
       onDone?.(newFolioIds);
     } catch (e: any) {
-      if (!completed) await cleanupChildFolios(newFolioIds);
       toastError(e, "Could not split bill");
     } finally {
+      await checkSplitIntegrity(parentTotalBefore);
       setBusy(false);
     }
   }
