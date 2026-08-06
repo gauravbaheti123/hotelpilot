@@ -451,8 +451,28 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         // leave the payment stranded on the parent folio, which then refused
         // to void and survived the split as a duplicate full-value bill.
         if (!movedRow) {
-          throw new Error(
-            "Could not move an existing payment onto the new bills — split aborted so no duplicate bill is created.",
+          // Nothing was logged the last time this happened, so the cause was
+          // undiagnosable. Leave a trail before aborting.
+          await logActivity({
+            property_id: booking.property_id,
+            user_id: user?.id ?? "",
+            user_name: userDisplayName(user as any),
+            action_type: "BILL_SPLIT_FAILED",
+            module: "Billing",
+            reference_id: booking.id,
+            reference_label: `${billNo(folio.invoice_number)} — payment move returned 0 rows`,
+            details: {
+              reason: "payments update affected 0 rows",
+              payment_id: p.id,
+              payment_amount: p.amount,
+              parent_folio_id: folio.id,
+              target_folio_id: childFolioIds[first.i],
+              child_folio_ids: childFolioIds,
+              supabase_response: { data: movedRow ?? null, error: upErr ?? null },
+            },
+          });
+          throw new BusinessError(
+            "Could not move an existing payment onto the new bills — split cancelled so no duplicate bill is created.",
           );
         }
         moved.push({ id: p.id, amount: p.amount });
@@ -488,13 +508,50 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
    * single-folio sum (check-out above all) double-counts the bill. Verify and
    * roll back instead.
    */
+  /**
+   * Delete child folios (and their copied charges) created during a split
+   * attempt. Called from every failure path so a half-finished split can never
+   * leave unnumbered duplicate bills behind.
+   */
+  async function cleanupChildFolios(ids: string[]) {
+    if (!ids || ids.length === 0) return;
+    try {
+      await supabase.from("folio_charges").delete().in("folio_id", ids);
+      await supabase.from("folios").delete().in("id", ids);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error("[split] child folio cleanup failed", { ids, e });
+    }
+  }
+
+  /**
+   * Guard against compounding a previous failure: if the parent already has
+   * live, unnumbered child folios from an aborted attempt, refuse to start a
+   * new split until they are cleared.
+   */
+  async function assertNoOrphanChildren(): Promise<boolean> {
+    const { data, error } = await supabase
+      .from("folios")
+      .select("id,invoice_number,status,is_deleted")
+      .eq("parent_folio_id", folio.id);
+    if (error) { reportQueryError("existing split bills", error); return false; }
+    const orphans = ((data ?? []) as any[]).filter(
+      (f) => !f.is_deleted && !["void", "refunded"].includes(String(f.status ?? "")) && !f.invoice_number,
+    );
+    if (orphans.length === 0) return true;
+    toast.error(
+      `A previous split attempt on ${billNo(folio.invoice_number)} didn't complete — ${orphans.length} incomplete bill${orphans.length > 1 ? "s" : ""} left behind. Retry cleanup or contact support before splitting again.`,
+    );
+    return false;
+  }
+
   async function assertParentVoided(undoPayments: () => Promise<void>, newFolioIds: string[]) {
     const { data: after } = await supabase
       .from("folios").select("status").eq("id", folio.id).maybeSingle();
     if (String((after as any)?.status ?? "") === "void") return;
     await undoPayments();
-    await supabase.from("folios").delete().in("id", newFolioIds);
-    throw new Error("The original bill could not be voided — split cancelled so no duplicate bill remains.");
+    await cleanupChildFolios(newFolioIds);
+    throw new BusinessError("The original bill could not be voided — split cancelled so no duplicate bill remains.");
   }
 
   function moveToBill2(id: string) {
