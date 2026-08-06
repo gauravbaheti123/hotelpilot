@@ -699,8 +699,16 @@ function FolioPage() {
           ? (gu.gst_number ?? null)
           : (booking?.guests?.gst_number ?? null),
     };
-    const { error } = await supabase.from("folios").update(patch as any).eq("id", folio.id);
+    // Verify the write actually landed on THIS folio — an update that matches
+    // no row (e.g. blocked by policy) returns no error, which previously left
+    // an audit entry for a change that never happened.
+    const { data: updated, error } = await supabase
+      .from("folios").update(patch as any).eq("id", folio.id).select("id");
     if (error) { toastError(error); return; }
+    if (!updated || updated.length === 0) {
+      toast.error("Bill-To could not be updated on this bill");
+      return;
+    }
     if (booking?.id) {
       await supabase.from("bookings").update({ billing_company_id: companyId } as any).eq("id", booking.id);
     }

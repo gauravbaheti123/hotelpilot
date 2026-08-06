@@ -146,6 +146,13 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   const guestGstin = booking?.guests?.gst_number ?? "";
   const folioGst = "gst_invoice" as const;
 
+  /** Parent folio's Bill-To company (when the bill is billed to a company).
+   *  Split children must inherit this — the guest's personal GSTIN is only a
+   *  fallback for individually-billed folios. */
+  const [parentCompany, setParentCompany] = useState<
+    { id: string; name: string; gstin: string | null } | null
+  >(null);
+
   const [party1, setParty1] = useState<PartyDetails>({
     name: guestName, mobile: guestMobile, gstin: guestGstin, bill_type: folioGst,
   });
@@ -153,6 +160,50 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     name: "", mobile: "", gstin: "",
     bill_type: "gst_invoice",
   });
+
+  // Resolve the parent folio's Bill-To company and seed Party 1 from it.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const companyId = folio?.billing_company_id ?? null;
+      if (!companyId) {
+        setParentCompany(null);
+        // No Bill-To company — fall back to the folio snapshot, then the guest.
+        setParty1((p) => ({
+          ...p,
+          name: folio?.guest_company || guestName,
+          gstin: folio?.guest_gstin || guestGstin,
+        }));
+        return;
+      }
+      const { data, error } = await supabase
+        .from("billing_companies" as any)
+        .select("id,name,gstin")
+        .eq("id", companyId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) reportQueryError("bill-to company", error);
+      const co = (data ?? null) as { id: string; name: string; gstin: string | null } | null;
+      setParentCompany(co);
+      setParty1((p) => ({
+        ...p,
+        name: co?.name || folio?.guest_company || guestName,
+        gstin: co?.gstin || folio?.guest_gstin || guestGstin,
+      }));
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, folio?.billing_company_id, folio?.guest_company, folio?.guest_gstin]);
+
+  /** Carry the parent's Bill-To company onto a child folio only when that
+   *  child still bills the same party (i.e. the Bill-To wasn't changed here). */
+  const childCompanyId = (partyName: string): string | null => {
+    if (!parentCompany) return null;
+    return partyName.trim().toLowerCase() === parentCompany.name.trim().toLowerCase()
+      ? parentCompany.id
+      : null;
+  };
 
   const [createdBills, setCreatedBills] = useState<
     { folio_id: string; invoice_number: string | null; party: PartyDetails; total: number }[]
@@ -528,6 +579,9 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           bill_type: party.bill_type,
           guest_gstin: party.gstin || null,
           guest_company: splitType === "different" && i === 1 ? party.name : (folio.guest_company ?? null),
+          billing_company_id: childCompanyId(
+            splitType === "different" && i === 1 ? party.name : (folio.guest_company ?? party.name),
+          ),
           notes: `Split bill ${i + 1}/2 of voided ${billNo(folio.invoice_number)}${splitType === "different" ? ` — Party: ${party.name}` : ""}`,
           discount_type: carryDisc?.type ?? null,
           discount_value: carryDisc?.value ?? 0,
@@ -720,6 +774,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           bill_type: party.bill_type,
           guest_gstin: party.gstin || null,
           guest_company: party.name,
+          billing_company_id: childCompanyId(party.name),
           notes: `Split bill ${i + 1}/${parties.length} (${splitMode === "percent" ? "%" : "₹"}) of voided ${billNo(folio.invoice_number)} — Party: ${party.name}`,
           discount_type: null,
           discount_value: 0,
