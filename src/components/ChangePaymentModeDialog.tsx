@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
-import { useAuth, hasRole } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth";
 import { logActivity, userDisplayName, ACTIVITY } from "@/lib/activityLog";
 import { toastError } from "@/lib/errorMessage";
 import { billNo } from "@/lib/billNumber";
@@ -42,10 +42,9 @@ interface Props {
 }
 
 export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: Props) {
-  const { user, roles } = useAuth();
+  const { user } = useAuth();
   const { methods } = usePaymentMethods(folio?.property_id ?? null);
   const activeMethods = methods.filter((m) => m.is_active);
-  const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
 
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -97,21 +96,20 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
       }
     }
 
-    if (locked) {
-      if (!isOwner) return toast.error("Bill is locked — only Owner/Superadmin can change payment mode");
-      if (!reason.trim()) return toast.error("Reason required for locked-bill override");
-    }
+    if (locked && !reason.trim()) return toast.error("Reason required for a locked bill");
 
     setSaving(true);
     try {
       for (const { p, next } of changes) {
-        const { error } = await supabase
-          .from("payments")
-          .update({ mode: next })
-          .eq("id", p.id);
+        // Mode-only change via a server routine gated by payments/edit_mode.
+        const { error } = await supabase.rpc("change_payment_mode" as any, {
+          _payment_id: p.id,
+          _new_mode: next,
+          _reason: locked ? reason.trim() : null,
+        } as any);
         if (error) { toastError(error); setSaving(false); return; }
 
-        // Locked bills: route through owner override for consistent audit
+        // Locked bills: keep the override audit trail
         if (locked) {
           await supabase.rpc("log_owner_override" as any, {
             _property_id: folio.property_id,

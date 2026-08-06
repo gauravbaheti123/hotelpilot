@@ -14,7 +14,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { FOLIO_STATUS_TONE, inr } from "@/lib/billing";
 import { billNo, hasBillNumber, segmentBillNo } from "@/lib/billNumber";
-import { useAuth, hasRole } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { toast } from "sonner";
@@ -126,12 +126,14 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
     return nums.length ? Array.from(new Set(nums)).join(", ") : "—";
   };
   const { currentId: propertyId, current: currentProperty } = useCurrentProperty();
-  const { user, roles } = useAuth();
+  const { user } = useAuth();
   const { can } = usePermissions();
   const navigate = useNavigate();
   const canEdit = can("invoices", "edit");
   const canDelete = can("invoices", "delete");
-  const canEditPaymentMode = hasRole(roles, "owner") || hasRole(roles, "superadmin") || hasRole(roles, "manager");
+  // Payment-mode edits are governed by their own dynamic permission key
+  // (payments/edit_mode), granted to every role by default.
+  const canEditPaymentMode = can("payments", "edit_mode");
   // Phase 73 — all invoice edit/delete/renumber/segment-bill actions are now
   // driven by the dynamic role_permissions grid (Settings > Roles), not by
   // hardcoded role names. Renumbering and audit-trail viewing follow "edit".
@@ -599,7 +601,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                 {voided && (
                   <div className="flex items-center gap-1 ml-2">
                     {canEditPaymentMode && (
-                      <Button size="sm" variant="ghost" title="Change payment mode (owner override)"
+                      <Button size="sm" variant="ghost" title="Change payment mode"
                         onClick={(e) => { e.preventDefault(); setPayModeTarget({
                           id: r.id, invoice_number: billNo(r.invoice_number), property_id: propertyId!,
                           booking_id: r.booking_id, status: r.status, is_deleted: r.is_deleted,
