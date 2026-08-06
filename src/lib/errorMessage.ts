@@ -7,6 +7,24 @@
  */
 import { toast } from "sonner";
 
+/**
+ * Errors we raise ourselves for business-rule failures. They already carry a
+ * sentence written for the user, so `humanizeError` must surface them verbatim
+ * instead of pattern-matching their text (a message such as "…split aborted…"
+ * used to be misread as a connectivity failure).
+ */
+export class BusinessError extends Error {
+  readonly isBusinessError = true;
+  constructor(message: string, public readonly context?: Record<string, unknown>) {
+    super(message);
+    this.name = "BusinessError";
+  }
+}
+
+function isBusinessError(error: unknown): error is BusinessError {
+  return Boolean(error && typeof error === "object" && (error as any).isBusinessError === true);
+}
+
 export interface RawErrorLike {
   message?: string | null;
   details?: string | null;
@@ -84,6 +102,9 @@ function constraintMessage(text: string): string | undefined {
  * "Failed to load invoices" is also accepted and normalized.
  */
 export function humanizeError(error: unknown, action?: string): HumanError {
+  // Our own business-rule errors are already user-facing — never reclassify.
+  if (isBusinessError(error)) return { message: error.message };
+
   const e = raw(error);
   const text = textOf(e);
   const code = (typeof e.code === "string" ? e.code : "") || "";
@@ -92,8 +113,9 @@ export function humanizeError(error: unknown, action?: string): HumanError {
 
   // Network / connectivity
   if (
-    /failed to fetch|networkerror|network request failed|load failed|err_internet|err_network|fetch failed|timeout|timed out|aborted/.test(text) ||
+    /failed to fetch|networkerror|network request failed|load failed|err_internet|err_network|fetch failed|request timeout|connection timed out|socket hang up/.test(text) ||
     e.name === "AbortError" ||
+    e.name === "TimeoutError" ||
     e.name === "TypeError" && /fetch/.test(text)
   ) {
     return { message: "Couldn't connect. Check your internet connection and try again.", details };
