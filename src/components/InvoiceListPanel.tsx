@@ -179,10 +179,13 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
   const runLoad = async () => {
     if (!propertyId) return;
       let qb = supabase.from("folios")
-        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,settled_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number)))" as any)
+        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,updated_at,settled_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number)))" as any)
         .eq("property_id", propertyId);
       if (!audit) qb = qb.eq("is_deleted" as any, false);
       const { data, error } = await qb
+        // Most recently active first — updated_at bumps on settle, reopen and
+        // every charge/edit (folios has a set_updated_at trigger).
+        .order("updated_at" as any, { ascending: false, nullsFirst: false })
         .order("settled_at" as any, { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
         .limit(300);
