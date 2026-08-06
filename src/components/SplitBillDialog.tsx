@@ -808,7 +808,10 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       );
     }
 
+    if (!(await assertNoOrphanChildren())) return;
     setBusy(true);
+    const newFolioIds: string[] = [];
+    let completed = false;
     try {
       const scopeLabel = splitScope === "charge"
         ? (baseCharges[0]?.description ?? "charge")
@@ -816,7 +819,6 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       const nets = shareDistribution.nets; // rupees, sums exactly to baseNet
       const gstRate = baseGstRate;
       const created: typeof createdBills = [];
-      const newFolioIds: string[] = [];
       for (let i = 0; i < parties.length; i++) {
         const party = parties[i];
         const mode = party.bill_type === "gst_invoice" ? "gst" : "cash";
@@ -903,6 +905,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       }
       await assertParentVoided(undoPayments, newFolioIds);
       await repointBills(folio.id, newFolioIds);
+      completed = true;
 
       setCreatedBills(created);
       setPayRows(
@@ -934,6 +937,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       setStep(4);
       onDone?.(newFolioIds);
     } catch (e: any) {
+      if (!completed) await cleanupChildFolios(newFolioIds);
       toastError(e, "Could not split bill");
     } finally {
       setBusy(false);
