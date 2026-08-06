@@ -126,7 +126,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
     return nums.length ? Array.from(new Set(nums)).join(", ") : "—";
   };
   const { currentId: propertyId, current: currentProperty } = useCurrentProperty();
-  const { user, roles } = useAuth();
+  const { user } = useAuth();
   const { can } = usePermissions();
   const navigate = useNavigate();
   const canEdit = can("invoices", "edit");
