@@ -270,6 +270,26 @@ export function StepEditStayRoom({ propertyId, bookingId, status, stay, onChange
                       </p>
                     )
                   )}
+                  {r.rate > 0 && (() => {
+                    const incl = stay.rateType === "inclusive";
+                    const g = incl
+                      ? resolveGstRateInclusive(gstSlabs, "room", r.rate)
+                      : resolveGstRate(gstSlabs, "room", r.rate);
+                    if (g == null) {
+                      return (
+                        <p className="text-[11px] text-destructive">
+                          No GST slab configured for this tariff. Set it up in Master Data → GST Slabs.
+                        </p>
+                      );
+                    }
+                    const taxable = incl ? r.rate / (1 + g / 100) : r.rate;
+                    const gst = incl ? r.rate - taxable : r.rate * g / 100;
+                    return (
+                      <p className="text-[11px] text-muted-foreground">
+                        {incl ? "Incl." : "Excl."} GST {g}% → Taxable ₹{taxable.toFixed(2)} + GST ₹{gst.toFixed(2)} = ₹{(taxable + gst).toFixed(2)}/night
+                      </p>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
