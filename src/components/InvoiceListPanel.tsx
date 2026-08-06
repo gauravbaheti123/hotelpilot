@@ -38,6 +38,7 @@ interface Row {
   total_amount: number; paid_amount: number; balance_amount: number;
   created_at: string;
   settled_at?: string | null;
+  updated_at?: string | null;
   booking_id: string;
   is_deleted?: boolean;
   deleted_at?: string | null;
@@ -62,9 +63,20 @@ export interface InvoiceListPanelProps {
   pullToRefresh?: boolean;
 }
 
-/** Settlement instant for grouping/sorting — falls back to creation time. */
-const settledAt = (r: { settled_at?: string | null; created_at: string }) =>
-  r.settled_at ?? r.created_at;
+/**
+ * Last-activity instant for grouping/sorting: the newest of updated_at,
+ * settled_at and created_at. `folios` has a BEFORE UPDATE set_updated_at
+ * trigger, so a reopen (checkout-undo clears settled_at) still bumps
+ * updated_at and the row surfaces at the top under today's divider.
+ */
+const activityAt = (r: {
+  settled_at?: string | null; updated_at?: string | null; created_at: string;
+}) => {
+  const ts = [r.updated_at, r.settled_at, r.created_at]
+    .map((v) => (v ? new Date(v).getTime() : NaN))
+    .filter((n) => !Number.isNaN(n));
+  return new Date(Math.max(...ts)).toISOString();
+};
 
 /** "4 August 2026" style header label for a YYYY-MM-DD key. */
 function dateHeaderLabel(iso: string) {
@@ -75,19 +87,21 @@ function dateHeaderLabel(iso: string) {
 }
 
 /**
- * Sort newest-first by settlement time and split into date buckets
+ * Sort newest-first by last activity and split into date buckets
  * (chat-app style date dividers). Runs on the already-filtered list so
  * search/filter keeps working inside the grouped view.
  */
-function groupBySettledDate<T extends { settled_at?: string | null; created_at: string }>(
+function groupBySettledDate<T extends {
+  settled_at?: string | null; updated_at?: string | null; created_at: string;
+}>(
   list: T[],
 ): Array<{ key: string; label: string; items: T[] }> {
   const sorted = [...list].sort(
-    (a, b) => new Date(settledAt(b)).getTime() - new Date(settledAt(a)).getTime(),
+    (a, b) => new Date(activityAt(b)).getTime() - new Date(activityAt(a)).getTime(),
   );
   const out: Array<{ key: string; label: string; items: T[] }> = [];
   for (const item of sorted) {
-    const key = istDateISO(settledAt(item));
+    const key = istDateISO(activityAt(item));
     const last = out[out.length - 1];
     if (last && last.key === key) last.items.push(item);
     else out.push({ key, label: dateHeaderLabel(key), items: [item] });
@@ -134,6 +148,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
     folio_id: string | null; booking_id: string | null;
     created_at: string;
     settled_at?: string | null;
+    updated_at?: string | null;
   }>>([]);
   const [audit, setAudit] = useState(false);
   const [delTarget, setDelTarget] = useState<Row | null>(null);
@@ -165,10 +180,13 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
   const runLoad = async () => {
     if (!propertyId) return;
       let qb = supabase.from("folios")
-        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,settled_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number)))" as any)
+        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,updated_at,settled_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number)))" as any)
         .eq("property_id", propertyId);
       if (!audit) qb = qb.eq("is_deleted" as any, false);
       const { data, error } = await qb
+        // Most recently active first — updated_at bumps on settle, reopen and
+        // every charge/edit (folios has a set_updated_at trigger).
+        .order("updated_at" as any, { ascending: false, nullsFirst: false })
         .order("settled_at" as any, { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
         .limit(300);
@@ -215,9 +233,10 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
     (async () => {
       const { data, error } = await supabase
         .from("segment_bills" as any)
-        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,folio_id,booking_id,created_at,settled_at")
+        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,folio_id,booking_id,created_at,updated_at,settled_at")
         .eq("property_id", propertyId)
         .eq("segment", segTab)
+        .order("updated_at" as any, { ascending: false, nullsFirst: false })
         .order("settled_at" as any, { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
         .limit(300);
