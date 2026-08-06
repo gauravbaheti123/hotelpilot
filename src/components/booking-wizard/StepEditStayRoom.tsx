@@ -14,8 +14,9 @@ import { fetchAvailableRooms } from "@/lib/roomAvailability";
 import { reportQueryError } from "@/lib/queryError";
 import { isValidStayRange, nightsBetween } from "@/lib/front-desk";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
+import { usePermissions } from "@/hooks/use-permissions";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
-import { stayHasChanges, type StayEdit, type StayRoomEdit } from "@/lib/bookingEdit";
+import { findStayConflicts, stayHasChanges, type StayEdit, type StayRoomEdit } from "@/lib/bookingEdit";
 
 interface RoomOption {
   id: string;
@@ -26,6 +27,7 @@ interface RoomOption {
 
 interface Props {
   propertyId: string;
+  bookingId: string;
   status: string;
   stay: StayEdit;
   onChange: (p: Partial<StayEdit>) => void;
@@ -33,9 +35,15 @@ interface Props {
   onBlockedChange: (blocked: boolean) => void;
 }
 
-export function StepEditStayRoom({ propertyId, status, stay, onChange, onBlockedChange }: Props) {
+export function StepEditStayRoom({ propertyId, bookingId, status, stay, onChange, onBlockedChange }: Props) {
   const checkedIn = status === "checked_in";
   const { limit } = useDiscountLimit();
+  const { can } = usePermissions();
+  // Correcting the check-in date of an in-house guest is a high-trust
+  // override, so it reuses the existing `bookings.delete` permission
+  // (Manager / Admin / Owner in the role grid).
+  const canEditCheckIn = !checkedIn || can("bookings", "delete");
+  const [conflict, setConflict] = useState<string | null>(null);
   const [options, setOptions] = useState<RoomOption[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -99,10 +107,28 @@ export function StepEditStayRoom({ propertyId, status, stay, onChange, onBlocked
   }, [stay.rooms, limit]);
 
   const datesValid = isValidStayRange(stay.checkIn, stay.checkOut);
+  const checkInChanged = stay.checkIn !== stay.origCheckIn;
+
+  // Double-booking guard for a moved check-in date.
+  useEffect(() => {
+    if (!checkInChanged || !datesValid) { setConflict(null); return; }
+    let alive = true;
+    const t = setTimeout(async () => {
+      const clashes = await findStayConflicts(bookingId, stay.checkIn, stay.checkOut, stay.rooms.map((r) => ({
+        roomId: r.roomId ?? r.origRoomId, roomNumber: r.roomNumber ?? r.origRoomNumber,
+      })));
+      if (!alive) return;
+      setConflict(clashes.length ? `Room ${clashes.join(", ")} is already booked in this date range.` : null);
+    }, 250);
+    return () => { alive = false; clearTimeout(t); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkInChanged, datesValid, stay.checkIn, stay.checkOut]);
+
   const changed = stayHasChanges(stay);
   const needsReason = checkedIn && changed && !stay.reason.trim();
   const blocked =
     !datesValid ||
+    !!conflict ||
     rateProblems.some(Boolean) ||
     needsReason ||
     stay.rooms.some((r) => checkedIn && r.roomId !== r.origRoomId && !r.roomId);
@@ -117,12 +143,17 @@ export function StepEditStayRoom({ propertyId, status, stay, onChange, onBlocked
           <Input
             type="date"
             value={stay.checkIn}
-            disabled={checkedIn}
+            disabled={!canEditCheckIn}
             onChange={(e) => onChange({ checkIn: e.target.value })}
           />
-          {checkedIn && (
+          {checkedIn && !canEditCheckIn && (
             <p className="text-[11px] text-muted-foreground">
-              Locked — the guest has already checked in.
+              Locked — the guest has already checked in. A manager can correct this date.
+            </p>
+          )}
+          {checkedIn && canEditCheckIn && (
+            <p className="text-[11px] text-muted-foreground">
+              Correction only — room charges are recalculated for the new night count.
             </p>
           )}
         </div>
@@ -138,10 +169,12 @@ export function StepEditStayRoom({ propertyId, status, stay, onChange, onBlocked
 
       {!datesValid ? (
         <p className="text-xs text-destructive">Check-out must be after check-in.</p>
+      ) : conflict ? (
+        <p className="text-xs text-destructive">{conflict}</p>
       ) : (
         <p className="text-xs text-muted-foreground">
           {nightsBetween(stay.checkIn, stay.checkOut)} night(s)
-          {stay.checkOut !== stay.origCheckOut && " · room charges will be refreshed for the new night count"}
+          {(stay.checkOut !== stay.origCheckOut || checkInChanged) && " · room charges will be refreshed for the new night count"}
         </p>
       )}
 

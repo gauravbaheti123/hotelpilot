@@ -17,6 +17,7 @@ import { syncBillingCompanyRecord, upsertBillingCompany } from "@/lib/bookingWiz
 import { reportQueryError } from "@/lib/queryError";
 import { changeRoomRateOp, modifyDatesOp, shiftRoomOp } from "@/lib/roomOps";
 import { istToday } from "@/lib/date";
+import { ACTIVITY, logActivity } from "@/lib/activityLog";
 
 /** One editable room line of an existing booking. */
 export interface StayRoomEdit {
@@ -64,6 +65,41 @@ export function stayHasChanges(s: StayEdit): boolean {
   return s.rooms.some(
     (r) => r.roomId !== r.origRoomId || Math.abs(r.rate - r.origRate) > 0.009,
   );
+}
+
+/**
+ * Double-booking guard for a (possibly backdated) stay range. Mirrors the
+ * `tg_booking_rooms_no_overlap` trigger so the wizard can block before saving
+ * instead of surfacing a raw Postgres error.
+ *
+ * Returns the room numbers that clash, empty when the range is free.
+ */
+export async function findStayConflicts(
+  bookingId: string,
+  checkIn: string,
+  checkOut: string,
+  rooms: Array<{ roomId: string | null; roomNumber: string | null }>,
+): Promise<string[]> {
+  const roomIds = rooms.map((r) => r.roomId).filter((v): v is string => !!v);
+  if (roomIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("booking_rooms")
+    .select("room_id, status, bookings!booking_rooms_booking_id_fkey(id,status)")
+    .in("room_id", roomIds)
+    .lt("check_in", checkOut)
+    .gt("check_out", checkIn);
+  if (error) { reportQueryError("booking rooms", error); return []; }
+  const clashing = new Set<string>();
+  for (const row of (data ?? []) as Array<Record<string, unknown>>) {
+    const bk = (row.bookings ?? null) as { id?: string; status?: string } | null;
+    if (!bk?.id || bk.id === bookingId) continue;
+    if ((row.status ?? "active") === "shifted") continue;
+    if (["cancelled", "no_show", "checked_out"].includes(String(bk.status ?? ""))) continue;
+    clashing.add(String(row.room_id));
+  }
+  return rooms
+    .filter((r) => r.roomId && clashing.has(r.roomId))
+    .map((r) => r.roomNumber ?? "—");
 }
 
 /** True when the booking is still in an editable state. Mirrors the RPC guard. */
@@ -321,14 +357,25 @@ async function persistGuestIdDocs(s: BookingEditState) {
  * Any blocking condition raised by those RPCs propagates unchanged so the caller
  * can show the same message the dialogs show.
  */
-export async function saveStayEdits(s: BookingEditState, actorId: string | null): Promise<void> {
+export async function saveStayEdits(
+  s: BookingEditState,
+  actorId: string | null,
+  actorName?: string | null,
+): Promise<void> {
   const stay = s.stay;
   const checkedIn = s.status === "checked_in";
   if (!stayHasChanges(stay)) return;
 
   // 1. Dates first — booking_room ids survive this, rate slicing does not.
   if (stay.checkOut !== stay.origCheckOut || stay.checkIn !== stay.origCheckIn) {
-    if (!checkedIn && stay.checkIn !== stay.origCheckIn) {
+    if (stay.checkIn !== stay.origCheckIn) {
+      // Double-booking guard (also enforced by tg_booking_rooms_no_overlap).
+      const clashes = await findStayConflicts(s.bookingId, stay.checkIn, stay.checkOut, stay.rooms);
+      if (clashes.length > 0) {
+        throw new Error(
+          `Room ${clashes.join(", ")} is already booked during the new date range.`,
+        );
+      }
       for (const r of stay.rooms) {
         const { error } = await supabase.from("booking_rooms")
           .update({ check_in: stay.checkIn } as never).eq("id", r.bookingRoomId);
@@ -337,10 +384,27 @@ export async function saveStayEdits(s: BookingEditState, actorId: string | null)
       const { error: bErr } = await supabase.from("bookings")
         .update({ check_in: stay.checkIn } as never).eq("id", s.bookingId);
       if (bErr) throw bErr;
+      if (checkedIn) {
+        await logActivity({
+          ...ACTIVITY.BOOKING_MODIFIED,
+          property_id: s.propertyId,
+          user_id: actorId ?? "",
+          user_name: actorName ?? "Unknown",
+          reference_id: s.bookingId,
+          reference_label: s.bookingNumber,
+          details: {
+            field: "check_in",
+            old_value: stay.origCheckIn,
+            new_value: stay.checkIn,
+            reason: stay.reason.trim() || null,
+            note: "Check-in date corrected after check-in",
+          },
+        });
+      }
     }
     await modifyDatesOp({
       bookingId: s.bookingId,
-      checkIn: checkedIn ? stay.origCheckIn : stay.checkIn,
+      checkIn: stay.checkIn,
       newCheckOut: stay.checkOut,
       advanceAmount: stay.advanceAmount,
       rooms: stay.rooms.map((r) => ({ id: r.bookingRoomId, rate: r.rate })),
