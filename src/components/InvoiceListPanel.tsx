@@ -601,7 +601,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                 {voided && (
                   <div className="flex items-center gap-1 ml-2">
                     {canEditPaymentMode && (
-                      <Button size="sm" variant="ghost" title="Change payment mode (owner override)"
+                      <Button size="sm" variant="ghost" title="Change payment mode"
                         onClick={(e) => { e.preventDefault(); setPayModeTarget({
                           id: r.id, invoice_number: billNo(r.invoice_number), property_id: propertyId!,
                           booking_id: r.booking_id, status: r.status, is_deleted: r.is_deleted,
