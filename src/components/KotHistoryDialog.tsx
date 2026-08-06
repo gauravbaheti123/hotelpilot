@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Printer, Pencil, Trash2, Plus, Minus } from "lucide-react";
 import { inr } from "@/lib/billing";
 import { useAuth, hasRole } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import {
   buildKotPrintPlan,
@@ -105,6 +106,7 @@ export function KotHistoryDialog({
 }: Props) {
   const { user, roles } = useAuth();
   const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const { can } = usePermissions();
   const ticketWord = segment === "food" ? "KOT" : "Ticket";
 
   const [loading, setLoading] = useState(false);
@@ -113,6 +115,17 @@ export function KotHistoryDialog({
   const [draft, setDraft] = useState<ItemRow[]>([]);
   const [delTarget, setDelTarget] = useState<Punch | null>(null);
   const [busy, setBusy] = useState(false);
+  const [removedIds, setRemovedIds] = useState<string[]>([]);
+
+  /**
+   * Pre-checkout gate: once the segment bill is settled (which happens at
+   * checkout) only owners/superadmins may touch it. Before that, any role
+   * holding the all_kots edit/delete permission can correct the punch.
+   */
+  const canEditPunch = (p: Punch) =>
+    isOwner || (p.bill.status === "open" && can("all_kots", "edit"));
+  const canDeletePunch = (p: Punch) =>
+    isOwner || (p.bill.status === "open" && can("all_kots", "delete"));
 
   const load = useCallback(async () => {
     if (!open || !propertyId) return;
@@ -238,16 +251,35 @@ export function KotHistoryDialog({
   function startEdit(p: Punch) {
     setEditing(p);
     setDraft(p.items.map((i) => ({ ...i })));
+    setRemovedIds([]);
   }
 
   function patchDraft(id: string, patch: Partial<ItemRow>) {
     setDraft((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
   }
 
+  /** Remove one line from the punch (applied on save). */
+  function removeDraftLine(id: string) {
+    setDraft((prev) => prev.filter((i) => i.id !== id));
+    setRemovedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  }
+
   async function saveEdit() {
     if (!editing) return;
     setBusy(true);
     try {
+      if (draft.length === 0) {
+        toast.error("At least one item must remain — delete the whole punch instead");
+        setBusy(false);
+        return;
+      }
+      if (removedIds.length > 0) {
+        const { error: delErr } = await supabase
+          .from("segment_bill_items" as any)
+          .delete()
+          .in("id", removedIds);
+        if (delErr) throw delErr;
+      }
       for (const row of draft) {
         const original = editing.items.find((i) => i.id === row.id);
         const qty = Number(row.qty) || 0;
@@ -290,6 +322,7 @@ export function KotHistoryDialog({
       });
       toast.success("Punch updated");
       setEditing(null);
+      setRemovedIds([]);
       await load();
       onChanged?.();
     } catch (e: any) {
@@ -384,15 +417,15 @@ export function KotHistoryDialog({
                     <Button size="sm" variant="outline" onClick={() => reprint(p)}>
                       <Printer className="h-3.5 w-3.5 mr-1" /> Reprint
                     </Button>
-                    {isOwner && (
-                      <>
-                        <Button size="sm" variant="outline" onClick={() => startEdit(p)}>
-                          <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
-                        </Button>
-                        <Button size="sm" variant="outline" className="text-destructive" onClick={() => setDelTarget(p)}>
-                          <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
-                        </Button>
-                      </>
+                    {canEditPunch(p) && (
+                      <Button size="sm" variant="outline" onClick={() => startEdit(p)}>
+                        <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+                      </Button>
+                    )}
+                    {canDeletePunch(p) && (
+                      <Button size="sm" variant="outline" className="text-destructive" onClick={() => setDelTarget(p)}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -414,11 +447,22 @@ export function KotHistoryDialog({
           <div className="space-y-3">
             {draft.map((i) => (
               <div key={i.id} className="rounded-md border p-2 space-y-2">
-                <Input
-                  value={i.description}
-                  onChange={(e) => patchDraft(i.id, { description: e.target.value })}
-                  placeholder="Item"
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={i.description}
+                    onChange={(e) => patchDraft(i.id, { description: e.target.value })}
+                    placeholder="Item"
+                  />
+                  <Button
+                    type="button" size="icon" variant="ghost"
+                    className="h-8 w-8 shrink-0 text-destructive"
+                    aria-label={`Remove ${i.description}`}
+                    title="Remove item"
+                    onClick={() => removeDraftLine(i.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
                 <div className="flex items-center gap-2">
                   <Button type="button" size="icon" variant="outline" className="h-8 w-8"
                     onClick={() => patchDraft(i.id, { qty: Math.max(1, Number(i.qty) - 1) })}>
@@ -441,6 +485,17 @@ export function KotHistoryDialog({
                 />
               </div>
             ))}
+          </div>
+          <div className="flex items-center justify-between text-sm border-t pt-2">
+            <span className="text-muted-foreground">
+              {removedIds.length > 0 ? `${removedIds.length} item(s) will be removed` : `${draft.length} item(s)`}
+            </span>
+            <span className="font-medium">
+              {inr(draft.reduce((s, d) => {
+                const amt = (Number(d.qty) || 0) * (Number(d.rate) || 0);
+                return s + amt + (amt * Number(d.gst_rate || 0)) / 100;
+              }, 0))}
+            </span>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)} disabled={busy}>Cancel</Button>
