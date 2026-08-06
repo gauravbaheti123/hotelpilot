@@ -236,6 +236,8 @@ export async function loadBookingForEdit(bookingId: string): Promise<BookingEdit
 
   const checkIn = String(b.check_in ?? "").slice(0, 10);
   const checkOut = String(b.check_out ?? "").slice(0, 10);
+  const rateType: "exclusive" | "inclusive" =
+    String(b.rate_type ?? "exclusive") === "inclusive" ? "inclusive" : "exclusive";
 
   return {
     bookingId: b.id as string,
