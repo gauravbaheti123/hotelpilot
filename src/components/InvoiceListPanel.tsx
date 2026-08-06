@@ -131,7 +131,9 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
   const navigate = useNavigate();
   const canEdit = can("invoices", "edit");
   const canDelete = can("invoices", "delete");
-  const canEditPaymentMode = hasRole(roles, "owner") || hasRole(roles, "superadmin") || hasRole(roles, "manager");
+  // Payment-mode edits are governed by their own dynamic permission key
+  // (payments/edit_mode), granted to every role by default.
+  const canEditPaymentMode = can("payments", "edit_mode");
   // Phase 73 — all invoice edit/delete/renumber/segment-bill actions are now
   // driven by the dynamic role_permissions grid (Settings > Roles), not by
   // hardcoded role names. Renumbering and audit-trail viewing follow "edit".
