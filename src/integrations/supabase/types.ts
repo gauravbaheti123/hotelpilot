@@ -6331,6 +6331,10 @@ export type Database = {
           last_checkout_at: string
         }[]
       }
+      bill_number_prefix: {
+        Args: { _property_id: string; _segment: string }
+        Returns: string
+      }
       can_billing: {
         Args: { _property_id: string; _user_id: string }
         Returns: boolean
@@ -6430,6 +6434,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_conforming_bill_number: {
+        Args: { _prefix: string; _value: string }
         Returns: boolean
       }
       is_day_locked: {
