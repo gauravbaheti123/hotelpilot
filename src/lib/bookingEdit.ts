@@ -15,7 +15,7 @@ import {
 import { DEFAULT_NATION } from "@/lib/indiaGeo";
 import { syncBillingCompanyRecord, upsertBillingCompany } from "@/lib/bookingWizardSubmit";
 import { reportQueryError } from "@/lib/queryError";
-import { changeRoomRateOp, modifyDatesOp, shiftRoomOp } from "@/lib/roomOps";
+import { changeRoomRateOp, modifyDatesOp, recomputeBookingFolioTotals, shiftRoomOp } from "@/lib/roomOps";
 import { istToday } from "@/lib/date";
 import { ACTIVITY, logActivity } from "@/lib/activityLog";
 
@@ -379,6 +379,16 @@ export async function saveStayEdits(
   const checkedIn = s.status === "checked_in";
   if (!stayHasChanges(stay)) return;
 
+  // 0. GST interpretation of the tariff figures. Persisted on the booking so
+  //    seed_room_charge_for_booking_room() (and the checkout summary) read the
+  //    new basis for every charge rebuilt below.
+  const rateTypeChanged = stay.rateType !== stay.origRateType;
+  if (rateTypeChanged) {
+    const { error } = await supabase.from("bookings")
+      .update({ rate_type: stay.rateType } as never).eq("id", s.bookingId);
+    if (error) throw error;
+  }
+
   // 1. Dates first — booking_room ids survive this, rate slicing does not.
   if (stay.checkOut !== stay.origCheckOut || stay.checkIn !== stay.origCheckIn) {
     if (stay.checkIn !== stay.origCheckIn) {
@@ -468,5 +478,32 @@ export async function saveStayEdits(
         checkOut: stay.checkOut,
       });
     }
+  }
+
+  // 3. A changed GST basis re-prices every room line, including the ones the
+  //    user did not touch — refresh their charges and the folio totals.
+  if (rateTypeChanged) {
+    for (const r of stay.rooms) {
+      const { error } = await supabase.rpc("seed_room_charge_for_booking_room", {
+        _booking_room_id: r.bookingRoomId,
+      } as never);
+      if (error) reportQueryError("room charge refresh", error);
+    }
+    await recomputeBookingFolioTotals(s.bookingId);
+    await logActivity({
+      ...ACTIVITY.BOOKING_MODIFIED,
+      property_id: s.propertyId,
+      user_id: actorId ?? "",
+      user_name: actorName ?? "Unknown",
+      reference_id: s.bookingId,
+      reference_label: s.bookingNumber,
+      details: {
+        field: "rate_type",
+        old_value: stay.origRateType,
+        new_value: stay.rateType,
+        reason: stay.reason.trim() || null,
+        note: "Nightly tariff GST basis changed",
+      },
+    });
   }
 }
