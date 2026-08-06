@@ -17,6 +17,7 @@ import { syncBillingCompanyRecord, upsertBillingCompany } from "@/lib/bookingWiz
 import { reportQueryError } from "@/lib/queryError";
 import { changeRoomRateOp, modifyDatesOp, shiftRoomOp } from "@/lib/roomOps";
 import { istToday } from "@/lib/date";
+import { ACTIVITY, logActivity } from "@/lib/activityLog";
 
 /** One editable room line of an existing booking. */
 export interface StayRoomEdit {
@@ -64,6 +65,41 @@ export function stayHasChanges(s: StayEdit): boolean {
   return s.rooms.some(
     (r) => r.roomId !== r.origRoomId || Math.abs(r.rate - r.origRate) > 0.009,
   );
+}
+
+/**
+ * Double-booking guard for a (possibly backdated) stay range. Mirrors the
+ * `tg_booking_rooms_no_overlap` trigger so the wizard can block before saving
+ * instead of surfacing a raw Postgres error.
+ *
+ * Returns the room numbers that clash, empty when the range is free.
+ */
+export async function findStayConflicts(
+  bookingId: string,
+  checkIn: string,
+  checkOut: string,
+  rooms: Array<{ roomId: string | null; roomNumber: string | null }>,
+): Promise<string[]> {
+  const roomIds = rooms.map((r) => r.roomId).filter((v): v is string => !!v);
+  if (roomIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from("booking_rooms")
+    .select("room_id, status, bookings!booking_rooms_booking_id_fkey(id,status)")
+    .in("room_id", roomIds)
+    .lt("check_in", checkOut)
+    .gt("check_out", checkIn);
+  if (error) { reportQueryError("booking rooms", error); return []; }
+  const clashing = new Set<string>();
+  for (const row of (data ?? []) as Array<Record<string, unknown>>) {
+    const bk = (row.bookings ?? null) as { id?: string; status?: string } | null;
+    if (!bk?.id || bk.id === bookingId) continue;
+    if ((row.status ?? "active") === "shifted") continue;
+    if (["cancelled", "no_show", "checked_out"].includes(String(bk.status ?? ""))) continue;
+    clashing.add(String(row.room_id));
+  }
+  return rooms
+    .filter((r) => r.roomId && clashing.has(r.roomId))
+    .map((r) => r.roomNumber ?? "—");
 }
 
 /** True when the booking is still in an editable state. Mirrors the RPC guard. */
