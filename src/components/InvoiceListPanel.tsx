@@ -148,6 +148,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
     folio_id: string | null; booking_id: string | null;
     created_at: string;
     settled_at?: string | null;
+    updated_at?: string | null;
   }>>([]);
   const [audit, setAudit] = useState(false);
   const [delTarget, setDelTarget] = useState<Row | null>(null);
@@ -232,9 +233,10 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
     (async () => {
       const { data, error } = await supabase
         .from("segment_bills" as any)
-        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,folio_id,booking_id,created_at,settled_at")
+        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,folio_id,booking_id,created_at,updated_at,settled_at")
         .eq("property_id", propertyId)
         .eq("segment", segTab)
+        .order("updated_at" as any, { ascending: false, nullsFirst: false })
         .order("settled_at" as any, { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
         .limit(300);
