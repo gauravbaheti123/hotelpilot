@@ -43,6 +43,11 @@ export function StepEditReview({ state }: { state: BookingEditState }) {
         <div className="rounded-md border px-3">
           <Row label="Check-in" from={s.origCheckIn} to={s.checkIn} />
           <Row label="Check-out" from={s.origCheckOut} to={s.checkOut} />
+          <Row
+            label="Tariff basis"
+            from={s.origRateType === "inclusive" ? "Incl. GST" : "Excl. GST"}
+            to={s.rateType === "inclusive" ? "Incl. GST" : "Excl. GST"}
+          />
           {s.rooms.map((r, i) => (
             <div key={r.bookingRoomId}>
               <Row
