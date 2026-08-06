@@ -527,6 +527,8 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                     <div className={`font-medium text-sm break-all ${voided ? "line-through text-destructive" : ""}`}>{billNo(r.invoice_number)}</div>
                     {voided ? (
                       <Badge variant="outline" className="bg-rose-100 text-rose-800 border-rose-300">VOIDED</Badge>
+                    ) : r.status === "open" ? (
+                      <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">REOPENED</Badge>
                     ) : (
                       <Badge variant="outline" className={FOLIO_STATUS_TONE[r.status]}>{r.status.toUpperCase()}</Badge>
                     )}
