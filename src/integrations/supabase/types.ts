@@ -6355,6 +6355,10 @@ export type Database = {
         Args: { _property_id: string; _user_id: string }
         Returns: boolean
       }
+      change_payment_mode: {
+        Args: { _new_mode: string; _payment_id: string; _reason?: string }
+        Returns: Json
+      }
       check_login_allowed: { Args: { _email: string }; Returns: Json }
       create_booking: { Args: { payload: Json }; Returns: Json }
       create_event_booking: { Args: { payload: Json }; Returns: Json }
