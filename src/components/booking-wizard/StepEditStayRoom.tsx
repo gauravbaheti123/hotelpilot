@@ -181,6 +181,31 @@ export function StepEditStayRoom({ propertyId, bookingId, status, stay, onChange
         </p>
       )}
 
+      <div className="space-y-1.5">
+        <Label className="text-xs">Nightly tariff is</Label>
+        <div className="sm:w-64">
+          <SearchableSelect
+            value={stay.rateType}
+            onChange={(v) => onChange({ rateType: (v as "exclusive" | "inclusive") || "exclusive" })}
+            options={[
+              { value: "exclusive", label: "Exclusive of GST" },
+              { value: "inclusive", label: "Inclusive of GST" },
+            ]}
+            placeholder="Select"
+          />
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          {stay.rateType === "inclusive"
+            ? "The amounts below already include GST — the taxable value is back-calculated from the applicable slab."
+            : "The amounts below are the taxable value — GST is added on top at the applicable slab."}
+        </p>
+        {stay.rateType !== stay.origRateType && (
+          <p className="text-[11px] text-amber-600">
+            Changing this re-prices every room line on this booking, including ones you haven&apos;t edited.
+          </p>
+        )}
+      </div>
+
       <div className="space-y-4">
         {stay.rooms.map((r, idx) => {
           const picked = options.find((o) => o.id === r.roomId);
