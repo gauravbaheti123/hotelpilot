@@ -17,6 +17,8 @@ import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { usePermissions } from "@/hooks/use-permissions";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { findStayConflicts, stayHasChanges, type StayEdit, type StayRoomEdit } from "@/lib/bookingEdit";
+import { useGstSlabs } from "@/hooks/use-gst-slabs";
+import { resolveGstRate, resolveGstRateInclusive } from "@/lib/gst";
 
 interface RoomOption {
   id: string;
@@ -39,6 +41,7 @@ export function StepEditStayRoom({ propertyId, bookingId, status, stay, onChange
   const checkedIn = status === "checked_in";
   const { limit } = useDiscountLimit();
   const { can } = usePermissions();
+  const { slabs: gstSlabs } = useGstSlabs(propertyId);
   // Correcting the check-in date of an in-house guest is a high-trust
   // override, so it reuses the existing `bookings.delete` permission
   // (Manager / Admin / Owner in the role grid).
@@ -178,6 +181,31 @@ export function StepEditStayRoom({ propertyId, bookingId, status, stay, onChange
         </p>
       )}
 
+      <div className="space-y-1.5">
+        <Label className="text-xs">Nightly tariff is</Label>
+        <div className="sm:w-64">
+          <SearchableSelect
+            value={stay.rateType}
+            onChange={(v) => onChange({ rateType: (v as "exclusive" | "inclusive") || "exclusive" })}
+            options={[
+              { value: "exclusive", label: "Exclusive of GST" },
+              { value: "inclusive", label: "Inclusive of GST" },
+            ]}
+            placeholder="Select"
+          />
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          {stay.rateType === "inclusive"
+            ? "The amounts below already include GST — the taxable value is back-calculated from the applicable slab."
+            : "The amounts below are the taxable value — GST is added on top at the applicable slab."}
+        </p>
+        {stay.rateType !== stay.origRateType && (
+          <p className="text-[11px] text-amber-600">
+            Changing this re-prices every room line on this booking, including ones you haven&apos;t edited.
+          </p>
+        )}
+      </div>
+
       <div className="space-y-4">
         {stay.rooms.map((r, idx) => {
           const picked = options.find((o) => o.id === r.roomId);
@@ -242,6 +270,26 @@ export function StepEditStayRoom({ propertyId, bookingId, status, stay, onChange
                       </p>
                     )
                   )}
+                  {r.rate > 0 && (() => {
+                    const incl = stay.rateType === "inclusive";
+                    const g = incl
+                      ? resolveGstRateInclusive(gstSlabs, "room", r.rate)
+                      : resolveGstRate(gstSlabs, "room", r.rate);
+                    if (g == null) {
+                      return (
+                        <p className="text-[11px] text-destructive">
+                          No GST slab configured for this tariff. Set it up in Master Data → GST Slabs.
+                        </p>
+                      );
+                    }
+                    const taxable = incl ? r.rate / (1 + g / 100) : r.rate;
+                    const gst = incl ? r.rate - taxable : r.rate * g / 100;
+                    return (
+                      <p className="text-[11px] text-muted-foreground">
+                        {incl ? "Incl." : "Excl."} GST {g}% → Taxable ₹{taxable.toFixed(2)} + GST ₹{gst.toFixed(2)} = ₹{(taxable + gst).toFixed(2)}/night
+                      </p>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
