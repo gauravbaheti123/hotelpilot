@@ -177,6 +177,7 @@ export function BookingEditWizard({ bookingId, onSaved, onCancel }: Props) {
         {step === 2 && (
           <StepEditStayRoom
             propertyId={state.propertyId}
+            bookingId={state.bookingId}
             status={state.status}
             stay={state.stay}
             onChange={patchStay}

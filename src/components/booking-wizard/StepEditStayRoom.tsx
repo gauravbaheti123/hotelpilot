@@ -27,6 +27,7 @@ interface RoomOption {
 
 interface Props {
   propertyId: string;
+  bookingId: string;
   status: string;
   stay: StayEdit;
   onChange: (p: Partial<StayEdit>) => void;
@@ -34,7 +35,7 @@ interface Props {
   onBlockedChange: (blocked: boolean) => void;
 }
 
-export function StepEditStayRoom({ propertyId, status, stay, onChange, onBlockedChange }: Props) {
+export function StepEditStayRoom({ propertyId, bookingId, status, stay, onChange, onBlockedChange }: Props) {
   const checkedIn = status === "checked_in";
   const { limit } = useDiscountLimit();
   const { can } = usePermissions();
@@ -113,7 +114,7 @@ export function StepEditStayRoom({ propertyId, status, stay, onChange, onBlocked
     if (!checkInChanged || !datesValid) { setConflict(null); return; }
     let alive = true;
     const t = setTimeout(async () => {
-      const clashes = await findStayConflicts("", stay.checkIn, stay.checkOut, stay.rooms.map((r) => ({
+      const clashes = await findStayConflicts(bookingId, stay.checkIn, stay.checkOut, stay.rooms.map((r) => ({
         roomId: r.roomId ?? r.origRoomId, roomNumber: r.roomNumber ?? r.origRoomNumber,
       })));
       if (!alive) return;
