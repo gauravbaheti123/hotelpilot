@@ -17,6 +17,8 @@ import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { usePermissions } from "@/hooks/use-permissions";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { findStayConflicts, stayHasChanges, type StayEdit, type StayRoomEdit } from "@/lib/bookingEdit";
+import { useGstSlabs } from "@/hooks/use-gst-slabs";
+import { resolveGstRate, resolveGstRateInclusive } from "@/lib/gst";
 
 interface RoomOption {
   id: string;
@@ -39,6 +41,7 @@ export function StepEditStayRoom({ propertyId, bookingId, status, stay, onChange
   const checkedIn = status === "checked_in";
   const { limit } = useDiscountLimit();
   const { can } = usePermissions();
+  const { slabs: gstSlabs } = useGstSlabs(propertyId);
   // Correcting the check-in date of an in-house guest is a high-trust
   // override, so it reuses the existing `bookings.delete` permission
   // (Manager / Admin / Owner in the role grid).
