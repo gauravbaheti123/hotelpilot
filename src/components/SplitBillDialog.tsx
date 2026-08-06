@@ -598,10 +598,14 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     }
     if (!isValidOrEmptyGSTIN(party1.gstin ?? "")) return toast.error(`Party 1: ${GSTIN_ERROR}`);
     if (splitType === "different" && !isValidOrEmptyGSTIN(party2.gstin ?? "")) return toast.error(`Party 2: ${GSTIN_ERROR}`);
+    if (!(await assertNoOrphanChildren())) return;
     setBusy(true);
+    // Tracked outside the try so ANY failure can remove the folios this
+    // attempt created — no orphan duplicate bills, ever.
+    const newFolioIds: string[] = [];
+    let completed = false;
     try {
       // 1) Create Invoice A + Invoice B FIRST. Only void the original after both succeed.
-      const newFolioIds: string[] = [];
       const created: typeof createdBills = [];
       for (let i = 0; i < 2; i++) {
         const party = i === 0 ? party1 : (splitType === "same" ? party1 : party2);
@@ -708,6 +712,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       }
       await assertParentVoided(undoPayments, newFolioIds);
       await repointBills(folio.id, newFolioIds);
+      completed = true;
 
       setCreatedBills(created);
       setPayRows(
@@ -732,6 +737,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       setStep(4);
       onDone?.(newFolioIds);
     } catch (e: any) {
+      if (!completed) await cleanupChildFolios(newFolioIds);
       toastError(e, "Could not split bill");
     } finally {
       setBusy(false);
