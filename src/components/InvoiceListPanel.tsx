@@ -38,6 +38,7 @@ interface Row {
   total_amount: number; paid_amount: number; balance_amount: number;
   created_at: string;
   settled_at?: string | null;
+  updated_at?: string | null;
   booking_id: string;
   is_deleted?: boolean;
   deleted_at?: string | null;
@@ -62,9 +63,20 @@ export interface InvoiceListPanelProps {
   pullToRefresh?: boolean;
 }
 
-/** Settlement instant for grouping/sorting — falls back to creation time. */
-const settledAt = (r: { settled_at?: string | null; created_at: string }) =>
-  r.settled_at ?? r.created_at;
+/**
+ * Last-activity instant for grouping/sorting: the newest of updated_at,
+ * settled_at and created_at. `folios` has a BEFORE UPDATE set_updated_at
+ * trigger, so a reopen (checkout-undo clears settled_at) still bumps
+ * updated_at and the row surfaces at the top under today's divider.
+ */
+const activityAt = (r: {
+  settled_at?: string | null; updated_at?: string | null; created_at: string;
+}) => {
+  const ts = [r.updated_at, r.settled_at, r.created_at]
+    .map((v) => (v ? new Date(v).getTime() : NaN))
+    .filter((n) => !Number.isNaN(n));
+  return new Date(Math.max(...ts)).toISOString();
+};
 
 /** "4 August 2026" style header label for a YYYY-MM-DD key. */
 function dateHeaderLabel(iso: string) {
@@ -75,19 +87,21 @@ function dateHeaderLabel(iso: string) {
 }
 
 /**
- * Sort newest-first by settlement time and split into date buckets
+ * Sort newest-first by last activity and split into date buckets
  * (chat-app style date dividers). Runs on the already-filtered list so
  * search/filter keeps working inside the grouped view.
  */
-function groupBySettledDate<T extends { settled_at?: string | null; created_at: string }>(
+function groupBySettledDate<T extends {
+  settled_at?: string | null; updated_at?: string | null; created_at: string;
+}>(
   list: T[],
 ): Array<{ key: string; label: string; items: T[] }> {
   const sorted = [...list].sort(
-    (a, b) => new Date(settledAt(b)).getTime() - new Date(settledAt(a)).getTime(),
+    (a, b) => new Date(activityAt(b)).getTime() - new Date(activityAt(a)).getTime(),
   );
   const out: Array<{ key: string; label: string; items: T[] }> = [];
   for (const item of sorted) {
-    const key = istDateISO(settledAt(item));
+    const key = istDateISO(activityAt(item));
     const last = out[out.length - 1];
     if (last && last.key === key) last.items.push(item);
     else out.push({ key, label: dateHeaderLabel(key), items: [item] });
