@@ -186,9 +186,9 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
         (f) =>
           // An unnumbered folio is a running bill, not an invoice yet.
           hasBillNumber(f.invoice_number) &&
-          // An 'open' folio is a running tab — even legacy ones that already
-          // carry a number issued under the old creation-time trigger.
-          f.status !== "open" &&
+          // 'open' folios are running tabs, EXCEPT ones that already carry a
+          // real issued number — those were settled and later reopened via
+          // checkout-undo, and must stay findable (tagged REOPENED).
           !isBanquetRecord(scope, { booking_id: f.booking_id, folio_id: f.id }),
       );
       setRows(visible as unknown as Row[]);
