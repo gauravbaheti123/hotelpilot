@@ -120,7 +120,7 @@ export async function loadBookingForEdit(bookingId: string): Promise<BookingEdit
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      `id, property_id, booking_number, status, adults, children, custom_remark, billing_company_id,
+      `id, property_id, booking_number, status, adults, children, custom_remark, billing_company_id, rate_type,
        check_in, check_out, advance_amount,
        guests!bookings_guest_id_fkey (
          id, name, mobile, email, dob, city, state, country, nationality, address, pincode,
@@ -253,6 +253,8 @@ export async function loadBookingForEdit(bookingId: string): Promise<BookingEdit
       origCheckIn: checkIn, origCheckOut: checkOut,
       advanceAmount: Number(b.advance_amount ?? 0),
       rooms: stayRooms,
+      rateType: rateType,
+      origRateType: rateType,
       reason: "",
     },
   };
