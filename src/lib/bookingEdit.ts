@@ -42,6 +42,14 @@ export interface StayEdit {
   origCheckOut: string;
   advanceAmount: number;
   rooms: StayRoomEdit[];
+  /**
+   * How the nightly tariff figures on this booking are to be read.
+   * Mirrors `bookings.rate_type`, which `seed_room_charge_for_booking_room()`
+   * already honours: "exclusive" (default) adds GST on top, "inclusive"
+   * back-calculates the taxable value from the entered gross.
+   */
+  rateType: "exclusive" | "inclusive";
+  origRateType: "exclusive" | "inclusive";
   /** Required by the shift_room RPC whenever a checked-in guest is moved. */
   reason: string;
 }
@@ -62,6 +70,7 @@ export interface BookingEditState {
 
 export function stayHasChanges(s: StayEdit): boolean {
   if (s.checkIn !== s.origCheckIn || s.checkOut !== s.origCheckOut) return true;
+  if (s.rateType !== s.origRateType) return true;
   return s.rooms.some(
     (r) => r.roomId !== r.origRoomId || Math.abs(r.rate - r.origRate) > 0.009,
   );
