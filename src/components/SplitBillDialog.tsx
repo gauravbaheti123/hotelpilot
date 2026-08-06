@@ -28,7 +28,7 @@ import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment
 import { ArrowLeft, ArrowRight, Loader2, SplitSquareHorizontal, Plus, Trash2 } from "lucide-react";
 import { Percent } from "lucide-react";
 import { reportQueryError } from "@/lib/queryError";
-import { toastError } from "@/lib/errorMessage";
+import { toastError, BusinessError } from "@/lib/errorMessage";
 import { finalizeFolioSettlement } from "@/lib/folioFinalize";
 
 interface Charge {
