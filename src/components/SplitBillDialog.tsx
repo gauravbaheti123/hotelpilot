@@ -579,6 +579,9 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           bill_type: party.bill_type,
           guest_gstin: party.gstin || null,
           guest_company: splitType === "different" && i === 1 ? party.name : (folio.guest_company ?? null),
+          billing_company_id: childCompanyId(
+            splitType === "different" && i === 1 ? party.name : (folio.guest_company ?? party.name),
+          ),
           notes: `Split bill ${i + 1}/2 of voided ${billNo(folio.invoice_number)}${splitType === "different" ? ` — Party: ${party.name}` : ""}`,
           discount_type: carryDisc?.type ?? null,
           discount_value: carryDisc?.value ?? 0,
@@ -771,6 +774,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           bill_type: party.bill_type,
           guest_gstin: party.gstin || null,
           guest_company: party.name,
+          billing_company_id: childCompanyId(party.name),
           notes: `Split bill ${i + 1}/${parties.length} (${splitMode === "percent" ? "%" : "₹"}) of voided ${billNo(folio.invoice_number)} — Party: ${party.name}`,
           discount_type: null,
           discount_value: 0,

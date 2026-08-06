@@ -267,6 +267,9 @@ function metaBlock(ctx: InvoiceContext): string {
 
   const guestName = booking.guests?.name ?? "";
   const hasCompany = !!folio.guest_company;
+  // Use the resolved Bill-To GSTIN (company → guest fallback), not the raw
+  // folio snapshot, which can be empty even when a company is billed.
+  const billToGstin = ctx.billToGstin ?? folio.guest_gstin ?? null;
   const billToPrimary = hasCompany
     ? `${esc(folio.guest_company)} <span style="font-weight:500;color:#374151">(${esc(guestName)})</span>`
     : esc(guestName);
@@ -276,7 +279,7 @@ function metaBlock(ctx: InvoiceContext): string {
       <div style="flex:1">
         <div class="small" style="text-transform:uppercase;letter-spacing:1px">Bill To</div>
         <div style="font-weight:600;font-size:13px;margin-top:2px">${billToPrimary}</div>
-        ${hasCompany && folio.guest_gstin ? `<div class="small">GSTIN: ${esc(folio.guest_gstin)}</div>` : ""}
+        ${hasCompany && billToGstin ? `<div class="small">GSTIN: ${esc(billToGstin)}</div>` : ""}
         ${booking.guests?.address ? `<div class="small">${esc(booking.guests.address)}</div>` : ""}
         ${booking.guests?.mobile ? `<div class="small">${esc(booking.guests.mobile)}</div>` : ""}
         ${booking.guests?.nationality ? `<div class="small">Nationality: ${esc(booking.guests.nationality)}</div>` : ""}
