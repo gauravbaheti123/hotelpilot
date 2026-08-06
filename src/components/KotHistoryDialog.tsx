@@ -417,15 +417,15 @@ export function KotHistoryDialog({
                     <Button size="sm" variant="outline" onClick={() => reprint(p)}>
                       <Printer className="h-3.5 w-3.5 mr-1" /> Reprint
                     </Button>
-                    {isOwner && (
-                      <>
-                        <Button size="sm" variant="outline" onClick={() => startEdit(p)}>
-                          <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
-                        </Button>
-                        <Button size="sm" variant="outline" className="text-destructive" onClick={() => setDelTarget(p)}>
-                          <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
-                        </Button>
-                      </>
+                    {canEditPunch(p) && (
+                      <Button size="sm" variant="outline" onClick={() => startEdit(p)}>
+                        <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+                      </Button>
+                    )}
+                    {canDeletePunch(p) && (
+                      <Button size="sm" variant="outline" className="text-destructive" onClick={() => setDelTarget(p)}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -447,11 +447,22 @@ export function KotHistoryDialog({
           <div className="space-y-3">
             {draft.map((i) => (
               <div key={i.id} className="rounded-md border p-2 space-y-2">
-                <Input
-                  value={i.description}
-                  onChange={(e) => patchDraft(i.id, { description: e.target.value })}
-                  placeholder="Item"
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={i.description}
+                    onChange={(e) => patchDraft(i.id, { description: e.target.value })}
+                    placeholder="Item"
+                  />
+                  <Button
+                    type="button" size="icon" variant="ghost"
+                    className="h-8 w-8 shrink-0 text-destructive"
+                    aria-label={`Remove ${i.description}`}
+                    title="Remove item"
+                    onClick={() => removeDraftLine(i.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
                 <div className="flex items-center gap-2">
                   <Button type="button" size="icon" variant="outline" className="h-8 w-8"
                     onClick={() => patchDraft(i.id, { qty: Math.max(1, Number(i.qty) - 1) })}>
@@ -474,6 +485,17 @@ export function KotHistoryDialog({
                 />
               </div>
             ))}
+          </div>
+          <div className="flex items-center justify-between text-sm border-t pt-2">
+            <span className="text-muted-foreground">
+              {removedIds.length > 0 ? `${removedIds.length} item(s) will be removed` : `${draft.length} item(s)`}
+            </span>
+            <span className="font-medium">
+              {inr(draft.reduce((s, d) => {
+                const amt = (Number(d.qty) || 0) * (Number(d.rate) || 0);
+                return s + amt + (amt * Number(d.gst_rate || 0)) / 100;
+              }, 0))}
+            </span>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)} disabled={busy}>Cancel</Button>
