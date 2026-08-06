@@ -500,6 +500,9 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     }
   }
 
+  function moveToBill1(id: string) {
+    setBill1Ids((s) => new Set(s).add(id));
+  }
   function moveToBill2(id: string) {
     setBill1Ids((s) => { const n = new Set(s); n.delete(id); return n; });
   }
