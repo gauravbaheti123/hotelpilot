@@ -241,8 +241,8 @@ function FolioPage() {
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
-  // Edit payment mode (Manager/Owner only)
-  const canEditPaymentMode = hasRole(roles, "owner") || hasRole(roles, "superadmin") || hasRole(roles, "manager");
+  // Edit payment mode — dynamic RBAC key, granted to all roles by default.
+  const canEditPaymentMode = can("payments", "edit_mode");
   const [payEditOpen, setPayEditOpen] = useState(false);
   const [payEditTarget, setPayEditTarget] = useState<Payment | null>(null);
   const [payEditMode, setPayEditMode] = useState<string>("cash");
@@ -1271,15 +1271,12 @@ function FolioPage() {
     if (!active.includes(newMode)) return toast.error("Select an active payment method");
     if (newMode === oldMode) { setPayEditOpen(false); return; }
     const locked = (folio as any).status === "settled" || (folio as any).status === "due" || (folio as any).status === "void" || (folio as any).is_deleted === true;
-    const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
-    if (locked && !isOwner) {
-      return toast.error("Bill is locked — only Owner/Superadmin can change payment mode");
-    }
     setPayEditSaving(true);
-    const { error } = await supabase
-      .from("payments")
-      .update({ mode: newMode })
-      .eq("id", payEditTarget.id);
+    const { error } = await supabase.rpc("change_payment_mode" as any, {
+      _payment_id: payEditTarget.id,
+      _new_mode: newMode,
+      _reason: null,
+    } as any);
     if (error) { setPayEditSaving(false); return toastError(error); }
     if (locked) {
       await supabase.rpc("log_owner_override" as any, {
