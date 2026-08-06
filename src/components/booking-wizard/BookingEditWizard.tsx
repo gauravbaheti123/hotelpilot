@@ -117,7 +117,7 @@ export function BookingEditWizard({ bookingId, onSaved, onCancel }: Props) {
       // Stay & Room replays the existing shift / date operations. Any blocking
       // condition they raise (unsettled bill, night-audit lock, room overlap,
       // missing permission) surfaces here with its original message.
-      await saveStayEdits(state, user?.id ?? null);
+      await saveStayEdits(state, user?.id ?? null, userDisplayName(user));
       toast.success("Booking updated");
       onSaved();
     } catch (e) {
