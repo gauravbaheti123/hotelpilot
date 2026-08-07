@@ -57,6 +57,7 @@ export const ACTIVITY = {
   BILL_DELETED: { action_type: "BILL_DELETED", module: "Billing" },
   BILL_NUMBER_EDITED: { action_type: "BILL_NUMBER_EDITED", module: "Billing" },
   PAYMENT_MODE_CHANGED: { action_type: "PAYMENT_MODE_CHANGED", module: "Billing" },
+  PAYMENT_AMOUNT_CHANGED: { action_type: "PAYMENT_AMOUNT_CHANGED", module: "Billing" },
   BILL_TO_CHANGED: { action_type: "BILL_TO_CHANGED", module: "Billing" },
   EARLY_CHECKOUT_CHOICE: { action_type: "EARLY_CHECKOUT_CHOICE", module: "Front Desk" },
 } as const;
