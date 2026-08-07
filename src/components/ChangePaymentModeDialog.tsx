@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useAuth } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName, ACTIVITY } from "@/lib/activityLog";
 import { toastError } from "@/lib/errorMessage";
 import { billNo } from "@/lib/billNumber";
@@ -43,11 +44,14 @@ interface Props {
 
 export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: Props) {
   const { user } = useAuth();
+  const { can } = usePermissions();
+  const canEditAmount = can("payments", "edit_amount");
   const { methods } = usePaymentMethods(folio?.property_id ?? null);
   const activeMethods = methods.filter((m) => m.is_active);
 
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [draft, setDraft] = useState<Record<string, string>>({});
+  const [amountDraft, setAmountDraft] = useState<Record<string, string>>({});
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -71,8 +75,10 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
       const rows = (data ?? []) as unknown as PaymentRow[];
       setPayments(rows);
       const initial: Record<string, string> = {};
-      rows.forEach((p) => { initial[p.id] = p.mode; });
+      const initialAmounts: Record<string, string> = {};
+      rows.forEach((p) => { initial[p.id] = p.mode; initialAmounts[p.id] = String(Number(p.amount)); });
       setDraft(initial);
+      setAmountDraft(initialAmounts);
     })();
     return () => { cancelled = true; };
   }, [open, folio]);
@@ -83,9 +89,19 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
       .map((p) => ({ p, next: draft[p.id] }))
       .filter(({ p, next }) => next && next !== p.mode);
 
-    if (changes.length === 0) {
+    const amountChanges = canEditAmount
+      ? payments
+          .map((p) => ({ p, next: Number(amountDraft[p.id]) }))
+          .filter(({ p, next }) => Number.isFinite(next) && Math.abs(next - Number(p.amount)) > 0.001)
+      : [];
+
+    if (changes.length === 0 && amountChanges.length === 0) {
       onOpenChange(false);
       return;
+    }
+
+    for (const { next } of amountChanges) {
+      if (!(next > 0)) return toast.error("Payment amount must be greater than zero");
     }
 
     // Mandatory: every selection must be an active payment method
@@ -98,8 +114,50 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
 
     if (locked && !reason.trim()) return toast.error("Reason required for a locked bill");
 
+    if (amountChanges.length > 0) {
+      const summary = amountChanges
+        .map(({ p, next }) => `₹${Number(p.amount).toLocaleString("en-IN")} → ₹${next.toLocaleString("en-IN")}`)
+        .join(", ");
+      const ok = window.confirm(
+        `Are you sure? This changes the recorded payment amount (${summary}) and will update this bill's paid and balance figures.`,
+      );
+      if (!ok) return;
+    }
+
     setSaving(true);
     try {
+      for (const { p, next } of amountChanges) {
+        const { error } = await supabase.rpc("change_payment_amount" as any, {
+          _payment_id: p.id,
+          _new_amount: next,
+          _reason: reason.trim() || null,
+        } as any);
+        if (error) { toastError(error); setSaving(false); return; }
+
+        await logActivity({
+          property_id: folio.property_id,
+          user_id: user?.id ?? "",
+          user_name: userDisplayName(user as any),
+          ...ACTIVITY.PAYMENT_AMOUNT_CHANGED,
+          reference_id: p.id,
+          reference_label: `${billNo(folio.invoice_number)} — ₹${Number(p.amount)} → ₹${next}`,
+          details: {
+            payment_id: p.id,
+            folio_id: folio.id,
+            bill_id: folio.id,
+            bill_number: billNo(folio.invoice_number),
+            booking_id: folio.booking_id,
+            old_amount: Number(p.amount),
+            new_amount: next,
+            mode: p.mode,
+            changed_by: user?.id ?? null,
+            changed_at: new Date().toISOString(),
+            locked,
+            reason: reason.trim() || null,
+          },
+        });
+      }
+
       for (const { p, next } of changes) {
         // Mode-only change via a server routine gated by payments/edit_mode.
         const { error } = await supabase.rpc("change_payment_mode" as any, {
@@ -147,7 +205,8 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
           },
         });
       }
-      toast.success(`Updated ${changes.length} payment${changes.length === 1 ? "" : "s"}`);
+      const n = changes.length + amountChanges.length;
+      toast.success(`Updated ${n} payment change${n === 1 ? "" : "s"}`);
       onOpenChange(false);
       onSaved?.();
     } finally {
@@ -159,7 +218,7 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Change Payment Mode</DialogTitle>
+          <DialogTitle>{canEditAmount ? "Edit Payment" : "Change Payment Mode"}</DialogTitle>
           <DialogDescription>
             {folio ? (
               <>Bill <b>{billNo(folio.invoice_number)}</b>{" "}
@@ -178,7 +237,21 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
             {payments.map((p) => (
               <div key={p.id} className="grid grid-cols-[1fr_auto] items-center gap-3 border rounded-md p-2">
                 <div className="min-w-0">
-                  <div className="text-sm font-medium">₹{Number(p.amount).toLocaleString("en-IN")}</div>
+                  {canEditAmount ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-medium">₹</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="h-8 w-32"
+                        value={amountDraft[p.id] ?? ""}
+                        onChange={(e) => setAmountDraft((d) => ({ ...d, [p.id]: e.target.value }))}
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-sm font-medium">₹{Number(p.amount).toLocaleString("en-IN")}</div>
+                  )}
                   <div className="text-xs text-muted-foreground truncate">
                     {new Date(p.paid_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                     {p.reference_no ? ` · Ref ${p.reference_no}` : ""}
