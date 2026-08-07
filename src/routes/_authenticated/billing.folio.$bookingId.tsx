@@ -668,12 +668,14 @@ function FolioPage() {
     }, 350);
   }
 
-  /** Change the Bill-To party on an OPEN folio. Keeps the booking row in sync
+  /** Change the Bill-To party on an OPEN folio — or on a finalised one when the
+   *  role holds invoices/edit_billto_locked (Owner, Manager). Keeps the booking row in sync
    *  so the checkout dialog reflects the latest choice, clears the manual
    *  guest GSTIN when a company takes over (company GSTIN drives place of
    *  supply), and writes an audit trail. */
   async function updateBillTo(selection: string) {
-    if (!folio || !isOpen) return;
+    if (!folio) return;
+    if (!isOpen && !canEditBillToLocked) return;
     const prevCompanyId = folio.billing_company_id ?? null;
     const prevGuestId = folio.billing_guest_id ?? null;
     const companyId = selection.startsWith("co:") ? selection.slice(3) : null;
@@ -733,6 +735,10 @@ function FolioPage() {
           to_billing_company_name: label,
           to_gstin: patch.guest_gstin ?? null,
           booking_number: booking?.booking_number ?? null,
+          // Correction applied after the bill was finalised (invoice number,
+          // GST and amounts are untouched — Bill-To identity only).
+          locked_correction: !isOpen,
+          folio_status: folio.status ?? null,
         },
       });
     }
@@ -1458,6 +1464,10 @@ function FolioPage() {
   // which hid the edit UI on settled/paid bills whenever a role had edit but not delete.
   const canEditAnyStatus = can("invoices", "edit");
   const canEditNow = isOpen || canEditAnyStatus;
+  // Bill-To identity corrections on a finalised bill: Owner/Manager only.
+  // Everyone else keeps seeing "Locked — the bill is finalised."
+  const canEditBillToLocked = can("invoices", "edit_billto_locked");
+  const billToEditable = isOpen || canEditBillToLocked;
   // Room tariff is editable by ANY role holding the folio-edit permission
   // (invoices/edit) while the bill is OPEN — no owner-only override. Once the
   // folio is settled/checked out it locks like every other finalized field.
@@ -2010,7 +2020,7 @@ function FolioPage() {
                   <Input
                     className={`h-9 w-56 ${folio.guest_gstin && !isValidOrEmptyGSTIN(folio.guest_gstin) ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     value={folio.guest_gstin ?? ""}
-                    disabled={!isOpen || !!folio.billing_company_id || !!folio.billing_guest_id}
+                    disabled={!billToEditable || !!folio.billing_company_id || !!folio.billing_guest_id}
                     maxLength={15}
                     placeholder="e.g. 27AASFB5351R1ZM"
                     onChange={async (e) => {
@@ -2025,7 +2035,7 @@ function FolioPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Bill To</Label>
-                  {isOpen ? (
+                  {billToEditable ? (
                     <SearchableSelect
                       className="h-9 w-72"
                       value={
@@ -2083,7 +2093,9 @@ function FolioPage() {
                   <p className="text-[11px] text-muted-foreground">
                     {isOpen
                       ? "Editable until checkout. Checkout uses whatever is set here."
-                      : "Locked — the bill is finalised."}
+                      : billToEditable
+                        ? "Bill finalised — Bill-To may still be corrected. Invoice number and amounts stay unchanged."
+                        : "Locked — the bill is finalised."}
                   </p>
                 </div>
               </>
