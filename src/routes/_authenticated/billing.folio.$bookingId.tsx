@@ -1464,6 +1464,10 @@ function FolioPage() {
   // which hid the edit UI on settled/paid bills whenever a role had edit but not delete.
   const canEditAnyStatus = can("invoices", "edit");
   const canEditNow = isOpen || canEditAnyStatus;
+  // Bill-To identity corrections on a finalised bill: Owner/Manager only.
+  // Everyone else keeps seeing "Locked — the bill is finalised."
+  const canEditBillToLocked = can("invoices", "edit_billto_locked");
+  const billToEditable = isOpen || canEditBillToLocked;
   // Room tariff is editable by ANY role holding the folio-edit permission
   // (invoices/edit) while the bill is OPEN — no owner-only override. Once the
   // folio is settled/checked out it locks like every other finalized field.
