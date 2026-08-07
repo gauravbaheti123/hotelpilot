@@ -2020,7 +2020,7 @@ function FolioPage() {
                   <Input
                     className={`h-9 w-56 ${folio.guest_gstin && !isValidOrEmptyGSTIN(folio.guest_gstin) ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     value={folio.guest_gstin ?? ""}
-                    disabled={!isOpen || !!folio.billing_company_id || !!folio.billing_guest_id}
+                    disabled={!billToEditable || !!folio.billing_company_id || !!folio.billing_guest_id}
                     maxLength={15}
                     placeholder="e.g. 27AASFB5351R1ZM"
                     onChange={async (e) => {
@@ -2035,7 +2035,7 @@ function FolioPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Bill To</Label>
-                  {isOpen ? (
+                  {billToEditable ? (
                     <SearchableSelect
                       className="h-9 w-72"
                       value={
@@ -2093,7 +2093,9 @@ function FolioPage() {
                   <p className="text-[11px] text-muted-foreground">
                     {isOpen
                       ? "Editable until checkout. Checkout uses whatever is set here."
-                      : "Locked — the bill is finalised."}
+                      : billToEditable
+                        ? "Bill finalised — Bill-To may still be corrected. Invoice number and amounts stay unchanged."
+                        : "Locked — the bill is finalised."}
                   </p>
                 </div>
               </>
