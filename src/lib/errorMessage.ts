@@ -83,6 +83,7 @@ function detailsOf(e: RawErrorLike): string | undefined {
 /** Known constraint / trigger names → plain language. */
 const CONSTRAINT_MESSAGES: Array<[RegExp, string]> = [
   [/guests?_mobile|mobile.*unique|unique.*mobile/, "A guest with this mobile number already exists."],
+  [/billing_companies_property_name_uniq|billing_companies.*name/, "A company with this name already exists for this property — the existing record was used instead. Refresh and try again."],
   [/booking.*overlap|overlap.*booking|room.*overlap|no_overlapping|daterange|tstzrange|exclusion/, "This room is already booked for these dates. Pick a different room or change the dates."],
   [/bill_number|invoice_number|_bill_no/, "A bill with this number already exists. Refresh and try again."],
   [/room_number|rooms_.*_key.*number/, "A room with this number already exists for this property."],
@@ -150,7 +151,13 @@ export function humanizeError(error: unknown, action?: string): HumanError {
 
   // Constraint violations
   if (code === "23505" || /duplicate key|already exists/.test(text)) {
-    return { message: constraintMessage(text) ?? "This record already exists. Check for a duplicate entry.", details };
+    // Never surface the raw constraint text as the headline; keep it in details.
+    return {
+      message:
+        constraintMessage(text) ??
+        `This record already exists${act ? ` — ${act} was stopped to avoid a duplicate` : ""}. Check for a duplicate entry and try again.`,
+      details,
+    };
   }
   if (code === "23P01" || /conflicting key value violates exclusion/.test(text)) {
     return { message: constraintMessage(text) ?? "This conflicts with an existing booking for the same dates.", details };
