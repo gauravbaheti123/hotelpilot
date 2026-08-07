@@ -668,12 +668,14 @@ function FolioPage() {
     }, 350);
   }
 
-  /** Change the Bill-To party on an OPEN folio. Keeps the booking row in sync
+  /** Change the Bill-To party on an OPEN folio — or on a finalised one when the
+   *  role holds invoices/edit_billto_locked (Owner, Manager). Keeps the booking row in sync
    *  so the checkout dialog reflects the latest choice, clears the manual
    *  guest GSTIN when a company takes over (company GSTIN drives place of
    *  supply), and writes an audit trail. */
   async function updateBillTo(selection: string) {
-    if (!folio || !isOpen) return;
+    if (!folio) return;
+    if (!isOpen && !canEditBillToLocked) return;
     const prevCompanyId = folio.billing_company_id ?? null;
     const prevGuestId = folio.billing_guest_id ?? null;
     const companyId = selection.startsWith("co:") ? selection.slice(3) : null;
@@ -733,6 +735,10 @@ function FolioPage() {
           to_billing_company_name: label,
           to_gstin: patch.guest_gstin ?? null,
           booking_number: booking?.booking_number ?? null,
+          // Correction applied after the bill was finalised (invoice number,
+          // GST and amounts are untouched — Bill-To identity only).
+          locked_correction: !isOpen,
+          folio_status: folio.status ?? null,
         },
       });
     }
