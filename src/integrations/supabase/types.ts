@@ -6355,6 +6355,10 @@ export type Database = {
         Args: { _property_id: string; _user_id: string }
         Returns: boolean
       }
+      change_payment_amount: {
+        Args: { _new_amount: number; _payment_id: string; _reason?: string }
+        Returns: Json
+      }
       change_payment_mode: {
         Args: { _new_mode: string; _payment_id: string; _reason?: string }
         Returns: Json
