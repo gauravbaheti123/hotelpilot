@@ -16,7 +16,12 @@ import { toast } from "sonner";
 import { Pencil, Trash2 } from "lucide-react";
 import { fetchBanquetVisibility, type BanquetVisibilityRow } from "@/lib/banquetScope";
 import { listEventBookings } from "@/lib/banquetEvent";
-import { fmtDate, fmtDateTime, fmtINR, firstOfMonthIso } from "@/lib/reportExports";
+import {
+  fmtDate, fmtDateTime, fmtINR, firstOfMonthIso,
+  exportExcelSections, exportSectionsPdf,
+  type ExportSection, type ReportColumn,
+} from "@/lib/reportExports";
+import { useReportBrand } from "@/hooks/use-report-brand";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
@@ -71,6 +76,38 @@ interface EventGroup {
   folios: FolioRow[]; bills: BillRow[]; masters: MasterRow[];
 }
 
+interface BbFolioExport {
+  event: string; event_date: string; document: string; room: string; guest: string;
+  created_at: string; status: string; total: number; paid: number;
+}
+interface BbBillExport {
+  event: string; event_date: string; document: string; kind: string;
+  created_at: string; status: string; total: number; paid: number;
+}
+
+const BB_FOLIO_COLUMNS: ReportColumn<BbFolioExport>[] = [
+  { key: "event", header: "Event", get: (r) => r.event, type: "enum" },
+  { key: "edate", header: "Event Date", get: (r) => (r.event_date ? fmtDate(r.event_date) : "—"), type: "date", sortValue: (r) => r.event_date },
+  { key: "doc", header: "Invoice No", get: (r) => r.document },
+  { key: "room", header: "Room", get: (r) => r.room, type: "enum" },
+  { key: "guest", header: "Guest", get: (r) => r.guest },
+  { key: "created", header: "Created", get: (r) => fmtDate(r.created_at), type: "date", sortValue: (r) => r.created_at },
+  { key: "status", header: "Status", get: (r) => r.status, type: "enum" },
+  { key: "total", header: "Total", get: (r) => r.total, currency: true },
+  { key: "paid", header: "Paid", get: (r) => r.paid, currency: true },
+];
+
+const BB_BILL_COLUMNS: ReportColumn<BbBillExport>[] = [
+  { key: "event", header: "Event", get: (r) => r.event, type: "enum" },
+  { key: "edate", header: "Event Date", get: (r) => (r.event_date ? fmtDate(r.event_date) : "—"), type: "date", sortValue: (r) => r.event_date },
+  { key: "doc", header: "Bill No", get: (r) => r.document },
+  { key: "kind", header: "Type", get: (r) => r.kind, type: "enum" },
+  { key: "created", header: "Created", get: (r) => fmtDate(r.created_at), type: "date", sortValue: (r) => r.created_at },
+  { key: "status", header: "Status", get: (r) => r.status, type: "enum" },
+  { key: "total", header: "Total", get: (r) => r.total, currency: true },
+  { key: "paid", header: "Paid", get: (r) => r.paid, currency: true },
+];
+
 type EditTarget =
   | { kind: "charge"; id: string; label: string; description: string; qty: number; rate: number; gst_rate: number }
   | { kind: "item"; id: string; label: string; description: string; qty: number; rate: number; gst_rate: number }
@@ -81,6 +118,7 @@ type DeleteTarget = { kind: "folio" | "segment_bill" | "master_bill"; id: string
 function Page() {
   const { current } = useCurrentProperty();
   const propertyId = current?.id ?? null;
+  const brand = useReportBrand(propertyId);
 
   const today = istToday();
   const [from, setFrom] = useState(firstOfMonthIso());
@@ -325,6 +363,65 @@ function Page() {
     } finally { setBusy(false); }
   }
 
+  const exportMeta = { reportName: "Banquet Billing (Owner)", propertyName: current?.name ?? "", from, to };
+
+  const exportSections: ExportSection[] = useMemo(() => {
+    const folioRows: BbFolioExport[] = [];
+    const billRows: BbBillExport[] = [];
+    for (const g of groups) {
+      for (const f of g.folios) {
+        folioRows.push({
+          event: g.title, event_date: g.event_date ?? "",
+          document: f.invoice_number ?? f.id.slice(0, 8),
+          room: f.room_number || "—", guest: f.guest || "—",
+          created_at: f.created_at, status: f.status,
+          total: Number(f.total_amount ?? 0), paid: Number(f.paid_amount ?? 0),
+        });
+      }
+      for (const b of g.bills) {
+        billRows.push({
+          event: g.title, event_date: g.event_date ?? "",
+          document: b.bill_number ?? b.id.slice(0, 8), kind: b.segment,
+          created_at: b.created_at, status: b.status,
+          total: Number(b.total_amount ?? 0), paid: Number(b.paid_amount ?? 0),
+        });
+      }
+      for (const m of g.masters) {
+        billRows.push({
+          event: g.title, event_date: g.event_date ?? "",
+          document: m.bill_number ?? m.id.slice(0, 8), kind: "master bill",
+          created_at: m.created_at, status: m.status,
+          total: Number(m.total_amount ?? 0), paid: 0,
+        });
+      }
+    }
+    const sum = (n: number[]) => Math.round(n.reduce((a, b) => a + b, 0) * 100) / 100;
+    return [
+      {
+        title: "Room folios",
+        columns: BB_FOLIO_COLUMNS as ReportColumn<any>[],
+        rows: folioRows,
+        emptyText: "No banquet room folios in this range",
+        summary: [
+          ["Folios", folioRows.length],
+          ["Total", fmtINR(sum(folioRows.map((r) => r.total)))],
+          ["Paid", fmtINR(sum(folioRows.map((r) => r.paid)))],
+        ] as Array<[string, string | number]>,
+      },
+      {
+        title: "Food & master bills",
+        columns: BB_BILL_COLUMNS as ReportColumn<any>[],
+        rows: billRows,
+        emptyText: "No banquet food or master bills in this range",
+        summary: [
+          ["Bills", billRows.length],
+          ["Total", fmtINR(sum(billRows.map((r) => r.total)))],
+          ["Grand total across listed events", fmtINR(grand)],
+        ] as Array<[string, string | number]>,
+      },
+    ];
+  }, [groups, grand]);
+
   return (
     <ReportShell
       title="Banquet Billing (Owner)"
@@ -333,6 +430,8 @@ function Page() {
         <div><Label>To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" /></div>
       </>}
       disabled={loading || groups.length === 0}
+      onExcel={() => exportExcelSections(exportSections, exportMeta)}
+      onPdf={() => exportSectionsPdf(exportSections, exportMeta, brand)}
     >
       <div className="space-y-4">
         <p className="text-xs text-muted-foreground">

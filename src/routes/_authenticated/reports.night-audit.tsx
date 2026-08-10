@@ -20,16 +20,48 @@ import { billNo } from "@/lib/billNumber";
 import { toast } from "sonner";
 import { fetchDailySummary, fetchOccupancy, todayIso, PAYMENT_MODE_LABELS } from "@/lib/reports";
 import { inr } from "@/lib/billing";
-import { AlertTriangle, CheckCircle2, Lock, Printer, FileText } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Lock, Printer, FileText, FileSpreadsheet } from "lucide-react";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { istDateISO } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { useReportBrand } from "@/hooks/use-report-brand";
+import {
+  exportExcelSections, exportSectionsPdf, buildKpiIntroHtml, kpiSection, fmtDate,
+  type ExportSection, type KpiEntry, type ReportColumn,
+} from "@/lib/reportExports";
 import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/reports/night-audit")({
   head: () => ({ meta: [{ title: "Night Audit — HotelPilot" }] }),
   component: () => (<RequirePermission module="day_close"><NightAuditPage /></RequirePermission>),
 });
+
+const NA_OCCUPIED_COLUMNS: ReportColumn<OccupiedRow>[] = [
+  { key: "room", header: "Room", get: (r) => r.room_number, type: "enum" },
+  { key: "guest", header: "Guest", get: (r) => r.guest_name ?? "—" },
+  { key: "ci", header: "Check-in", get: (r) => fmtDate(r.check_in), type: "date", sortValue: (r) => r.check_in },
+  { key: "co", header: "Check-out", get: (r) => fmtDate(r.check_out), type: "date", sortValue: (r) => r.check_out },
+];
+
+const NA_KOT_COLUMNS: ReportColumn<OpenKotRow>[] = [
+  { key: "kot", header: "KOT No", get: (r) => r.kot_number },
+  { key: "room", header: "Room", get: (r) => r.room_number ?? "—", type: "enum" },
+  { key: "items", header: "Items", get: (r) => r.items },
+  { key: "status", header: "Status", get: (r) => r.status, type: "enum" },
+  { key: "total", header: "Amount", get: (r) => Number(r.total_amount ?? 0), currency: true },
+];
+
+const NA_UNSETTLED_COLUMNS: ReportColumn<UnsettledRow>[] = [
+  { key: "inv", header: "Invoice No", get: (r) => r.invoice_number ?? r.id.slice(0, 8) },
+  { key: "guest", header: "Guest", get: (r) => r.guest_name ?? "—" },
+  { key: "bal", header: "Balance", get: (r) => Number(r.balance_amount ?? 0), currency: true },
+];
+
+const NA_TARIFF_COLUMNS: ReportColumn<{ roomNumber: string; guest: string; amount: number }>[] = [
+  { key: "room", header: "Room", get: (r) => r.roomNumber, type: "enum" },
+  { key: "guest", header: "Guest", get: (r) => r.guest },
+  { key: "amt", header: "Amount", get: (r) => Number(r.amount ?? 0), currency: true },
+];
 
 interface OccupiedRow {
   booking_id: string;
@@ -81,6 +113,7 @@ function NightAuditPage() {
   // Night audit override / delete: use day_close (closest existing module).
   const isOwner = can("day_close", "delete");
 
+  const brand = useReportBrand(propertyId);
   const [date, setDate] = useState<string>(todayIso());
   const [notes, setNotes] = useState("");
   const [actualCash, setActualCash] = useState<string>("");
@@ -365,6 +398,66 @@ function NightAuditPage() {
 
   const hasWarnings = dueToday.length > 0 || openKots.length > 0 || unsettled.length > 0;
 
+  /* ---------------- Exports ---------------- */
+  const exportKpis: KpiEntry[] = useMemo(() => [
+    { label: "Business date", value: date },
+    { label: "Day status", value: existing ? "Closed" : "Open for closing" },
+    { label: "Occupied rooms", value: occupied.length },
+    { label: "Due to check out", value: dueToday.length },
+    { label: "Open KOTs", value: openKots.length },
+    { label: "Unsettled bills", value: unsettled.length },
+    { label: "Room revenue", value: inr(revenueRoom) },
+    { label: "Food revenue", value: inr(revenueFood) },
+    { label: "Banquet revenue", value: inr(revenueBanquet) },
+    { label: "Other revenue", value: inr(revenueOther) },
+    { label: "Total revenue", value: inr(totalRevenue) },
+    ...Object.keys(PAYMENT_MODE_LABELS).map((m) => ({
+      label: `Collected — ${PAYMENT_MODE_LABELS[m]}`, value: inr(byMode[m] || 0),
+    })),
+    { label: "Total collected", value: inr(totalCollections) },
+    { label: "Opening cash", value: inr(openingCash) },
+    { label: "Expenses", value: inr(expenses) },
+    { label: "Expected closing cash", value: inr(expectedClosing) },
+  ], [date, existing, occupied, dueToday, openKots, unsettled, revenueRoom, revenueFood,
+      revenueBanquet, revenueOther, totalRevenue, byMode, totalCollections, openingCash,
+      expenses, expectedClosing]);
+
+  const exportMeta = { reportName: "Night Audit / Day Close", propertyName: current?.name ?? "", from: date, to: date };
+
+  const buildExportSections = (): ExportSection[] => [
+    kpiSection("Day summary", exportKpis),
+    {
+      title: "Occupied rooms",
+      columns: NA_OCCUPIED_COLUMNS as ReportColumn<any>[],
+      rows: occupied,
+      emptyText: "No occupied rooms",
+      summary: [["Rooms", occupied.length], ["Due to check out", dueToday.length]] as Array<[string, string | number]>,
+    },
+    {
+      title: "Open KOTs",
+      columns: NA_KOT_COLUMNS as ReportColumn<any>[],
+      rows: openKots,
+      emptyText: "No open KOTs",
+      summary: [["Open KOTs", openKots.length],
+        ["Value", inr(openKots.reduce((a, k) => a + Number(k.total_amount ?? 0), 0))]] as Array<[string, string | number]>,
+    },
+    {
+      title: "Unsettled bills",
+      columns: NA_UNSETTLED_COLUMNS as ReportColumn<any>[],
+      rows: unsettled,
+      emptyText: "No unsettled bills",
+      summary: [["Bills", unsettled.length],
+        ["Outstanding", inr(unsettled.reduce((a, u) => a + Number(u.balance_amount ?? 0), 0))]] as Array<[string, string | number]>,
+    },
+    {
+      title: "Room charges to be posted",
+      columns: NA_TARIFF_COLUMNS as ReportColumn<any>[],
+      rows: tariffPosts,
+      emptyText: "Nothing pending",
+      summary: [["Total", inr(tariffPosts.reduce((a, t) => a + Number(t.amount ?? 0), 0))]] as Array<[string, string | number]>,
+    },
+  ];
+
   return (
     <AppShell title="Night Audit">
       <div className="space-y-4">
@@ -375,7 +468,19 @@ function NightAuditPage() {
               <Label className="text-xs">Business Date</Label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-48" />
             </div>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" className="print:hidden"
+                onClick={() => exportExcelSections(buildExportSections(), exportMeta)}>
+                <FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel
+              </Button>
+              <Button variant="outline" size="sm" className="print:hidden"
+                onClick={() => exportSectionsPdf(buildExportSections(), exportMeta, brand, {
+                  orientation: "portrait",
+                  introTitle: "Day summary",
+                  introHtml: buildKpiIntroHtml(exportKpis),
+                })}>
+                <Printer className="h-4 w-4 mr-1" /> Export PDF
+              </Button>
               {existing ? (
                 <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300" variant="outline">
                   <Lock className="h-3 w-3 mr-1" /> Day Closed
