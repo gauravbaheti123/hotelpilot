@@ -326,25 +326,41 @@ function BookingDetailPage() {
     setShiftToRoom("");
     setShiftReason("");
     setShiftStep(1);
+    setShiftMode("same_day");
+    setShiftEffDate(istToday());
     setTariffChoice("keep");
     setCustomRate("");
     setTransferKots(true);
     setPendingKots([]);
+    setPendingFoodBills([]);
     setMgrEmail(""); setMgrPass(""); setMgrApproved(false);
     setShiftOpen(true);
   }
 
+  /** Pending food can live in TWO places: un-billed KOTs, and an already-rolled-up
+   *  OPEN food segment bill (segment_bills). Checking only KOTs made the wizard
+   *  claim "no pending food orders" for bookings that clearly had an open bill. */
   async function loadPendingKotsFor(brId: string) {
     if (!b) return;
     const br = b.booking_rooms.find((x) => x.id === brId);
-    if (!br) { setPendingKots([]); return; }
-    const { data, error: __qe2 } = await supabase
-      .from("kot_orders")
-      .select("id,kot_number,status,total_amount")
-      .eq("booking_id", b.id)
-      .in("status", ["open", "printed", "served"]);
+    if (!br) { setPendingKots([]); setPendingFoodBills([]); return; }
+    const [{ data: kotRows, error: __qe2 }, { data: billRows, error: __qe3 }] = await Promise.all([
+      supabase
+        .from("kot_orders")
+        .select("id,kot_number,status,total_amount")
+        .eq("booking_id", b.id)
+        .in("status", ["open", "printed", "served"]),
+      supabase
+        .from("segment_bills")
+        .select("id,bill_number,total_amount")
+        .eq("booking_id", b.id)
+        .eq("segment", "food")
+        .eq("status", "open"),
+    ]);
     if (__qe2) reportQueryError("kot orders", __qe2);
-    setPendingKots(((data ?? []) as any));
+    if (__qe3) reportQueryError("food bills", __qe3);
+    setPendingKots(((kotRows ?? []) as any));
+    setPendingFoodBills(((billRows ?? []) as any));
   }
 
   async function verifyMgrForCustom() {
