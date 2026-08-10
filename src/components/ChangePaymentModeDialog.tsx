@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
@@ -46,6 +47,7 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
   const { user } = useAuth();
   const { can } = usePermissions();
   const canEditAmount = can("payments", "edit_amount");
+  const canDeletePayment = can("payments", "delete");
   const { methods } = usePaymentMethods(folio?.property_id ?? null);
   const activeMethods = methods.filter((m) => m.is_active);
 
@@ -55,8 +57,52 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const locked = !!folio && (folio.status === "settled" || folio.status === "due" || folio.status === "void" || folio.is_deleted === true);
+
+  /** Owner-only destructive action: removes the payment row, recomputes the
+   *  folio's paid/balance from the remaining real payments and flips a
+   *  finalised bill back to "due" when it is no longer fully covered. */
+  async function deletePayment(p: PaymentRow) {
+    if (!folio || !canDeletePayment) return;
+    const ok = window.confirm(
+      `Are you sure you want to delete this ₹${Number(p.amount).toLocaleString("en-IN")} payment?\n\n` +
+        `This cannot be undone. The bill's paid and balance figures will be recalculated.`,
+    );
+    if (!ok) return;
+    setDeletingId(p.id);
+    try {
+      const { error } = await supabase.rpc("delete_payment" as any, {
+        _payment_id: p.id,
+        _reason: reason.trim() || null,
+      } as any);
+      if (error) return toastError(error);
+      await logActivity({
+        property_id: folio.property_id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        ...ACTIVITY.PAYMENT_DELETED,
+        reference_id: p.id,
+        reference_label: `${billNo(folio.invoice_number)} — ₹${Number(p.amount)} (${p.mode}) deleted`,
+        details: {
+          payment_id: p.id,
+          folio_id: folio.id,
+          bill_number: billNo(folio.invoice_number),
+          booking_id: folio.booking_id,
+          amount: Number(p.amount),
+          mode: p.mode,
+          reference_no: p.reference_no,
+          reason: reason.trim() || null,
+        },
+      });
+      setPayments((rows) => rows.filter((r) => r.id !== p.id));
+      toast.success("Payment deleted");
+      onSaved?.();
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   useEffect(() => {
     if (!open || !folio) return;
@@ -265,6 +311,18 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
                     ))}
                   </SelectContent>
                 </Select>
+                {canDeletePayment && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive"
+                    title="Delete this payment"
+                    disabled={deletingId === p.id || saving}
+                    onClick={() => deletePayment(p)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             ))}
           </div>
