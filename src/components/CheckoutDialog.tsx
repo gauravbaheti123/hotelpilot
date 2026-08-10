@@ -313,6 +313,8 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       setBillToConfirmed(false);
       setEarlyChoice(null);
       setEarlyBusy(false);
+      setMarkDue(false);
+      setDueReason("");
       didSeedRoomCharges.current = false;
       didLateChargeCheck.current = false;
       load();
