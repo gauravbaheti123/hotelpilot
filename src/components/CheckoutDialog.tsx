@@ -35,6 +35,7 @@ import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 import { payableFolios } from "@/lib/folioSelect";
+import { mergeSegmentBillToFolio } from "@/lib/paymentTargets";
 import { finalizeFolioSettlement } from "@/lib/folioFinalize";
 
 interface Props {
