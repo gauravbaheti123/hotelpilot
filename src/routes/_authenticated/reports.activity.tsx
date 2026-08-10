@@ -9,7 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Download, Filter, RotateCcw } from "lucide-react";
+import { Download, Filter, Printer, RotateCcw } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
@@ -18,6 +18,11 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { RequirePermission } from "@/components/RequirePermission";
 import { istDaysAgo, istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { useReportBrand } from "@/hooks/use-report-brand";
+import {
+  exportExcelSections, exportSectionsPdf, fmtDateTime,
+  type ExportSection, type ReportColumn,
+} from "@/lib/reportExports";
 export const Route = createFileRoute("/_authenticated/reports/activity")({
   head: () => ({ meta: [{ title: "Activity Log — HotelPilot" }] }),
   component: () => (<RequirePermission module="reports"><ActivityLogPage /></RequirePermission>),
@@ -37,11 +42,26 @@ interface ActivityRow {
 
 interface StaffOption { user_id: string; name: string }
 
+interface ExportRow {
+  created_at: string; user_name: string; action_type: string;
+  module: string; reference_label: string; extra: string;
+}
+
+const ACTIVITY_COLUMNS: ReportColumn<ExportRow>[] = [
+  { key: "at", header: "Date-Time", get: (r) => fmtDateTime(r.created_at), type: "date", sortValue: (r) => r.created_at },
+  { key: "staff", header: "Staff", get: (r) => r.user_name, type: "enum" },
+  { key: "action", header: "Action", get: (r) => r.action_type, type: "enum" },
+  { key: "module", header: "Module", get: (r) => r.module, type: "enum" },
+  { key: "ref", header: "Details", get: (r) => r.reference_label },
+  { key: "extra", header: "Extra", get: (r) => r.extra },
+];
+
 const PAGE_SIZE = 50;
 const ALL = "__all__";
 
 function ActivityLogPage() {
   const { current, loading: propLoading } = useCurrentProperty();
+  const brand = useReportBrand(current?.id ?? null);
 
   const today = istToday();
   const monthAgo = istDaysAgo(30);
@@ -121,8 +141,9 @@ function ActivityLogPage() {
     setPage(0);
   }
 
-  async function exportXlsx() {
-    if (!current) return;
+  /** Full filtered result set (not just the current page) for exports. */
+  const fetchAllRows = useCallback(async (): Promise<ExportRow[]> => {
+    if (!current) return [];
     let q = supabase
       .from("activity_log" as any)
       .select("created_at,user_name,action_type,module,reference_label,details")
@@ -134,23 +155,46 @@ function ActivityLogPage() {
     if (staff !== ALL) q = q.eq("user_id", staff);
     if (module !== ALL) q = q.eq("module", module);
     if (action !== ALL) q = q.eq("action_type", action);
-    const { data } = await q;
-    const formatted = ((data ?? []) as unknown as Array<{
+    const { data, error } = await q;
+    if (error) reportQueryError("activity log export", error);
+    return ((data ?? []) as unknown as Array<{
       created_at: string; user_name: string | null; action_type: string;
       module: string; reference_label: string | null; details: unknown;
     }>).map((r) => ({
-      "Date-Time": new Date(r.created_at).toLocaleString(),
-      Staff: r.user_name ?? "",
-      Action: r.action_type,
-      Module: r.module,
-      Details: r.reference_label ?? "",
-      Extra: r.details ? JSON.stringify(r.details) : "",
+      created_at: r.created_at,
+      user_name: r.user_name ?? "",
+      action_type: r.action_type,
+      module: r.module,
+      reference_label: r.reference_label ?? "",
+      extra: r.details ? JSON.stringify(r.details) : "",
     }));
-    const XLSX = await import("xlsx");
-    const ws = XLSX.utils.json_to_sheet(formatted);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Activity");
-    XLSX.writeFile(wb, `activity-log-${from}-to-${to}.xlsx`);
+  }, [current, from, to, staff, module, action]);
+
+  const exportMeta = { reportName: "Activity Log", propertyName: current?.name ?? "", from, to };
+
+  function buildSections(exportRows: ExportRow[]): ExportSection[] {
+    const byAction = new Map<string, number>();
+    for (const r of exportRows) byAction.set(r.action_type, (byAction.get(r.action_type) ?? 0) + 1);
+    return [{
+      title: "Activity Log",
+      columns: ACTIVITY_COLUMNS as ReportColumn<any>[],
+      rows: exportRows,
+      emptyText: "No activity in this range",
+      summary: [
+        ["Total entries", exportRows.length],
+        ...Array.from(byAction.entries()).sort((a, b) => b[1] - a[1]).map(([a, n]) => [`  ${a}`, n] as [string, number]),
+      ] as Array<[string, string | number]>,
+    }];
+  }
+
+  async function exportXlsx() {
+    const all = await fetchAllRows();
+    await exportExcelSections(buildSections(all), exportMeta);
+  }
+
+  async function exportPdfDoc() {
+    const all = await fetchAllRows();
+    exportSectionsPdf(buildSections(all), exportMeta, brand);
   }
 
   if (propLoading) return <AppShell title="Activity Log"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
@@ -209,9 +253,14 @@ function ActivityLogPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">Results ({totalCount.toLocaleString()})</CardTitle>
-            <Button size="sm" variant="outline" onClick={exportXlsx}>
-              <Download className="h-4 w-4 mr-1" /> Export to Excel
-            </Button>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={exportXlsx}>
+                <Download className="h-4 w-4 mr-1" /> Export Excel
+              </Button>
+              <Button size="sm" variant="outline" onClick={exportPdfDoc}>
+                <Printer className="h-4 w-4 mr-1" /> Export PDF
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">

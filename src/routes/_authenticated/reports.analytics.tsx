@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,13 @@ import { fetchAnalytics, isoDaysAgo, type AnalyticsRange } from "@/lib/analytics
 import { todayIso } from "@/lib/reports";
 import { inr } from "@/lib/billing";
 import { RequirePermission } from "@/components/RequirePermission";
+import { useReportBrand } from "@/hooks/use-report-brand";
+import { captureChartSvgs } from "@/lib/chartCapture";
+import {
+  exportExcelSections, exportSectionsPdf, buildKpiIntroHtml, kpiSection,
+  type ExportSection, type KpiEntry, type ReportColumn,
+} from "@/lib/reportExports";
+import { FileSpreadsheet, Printer } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend,
@@ -21,8 +28,25 @@ export const Route = createFileRoute("/_authenticated/reports/analytics")({
   component: () => (<RequirePermission module="reports"><AnalyticsPage /></RequirePermission>),
 });
 
+interface DayBreakdownRow {
+  date: string; rooms_sold: number; rooms_total: number;
+  occupancy_pct: number; adr: number; revpar: number; room_revenue: number;
+}
+
+const DAY_COLUMNS: ReportColumn<DayBreakdownRow>[] = [
+  { key: "date", header: "Date", get: (r) => r.date, type: "date", sortValue: (r) => r.date },
+  { key: "sold", header: "Rooms Sold", get: (r) => r.rooms_sold, numeric: true },
+  { key: "total", header: "Rooms Total", get: (r) => r.rooms_total, numeric: true },
+  { key: "occ", header: "Occupancy %", get: (r) => r.occupancy_pct, numeric: true },
+  { key: "adr", header: "ADR", get: (r) => r.adr, currency: true },
+  { key: "revpar", header: "RevPAR", get: (r) => r.revpar, currency: true },
+  { key: "rev", header: "Room Revenue", get: (r) => r.room_revenue, currency: true },
+];
+
 function AnalyticsPage() {
-  const { currentId: propertyId } = useCurrentProperty();
+  const { current, currentId: propertyId } = useCurrentProperty();
+  const brand = useReportBrand(propertyId);
+  const chartsRef = useRef<HTMLDivElement>(null);
   const [from, setFrom] = useState<string>(isoDaysAgo(29));
   const [to, setTo] = useState<string>(todayIso());
   const [data, setData] = useState<AnalyticsRange | null>(null);
@@ -50,6 +74,27 @@ function AnalyticsPage() {
 
   const t = data?.totals;
 
+  const kpis: KpiEntry[] = useMemo(() => [
+    { label: "Occupancy", value: t ? `${t.occupancy_pct}%` : "—", hint: t ? `${t.rooms_sold}/${t.rooms_available} room-nights` : "" },
+    { label: "ADR", value: t ? inr(t.adr) : "—", hint: "Average daily rate" },
+    { label: "RevPAR", value: t ? inr(t.revpar) : "—", hint: "Revenue per available room" },
+    { label: "Room Revenue", value: t ? inr(t.room_revenue) : "—", hint: `${data?.days.length ?? 0} days` },
+  ], [t, data]);
+
+  const exportMeta = { reportName: "Analytics", propertyName: current?.name ?? "", from, to };
+
+  function buildSections(): ExportSection[] {
+    return [
+      kpiSection("Key figures", kpis),
+      {
+        title: "Daily breakdown",
+        columns: DAY_COLUMNS as ReportColumn<any>[],
+        rows: (data?.days ?? []) as DayBreakdownRow[],
+        emptyText: "No data in range",
+      },
+    ];
+  }
+
   return (
     <AppShell title="Analytics">
       <div className="flex flex-wrap items-end gap-3 mb-4">
@@ -66,7 +111,23 @@ function AnalyticsPage() {
           <Button variant="outline" size="sm" onClick={() => { setFrom(isoDaysAgo(29)); setTo(todayIso()); }}>30d</Button>
           <Button variant="outline" size="sm" onClick={() => { setFrom(isoDaysAgo(89)); setTo(todayIso()); }}>90d</Button>
         </div>
+        <div className="ml-auto flex gap-2 print:hidden">
+          <Button variant="outline" size="sm" disabled={loading || !data}
+            onClick={() => exportExcelSections(buildSections(), exportMeta)}>
+            <FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel
+          </Button>
+          <Button variant="outline" size="sm" disabled={loading || !data}
+            onClick={() => exportSectionsPdf(buildSections(), exportMeta, brand, {
+              orientation: "portrait",
+              introTitle: "Key figures & trends",
+              introHtml: buildKpiIntroHtml(kpis, captureChartSvgs(chartsRef.current)),
+            })}>
+            <Printer className="h-4 w-4 mr-1" /> Export PDF
+          </Button>
+        </div>
       </div>
+
+      <div ref={chartsRef} className="contents">
 
       <div className="grid gap-4 md:grid-cols-4">
         <Kpi title="Occupancy" value={t ? `${t.occupancy_pct}%` : "—"} hint={t ? `${t.rooms_sold}/${t.rooms_available} room-nights` : ""} />
@@ -156,6 +217,7 @@ function AnalyticsPage() {
           </table>
         </CardContent>
       </Card>
+      </div>
     </AppShell>
   );
 }

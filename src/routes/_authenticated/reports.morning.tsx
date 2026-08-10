@@ -53,7 +53,7 @@ function Page() {
   const [brand, setBrand] = useState<ReportBrand | null>(null);
 
   const setRange = (next: { from?: string; to?: string }) =>
-    navigate({ search: (prev: Record<string, unknown>) => ({ ...prev, from: next.from ?? from, to: next.to ?? to }) });
+    navigate({ search: { section: search.section, from: next.from ?? from, to: next.to ?? to } });
 
   const load = useCallback(async () => {
     if (!propertyId) return;

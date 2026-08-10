@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,13 @@ import {
   type DailySummary, type OccupancySnapshot,
 } from "@/lib/reports";
 import { inr } from "@/lib/billing";
+import { Button } from "@/components/ui/button";
+import { FileSpreadsheet, Printer } from "lucide-react";
+import { useReportBrand } from "@/hooks/use-report-brand";
+import {
+  exportExcelSections, exportSectionsPdf, buildKpiIntroHtml, kpiSection,
+  type ExportSection, type KpiEntry,
+} from "@/lib/reportExports";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/reports/daily")({
@@ -20,7 +27,8 @@ export const Route = createFileRoute("/_authenticated/reports/daily")({
 });
 
 function DailyReportPage() {
-  const { currentId: propertyId } = useCurrentProperty();
+  const { current, currentId: propertyId } = useCurrentProperty();
+  const brand = useReportBrand(propertyId);
   const [date, setDate] = useState<string>(todayIso());
   const [sum, setSum] = useState<DailySummary | null>(null);
   const [occ, setOcc] = useState<OccupancySnapshot | null>(null);
@@ -38,14 +46,45 @@ function DailyReportPage() {
     return () => { cancel = true; };
   }, [propertyId, date]);
 
+  const kpis: KpiEntry[] = useMemo(() => [
+    { label: "Occupancy", value: occ ? `${occ.occupancy_pct}%` : "—", hint: occ ? `${occ.rooms_occupied}/${occ.rooms_total} rooms` : "" },
+    { label: "Revenue (invoiced)", value: inr(sum?.total_amount ?? 0), hint: sum ? `${sum.folios_created} folios · ${sum.folios_settled} settled` : "" },
+    { label: "Collections", value: inr(sum?.payments_total ?? 0), hint: sum ? `${sum.payment_count} payments` : "" },
+    { label: "Sub total", value: inr(sum?.sub_total ?? 0) },
+    { label: "GST", value: inr(sum?.gst_amount ?? 0) },
+    { label: "Grand total", value: inr(sum?.total_amount ?? 0) },
+    ...Object.keys(PAYMENT_MODE_LABELS).map((m) => ({
+      label: `Collected — ${PAYMENT_MODE_LABELS[m]}`, value: inr(sum?.by_mode[m] ?? 0),
+    })),
+    { label: "Total collected", value: inr(sum?.payments_total ?? 0) },
+    { label: "GST invoice total", value: inr(sum?.gst_invoice_total ?? 0), hint: `${sum?.gst_invoice_count ?? 0} invoice(s)` },
+  ], [sum, occ]);
+
+  const exportMeta = { reportName: "Daily Report", propertyName: current?.name ?? "", from: date, to: date };
+  const buildSections = (): ExportSection[] => [kpiSection("Daily figures", kpis)];
+
   if (!propertyId) return <AppShell title="Daily Report"><EmptyPropertyState /></AppShell>;
 
   return (
     <AppShell title="Daily Report">
-      <div className="flex items-end gap-3 mb-4">
+      <div className="flex flex-wrap items-end gap-3 mb-4">
         <div>
           <Label htmlFor="d">Business date</Label>
           <Input id="d" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-48" />
+        </div>
+        <div className="ml-auto flex gap-2 print:hidden">
+          <Button variant="outline" size="sm" disabled={!sum}
+            onClick={() => exportExcelSections(buildSections(), exportMeta)}>
+            <FileSpreadsheet className="h-4 w-4 mr-1" /> Export Excel
+          </Button>
+          <Button variant="outline" size="sm" disabled={!sum}
+            onClick={() => exportSectionsPdf(buildSections(), exportMeta, brand, {
+              orientation: "portrait",
+              introTitle: "Daily snapshot",
+              introHtml: buildKpiIntroHtml(kpis),
+            })}>
+            <Printer className="h-4 w-4 mr-1" /> Export PDF
+          </Button>
         </div>
       </div>
 

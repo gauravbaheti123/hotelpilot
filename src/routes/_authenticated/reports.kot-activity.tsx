@@ -18,6 +18,11 @@ import { useAuth, hasRole } from "@/hooks/use-auth";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { istDaysAgo, istToday } from "@/lib/date";
+import { useReportBrand } from "@/hooks/use-report-brand";
+import {
+  exportExcelSections, exportSectionsPdf,
+  type ExportSection, type ReportColumn,
+} from "@/lib/reportExports";
 export const Route = createFileRoute("/_authenticated/reports/kot-activity")({
   head: () => ({ meta: [{ title: "KOT Activity Log — HotelPilot" }] }),
   component: () => (<RequirePermission module="reports"><KotActivityReport /></RequirePermission>),
@@ -36,6 +41,22 @@ const ACTION_TONE: Record<string, string> = {
   KOT_DELETED: "bg-rose-100 text-rose-800 border-rose-300",
 };
 
+interface KotDisplayRow {
+  when: string; kotNumber: string; action: string; staff: string;
+  loc: string; before: number | null; after: number | null; reason: string;
+}
+
+const KOT_COLUMNS: ReportColumn<KotDisplayRow>[] = [
+  { key: "when", header: "Date-Time", get: (r) => r.when, type: "date", sortValue: (r) => r.when },
+  { key: "kot", header: "KOT Number", get: (r) => r.kotNumber },
+  { key: "action", header: "Action", get: (r) => ACTION_LABEL[r.action] ?? r.action, type: "enum" },
+  { key: "staff", header: "Performed By", get: (r) => r.staff, type: "enum" },
+  { key: "loc", header: "Table / Room", get: (r) => r.loc, type: "enum" },
+  { key: "before", header: "Amount Before", get: (r) => (r.before != null ? r.before : ""), currency: true },
+  { key: "after", header: "Amount After", get: (r) => (r.action === "KOT_EDITED" && r.after != null ? r.after : ""), currency: true },
+  { key: "reason", header: "Reason", get: (r) => r.reason },
+];
+
 interface Row {
   id: string;
   created_at: string;
@@ -47,6 +68,7 @@ interface Row {
 
 function KotActivityReport() {
   const { current, loading: propLoading } = useCurrentProperty();
+  const brand = useReportBrand(current?.id ?? null);
   const { roles, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
@@ -99,25 +121,31 @@ function KotActivityReport() {
     };
   });
 
-  async function exportXlsx() {
-    const data = formatRows().map((r) => ({
-      "Date-Time": r.when,
-      "KOT Number": r.kotNumber,
-      "Action": ACTION_LABEL[r.action] ?? r.action,
-      "Performed By": r.staff,
-      "Table / Room": r.loc,
-      "Amount Before": r.before ?? "",
-      "Amount After": r.action === "KOT_EDITED" ? (r.after ?? "") : "",
-      "Reason": r.reason,
-    }));
-    const XLSX = await import("xlsx");
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "KOT Activity");
-    XLSX.writeFile(wb, `kot-activity-${from}-to-${to}.xlsx`);
+  const exportMeta = { reportName: "KOT Activity Log", propertyName: current?.name ?? "", from, to };
+
+  function buildSections(): ExportSection[] {
+    const data = formatRows();
+    const byAction = new Map<string, number>();
+    for (const r of data) byAction.set(ACTION_LABEL[r.action] ?? r.action, (byAction.get(ACTION_LABEL[r.action] ?? r.action) ?? 0) + 1);
+    return [{
+      title: "KOT Activity Log",
+      columns: KOT_COLUMNS as ReportColumn<any>[],
+      rows: data,
+      emptyText: "No KOT activity in this range",
+      summary: [
+        ["Total entries", data.length],
+        ...Array.from(byAction.entries()).map(([a, n]) => [`  ${a}`, n] as [string, number]),
+      ] as Array<[string, string | number]>,
+    }];
   }
 
-  function printPdf() { window.print(); }
+  async function exportXlsx() {
+    await exportExcelSections(buildSections(), exportMeta);
+  }
+
+  function exportPdfDoc() {
+    exportSectionsPdf(buildSections(), exportMeta, brand);
+  }
 
   if (propLoading) return <AppShell title="KOT Activity Log"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
   if (!current) return <AppShell title="KOT Activity Log"><EmptyPropertyState /></AppShell>;
@@ -155,8 +183,8 @@ function KotActivityReport() {
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">Results ({display.length.toLocaleString()})</CardTitle>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={exportXlsx}><Download className="h-4 w-4 mr-1" /> Excel</Button>
-              <Button size="sm" variant="outline" onClick={printPdf}><Printer className="h-4 w-4 mr-1" /> PDF</Button>
+              <Button size="sm" variant="outline" onClick={exportXlsx}><Download className="h-4 w-4 mr-1" /> Export Excel</Button>
+              <Button size="sm" variant="outline" onClick={exportPdfDoc}><Printer className="h-4 w-4 mr-1" /> Export PDF</Button>
             </div>
           </CardHeader>
           <CardContent className="p-0">

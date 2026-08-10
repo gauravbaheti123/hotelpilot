@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { ReportShell } from "@/components/ReportShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,11 @@ import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { RequirePermission } from "@/components/RequirePermission";
 import { istDateISO } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { useReportBrand } from "@/hooks/use-report-brand";
+import {
+  exportExcelSections, exportSectionsPdf, fmtINR,
+  type ExportSection, type ReportColumn,
+} from "@/lib/reportExports";
 export const Route = createFileRoute("/_authenticated/reports/sales")({
   head: () => ({ meta: [{ title: "Sales Report — HotelPilot" }] }),
   component: () => (<RequirePermission module="reports"><SalesReportPage /></RequirePermission>),
@@ -33,7 +39,8 @@ interface DayRow {
 }
 
 function SalesReportPage() {
-  const { currentId: propertyId } = useCurrentProperty();
+  const { current, currentId: propertyId } = useCurrentProperty();
+  const brand = useReportBrand(propertyId);
   const [from, setFrom] = useState<string>(firstOfMonth());
   const [to, setTo] = useState<string>(todayIso());
   const [folios, setFolios] = useState<{ created_at: string; sub_total: number; gst_amount: number; total_amount: number; status: string }[]>([]);
@@ -92,15 +99,46 @@ function SalesReportPage() {
     payments_total: acc.payments_total + d.payments_total,
   }), { sub_total: 0, gst_amount: 0, total_amount: 0, payments_total: 0 }), [days]);
 
+  const columns: ReportColumn<DayRow>[] = useMemo(() => [
+    { key: "date", header: "Date", get: (r) => r.date, type: "date", sortValue: (r) => r.date, dateValue: (r) => r.date },
+    { key: "sub", header: "Sub Total", get: (r) => r.sub_total, currency: true },
+    { key: "gst", header: "GST", get: (r) => r.gst_amount, currency: true },
+    { key: "inv", header: "Invoiced", get: (r) => r.total_amount, currency: true },
+    { key: "col", header: "Collected", get: (r) => r.payments_total, currency: true },
+    ...Object.keys(PAYMENT_MODE_LABELS).map((m) => ({
+      key: `mode_${m}`, header: PAYMENT_MODE_LABELS[m],
+      get: (r: DayRow) => r.by_mode[m] ?? 0, currency: true,
+    })),
+  ], []);
+
+  const meta = { reportName: "Sales Report", propertyName: current?.name ?? "", from, to };
+  const sections: ExportSection[] = [{
+    title: "Sales by day",
+    columns: columns as ReportColumn<any>[],
+    rows: days,
+    emptyText: "No data in range",
+    summary: [
+      ["Sub total", fmtINR(totals.sub_total)],
+      ["GST", fmtINR(totals.gst_amount)],
+      ["Total invoiced", fmtINR(totals.total_amount)],
+      ["Total collected", fmtINR(totals.payments_total)],
+      ["Days with activity", days.length],
+    ] as Array<[string, string | number]>,
+  }];
+
   if (!propertyId) return <AppShell title="Sales Report"><EmptyPropertyState /></AppShell>;
 
   return (
-    <AppShell title="Sales Report">
-      <div className="flex flex-wrap items-end gap-3 mb-4">
+    <ReportShell
+      title="Sales Report"
+      disabled={days.length === 0}
+      onExcel={() => exportExcelSections(sections, meta)}
+      onPdf={() => exportSectionsPdf(sections, meta, brand)}
+      filters={<>
         <div><Label>From</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-44" /></div>
         <div><Label>To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-44" /></div>
-      </div>
-
+      </>}
+    >
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -150,6 +188,6 @@ function SalesReportPage() {
           </div>
         </CardContent>
       </Card>
-    </AppShell>
+    </ReportShell>
   );
 }

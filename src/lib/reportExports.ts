@@ -375,12 +375,21 @@ export async function exportExcelSections(sections: ExportSection[], meta: Repor
 }
 
 /** Branded, page-broken PDF (via print) with one page per section. */
+export interface SectionsPdfOptions {
+  orientation?: "portrait" | "landscape";
+  /** Optional HTML block rendered on its own branded first page (KPIs/charts). */
+  introHtml?: string;
+  introTitle?: string;
+}
+
 export function exportSectionsPdf(
   sections: ExportSection[],
   meta: ReportExportMeta,
   brand: ReportBrand,
-  orientation: "portrait" | "landscape" = "landscape",
+  options: SectionsPdfOptions | "portrait" | "landscape" = {},
 ) {
+  const opts: SectionsPdfOptions = typeof options === "string" ? { orientation: options } : options;
+  const orientation = opts.orientation ?? "landscape";
   const e = (v: unknown) =>
     String(v ?? "").replace(/[&<>"']/g, (m) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -401,7 +410,16 @@ export function exportSectionsPdf(
       </div>
     </div>`;
 
-  const pages = sections.map((s, idx) => {
+  const introPage = opts.introHtml
+    ? `<section class="page${sections.length === 0 ? " last" : ""}">
+        ${header}
+        <h2>${e(opts.introTitle ?? "Summary")}</h2>
+        ${opts.introHtml}
+        <div class="foot">${e(brand.name)} — ${e(meta.reportName)}</div>
+      </section>`
+    : "";
+
+  const pages = introPage + sections.map((s, idx) => {
     const head = `<tr>${s.columns.map((c) => `<th${c.numeric || c.currency ? ' class="right"' : ""}>${e(c.header)}</th>`).join("")}</tr>`;
     const body = s.rows.length
       ? s.rows.map((r, i) => `<tr class="${i % 2 ? "alt" : ""}">${s.columns.map((c) => `<td class="${c.numeric || c.currency ? "right" : ""}">${e(c.get(r))}</td>`).join("")}</tr>`).join("")
@@ -409,10 +427,10 @@ export function exportSectionsPdf(
     const totals = (s.summary ?? []).map(([k, v]) => `<tr><td>${e(k)}</td><td class="right"><strong>${e(v)}</strong></td></tr>`).join("");
     return `<section class="page${idx === sections.length - 1 ? " last" : ""}">
       ${header}
-      <h2>${idx + 1}. ${e(s.title)}</h2>
+      <h2>${idx + 1 + (opts.introHtml ? 1 : 0)}. ${e(s.title)}</h2>
       <table class="data"><thead>${head}</thead><tbody>${body}</tbody></table>
       ${totals ? `<table class="totals">${totals}</table>` : ""}
-      <div class="foot">${e(brand.name)} — ${e(meta.reportName)} — page ${idx + 1} of ${sections.length}</div>
+      <div class="foot">${e(brand.name)} — ${e(meta.reportName)} — page ${idx + 1 + (opts.introHtml ? 1 : 0)} of ${sections.length + (opts.introHtml ? 1 : 0)}</div>
     </section>`;
   }).join("");
 
@@ -448,4 +466,49 @@ export function exportSectionsPdf(
   w.document.close();
   w.focus();
   setTimeout(() => w.print(), 400);
+}
+
+/* ---------------- KPI helpers (dashboard-style reports) ---------------- */
+
+export interface KpiEntry { label: string; value: string | number; hint?: string }
+
+export const kpiColumns: ReportColumn<KpiEntry>[] = [
+  { key: "metric", header: "Metric", get: (r) => r.label },
+  { key: "value", header: "Value", get: (r) => r.value },
+  { key: "note", header: "Note", get: (r) => r.hint ?? "" },
+];
+
+/** A section holding label/value KPI rows — used for dashboard-style reports. */
+export function kpiSection(title: string, kpis: KpiEntry[]): ExportSection {
+  return { title, columns: kpiColumns as ReportColumn<any>[], rows: kpis, emptyText: "No figures" };
+}
+
+/**
+ * Build the branded PDF "intro" block for a dashboard-style report:
+ * KPI cards plus any live chart SVGs captured from the screen.
+ */
+export function buildKpiIntroHtml(kpis: KpiEntry[], chartsSvg: string[] = []): string {
+  const e = (v: unknown) =>
+    String(v ?? "").replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[m]!));
+  const cards = kpis.map((k) => `
+    <div class="kpi">
+      <div class="kpi-label">${e(k.label)}</div>
+      <div class="kpi-value">${e(k.value)}</div>
+      ${k.hint ? `<div class="kpi-hint">${e(k.hint)}</div>` : ""}
+    </div>`).join("");
+  const charts = chartsSvg.map((svg) => `<div class="chart">${svg}</div>`).join("");
+  return `
+    <style>
+      .kpi-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+      .kpi { flex: 1 1 22%; min-width: 120px; border: 1px solid #cfe9df; background: #ECFBF4; border-radius: 4px; padding: 6px 8px; }
+      .kpi-label { font-size: 8px; text-transform: uppercase; letter-spacing: .5px; color: #4b6b60; }
+      .kpi-value { font-size: 14px; font-weight: 700; color: #0F6E56; margin-top: 2px; }
+      .kpi-hint { font-size: 8px; color: #667; margin-top: 1px; }
+      .chart { margin-top: 8px; page-break-inside: avoid; }
+      .chart svg { width: 100%; height: auto; max-height: 190px; }
+    </style>
+    <div class="kpi-grid">${cards}</div>
+    ${charts}`;
 }
