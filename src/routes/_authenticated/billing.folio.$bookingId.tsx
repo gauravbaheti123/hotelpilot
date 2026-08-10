@@ -1507,7 +1507,7 @@ function FolioPage() {
   // (Owner + Manager by default). Previously this was mistakenly wired to invoices/delete,
   // which hid the edit UI on settled/paid bills whenever a role had edit but not delete.
   const canEditAnyStatus = can("invoices", "edit");
-  const canEditNow = isOpen || canEditAnyStatus;
+  const canEditNow = isOpen || canEditAnyStatus || can("invoices", "edit_room_rate_locked");
   // Bill-To identity corrections on a finalised bill: Owner/Manager only.
   // Everyone else keeps seeing "Locked — the bill is finalised."
   const canEditBillToLocked = can("invoices", "edit_billto_locked");
