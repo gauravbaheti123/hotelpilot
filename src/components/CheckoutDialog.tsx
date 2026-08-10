@@ -379,10 +379,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, loading, folio?.id, booking?.id]);
 
-  // Auto-apply late-checkout charge if current time is past the property's
-  // configured grace time on (or after) the scheduled checkout date.
-  // Inserts one extra night at the room's rate. Guarded so it runs at most
-  // once per open and is idempotent (looks for an existing late-checkout row).
+  // Late checkout: if the current time is past the property's configured grace
+  // time on (or after) the scheduled checkout date, PROMPT staff (apply or
+  // waive) instead of silently inserting a charge. Runs at most once per open
+  // and never re-prompts once a late-checkout row exists (even a deleted one).
   useEffect(() => {
     if (!open || loading || !folio || !booking || !property) return;
     if (didLateChargeCheck.current) return;
@@ -418,15 +418,50 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     }
 
     didLateChargeCheck.current = true;
-    (async () => {
-      const roomNo = primaryRoom?.rooms?.room_number ? ` — Rm ${primaryRoom.rooms.room_number}` : "";
+    setLateChoice("full");
+    setLateCustom(String(rate));
+    setLatePrompt({
+      graceStr,
+      rate,
+      roomId: primaryRoom?.id ?? null,
+      roomNo: primaryRoom?.rooms?.room_number ? String(primaryRoom.rooms.room_number) : "",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, loading, folio?.id, booking?.id, property?.checkout_grace_time, hasAnyLateChargeRow]);
+
+  async function waiveLateCheckout() {
+    const p = latePrompt;
+    setLatePrompt(null);
+    if (!p || !booking) return;
+    await logActivity({
+      property_id: booking.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      ...ACTIVITY.LATE_CHECKOUT_WAIVED,
+      reference_id: folio?.id ?? booking.id,
+      reference_label: booking.booking_number ?? null,
+      details: { grace_time: p.graceStr, room_number: p.roomNo || null, room_rate: p.rate },
+    });
+    toast.message("Late checkout charge waived");
+  }
+
+  async function applyLateCheckout() {
+    const p = latePrompt;
+    if (!p || !booking || !folio) return;
+    const amount = lateChoice === "full" ? p.rate : Number(lateCustom);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("Enter a valid late checkout amount");
+      return;
+    }
+    setLateBusy(true);
+    try {
       const { data: slabRows, error: __qe5 } = await supabase
         .from("gst_slabs" as any)
         .select("from_amount,to_amount,gst_rate,charge_category,is_active,effective_from")
         .eq("property_id", booking.property_id);
       if (__qe5) reportQueryError("gst slabs", __qe5);
       const tax = computeRoomChargeTax(
-        rate,
+        amount,
         (slabRows ?? []) as any,
         ((booking as any).rate_type ?? "exclusive") as "inclusive" | "exclusive",
       );
@@ -434,29 +469,45 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         toast.error("GST slab missing for late-checkout rate. Configure it in Master Data → GST Slabs.");
         return;
       }
+      const roomNo = p.roomNo ? ` — Rm ${p.roomNo}` : "";
+      const label =
+        lateChoice === "full"
+          ? `Late Checkout — 1 additional night${roomNo} (after ${p.graceStr})`
+          : `Late Checkout charge${roomNo} (after ${p.graceStr})`;
       const { error } = await supabase.from("folio_charges").insert({
         folio_id: folio.id,
         charge_type: "room",
-        description: `Late Checkout — 1 additional night${roomNo} (after ${graceStr})`,
+        description: label,
         qty: 1,
-        rate,
+        rate: amount,
         amount: tax.amount,
         gst_rate: tax.gstRate,
         gst_amount: tax.gstAmount,
         charged_on: istToday(),
         source_table: "late_checkout",
-        source_id: primaryRoom?.id ?? null,
+        source_id: p.roomId,
         created_by: user?.id ?? null,
       } as any);
       if (error) {
-        console.error("[CheckoutDialog] late checkout charge failed", error);
+        toastError(error, "Late checkout charge could not be added");
         return;
       }
-      toast.info(`Late checkout: 1 extra night added (₹${rate.toLocaleString("en-IN")})`);
+      await logActivity({
+        property_id: booking.property_id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        ...ACTIVITY.LATE_CHECKOUT_APPLIED,
+        reference_id: folio.id,
+        reference_label: booking.booking_number ?? null,
+        details: { grace_time: p.graceStr, mode: lateChoice, amount, room_rate: p.rate },
+      });
+      setLatePrompt(null);
+      toast.success(`Late checkout charge added (${inr(amount)})`);
       load();
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, loading, folio?.id, booking?.id, property?.checkout_grace_time, hasAnyLateChargeRow]);
+    } finally {
+      setLateBusy(false);
+    }
+  }
 
   const totals = useMemo(() => {
     const rooms: SummaryRow[] = [];
