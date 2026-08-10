@@ -303,3 +303,149 @@ export function firstOfMonthIso(): string {
   d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
   return istDateISO(d);
 }
+/* ------------------------------------------------------------------ *
+ * Multi-section (multi-page) exports — used by the Daily Morning Report
+ * ------------------------------------------------------------------ */
+
+export interface ExportSection {
+  title: string;
+  columns: ReportColumn<any>[];
+  rows: any[];
+  summary?: Array<[string, string | number]>;
+  emptyText?: string;
+}
+
+export interface ReportBrand {
+  name: string;
+  gstin?: string | null;
+  address?: string | null;
+  phone?: string | null;
+  logoDataUrl?: string | null;
+}
+
+/** Excel workbook with one sheet per section + a cover/summary sheet. */
+export async function exportExcelSections(sections: ExportSection[], meta: ReportExportMeta) {
+  const XLSX = await import("xlsx");
+  const wb = XLSX.utils.book_new();
+
+  const cover: (string | number)[][] = [
+    ["Report", meta.reportName],
+    ["Property", meta.propertyName],
+    ["From", meta.from ?? ""],
+    ["To", meta.to ?? ""],
+    ["Generated", new Date().toLocaleString("en-IN")],
+    [],
+  ];
+  for (const s of sections) {
+    cover.push([s.title, `${s.rows.length} row(s)`]);
+    for (const [k, v] of s.summary ?? []) cover.push([`  ${k}`, v]);
+    cover.push([]);
+  }
+  const wsC = XLSX.utils.aoa_to_sheet(cover);
+  wsC["!cols"] = [{ wch: 42 }, { wch: 28 }];
+  XLSX.utils.book_append_sheet(wb, wsC, "Summary");
+
+  const used = new Set<string>();
+  for (const s of sections) {
+    const aoa: (string | number)[][] = [s.columns.map((c) => c.header)];
+    for (const r of s.rows) aoa.push(s.columns.map((c) => c.get(r)));
+    if (s.summary?.length) {
+      aoa.push([]);
+      for (const [k, v] of s.summary) aoa.push([k, v]);
+    }
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = s.columns.map((c) => ({ wch: Math.max(12, c.header.length + 2) }));
+    for (let R = 1; R <= s.rows.length; R++) {
+      for (let C = 0; C < s.columns.length; C++) {
+        const col = s.columns[C];
+        const cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
+        if (!cell) continue;
+        if (col.currency) { cell.t = "n"; cell.z = '"₹"#,##0.00'; }
+        else if (col.numeric) { cell.t = "n"; cell.z = "#,##0.00"; }
+      }
+    }
+    let name = s.title.replace(/[\\/*?:[\]]/g, "").slice(0, 28) || "Sheet";
+    let i = 2;
+    while (used.has(name)) name = `${name.slice(0, 26)} ${i++}`;
+    used.add(name);
+    XLSX.utils.book_append_sheet(wb, ws, name);
+  }
+
+  XLSX.writeFile(wb, buildFileName(meta, "xlsx"));
+}
+
+/** Branded, page-broken PDF (via print) with one page per section. */
+export function exportSectionsPdf(
+  sections: ExportSection[],
+  meta: ReportExportMeta,
+  brand: ReportBrand,
+  orientation: "portrait" | "landscape" = "landscape",
+) {
+  const e = (v: unknown) =>
+    String(v ?? "").replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[m]!));
+
+  const generated = new Date().toLocaleString("en-IN");
+  const header = `
+    <div class="brand">
+      ${brand.logoDataUrl ? `<img class="logo" src="${e(brand.logoDataUrl)}" alt="" />` : ""}
+      <div class="brand-text">
+        <div class="brand-name">${e(brand.name)}</div>
+        <div class="brand-sub">${[brand.address, brand.phone ? `Ph: ${brand.phone}` : "", brand.gstin ? `GSTIN: ${brand.gstin}` : ""].filter(Boolean).map(e).join(" · ")}</div>
+      </div>
+      <div class="brand-meta">
+        <div>${e(meta.reportName)}</div>
+        <div>${meta.from === meta.to ? e(meta.from ?? "") : `${e(meta.from ?? "")} → ${e(meta.to ?? "")}`}</div>
+        <div>Generated ${e(generated)}</div>
+      </div>
+    </div>`;
+
+  const pages = sections.map((s, idx) => {
+    const head = `<tr>${s.columns.map((c) => `<th${c.numeric || c.currency ? ' class="right"' : ""}>${e(c.header)}</th>`).join("")}</tr>`;
+    const body = s.rows.length
+      ? s.rows.map((r, i) => `<tr class="${i % 2 ? "alt" : ""}">${s.columns.map((c) => `<td class="${c.numeric || c.currency ? "right" : ""}">${e(c.get(r))}</td>`).join("")}</tr>`).join("")
+      : `<tr><td colspan="${s.columns.length}" class="empty">${e(s.emptyText ?? "No data")}</td></tr>`;
+    const totals = (s.summary ?? []).map(([k, v]) => `<tr><td>${e(k)}</td><td class="right"><strong>${e(v)}</strong></td></tr>`).join("");
+    return `<section class="page${idx === sections.length - 1 ? " last" : ""}">
+      ${header}
+      <h2>${idx + 1}. ${e(s.title)}</h2>
+      <table class="data"><thead>${head}</thead><tbody>${body}</tbody></table>
+      ${totals ? `<table class="totals">${totals}</table>` : ""}
+      <div class="foot">${e(brand.name)} — ${e(meta.reportName)} — page ${idx + 1} of ${sections.length}</div>
+    </section>`;
+  }).join("");
+
+  const html = `<!doctype html><html><head><meta charset="utf-8"/>
+    <title>${e(meta.reportName)}</title>
+    <style>
+      @page { size: A4 ${orientation}; margin: 10mm; }
+      * { box-sizing: border-box; }
+      body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #111; margin: 0; }
+      section.page { page-break-after: always; }
+      section.page.last { page-break-after: auto; }
+      .brand { display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #0F6E56; padding-bottom: 6px; margin-bottom: 8px; }
+      .logo { max-height: 44px; max-width: 120px; object-fit: contain; }
+      .brand-name { font-size: 15px; font-weight: 700; color: #0F6E56; }
+      .brand-sub { font-size: 9px; color: #555; margin-top: 2px; }
+      .brand-text { flex: 1; }
+      .brand-meta { text-align: right; font-size: 9px; color: #444; line-height: 1.5; }
+      h2 { font-size: 13px; margin: 4px 0 6px; color: #0F6E56; }
+      table { border-collapse: collapse; width: 100%; }
+      table.data th, table.data td { border: 1px solid #ddd; padding: 3px 5px; font-size: 9px; }
+      table.data th { background: #0F6E56; color: #fff; text-align: left; }
+      td.right, th.right { text-align: right; }
+      tr.alt td { background: #F7F7F7; }
+      td.empty { text-align: center; color: #777; padding: 12px; }
+      .totals { margin-top: 8px; width: 48%; margin-left: auto; }
+      .totals td { border: 1px solid #cfe9df; background: #ECFBF4; padding: 3px 6px; font-size: 10px; }
+      .foot { margin-top: 8px; text-align: center; font-size: 8px; color: #777; }
+    </style></head><body>${pages}</body></html>`;
+
+  const w = window.open("", "_blank", "width=1200,height=900");
+  if (!w) return;
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(() => w.print(), 400);
+}
