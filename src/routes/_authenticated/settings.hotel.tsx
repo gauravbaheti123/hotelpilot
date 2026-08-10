@@ -243,7 +243,6 @@ function HotelSettingsForm({
         default_checkin_time: form.default_checkin_time || "12:00",
         default_checkout_time: form.default_checkout_time || "11:00",
         early_checkin_charge_per_hour: Number(form.early_checkin_charge_per_hour ?? 0),
-        late_checkout_charge_per_hour: Number(form.late_checkout_charge_per_hour ?? 0),
         checkout_grace_time: form.checkout_grace_time || "14:30",
         food_gst_rate: Number(form.food_gst_rate ?? 5),
         sundry_gst_rate: Number(form.sundry_gst_rate ?? 18),

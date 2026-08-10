@@ -159,6 +159,13 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
   // "Bill On Hold" workaround. Requires a mandatory reason.
   const [markDue, setMarkDue] = useState(false);
   const [dueReason, setDueReason] = useState("");
+  // Late-checkout prompt (staff decides; never auto-applied).
+  const [latePrompt, setLatePrompt] = useState<
+    { graceStr: string; rate: number; roomId: string | null; roomNo: string } | null
+  >(null);
+  const [lateChoice, setLateChoice] = useState<"full" | "custom">("full");
+  const [lateCustom, setLateCustom] = useState("");
+  const [lateBusy, setLateBusy] = useState(false);
 
   // Payment form
   const [splitMode, setSplitMode] = useState(false);
@@ -319,6 +326,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       setEarlyBusy(false);
       setMarkDue(false);
       setDueReason("");
+      setLatePrompt(null);
+      setLateChoice("full");
+      setLateCustom("");
+      setLateBusy(false);
       didSeedRoomCharges.current = false;
       didLateChargeCheck.current = false;
       load();
