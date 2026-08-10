@@ -65,4 +65,6 @@ export const ACTIVITY = {
   BILL_TO_CHANGED: { action_type: "BILL_TO_CHANGED", module: "Billing" },
   EARLY_CHECKOUT_CHOICE: { action_type: "EARLY_CHECKOUT_CHOICE", module: "Front Desk" },
   STAY_EXTENDED_POST_SETTLEMENT: { action_type: "STAY_EXTENDED_POST_SETTLEMENT", module: "Billing" },
+  LATE_CHECKOUT_WAIVED: { action_type: "LATE_CHECKOUT_WAIVED", module: "Billing" },
+  LATE_CHECKOUT_APPLIED: { action_type: "LATE_CHECKOUT_APPLIED", module: "Billing" },
 } as const;
