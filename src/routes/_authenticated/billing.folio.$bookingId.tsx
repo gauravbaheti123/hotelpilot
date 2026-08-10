@@ -246,6 +246,7 @@ function FolioPage() {
 
   // Edit payment mode — dynamic RBAC key, granted to all roles by default.
   const canEditPaymentMode = can("payments", "edit_mode");
+  const canDeletePayment = can("payments", "delete");
   const [payEditOpen, setPayEditOpen] = useState(false);
   const [payEditTarget, setPayEditTarget] = useState<Payment | null>(null);
   const [payEditMode, setPayEditMode] = useState<string>("cash");
@@ -644,10 +645,18 @@ function FolioPage() {
     const t = recomputeFolio(nextCharges, mode, billDisc);
     // "Bill On Hold" rows are staff markers, not collected money.
     const paid = realPaidTotal(nextPayments as any[]);
+    const balance = Math.max(0, t.total_amount - paid);
+    // A finalised bill (settled / due) that no longer balances must stay
+    // finalised and show up in the Dues report — never silently re-open.
+    const wasFinalised = folio.status === "settled" || folio.status === "due";
+    const statusPatch: Partial<Folio> = wasFinalised
+      ? ({ status: balance > 0.01 ? "due" : "settled" } as Partial<Folio>)
+      : {};
     await supabase.from("folios").update({
       ...t,
       paid_amount: paid,
-      balance_amount: Math.max(0, t.total_amount - paid),
+      balance_amount: balance,
+      ...statusPatch,
       ...extraFolioPatch,
     }).eq("id", folio.id);
   }
@@ -919,8 +928,14 @@ function FolioPage() {
    *  lookup used when the charge was first posted, then folio totals go
    *  through the existing persistTotals()/recomputeFolio() path. */
   function openEditTariff(c: Charge) {
-    if (!isOpen) { toast.error("Tariff can only be changed while the bill is OPEN"); return; }
-    if (!canEditTariff) { toast.error("You don't have permission to edit the tariff"); return; }
+    if (!canEditTariff) {
+      toast.error(
+        isOpen
+          ? "You don't have permission to edit the tariff"
+          : "Only Owner / Manager can change room rent on a finalised bill",
+      );
+      return;
+    }
     setTariffTarget(c);
     setTariffRate(String(Number(c.rate ?? 0)));
     setTariffOpen(true);
@@ -989,7 +1004,6 @@ function FolioPage() {
 
   async function saveEditTariff() {
     if (!folio || !tariffTarget) return;
-    if (!isOpen) return toast.error("Tariff can only be changed while the bill is OPEN");
     if (!canEditTariff) return toast.error("You don't have permission to edit the tariff");
     const newRate = Number(tariffRate);
     if (!Number.isFinite(newRate) || newRate < 0) return toast.error("Enter a valid tariff");
@@ -1056,6 +1070,26 @@ function FolioPage() {
           edited_by: userDisplayName(user as any),
         },
       });
+      if (!isOpen) {
+        logActivity({
+          property_id: booking?.property_id ?? "",
+          user_id: user?.id ?? "",
+          user_name: userDisplayName(user as any),
+          ...ACTIVITY.ROOM_RATE_EDITED_POST_SETTLEMENT,
+          reference_id: folio.id,
+          reference_label: `${billNo(folio.invoice_number)} — ${inr(oldRate)} → ${inr(newRate)}`,
+          details: {
+            folio_id: folio.id,
+            bill_number: billNo(folio.invoice_number),
+            charge_id: tariffTarget.id,
+            previous_rate: oldRate,
+            new_rate: newRate,
+            previous_bill_total: prevTotal,
+            edited_by: userDisplayName(user as any),
+            edited_at: new Date().toISOString(),
+          },
+        });
+      }
       toast.success(`Tariff updated: ${inr(oldRate)} → ${inr(newRate)}`);
       setTariffOpen(false);
       setTariffTarget(null);
@@ -1278,6 +1312,42 @@ function FolioPage() {
     setPayEditOpen(true);
   }
 
+  /** Delete a recorded payment (payments/delete — Owner). The RPC removes the
+   *  row, recomputes paid/balance from the remaining real payments and flips a
+   *  finalised bill back to "due" when it is no longer fully covered. */
+  async function deletePaymentRow(p: Payment) {
+    if (!folio || !booking || !canDeletePayment) return;
+    const ok = window.confirm(
+      `Are you sure you want to delete this ₹${Number(p.amount).toLocaleString("en-IN")} payment?\n\n` +
+        "This cannot be undone. The bill's paid and balance figures will be recalculated.",
+    );
+    if (!ok) return;
+    const { error } = await supabase.rpc("delete_payment" as any, {
+      _payment_id: p.id,
+      _reason: null,
+    } as any);
+    if (error) return toastError(error);
+    await logActivity({
+      property_id: booking.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      ...ACTIVITY.PAYMENT_DELETED,
+      reference_id: p.id,
+      reference_label: `${billNo(folio.invoice_number)} — ₹${Number(p.amount)} (${p.mode}) deleted`,
+      details: {
+        payment_id: p.id,
+        folio_id: folio.id,
+        booking_id: booking.id,
+        bill_number: billNo(folio.invoice_number),
+        amount: Number(p.amount),
+        mode: p.mode,
+        reference_no: p.reference_no ?? null,
+      },
+    });
+    toast.success("Payment deleted");
+    load();
+  }
+
   async function savePaymentMode() {
     if (!payEditTarget || !folio || !booking) return;
     const oldMode = payEditTarget.mode;
@@ -1474,15 +1544,17 @@ function FolioPage() {
   // (Owner + Manager by default). Previously this was mistakenly wired to invoices/delete,
   // which hid the edit UI on settled/paid bills whenever a role had edit but not delete.
   const canEditAnyStatus = can("invoices", "edit");
-  const canEditNow = isOpen || canEditAnyStatus;
+  const canEditNow = isOpen || canEditAnyStatus || can("invoices", "edit_room_rate_locked");
   // Bill-To identity corrections on a finalised bill: Owner/Manager only.
   // Everyone else keeps seeing "Locked — the bill is finalised."
   const canEditBillToLocked = can("invoices", "edit_billto_locked");
   const billToEditable = isOpen || canEditBillToLocked;
   // Room tariff is editable by ANY role holding the folio-edit permission
-  // (invoices/edit) while the bill is OPEN — no owner-only override. Once the
-  // folio is settled/checked out it locks like every other finalized field.
-  const canEditTariff = isOpen && can("invoices", "edit");
+  // (invoices/edit) while the bill is OPEN. Once the folio is finalised it
+  // locks for everyone except roles holding invoices/edit_room_rate_locked
+  // (Owner, Manager) — the totals/GST/balance are re-derived on save.
+  const canEditRoomRateLocked = can("invoices", "edit_room_rate_locked");
+  const canEditTariff = (isOpen && can("invoices", "edit")) || canEditRoomRateLocked;
 
   async function markAllServed() {
     const ids = pendingKots.map((k) => k.id);
@@ -2573,6 +2645,16 @@ function FolioPage() {
                                 title="Edit payment mode"
                               >
                                 <Pencil className="h-3 w-3 mr-0.5" /> Mode
+                              </button>
+                            )}
+                            {canDeletePayment && (
+                              <button
+                                type="button"
+                                onClick={() => deletePaymentRow(p)}
+                                className="print:hidden ml-2 inline-flex items-center rounded border border-red-300 px-1.5 py-0.5 text-[10px] text-red-600 hover:bg-red-50"
+                                title="Delete this payment"
+                              >
+                                <Trash2 className="h-3 w-3 mr-0.5" /> Delete
                               </button>
                             )}
                           </td>

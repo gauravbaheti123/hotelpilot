@@ -58,6 +58,9 @@ export const ACTIVITY = {
   BILL_NUMBER_EDITED: { action_type: "BILL_NUMBER_EDITED", module: "Billing" },
   PAYMENT_MODE_CHANGED: { action_type: "PAYMENT_MODE_CHANGED", module: "Billing" },
   PAYMENT_AMOUNT_CHANGED: { action_type: "PAYMENT_AMOUNT_CHANGED", module: "Billing" },
+  PAYMENT_DELETED: { action_type: "PAYMENT_DELETED", module: "Billing" },
+  CHECKOUT_WITH_DUE_BALANCE: { action_type: "CHECKOUT_WITH_DUE_BALANCE", module: "Billing" },
+  ROOM_RATE_EDITED_POST_SETTLEMENT: { action_type: "ROOM_RATE_EDITED_POST_SETTLEMENT", module: "Billing" },
   BILL_TO_CHANGED: { action_type: "BILL_TO_CHANGED", module: "Billing" },
   EARLY_CHECKOUT_CHOICE: { action_type: "EARLY_CHECKOUT_CHOICE", module: "Front Desk" },
 } as const;
