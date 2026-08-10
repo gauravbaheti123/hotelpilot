@@ -2647,6 +2647,16 @@ function FolioPage() {
                                 <Pencil className="h-3 w-3 mr-0.5" /> Mode
                               </button>
                             )}
+                            {canDeletePayment && (
+                              <button
+                                type="button"
+                                onClick={() => deletePaymentRow(p)}
+                                className="print:hidden ml-2 inline-flex items-center rounded border border-red-300 px-1.5 py-0.5 text-[10px] text-red-600 hover:bg-red-50"
+                                title="Delete this payment"
+                              >
+                                <Trash2 className="h-3 w-3 mr-0.5" /> Delete
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );
