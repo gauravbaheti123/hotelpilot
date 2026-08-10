@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   BarChart3, FileSpreadsheet, FileText, Moon, History, ClipboardList, Wallet, AlertCircle,
+  Sunrise, UtensilsCrossed, Store, PartyPopper, Coins, BedDouble,
 } from "lucide-react";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 
@@ -13,6 +14,12 @@ export const Route = createFileRoute("/_authenticated/reports/")({
 });
 
 const ITEMS = [
+  { to: "/reports/morning", search: { section: "all" }, label: "Daily Morning Report", icon: Sunrise, desc: "Multi-page day report (defaults to yesterday)" },
+  { to: "/reports/morning", search: { section: "rooms" }, label: "Room-wise (Day)", icon: BedDouble, desc: "Occupied rooms, charges & GST for a date" },
+  { to: "/reports/morning", search: { section: "food" }, label: "Food Bill (KOT-wise)", icon: UtensilsCrossed, desc: "KOT-wise food sales for a date" },
+  { to: "/reports/morning", search: { section: "restaurant" }, label: "Direct Restaurant", icon: Store, desc: "Walk-in restaurant sales by outlet" },
+  { to: "/reports/morning", search: { section: "banquet" }, label: "Banquet / Event (Day)", icon: PartyPopper, desc: "Events, food subtotal & bills" },
+  { to: "/reports/morning", search: { section: "payments" }, label: "Cash / Payment Summary", icon: Coins, desc: "Collections by mode, dues & revenue" },
   { to: "/reports/daily", label: "Daily Report", icon: BarChart3, desc: "Today's operational snapshot" },
   { to: "/reports/analytics", label: "Analytics", icon: BarChart3, desc: "Trends and KPIs" },
   { to: "/reports/sales", label: "Sales", icon: FileSpreadsheet, desc: "Sales summary" },
@@ -45,7 +52,7 @@ function ReportsIndex() {
     <AppShell title="Reports">
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {items.map((it) => (
-          <Link key={it.to} to={it.to}>
+          <Link key={`${it.to}-${it.label}`} to={it.to} search={(it as { search?: Record<string, string> }).search}>
             <Card className="hover:shadow-md hover:border-primary/40 transition-all h-full">
               <CardContent className="p-5 flex items-start gap-3">
                 <div className="p-2 rounded-md bg-primary/10 text-primary">
