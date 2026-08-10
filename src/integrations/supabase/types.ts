@@ -6359,6 +6359,10 @@ export type Database = {
         Args: { _new_amount: number; _payment_id: string; _reason?: string }
         Returns: Json
       }
+      change_payment_date: {
+        Args: { _new_paid_at: string; _payment_id: string; _reason?: string }
+        Returns: Json
+      }
       change_payment_mode: {
         Args: { _new_mode: string; _payment_id: string; _reason?: string }
         Returns: Json
