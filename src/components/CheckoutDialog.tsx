@@ -1369,6 +1369,38 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
                     </div>
                   </div>
                 )}
+
+                <div className={`rounded-md border-2 p-3 ${markDue ? "border-red-400 bg-red-50" : "border-dashed"}`}>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={markDue}
+                      onChange={(e) => { setMarkDue(e.target.checked); if (!e.target.checked) setDueReason(""); }}
+                    />
+                    <div className="text-sm">
+                      <div className="font-semibold">
+                        Mark remaining {inr(Math.max(0, totals.balance - (splitMode
+                          ? splits.reduce((s, r) => s + (Number(r.amount) || 0), 0)
+                          : Number(singleAmount) || 0)))} as Due
+                      </div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        Checks the guest out with the balance outstanding. The bill stays
+                        unpaid and appears in the Dues report and the guest's ledger.
+                      </div>
+                    </div>
+                  </label>
+                  {markDue && (
+                    <div className="mt-2">
+                      <Label className="text-xs">Reason (required)</Label>
+                      <Input
+                        value={dueReason}
+                        onChange={(e) => setDueReason(e.target.value)}
+                        placeholder="e.g. Company to settle by NEFT on 12th"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1406,10 +1438,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
               )}
               <Button
                 onClick={collectAndCheckout}
-                disabled={busy || !billToConfirmed || earlyBusy || (!!early && !earlyChoice)}
+                disabled={busy || !billToConfirmed || earlyBusy || (!!early && !earlyChoice) || (markDue && !dueReason.trim())}
               >
                 {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
-                Collect &amp; Checkout
+                {markDue ? "Checkout with Due Balance" : "Collect & Checkout"}
               </Button>
             </DialogFooter>
           </div>
