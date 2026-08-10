@@ -27,7 +27,7 @@ import { computeRoomChargeTax } from "@/lib/gst";
 import { fireTrigger } from "@/lib/whatsapp";
 import { AlertTriangle, Plus, Trash2, Loader2, SplitSquareHorizontal } from "lucide-react";
 import { SplitBillDialog } from "@/components/SplitBillDialog";
-import { logActivity, userDisplayName } from "@/lib/activityLog";
+import { logActivity, userDisplayName, ACTIVITY } from "@/lib/activityLog";
 import { closeEventBlocksForBooking } from "@/lib/eventRoomBlocks";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
@@ -1521,6 +1521,55 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
           onDone?.();
         }}
       />
+      <Dialog open={!!latePrompt} onOpenChange={(o) => { if (!o && !lateBusy) setLatePrompt(null); }}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Late checkout</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            <p className="text-muted-foreground">
+              Guest is checking out after the grace time ({latePrompt?.graceStr}). Apply a late checkout charge?
+            </p>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={lateChoice === "full"}
+                  onChange={() => setLateChoice("full")}
+                />
+                <span>Full night ({inr(latePrompt?.rate ?? 0)} — room's current rate)</span>
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  checked={lateChoice === "custom"}
+                  onChange={() => setLateChoice("custom")}
+                />
+                <span>Custom amount</span>
+              </label>
+              {lateChoice === "custom" && (
+                <Input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={lateCustom}
+                  onChange={(e) => setLateCustom(e.target.value)}
+                  placeholder="Enter amount"
+                />
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={lateBusy} onClick={waiveLateCheckout}>
+              No — waive
+            </Button>
+            <Button disabled={lateBusy} onClick={applyLateCheckout}>
+              {lateBusy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Yes — apply charge
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
