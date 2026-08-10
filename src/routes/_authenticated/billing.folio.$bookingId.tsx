@@ -2882,6 +2882,39 @@ function FolioPage() {
           </DialogContent>
         </Dialog>
 
+        {/* EDIT PAYMENT DATE (Owner/Manager) */}
+        <Dialog open={payDateOpen} onOpenChange={setPayDateOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Edit payment date</DialogTitle></DialogHeader>
+            {payDateTarget && (
+              <div className="space-y-3">
+                <div className="rounded-md border bg-muted/30 p-2 text-xs">
+                  <div><span className="text-muted-foreground">Amount:</span> <span className="font-semibold">{inr(payDateTarget.amount)}</span></div>
+                  <div><span className="text-muted-foreground">Mode:</span> <span className="capitalize">{payDateTarget.mode.replace(/_/g, " ")}</span></div>
+                  <div><span className="text-muted-foreground">Current date:</span> {new Date(payDateTarget.paid_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">New payment date &amp; time</Label>
+                  <Input type="datetime-local" value={payDateValue} onChange={(e) => setPayDateValue(e.target.value)} />
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Date only — amount, mode, reference and the bill&apos;s totals stay unchanged.
+                </p>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPayDateOpen(false)}>Cancel</Button>
+              <Button
+                onClick={savePaymentDate}
+                disabled={payDateSaving || !payDateTarget || !payDateValue}
+                style={{ background: TEAL, color: "#fff" }}
+              >
+                {payDateSaving ? "Saving…" : "Save date"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* DISCOUNT (bill-level or line-item) */}
         <Dialog open={discOpen} onOpenChange={setDiscOpen}>
           <DialogContent>
