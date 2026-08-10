@@ -246,6 +246,7 @@ function FolioPage() {
 
   // Edit payment mode — dynamic RBAC key, granted to all roles by default.
   const canEditPaymentMode = can("payments", "edit_mode");
+  const canDeletePayment = can("payments", "delete");
   const [payEditOpen, setPayEditOpen] = useState(false);
   const [payEditTarget, setPayEditTarget] = useState<Payment | null>(null);
   const [payEditMode, setPayEditMode] = useState<string>("cash");
