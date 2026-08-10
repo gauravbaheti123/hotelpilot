@@ -98,8 +98,10 @@ function folioStatusLabel(f: { status?: string | null; is_reopened?: boolean | n
 export async function loadDailyReport(
   propertyId: string, from: string, to: string,
 ): Promise<DailyReportData> {
-  const startIso = `${from}T00:00:00`;
-  const endIso = `${to}T23:59:59`;
+  // IST-anchored window. Naive strings are read as UTC by Postgres, which
+  // shifts an IST business day by 5h30m and drops late-evening rows.
+  const startIso = `${from}T00:00:00+05:30`;
+  const endIso = `${istAddDays(to, 1)}T00:00:00+05:30`; // exclusive upper bound
 
   const [prop, brRes, kotRes, rdcRes, bqRes, payRes, roomsRes] = await Promise.all([
     supabase.from("properties").select("state,state_code,gstin").eq("id", propertyId).maybeSingle(),
@@ -108,10 +110,16 @@ export async function loadDailyReport(
       rooms:room_id(room_number),room_categories:category_id(name),
       bookings!booking_rooms_booking_id_fkey(id,source,ota_partner_name,checked_in_at,guests(name))
     `).eq("property_id", propertyId).lte("check_in", to).gt("check_out", from),
-    supabase.from("kot_orders").select(`
-      id,kot_number,created_at,guest_name,status,sub_total,gst_amount,total_amount,booking_id,
-      rooms:room_id(room_number),kot_items(item_name,qty,is_void)
-    `).eq("property_id", propertyId).gte("created_at", startIso).lte("created_at", endIso)
+    // Food bills live in segment_bills (+ segment_bill_items) — the same source
+    // the Invoices → Food tab reads. kot_orders is unused by the current flow.
+    supabase.from("segment_bills").select(`
+      id,bill_number,status,payment_mode,total_amount,gst_amount,paid_amount,
+      guest_name,is_walkin,booking_id,folio_id,created_at,
+      rooms:room_id(room_number),
+      bookings:booking_id(guests(name)),
+      segment_bill_items(description,qty,rate,amount)
+    `).eq("property_id", propertyId).eq("segment", "food").neq("status", "void")
+      .gte("created_at", startIso).lt("created_at", endIso)
       .order("created_at", { ascending: true }),
     supabase.from("restaurant_direct_charges").select(`
       id,charge_date,amount,description,bill_no,is_settled,created_at,
@@ -124,12 +132,12 @@ export async function loadDailyReport(
     `).eq("property_id", propertyId).eq("booking_type", "banquet")
       .gte("event_date", from).lte("event_date", to),
     supabase.from("payments").select("id,amount,mode,paid_at,folio_id")
-      .eq("property_id", propertyId).gte("paid_at", startIso).lte("paid_at", endIso),
+      .eq("property_id", propertyId).gte("paid_at", startIso).lt("paid_at", endIso),
     supabase.from("rooms").select("id").eq("property_id", propertyId).eq("is_active", true),
   ]);
 
   for (const [label, res] of [
-    ["property", prop], ["booking rooms", brRes], ["kot orders", kotRes],
+    ["property", prop], ["booking rooms", brRes], ["food bills", kotRes],
     ["direct restaurant charges", rdcRes], ["banquet bookings", bqRes],
     ["payments", payRes], ["rooms", roomsRes],
   ] as const) {
@@ -214,41 +222,27 @@ export async function loadDailyReport(
     };
   }).sort((a, b) => a.room_no.localeCompare(b.room_no, undefined, { numeric: true }));
 
-  /* ---------------- Food / KOT ---------------- */
-  const kots = (kotRes.data ?? []) as Record<string, any>[];
-  const kotBookingIds = Array.from(new Set(kots.map((k) => k.booking_id).filter(Boolean)));
-  let segBills: Record<string, any>[] = [];
-  if (kotBookingIds.length) {
-    const { data: sData, error: sErr } = await supabase.from("segment_bills")
-      .select("booking_id,segment,status,payment_mode")
-      .eq("property_id", propertyId).eq("segment", "food").in("booking_id", kotBookingIds);
-    if (sErr) reportQueryError("segment bills", sErr);
-    segBills = (sData ?? []) as Record<string, any>[];
-  }
-  const segByBooking = new Map<string, Record<string, any>>();
-  for (const s of segBills) if (!segByBooking.has(s.booking_id)) segByBooking.set(s.booking_id, s);
-
-  const food: FoodRow[] = kots.map((k) => {
-    const items = ((k.kot_items ?? []) as Record<string, any>[]).filter((i) => !i.is_void);
-    const seg = k.booking_id ? segByBooking.get(k.booking_id) : null;
+  /* ---------------- Food bills ---------------- */
+  const food: FoodRow[] = ((kotRes.data ?? []) as Record<string, any>[]).map((b) => {
+    const items = (b.segment_bill_items ?? []) as Record<string, any>[];
     let status: string;
-    if ((k.status ?? "") === "void") status = "Void";
-    else if (seg && isHoldPayment(seg.payment_mode)) status = `${HOLD_PAYMENT_MODE} (not collected)`;
-    else if (seg?.status === "settled") status = "Settled";
-    else if (seg) status = "Due";
-    else status = (k.status ?? "open") === "billed" ? "Billed to folio" : "Open";
+    if (isHoldPayment(b.payment_mode)) status = `${HOLD_PAYMENT_MODE} (not collected)`;
+    else if (b.status === "settled") status = "Settled";
+    else if (b.folio_id) status = "Billed to folio";
+    else status = "Open";
+    const guest = (b.guest_name || b.bookings?.guests?.name || "").trim();
     return {
-      _id: k.id,
-      kot_no: k.kot_number ?? "—",
-      room_no: k.rooms?.room_number ?? (k.booking_id ? "—" : "Restaurant / Walk-in"),
-      guest: k.guest_name ?? "—",
-      items: items.map((i) => `${i.item_name} ×${num(i.qty)}`).join(", "),
+      _id: b.id,
+      kot_no: b.bill_number ?? "—",
+      room_no: b.rooms?.room_number ?? (b.is_walkin ? "Restaurant / Walk-in" : "—"),
+      guest: guest || (b.is_walkin ? "Walk-in" : "—"),
+      items: items.map((i) => `${i.description} ×${num(i.qty)}`).join(", "),
       item_count: items.length,
-      amount: num(k.sub_total),
-      gst: num(k.gst_amount),
-      total: num(k.total_amount),
+      amount: r2(num(b.total_amount) - num(b.gst_amount)),
+      gst: num(b.gst_amount),
+      total: num(b.total_amount),
       status,
-      ordered_at: k.created_at,
+      ordered_at: b.created_at,
     };
   });
 
@@ -315,7 +309,7 @@ export async function loadDailyReport(
   const { data: dueData, error: dueErr } = await supabase.from("folios")
     .select("balance_amount")
     .eq("property_id", propertyId).neq("status", "void")
-    .gte("created_at", startIso).lte("created_at", endIso).gt("balance_amount", 0);
+    .gte("created_at", startIso).lt("created_at", endIso).gt("balance_amount", 0);
   if (dueErr) reportQueryError("dues", dueErr);
   const duesAdded = r2(((dueData ?? []) as Record<string, any>[]).reduce((s, f) => s + num(f.balance_amount), 0));
 
