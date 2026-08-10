@@ -1311,6 +1311,42 @@ function FolioPage() {
     setPayEditOpen(true);
   }
 
+  /** Delete a recorded payment (payments/delete — Owner). The RPC removes the
+   *  row, recomputes paid/balance from the remaining real payments and flips a
+   *  finalised bill back to "due" when it is no longer fully covered. */
+  async function deletePaymentRow(p: Payment) {
+    if (!folio || !booking || !canDeletePayment) return;
+    const ok = window.confirm(
+      `Are you sure you want to delete this ₹${Number(p.amount).toLocaleString("en-IN")} payment?\n\n` +
+        "This cannot be undone. The bill's paid and balance figures will be recalculated.",
+    );
+    if (!ok) return;
+    const { error } = await supabase.rpc("delete_payment" as any, {
+      _payment_id: p.id,
+      _reason: null,
+    } as any);
+    if (error) return toastError(error);
+    await logActivity({
+      property_id: booking.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      ...ACTIVITY.PAYMENT_DELETED,
+      reference_id: p.id,
+      reference_label: `${billNo(folio.invoice_number)} — ₹${Number(p.amount)} (${p.mode}) deleted`,
+      details: {
+        payment_id: p.id,
+        folio_id: folio.id,
+        booking_id: booking.id,
+        bill_number: billNo(folio.invoice_number),
+        amount: Number(p.amount),
+        mode: p.mode,
+        reference_no: p.reference_no ?? null,
+      },
+    });
+    toast.success("Payment deleted");
+    load();
+  }
+
   async function savePaymentMode() {
     if (!payEditTarget || !folio || !booking) return;
     const oldMode = payEditTarget.mode;
