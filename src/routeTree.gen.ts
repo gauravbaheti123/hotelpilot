@@ -58,6 +58,7 @@ import { Route as AuthenticatedReportsGuestWiseRouteImport } from './routes/_aut
 import { Route as AuthenticatedReportsGstRouteImport } from './routes/_authenticated/reports.gst'
 import { Route as AuthenticatedReportsFoodKotRouteImport } from './routes/_authenticated/reports.food-kot'
 import { Route as AuthenticatedReportsExpensesRouteImport } from './routes/_authenticated/reports.expenses'
+import { Route as AuthenticatedReportsDuesRouteImport } from './routes/_authenticated/reports.dues'
 import { Route as AuthenticatedReportsDateWiseRevenueRouteImport } from './routes/_authenticated/reports.date-wise-revenue'
 import { Route as AuthenticatedReportsDailyRouteImport } from './routes/_authenticated/reports.daily'
 import { Route as AuthenticatedReportsCashHandoverRouteImport } from './routes/_authenticated/reports.cash-handover'
@@ -388,6 +389,12 @@ const AuthenticatedReportsExpensesRoute =
   AuthenticatedReportsExpensesRouteImport.update({
     id: '/reports/expenses',
     path: '/reports/expenses',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsDuesRoute =
+  AuthenticatedReportsDuesRouteImport.update({
+    id: '/reports/dues',
+    path: '/reports/dues',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedReportsDateWiseRevenueRoute =
@@ -806,6 +813,7 @@ export interface FileRoutesByFullPath {
   '/reports/cash-handover': typeof AuthenticatedReportsCashHandoverRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/reports/date-wise-revenue': typeof AuthenticatedReportsDateWiseRevenueRoute
+  '/reports/dues': typeof AuthenticatedReportsDuesRoute
   '/reports/expenses': typeof AuthenticatedReportsExpensesRoute
   '/reports/food-kot': typeof AuthenticatedReportsFoodKotRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
@@ -915,6 +923,7 @@ export interface FileRoutesByTo {
   '/reports/cash-handover': typeof AuthenticatedReportsCashHandoverRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/reports/date-wise-revenue': typeof AuthenticatedReportsDateWiseRevenueRoute
+  '/reports/dues': typeof AuthenticatedReportsDuesRoute
   '/reports/expenses': typeof AuthenticatedReportsExpensesRoute
   '/reports/food-kot': typeof AuthenticatedReportsFoodKotRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
@@ -1026,6 +1035,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/cash-handover': typeof AuthenticatedReportsCashHandoverRoute
   '/_authenticated/reports/daily': typeof AuthenticatedReportsDailyRoute
   '/_authenticated/reports/date-wise-revenue': typeof AuthenticatedReportsDateWiseRevenueRoute
+  '/_authenticated/reports/dues': typeof AuthenticatedReportsDuesRoute
   '/_authenticated/reports/expenses': typeof AuthenticatedReportsExpensesRoute
   '/_authenticated/reports/food-kot': typeof AuthenticatedReportsFoodKotRoute
   '/_authenticated/reports/gst': typeof AuthenticatedReportsGstRoute
@@ -1137,6 +1147,7 @@ export interface FileRouteTypes {
     | '/reports/cash-handover'
     | '/reports/daily'
     | '/reports/date-wise-revenue'
+    | '/reports/dues'
     | '/reports/expenses'
     | '/reports/food-kot'
     | '/reports/gst'
@@ -1246,6 +1257,7 @@ export interface FileRouteTypes {
     | '/reports/cash-handover'
     | '/reports/daily'
     | '/reports/date-wise-revenue'
+    | '/reports/dues'
     | '/reports/expenses'
     | '/reports/food-kot'
     | '/reports/gst'
@@ -1356,6 +1368,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/cash-handover'
     | '/_authenticated/reports/daily'
     | '/_authenticated/reports/date-wise-revenue'
+    | '/_authenticated/reports/dues'
     | '/_authenticated/reports/expenses'
     | '/_authenticated/reports/food-kot'
     | '/_authenticated/reports/gst'
@@ -1760,6 +1773,13 @@ declare module '@tanstack/react-router' {
       path: '/reports/expenses'
       fullPath: '/reports/expenses'
       preLoaderRoute: typeof AuthenticatedReportsExpensesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/dues': {
+      id: '/_authenticated/reports/dues'
+      path: '/reports/dues'
+      fullPath: '/reports/dues'
+      preLoaderRoute: typeof AuthenticatedReportsDuesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/reports/date-wise-revenue': {
@@ -2268,6 +2288,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsCashHandoverRoute: typeof AuthenticatedReportsCashHandoverRoute
   AuthenticatedReportsDailyRoute: typeof AuthenticatedReportsDailyRoute
   AuthenticatedReportsDateWiseRevenueRoute: typeof AuthenticatedReportsDateWiseRevenueRoute
+  AuthenticatedReportsDuesRoute: typeof AuthenticatedReportsDuesRoute
   AuthenticatedReportsExpensesRoute: typeof AuthenticatedReportsExpensesRoute
   AuthenticatedReportsFoodKotRoute: typeof AuthenticatedReportsFoodKotRoute
   AuthenticatedReportsGstRoute: typeof AuthenticatedReportsGstRoute
@@ -2371,6 +2392,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsDailyRoute: AuthenticatedReportsDailyRoute,
   AuthenticatedReportsDateWiseRevenueRoute:
     AuthenticatedReportsDateWiseRevenueRoute,
+  AuthenticatedReportsDuesRoute: AuthenticatedReportsDuesRoute,
   AuthenticatedReportsExpensesRoute: AuthenticatedReportsExpensesRoute,
   AuthenticatedReportsFoodKotRoute: AuthenticatedReportsFoodKotRoute,
   AuthenticatedReportsGstRoute: AuthenticatedReportsGstRoute,

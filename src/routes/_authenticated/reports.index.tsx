@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  BarChart3, FileSpreadsheet, FileText, Moon, History, ClipboardList, Wallet,
+  BarChart3, FileSpreadsheet, FileText, Moon, History, ClipboardList, Wallet, AlertCircle,
 } from "lucide-react";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 
@@ -18,6 +18,7 @@ const ITEMS = [
   { to: "/reports/sales", label: "Sales", icon: FileSpreadsheet, desc: "Sales summary" },
   { to: "/reports/gst", label: "GST Report", icon: FileText, desc: "Tax-wise summary" },
   { to: "/reports/bill-wise", label: "Bill-Wise", icon: FileSpreadsheet, desc: "Per-invoice details" },
+  { to: "/reports/dues", label: "Dues / Pending Payments", icon: AlertCircle, desc: "Unpaid bills, oldest first" },
   { to: "/reports/cash-collection", label: "Cash Collection", icon: FileSpreadsheet, desc: "Cash receipts" },
   { to: "/reports/cash-handover", label: "Cash Handover", icon: Wallet, desc: "Shift handover & mismatches" },
   { to: "/reports/date-wise-revenue", label: "Date-Wise Revenue", icon: BarChart3, desc: "Revenue by date" },
