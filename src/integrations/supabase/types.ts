@@ -6599,6 +6599,8 @@ export type Database = {
       shift_room: {
         Args: {
           _booking_room_id: string
+          _effective_date?: string
+          _mode?: string
           _new_rate: number
           _reason: string
           _shifted_by: string

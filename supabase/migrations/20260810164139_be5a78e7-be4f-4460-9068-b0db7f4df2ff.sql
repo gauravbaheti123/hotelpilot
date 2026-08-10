@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.shift_room(uuid, uuid, numeric, text, text, uuid);
