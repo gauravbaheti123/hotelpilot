@@ -400,6 +400,11 @@ function BookingDetailPage() {
     const br = b.booking_rooms.find((x) => x.id === shiftBrId);
     if (!br) return;
     if (!shiftReason.trim()) return toast.error("Reason is required");
+    if (shiftMode === "mid_stay") {
+      if (!shiftEffDate) return toast.error("Pick the date the guest moves");
+      if (br.check_in && shiftEffDate <= br.check_in) return toast.error("Shift date must be after the current check-in date");
+      if (br.check_out && shiftEffDate >= br.check_out) return toast.error("Shift date must be before the check-out date");
+    }
     if (tariffChoice === "custom" && !mgrApproved) return toast.error("Manager authorisation required for custom rate");
     const target = rooms.find((r) => r.id === shiftToRoom);
     const newRate = resolveNewRate(br, target);
@@ -420,6 +425,8 @@ function BookingDetailPage() {
         reason: shiftReason,
         actorId: user?.id ?? null,
         transferKots,
+        mode: shiftMode,
+        effectiveDate: shiftMode === "mid_stay" ? shiftEffDate : null,
       });
     } catch (e) { setShiftBusy(false); return toastError(e); }
     if (moved.movedKots > 0) {
