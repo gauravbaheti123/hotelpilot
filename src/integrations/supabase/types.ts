@@ -6376,6 +6376,10 @@ export type Database = {
         Returns: Json
       }
       delete_night_audit: { Args: { _id: string }; Returns: undefined }
+      delete_payment: {
+        Args: { _payment_id: string; _reason?: string }
+        Returns: Json
+      }
       delete_shift_handover: {
         Args: { _id: string; _reason: string }
         Returns: Json
@@ -6490,6 +6494,10 @@ export type Database = {
         }
         Returns: string
       }
+      mark_folio_due: {
+        Args: { _folio_id: string; _reason: string }
+        Returns: Json
+      }
       owner_update_bill_item: {
         Args: {
           _description: string
@@ -6549,6 +6557,7 @@ export type Database = {
         Returns: Json
       }
       resolve_event_ids: { Args: { _id: string }; Returns: Json }
+      resync_finalised_folio: { Args: { _folio_id: string }; Returns: Json }
       room_gst_rate_for_tariff: { Args: { _rate: number }; Returns: number }
       save_property_secrets: {
         Args: {
