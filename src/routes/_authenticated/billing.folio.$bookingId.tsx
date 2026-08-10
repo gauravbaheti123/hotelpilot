@@ -1513,9 +1513,11 @@ function FolioPage() {
   const canEditBillToLocked = can("invoices", "edit_billto_locked");
   const billToEditable = isOpen || canEditBillToLocked;
   // Room tariff is editable by ANY role holding the folio-edit permission
-  // (invoices/edit) while the bill is OPEN — no owner-only override. Once the
-  // folio is settled/checked out it locks like every other finalized field.
-  const canEditTariff = isOpen && can("invoices", "edit");
+  // (invoices/edit) while the bill is OPEN. Once the folio is finalised it
+  // locks for everyone except roles holding invoices/edit_room_rate_locked
+  // (Owner, Manager) — the totals/GST/balance are re-derived on save.
+  const canEditRoomRateLocked = can("invoices", "edit_room_rate_locked");
+  const canEditTariff = (isOpen && can("invoices", "edit")) || canEditRoomRateLocked;
 
   async function markAllServed() {
     const ids = pendingKots.map((k) => k.id);
