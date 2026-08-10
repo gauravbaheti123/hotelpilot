@@ -289,6 +289,10 @@ function FolioPage() {
   const [payMode, setPayMode] = useState<string>("cash");
   const [payRef, setPayRef] = useState("");
   const [payNote, setPayNote] = useState("");
+  // Every bill of this booking that can receive money: live folios plus any
+  // still-open Food/Laundry segment bill. Staff must pick one explicitly.
+  const [payTargets, setPayTargets] = useState<PaymentTarget[]>([]);
+  const [payTarget, setPayTarget] = useState<string>("");
 
   const [voidOpen, setVoidOpen] = useState(false);
   const [voidReason, setVoidReason] = useState("");
