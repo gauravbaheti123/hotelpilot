@@ -240,6 +240,16 @@ function FolioPage() {
   const [addType, setAddType] = useState<"extra" | "discount">("extra");
   const [addGst, setAddGst] = useState("0");
 
+  // Extend stay (post-settlement) — Owner/Manager only
+  const [extendOpen, setExtendOpen] = useState(false);
+  const [extendDate, setExtendDate] = useState("");
+  const [extendTime, setExtendTime] = useState("");
+  const [extendReason, setExtendReason] = useState("");
+  const [extendCollect, setExtendCollect] = useState(false);
+  const [extendPayAmount, setExtendPayAmount] = useState("");
+  const [extendPayMode, setExtendPayMode] = useState("");
+  const [extendSaving, setExtendSaving] = useState(false);
+
   // Edit line-item dialog (for sundry/extra "Other Charges")
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
