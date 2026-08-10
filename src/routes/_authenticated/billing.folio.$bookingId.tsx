@@ -1069,6 +1069,26 @@ function FolioPage() {
           edited_by: userDisplayName(user as any),
         },
       });
+      if (!isOpen) {
+        logActivity({
+          property_id: booking?.property_id ?? "",
+          user_id: user?.id ?? "",
+          user_name: userDisplayName(user as any),
+          ...ACTIVITY.ROOM_RATE_EDITED_POST_SETTLEMENT,
+          reference_id: folio.id,
+          reference_label: `${billNo(folio.invoice_number)} — ${inr(oldRate)} → ${inr(newRate)}`,
+          details: {
+            folio_id: folio.id,
+            bill_number: billNo(folio.invoice_number),
+            charge_id: tariffTarget.id,
+            previous_rate: oldRate,
+            new_rate: newRate,
+            previous_bill_total: prevTotal,
+            edited_by: userDisplayName(user as any),
+            edited_at: new Date().toISOString(),
+          },
+        });
+      }
       toast.success(`Tariff updated: ${inr(oldRate)} → ${inr(newRate)}`);
       setTariffOpen(false);
       setTariffTarget(null);
