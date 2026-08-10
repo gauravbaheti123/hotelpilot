@@ -281,7 +281,7 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
         ) : (
           <div className="space-y-3 max-h-[50vh] overflow-auto pr-1">
             {payments.map((p) => (
-              <div key={p.id} className="grid grid-cols-[1fr_auto] items-center gap-3 border rounded-md p-2">
+              <div key={p.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 border rounded-md p-2">
                 <div className="min-w-0">
                   {canEditAmount ? (
                     <div className="flex items-center gap-1">
