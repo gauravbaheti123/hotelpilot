@@ -74,6 +74,10 @@ export const Route = createFileRoute("/_authenticated/front-desk/booking/$id")({
 });
 
 interface Guest { id: string; name: string; mobile: string | null; email: string | null; address: string | null; id_proof_type: string | null; id_proof_number: string | null; }
+
+/** Shift wizard: 1 = why (mode), 2 = target room, 3 = tariff, 4 = food, 5 = confirm. */
+type ShiftStep = 1 | 2 | 3 | 4 | 5;
+const SHIFT_LAST_STEP: ShiftStep = 5;
 interface Room {
   id: string;
   room_number: string;
