@@ -350,7 +350,7 @@ export const roomColumns: ReportColumn<RoomRow>[] = [
 ];
 
 export const foodColumns: ReportColumn<FoodRow>[] = [
-  { key: "kot", header: "KOT / Bill No", get: (r) => r.kot_no },
+  { key: "kot", header: "Food Bill No", get: (r) => r.kot_no },
   { key: "room", header: "Room", get: (r) => r.room_no, type: "enum" },
   { key: "guest", header: "Guest / Customer", get: (r) => r.guest },
   { key: "items", header: "Items", get: (r) => r.items },
@@ -406,7 +406,7 @@ export function sectionSummary(key: SectionKey, d: DailyReportData): Array<[stri
   if (key === "food") {
     const hold = d.food.filter((f) => f.status.startsWith(HOLD_PAYMENT_MODE));
     return [
-      ["Total KOTs", String(d.food.length)],
+      ["Total food bills", String(d.food.length)],
       ["Total food revenue (pre-tax)", fmtINR(sum(d.food, (r) => r.amount))],
       ["Total GST", fmtINR(sum(d.food, (r) => r.gst))],
       ["Total (incl. GST)", fmtINR(sum(d.food, (r) => r.total))],
