@@ -85,6 +85,7 @@ interface BookingRoomRow {
   id: string;
   room_id: string | null;
   category_id: string | null;
+  status?: string | null;
   rate: number;
   meal_plan: string;
   adults: number;
