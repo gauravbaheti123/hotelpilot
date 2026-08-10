@@ -1,6 +1,49 @@
 export const PAYMENT_MODES = ["cash", "card", "upi", "bank_transfer", "complimentary", "wallet", "other"] as const;
 export type PaymentMode = (typeof PAYMENT_MODES)[number];
 
+/* ------------------------------------------------------------------ *
+ * "Bill On Hold" — a marker, NOT money
+ * ------------------------------------------------------------------ */
+
+/** Canonical name of the non-collecting payment method. */
+export const HOLD_PAYMENT_MODE = "Bill On Hold";
+
+/** True when a payment row is a "Bill On Hold" marker (no money collected). */
+export function isHoldPayment(mode: string | null | undefined): boolean {
+  return String(mode ?? "").trim().toLowerCase() === HOLD_PAYMENT_MODE.toLowerCase();
+}
+
+/**
+ * Sum of REAL money collected — "Bill On Hold" rows are excluded so they can
+ * never bring a folio's balance to zero or mark it settled. Mirrors the
+ * database's recompute_folio_totals().
+ */
+export function realPaidTotal(
+  payments: { amount: number | string; mode?: string | null }[],
+): number {
+  return round2(
+    (payments ?? []).reduce(
+      (s, p) => (isHoldPayment(p.mode) ? s : s + Number(p.amount ?? 0)),
+      0,
+    ),
+  );
+}
+
+/**
+ * Guard against collecting more than the outstanding balance.
+ * Returns an error message, or null when the amount is acceptable.
+ */
+export function overpaymentError(
+  amount: number,
+  balanceDue: number,
+): string | null {
+  if (!(amount > 0)) return null;
+  if (amount > round2(balanceDue) + 0.01) {
+    return `Amount exceeds balance due of ${inr(Math.max(0, balanceDue))} — cannot collect more than the outstanding balance.`;
+  }
+  return null;
+}
+
 export const FOLIO_STATUS_TONE: Record<string, string> = {
   open: "bg-amber-100 text-amber-800 border-amber-300",
   settled: "bg-emerald-100 text-emerald-800 border-emerald-300",
