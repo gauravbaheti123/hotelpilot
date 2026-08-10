@@ -676,10 +676,13 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       const total = realPaidTotal(rows as any[]);
       const overErr = overpaymentError(total, totals.balance);
       if (overErr) return toast.error(overErr);
-      if (total + 0.01 < totals.balance) {
+      if (total + 0.01 < totals.balance && !markDue) {
         return toast.error(
           `Pending balance ${inr(totals.balance - total)}. Collect full payment first.`,
         );
+      }
+      if (markDue && !dueReason.trim()) {
+        return toast.error("Enter a reason for leaving the balance as due");
       }
     }
 
@@ -730,15 +733,41 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       .single();
     if (refErr) { setBusy(false); return toastError(refErr); }
     const liveBalance = Number((freshFolio as any)?.balance_amount ?? 0);
-    if (liveBalance > 0.01) {
+    if (liveBalance > 0.01 && !markDue) {
       setBusy(false);
       return toast.error(`Pending balance ${inr(liveBalance)}. Collect payment first.`);
     }
 
-    // Balance is zero — explicitly finalize the folio. A re-opened folio that
-    // needs no payment never triggers recompute_folio_totals, so it would
-    // otherwise stay stuck in 'open' and vanish from the invoice list.
-    await finalizeFolioSettlement(folio.id);
+    if (liveBalance > 0.01) {
+      // Deliberate "Mark as Due": finalize the bill with a real outstanding
+      // balance. The RPC recomputes paid from real (non-hold) payments only,
+      // stamps status = 'due' and writes the audit entry.
+      const { error: dueErr } = await supabase.rpc("mark_folio_due" as any, {
+        _folio_id: folio.id,
+        _reason: dueReason.trim(),
+      } as any);
+      if (dueErr) { setBusy(false); return toastError(dueErr); }
+      logActivity({
+        property_id: booking.property_id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as never),
+        action_type: "CHECKOUT_WITH_DUE_BALANCE",
+        module: "Billing",
+        reference_id: folio.id,
+        reference_label: booking.booking_number ?? null,
+        details: {
+          folio_id: folio.id,
+          booking_id: booking.id,
+          amount_due: liveBalance,
+          reason: dueReason.trim(),
+        },
+      });
+    } else {
+      // Balance is zero — explicitly finalize the folio. A re-opened folio that
+      // needs no payment never triggers recompute_folio_totals, so it would
+      // otherwise stay stuck in 'open' and vanish from the invoice list.
+      await finalizeFolioSettlement(folio.id);
+    }
 
     const now = new Date().toISOString();
 
@@ -849,7 +878,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     }
 
     setBusy(false);
-    toast.success("Checked out");
+    toast.success(liveBalance > 0.01 ? `Checked out — ${inr(liveBalance)} marked as due` : "Checked out");
     onOpenChange(false);
     onDone?.();
 
