@@ -49,6 +49,12 @@ export interface ShiftRoomParams {
   reason: string;
   actorId: string | null;
   transferKots: boolean;
+  /** "same_day" = correction, the stay/charge line continues unchanged.
+   *  "mid_stay" = guest moves from `effectiveDate` onward; nights already
+   *  stayed in the old room stay billed there and a new charge line is
+   *  seeded for the new room. Defaults to same-day. */
+  mode?: "same_day" | "mid_stay";
+  effectiveDate?: string | null;
 }
 
 /** Atomic room shift. Throws the raw Postgres error so callers can surface the
@@ -61,6 +67,8 @@ export async function shiftRoomOp(p: ShiftRoomParams): Promise<{ movedKots: numb
     _tariff_choice: p.tariffChoice,
     _reason: p.reason,
     _shifted_by: p.actorId,
+    _mode: p.mode ?? "same_day",
+    _effective_date: p.mode === "mid_stay" ? (p.effectiveDate ?? null) : null,
   } as never);
   if (shiftErr) throw shiftErr;
 
