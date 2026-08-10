@@ -1242,6 +1242,25 @@ function FolioPage() {
     load();
   }
 
+  const refreshPayTargets = useCallback(async () => {
+    if (!bookingId || !folio?.id) return;
+    try {
+      const { targets } = await loadPaymentTargets(bookingId, folio.id);
+      setPayTargets(targets);
+      setPayTarget((cur) =>
+        cur && targets.some((t) => t.value === cur)
+          ? cur
+          : (targets[0]?.value ?? `folio:${folio.id}`),
+      );
+    } catch {
+      // Non-fatal: fall back to the folio currently on screen.
+      setPayTargets([]);
+      setPayTarget(`folio:${folio.id}`);
+    }
+  }, [bookingId, folio?.id]);
+
+  useEffect(() => { void refreshPayTargets(); }, [refreshPayTargets, folio?.balance_amount]);
+
   async function addPayment() {
     if (!folio || !booking) return;
     const amt = Number(payAmount);
