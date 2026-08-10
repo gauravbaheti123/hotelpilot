@@ -4,6 +4,7 @@ import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { AppShell } from "@/components/AppShell";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { supabase } from "@/integrations/supabase/client";
+import { realPaidTotal } from "@/lib/billing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FolioOpenButton } from "@/components/FolioOpenButton";

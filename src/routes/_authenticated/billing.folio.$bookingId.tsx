@@ -32,6 +32,9 @@ import {
   consolidateSegmentCharges,
   expandRoomNights,
   type DisplayCharge,
+  realPaidTotal,
+  isHoldPayment,
+  overpaymentError,
 } from "@/lib/billing";
 import { searchGuests } from "@/lib/guestIdLookup";
 import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil } from "lucide-react";

@@ -22,7 +22,7 @@ import { billNo } from "@/lib/billNumber";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
-import { inr, inrRound, recomputeFolio, consolidateSegmentCharges, type BillDiscount } from "@/lib/billing";
+import { inr, inrRound, recomputeFolio, consolidateSegmentCharges, type BillDiscount, realPaidTotal, overpaymentError } from "@/lib/billing";
 import { computeRoomChargeTax } from "@/lib/gst";
 import { fireTrigger } from "@/lib/whatsapp";
 import { AlertTriangle, Plus, Trash2, Loader2, SplitSquareHorizontal } from "lucide-react";
@@ -470,7 +470,8 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         : null;
     const recomp = recomputeFolio(charges as any, gstMode, billDisc);
     const grand = recomp.total_amount;
-    const paid = payments.reduce((s, p) => s + Number(p.amount), 0);
+    // "Bill On Hold" is a marker, not collected money — it must not settle a bill.
+    const paid = realPaidTotal(payments as any[]);
     const balance = Math.max(0, grand - paid);
     return { rooms, food, other, roomTotal, foodTotal, otherTotal, grand, paid, balance };
   }, [charges, payments, folio?.gst_mode, (folio as any)?.discount_type, (folio as any)?.discount_value]);
