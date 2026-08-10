@@ -35,6 +35,7 @@ import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 import { payableFolios } from "@/lib/folioSelect";
+import { mergeSegmentBillToFolio } from "@/lib/paymentTargets";
 import { finalizeFolioSettlement } from "@/lib/folioFinalize";
 
 interface Props {
@@ -650,52 +651,15 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     if (!folio || !booking) return;
     setBusy(true);
     try {
-      // Skip if we already transferred this bill (idempotent)
-      const { data: existing, error: __qe8 } = await supabase
-        .from("folio_charges")
-        .select("id")
-        .eq("source_table", "segment_bills")
-        .eq("source_id", bill.id)
-        .limit(1);
-      if (__qe8) reportQueryError("folio charges", __qe8);
-      if (!existing || existing.length === 0) {
-        const { data: items, error: iErr } = await supabase
-          .from("segment_bill_items" as any)
-          .select("description,qty,rate,amount,gst_rate,gst_amount")
-          .eq("segment_bill_id", bill.id);
-        if (iErr) throw iErr;
-        if (!items || items.length === 0) {
-          throw new Error("Segment bill has no items");
-        }
-        const chargeType = bill.segment === "food" ? "food" : "laundry";
-        const rows = (items as any[]).map((it) => ({
-          folio_id: folio.id,
-          charge_type: chargeType,
-          description: `${it.description} (${bill.bill_number})`,
-          qty: Number(it.qty),
-          rate: Number(it.rate),
-          amount: Number(it.amount),
-          gst_rate: Number(it.gst_rate),
-          gst_amount: Number(it.gst_amount),
-          source_table: "segment_bills",
-          source_id: bill.id,
-          segment_bill_ref: bill.bill_number,
-          created_by: user?.id ?? null,
-        }));
-        const { error: cErr } = await supabase
-          .from("folio_charges")
-          .insert(rows as any);
-        if (cErr) throw cErr;
-      }
-      const { error: uErr } = await supabase
-        .from("segment_bills" as any)
-        .update({
-          status: "settled",
-          settled_at: new Date().toISOString(),
-          folio_id: folio.id,
-        } as any)
-        .eq("id", bill.id);
-      if (uErr) throw uErr;
+      // Shared with the folio page's Collect Payment flow so both screens
+      // merge segment bills exactly the same way.
+      await mergeSegmentBillToFolio({
+        billId: bill.id,
+        segment: bill.segment,
+        billNumber: bill.bill_number,
+        folioId: folio.id,
+        userId: user?.id ?? null,
+      });
       toast.success(`${bill.bill_number} added to room bill`);
       await load();
     } catch (e: any) {

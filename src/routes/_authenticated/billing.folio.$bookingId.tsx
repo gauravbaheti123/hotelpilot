@@ -37,6 +37,7 @@ import {
   overpaymentError,
 } from "@/lib/billing";
 import { searchGuests } from "@/lib/guestIdLookup";
+import { loadPaymentTargets, mergeSegmentBillToFolio, type PaymentTarget } from "@/lib/paymentTargets";
 import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil, CalendarPlus } from "lucide-react";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
@@ -288,6 +289,10 @@ function FolioPage() {
   const [payMode, setPayMode] = useState<string>("cash");
   const [payRef, setPayRef] = useState("");
   const [payNote, setPayNote] = useState("");
+  // Every bill of this booking that can receive money: live folios plus any
+  // still-open Food/Laundry segment bill. Staff must pick one explicitly.
+  const [payTargets, setPayTargets] = useState<PaymentTarget[]>([]);
+  const [payTarget, setPayTarget] = useState<string>("");
 
   const [voidOpen, setVoidOpen] = useState(false);
   const [voidReason, setVoidReason] = useState("");
@@ -1237,34 +1242,93 @@ function FolioPage() {
     load();
   }
 
+  const refreshPayTargets = useCallback(async () => {
+    if (!bookingId || !folio?.id) return;
+    try {
+      const { targets } = await loadPaymentTargets(bookingId, folio.id);
+      setPayTargets(targets);
+      setPayTarget((cur) =>
+        cur && targets.some((t) => t.value === cur)
+          ? cur
+          : (targets[0]?.value ?? `folio:${folio.id}`),
+      );
+    } catch {
+      // Non-fatal: fall back to the folio currently on screen.
+      setPayTargets([]);
+      setPayTarget(`folio:${folio.id}`);
+    }
+  }, [bookingId, folio?.id]);
+
+  useEffect(() => { void refreshPayTargets(); }, [refreshPayTargets, folio?.balance_amount]);
+
   async function addPayment() {
     if (!folio || !booking) return;
     const amt = Number(payAmount);
     if (!amt || amt <= 0) return toast.error("Amount must be positive");
-    // Hard-block collecting more than the outstanding balance. A "Bill On
-    // Hold" marker never counts as money, so it is exempt from the guard.
+    const selected = payTargets.find((t) => t.value === payTarget) ?? null;
+    if (payTargets.length > 1 && !selected) {
+      return toast.error("Select which bill this payment is for");
+    }
+
+    // A still-open segment bill has no folio_id, and `payments` can only
+    // point at a folio — so merge it onto this folio first (same step
+    // Check-out's "Add to bill" performs), then collect against the folio.
+    let targetFolioId = selected?.kind === "folio" ? selected.id : folio.id;
+    if (selected?.kind === "segment") {
+      try {
+        await mergeSegmentBillToFolio({
+          billId: selected.id,
+          segment: selected.segment ?? "food",
+          billNumber: selected.billNumber ?? "",
+          folioId: folio.id,
+          userId: user?.id ?? null,
+        });
+        toast.success(`${selected.billNumber} added to bill ${billNo(folio.invoice_number, "")}`.trim());
+      } catch (e) {
+        return toastError(e, "Failed to add the food bill to this bill");
+      }
+      targetFolioId = folio.id;
+    }
+
+    // Hard-block collecting more than the outstanding balance of the chosen
+    // bill. A "Bill On Hold" marker never counts as money, so it is exempt.
     if (!isHoldPayment(payMode)) {
-      const due = Number(folio.total_amount ?? 0) - realPaidTotal(payments as any[]);
+      let due: number;
+      if (targetFolioId === folio.id && selected?.kind !== "segment") {
+        due = Number(folio.total_amount ?? 0) - realPaidTotal(payments as any[]);
+      } else {
+        const { data: fRow } = await supabase
+          .from("folios").select("total_amount").eq("id", targetFolioId).maybeSingle();
+        const { data: pRows } = await supabase
+          .from("payments").select("*").eq("folio_id", targetFolioId);
+        due = Number((fRow as any)?.total_amount ?? 0) - realPaidTotal((pRows ?? []) as any[]);
+      }
       const overErr = overpaymentError(amt, due);
       if (overErr) return toast.error(overErr);
     }
+
+    const noteWithBill = selected?.kind === "segment"
+      ? [payNote, `For ${selected.billNumber}`].filter(Boolean).join(" — ")
+      : payNote;
     const { error } = await supabase.from("payments").insert({
       property_id: booking.property_id,
-      folio_id: folio.id,
+      folio_id: targetFolioId,
       booking_id: booking.id,
       amount: amt,
       mode: payMode,
       reference_no: payRef || null,
-      notes: payNote || null,
+      notes: noteWithBill || null,
       created_by: user?.id ?? null,
     } as any);
     if (error) return toastError(error);
     setPayOpen(false);
     setPayAmount(""); setPayRef(""); setPayNote(""); setPayMode("cash");
-    const { data, error: __qe15 } = await supabase.from("payments").select("*").eq("folio_id", folio.id);
-    if (__qe15) reportQueryError("payments", __qe15);
-    const nextP = ((data ?? []) as unknown as Payment[]);
-    await persistTotals(charges, nextP);
+    if (targetFolioId === folio.id) {
+      const { data, error: __qe15 } = await supabase.from("payments").select("*").eq("folio_id", folio.id);
+      if (__qe15) reportQueryError("payments", __qe15);
+      const nextP = ((data ?? []) as unknown as Payment[]);
+      await persistTotals(charges, nextP);
+    }
     toast.success("Payment recorded");
     logActivity({
       property_id: booking.property_id,
@@ -1273,7 +1337,11 @@ function FolioPage() {
       ...ACTIVITY.PAYMENT_RECEIVED,
       reference_id: booking.id,
       reference_label: `${booking.booking_number} — ₹${amt} via ${payMode}`,
-      details: { amount: amt, mode: payMode, folio_id: folio.id },
+      details: {
+        amount: amt, mode: payMode, folio_id: targetFolioId,
+        target: selected?.label ?? null,
+        segment_bill_id: selected?.kind === "segment" ? selected.id : null,
+      },
     });
     // WhatsApp payment receipt (best-effort)
     try {
@@ -2854,15 +2922,58 @@ function FolioPage() {
         </div>
 
         {/* Collect payment (screen only) */}
-        {canEditNow && Number(folio.balance_amount) > 0.01 && (
+        {canEditNow && (Number(folio.balance_amount) > 0.01 || payTargets.some((t) => t.balance > 0.01)) && (
           <Card className="print:hidden">
             <CardHeader className="pb-3"><CardTitle className="text-sm uppercase tracking-wider">Collect Payment</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+            <CardContent className="space-y-3">
+              {booking?.source === "ota" && (
+                <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    Room booked via OTA{booking?.ota_partner_name ? ` (${booking.ota_partner_name})` : ""} — verify with the booking voucher whether the room is prepaid before collecting further room payment.
+                  </span>
+                </div>
+              )}
+
+              {/* Which bill is this money for? Never leave the target implicit. */}
+              <div className="space-y-1">
+                <Label className="text-xs">Payment is for</Label>
+                {payTargets.length > 1 ? (
+                  <Select value={payTarget} onValueChange={setPayTarget}>
+                    <SelectTrigger><SelectValue placeholder="Select a bill" /></SelectTrigger>
+                    <SelectContent>
+                      {payTargets.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label} — {inrRound(t.balance)} due
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
+                    {payTargets[0]?.label ?? `Room bill ${billNo(folio.invoice_number, "Provisional")}`}
+                    {" — "}
+                    <span className="font-medium">{inrRound(payTargets[0]?.balance ?? Number(folio.balance_amount ?? 0))} due</span>
+                  </div>
+                )}
+                {payTargets.find((t) => t.value === payTarget)?.kind === "segment" && (
+                  <div className="text-[11px] text-muted-foreground">
+                    This food/laundry bill will be added to bill {billNo(folio.invoice_number, "Provisional")} first, then the payment recorded against it.
+                  </div>
+                )}
+              </div>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
               <div className="space-y-1">
                 <Label className="text-xs">Amount</Label>
                 <Input type="number" value={payAmount}
-                  placeholder={String(folio.balance_amount)}
-                  onFocus={() => { if (!payAmount) setPayAmount(String(folio.balance_amount)); }}
+                  placeholder={String(payTargets.find((t) => t.value === payTarget)?.balance ?? folio.balance_amount)}
+                  onFocus={() => {
+                    if (!payAmount) {
+                      const bal = payTargets.find((t) => t.value === payTarget)?.balance;
+                      setPayAmount(String(bal ?? folio.balance_amount));
+                    }
+                  }}
                   onChange={(e) => setPayAmount(e.target.value)} />
               </div>
               <div className="space-y-1">
@@ -2883,6 +2994,7 @@ function FolioPage() {
                   <Plus className="h-4 w-4 mr-1" /> Add payment
                 </Button>
               </div>
+            </div>
             </CardContent>
           </Card>
         )}
