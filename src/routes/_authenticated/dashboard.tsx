@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
+import { isHoldPayment } from "@/lib/billing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useFolioOpener } from "@/components/FolioOpenButton";
@@ -160,12 +161,13 @@ function SuperadminDashboard({ email }: { email: string }) {
         supabase.from("properties").select("id", { count: "exact", head: true }),
         supabase.from("rooms").select("id", { count: "exact", head: true }),
         supabase.from("user_roles").select("user_id", { count: "exact", head: true }).neq("role", "superadmin"),
-        supabase.from("payments").select("amount,booking_id,folio_id").gte("paid_at", `${today}T00:00:00`).lte("paid_at", `${today}T23:59:59`),
+        supabase.from("payments").select("amount,mode,booking_id,folio_id").gte("paid_at", `${today}T00:00:00`).lte("paid_at", `${today}T23:59:59`),
       ]);
       // Banquet event-block collections are excluded from operational revenue.
       const scope = await fetchBanquetScope(null);
+      // "Bill On Hold" is a marker, not collected money.
       const revenue = ((pay.data ?? []) as any[])
-        .filter((x) => !isBanquetRecord(scope, x))
+        .filter((x) => !isBanquetRecord(scope, x) && !isHoldPayment(x.mode))
         .reduce((a, x) => a + Number(x.amount || 0), 0);
       setCounts({ properties: p.count ?? 0, rooms: r.count ?? 0, staff: s.count ?? 0, revenue });
     })();

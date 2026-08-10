@@ -32,6 +32,9 @@ import {
   consolidateSegmentCharges,
   expandRoomNights,
   type DisplayCharge,
+  realPaidTotal,
+  isHoldPayment,
+  overpaymentError,
 } from "@/lib/billing";
 import { searchGuests } from "@/lib/guestIdLookup";
 import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil } from "lucide-react";
@@ -639,7 +642,8 @@ function FolioPage() {
       ? { type: nextDiscType, value: Number(nextDiscValue) }
       : null;
     const t = recomputeFolio(nextCharges, mode, billDisc);
-    const paid = nextPayments.reduce((s, p) => s + Number(p.amount), 0);
+    // "Bill On Hold" rows are staff markers, not collected money.
+    const paid = realPaidTotal(nextPayments as any[]);
     await supabase.from("folios").update({
       ...t,
       paid_amount: paid,
@@ -1187,6 +1191,13 @@ function FolioPage() {
     if (!folio || !booking) return;
     const amt = Number(payAmount);
     if (!amt || amt <= 0) return toast.error("Amount must be positive");
+    // Hard-block collecting more than the outstanding balance. A "Bill On
+    // Hold" marker never counts as money, so it is exempt from the guard.
+    if (!isHoldPayment(payMode)) {
+      const due = Number(folio.total_amount ?? 0) - realPaidTotal(payments as any[]);
+      const overErr = overpaymentError(amt, due);
+      if (overErr) return toast.error(overErr);
+    }
     const { error } = await supabase.from("payments").insert({
       property_id: booking.property_id,
       folio_id: folio.id,

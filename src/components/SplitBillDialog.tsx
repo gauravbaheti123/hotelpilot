@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import {
   inr, inrRound, recomputeFolio, computeBillDiscountAmount,
   distributeWithRemainder, weightedGstRate, netSubtotalOf,
+  realPaidTotal, isHoldPayment, overpaymentError,
   type BillDiscount,
 } from "@/lib/billing";
 import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
@@ -782,6 +783,17 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           return toast.error(`Bill ${i + 1}: payment amount cannot be negative`);
         }
         if (row.mode !== "credit" && amt > 0) {
+          // Hard-block overpayment on each split portion.
+          const { data: prevPays } = await supabase
+            .from("payments")
+            .select("amount,mode")
+            .eq("folio_id", b.folio_id);
+          const due = Number(b.total ?? 0) - realPaidTotal((prevPays ?? []) as any[]);
+          const overErr = isHoldPayment(row.mode) ? null : overpaymentError(amt, due);
+          if (overErr) {
+            setBusy(false);
+            return toast.error(`Bill ${i + 1}: ${overErr}`);
+          }
           await supabase.from("payments").insert({
             property_id: booking.property_id,
             folio_id: b.folio_id,

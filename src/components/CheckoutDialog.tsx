@@ -22,7 +22,7 @@ import { billNo } from "@/lib/billNumber";
 import { useAuth } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { toast } from "sonner";
-import { inr, inrRound, recomputeFolio, consolidateSegmentCharges, type BillDiscount } from "@/lib/billing";
+import { inr, inrRound, recomputeFolio, consolidateSegmentCharges, type BillDiscount, realPaidTotal, overpaymentError } from "@/lib/billing";
 import { computeRoomChargeTax } from "@/lib/gst";
 import { fireTrigger } from "@/lib/whatsapp";
 import { AlertTriangle, Plus, Trash2, Loader2, SplitSquareHorizontal } from "lucide-react";
@@ -470,7 +470,8 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         : null;
     const recomp = recomputeFolio(charges as any, gstMode, billDisc);
     const grand = recomp.total_amount;
-    const paid = payments.reduce((s, p) => s + Number(p.amount), 0);
+    // "Bill On Hold" is a marker, not collected money — it must not settle a bill.
+    const paid = realPaidTotal(payments as any[]);
     const balance = Math.max(0, grand - paid);
     return { rooms, food, other, roomTotal, foodTotal, otherTotal, grand, paid, balance };
   }, [charges, payments, folio?.gst_mode, (folio as any)?.discount_type, (folio as any)?.discount_value]);
@@ -562,9 +563,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         ? { type: (folio as any).discount_type as "percent" | "amount", value: Number((folio as any).discount_value) }
         : null;
     const t = recomputeFolio((allCharges ?? []) as any[], mode, posBillDisc);
-    const { data: pays, error: __qe7 } = await supabase.from("payments").select("amount").eq("folio_id", folio.id);
+    const { data: pays, error: __qe7 } = await supabase.from("payments").select("amount,mode").eq("folio_id", folio.id);
     if (__qe7) reportQueryError("payments", __qe7);
-    const paid = (pays ?? []).reduce((s: number, p: any) => s + Number(p.amount), 0);
+    const paid = realPaidTotal((pays ?? []) as any[]);
     await supabase.from("folios").update({
       ...t,
       paid_amount: paid,
@@ -671,7 +672,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
           rows.push({ amount: a, mode: singleMode, reference_no: singleRef || null });
         }
       }
-      const total = rows.reduce((s, r) => s + r.amount, 0);
+      // Holds are markers, not money — they cannot satisfy the balance.
+      const total = realPaidTotal(rows as any[]);
+      const overErr = overpaymentError(total, totals.balance);
+      if (overErr) return toast.error(overErr);
       if (total + 0.01 < totals.balance) {
         return toast.error(
           `Pending balance ${inr(totals.balance - total)}. Collect full payment first.`,

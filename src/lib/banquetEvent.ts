@@ -8,6 +8,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { reportQueryError } from "@/lib/queryError";
+import { realPaidTotal, overpaymentError } from "@/lib/billing";
 
 /** Columns that live on `bookings` (all of them now). */
 const UNIFIED_FIELDS = new Set([
@@ -383,6 +384,21 @@ export async function recordEventPayments(
     { _booking_id: args.bookingId } as any,
   );
   if (fErr) throw fErr;
+  // Hard-block overpayment: never collect more than the outstanding balance.
+  const { data: fRow } = await supabase
+    .from("folios")
+    .select("total_amount")
+    .eq("id", folioId as unknown as string)
+    .maybeSingle();
+  const { data: existing } = await supabase
+    .from("payments")
+    .select("amount,mode")
+    .eq("folio_id", folioId as unknown as string);
+  const due =
+    n((fRow as any)?.total_amount) - realPaidTotal((existing ?? []) as any[]);
+  const adding = realPaidTotal(args.rows.map((r) => ({ amount: r.amount, mode: r.mode })));
+  const overErr = overpaymentError(adding, due);
+  if (overErr) throw new Error(overErr);
   const { error } = await supabase.from("payments").insert(
     args.rows.map((r) => ({
       property_id: args.propertyId,
