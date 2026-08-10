@@ -2922,15 +2922,58 @@ function FolioPage() {
         </div>
 
         {/* Collect payment (screen only) */}
-        {canEditNow && Number(folio.balance_amount) > 0.01 && (
+        {canEditNow && (Number(folio.balance_amount) > 0.01 || payTargets.some((t) => t.balance > 0.01)) && (
           <Card className="print:hidden">
             <CardHeader className="pb-3"><CardTitle className="text-sm uppercase tracking-wider">Collect Payment</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+            <CardContent className="space-y-3">
+              {booking?.source === "ota" && (
+                <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    Room booked via OTA{booking?.ota_partner_name ? ` (${booking.ota_partner_name})` : ""} — verify with the booking voucher whether the room is prepaid before collecting further room payment.
+                  </span>
+                </div>
+              )}
+
+              {/* Which bill is this money for? Never leave the target implicit. */}
+              <div className="space-y-1">
+                <Label className="text-xs">Payment is for</Label>
+                {payTargets.length > 1 ? (
+                  <Select value={payTarget} onValueChange={setPayTarget}>
+                    <SelectTrigger><SelectValue placeholder="Select a bill" /></SelectTrigger>
+                    <SelectContent>
+                      {payTargets.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label} — {inrRound(t.balance)} due
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
+                    {payTargets[0]?.label ?? `Room bill ${billNo(folio.invoice_number, "Provisional")}`}
+                    {" — "}
+                    <span className="font-medium">{inrRound(payTargets[0]?.balance ?? Number(folio.balance_amount ?? 0))} due</span>
+                  </div>
+                )}
+                {payTargets.find((t) => t.value === payTarget)?.kind === "segment" && (
+                  <div className="text-[11px] text-muted-foreground">
+                    This food/laundry bill will be added to bill {billNo(folio.invoice_number, "Provisional")} first, then the payment recorded against it.
+                  </div>
+                )}
+              </div>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
               <div className="space-y-1">
                 <Label className="text-xs">Amount</Label>
                 <Input type="number" value={payAmount}
-                  placeholder={String(folio.balance_amount)}
-                  onFocus={() => { if (!payAmount) setPayAmount(String(folio.balance_amount)); }}
+                  placeholder={String(payTargets.find((t) => t.value === payTarget)?.balance ?? folio.balance_amount)}
+                  onFocus={() => {
+                    if (!payAmount) {
+                      const bal = payTargets.find((t) => t.value === payTarget)?.balance;
+                      setPayAmount(String(bal ?? folio.balance_amount));
+                    }
+                  }}
                   onChange={(e) => setPayAmount(e.target.value)} />
               </div>
               <div className="space-y-1">
@@ -2951,6 +2994,7 @@ function FolioPage() {
                   <Plus className="h-4 w-4 mr-1" /> Add payment
                 </Button>
               </div>
+            </div>
             </CardContent>
           </Card>
         )}
