@@ -37,7 +37,7 @@ import {
   overpaymentError,
 } from "@/lib/billing";
 import { searchGuests } from "@/lib/guestIdLookup";
-import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil, CalendarPlus } from "lucide-react";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
@@ -239,6 +239,16 @@ function FolioPage() {
   const [addRate, setAddRate] = useState("0");
   const [addType, setAddType] = useState<"extra" | "discount">("extra");
   const [addGst, setAddGst] = useState("0");
+
+  // Extend stay (post-settlement) — Owner/Manager only
+  const [extendOpen, setExtendOpen] = useState(false);
+  const [extendDate, setExtendDate] = useState("");
+  const [extendTime, setExtendTime] = useState("");
+  const [extendReason, setExtendReason] = useState("");
+  const [extendCollect, setExtendCollect] = useState(false);
+  const [extendPayAmount, setExtendPayAmount] = useState("");
+  const [extendPayMode, setExtendPayMode] = useState("");
+  const [extendSaving, setExtendSaving] = useState(false);
 
   // Edit line-item dialog (for sundry/extra "Other Charges")
   const [editOpen, setEditOpen] = useState(false);
@@ -1617,6 +1627,78 @@ function FolioPage() {
   // (Owner, Manager) — the totals/GST/balance are re-derived on save.
   const canEditRoomRateLocked = can("invoices", "edit_room_rate_locked");
   const canEditTariff = (isOpen && can("invoices", "edit")) || canEditRoomRateLocked;
+  // Extend stay on a finalised bill: Owner/Manager only.
+  const canExtendStay = can("bookings", "extend_stay_locked");
+
+  function openExtendStay() {
+    if (!booking) return;
+    const cur = new Date(`${booking.check_out}T00:00:00`);
+    cur.setDate(cur.getDate() + 1);
+    setExtendDate(cur.toISOString().slice(0, 10));
+    setExtendTime("");
+    setExtendReason("");
+    setExtendCollect(false);
+    setExtendPayAmount("");
+    setExtendPayMode("");
+    setExtendOpen(true);
+  }
+
+  /** Moves checkout forward, re-prices the room nights and re-derives the
+   *  folio totals/GST/balance through the server routine (permission-gated). */
+  async function saveExtendStay() {
+    if (!folio || !booking) return;
+    if (!extendDate) return toast.error("Pick the new checkout date");
+    if (extendDate <= booking.check_out) {
+      return toast.error(`New checkout must be after ${booking.check_out}`);
+    }
+    const payAmt = extendCollect ? Number(extendPayAmount) : 0;
+    if (extendCollect) {
+      if (!(payAmt > 0)) return toast.error("Enter the amount collected");
+      if (!extendPayMode) return toast.error("Select a payment mode");
+    }
+    setExtendSaving(true);
+    try {
+      const { data, error } = await supabase.rpc("extend_stay" as any, {
+        _folio_id: folio.id,
+        _new_check_out: extendDate,
+        _new_check_out_time: extendTime || null,
+        _reason: extendReason.trim() || null,
+        _payment_amount: payAmt,
+        _payment_mode: extendCollect ? extendPayMode : null,
+      } as any);
+      if (error) return toastError(error);
+      const res = (data ?? {}) as any;
+      await logActivity({
+        property_id: folio.property_id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        ...ACTIVITY.STAY_EXTENDED_POST_SETTLEMENT,
+        reference_id: folio.id,
+        reference_label: `${billNo(folio.invoice_number)} — ${booking.check_out} → ${extendDate}`,
+        details: {
+          folio_id: folio.id,
+          booking_id: booking.id,
+          old_check_out: booking.check_out,
+          new_check_out: extendDate,
+          new_check_out_time: extendTime || null,
+          added_amount: res.added_amount ?? null,
+          total_amount: res.total_amount ?? null,
+          balance_amount: res.balance_amount ?? null,
+          status: res.status ?? null,
+          payment_collected: payAmt,
+          payment_mode: extendCollect ? extendPayMode : null,
+          reason: extendReason.trim() || null,
+        },
+      });
+      setExtendOpen(false);
+      toast.success(
+        `Stay extended to ${extendDate}${res.added_amount ? ` · ${inr(Number(res.added_amount))} added` : ""}`,
+      );
+      load();
+    } finally {
+      setExtendSaving(false);
+    }
+  }
 
   async function markAllServed() {
     const ids = pendingKots.map((k) => k.id);
@@ -2249,6 +2331,11 @@ function FolioPage() {
               {canEditNow && (
                 <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
                   <Plus className="h-4 w-4 mr-1" /> Add charge
+                </Button>
+              )}
+              {!isOpen && canExtendStay && (
+                <Button size="sm" variant="outline" onClick={openExtendStay}>
+                  <CalendarPlus className="h-4 w-4 mr-1" /> Extend stay
                 </Button>
               )}
               {isOpen && (
@@ -3143,6 +3230,62 @@ function FolioPage() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
               <Button onClick={addPayment}>Save payment</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* EXTEND STAY (finalised bill — Owner/Manager) */}
+        <Dialog open={extendOpen} onOpenChange={setExtendOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Extend stay</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div className="text-xs text-muted-foreground">
+                Current checkout: <b>{booking.check_out}</b>. The extra night(s) are billed at the
+                room's current tariff and the bill's totals, GST and balance are recalculated.
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">New checkout date *</Label>
+                  <Input type="date" value={extendDate} min={booking.check_out} onChange={(e) => setExtendDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Checkout time</Label>
+                  <Input type="time" value={extendTime} onChange={(e) => setExtendTime(e.target.value)} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Reason</Label>
+                <Input value={extendReason} onChange={(e) => setExtendReason(e.target.value)} placeholder="e.g. Guest decided to stay one more night" />
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={extendCollect} onChange={(e) => setExtendCollect(e.target.checked)} />
+                Collect payment for the extra night now
+              </label>
+              {extendCollect && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Amount *</Label>
+                    <Input type="number" step="0.01" min="0" value={extendPayAmount} onChange={(e) => setExtendPayAmount(e.target.value)} placeholder="0.00" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Mode *</Label>
+                    <Select value={extendPayMode} onValueChange={setExtendPayMode}>
+                      <SelectTrigger><SelectValue placeholder="Select mode" /></SelectTrigger>
+                      <SelectContent>
+                        {payMethods.map((m) => <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                The invoice number stays the same. If the extra night is left unpaid the bill moves to
+                due and appears in the Dues report.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setExtendOpen(false)} disabled={extendSaving}>Cancel</Button>
+              <Button onClick={saveExtendStay} disabled={extendSaving}>{extendSaving ? "Saving…" : "Extend stay"}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

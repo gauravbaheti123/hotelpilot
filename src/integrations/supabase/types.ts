@@ -6396,6 +6396,17 @@ export type Database = {
         Args: { _amount: number; _property_id: string }
         Returns: number
       }
+      extend_stay: {
+        Args: {
+          _folio_id: string
+          _new_check_out: string
+          _new_check_out_time?: string
+          _payment_amount?: number
+          _payment_mode?: string
+          _reason?: string
+        }
+        Returns: Json
+      }
       generate_bill_number: {
         Args: { _property_id: string; _segment: string }
         Returns: string

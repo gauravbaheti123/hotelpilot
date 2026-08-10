@@ -64,4 +64,5 @@ export const ACTIVITY = {
   ROOM_RATE_EDITED_POST_SETTLEMENT: { action_type: "ROOM_RATE_EDITED_POST_SETTLEMENT", module: "Billing" },
   BILL_TO_CHANGED: { action_type: "BILL_TO_CHANGED", module: "Billing" },
   EARLY_CHECKOUT_CHOICE: { action_type: "EARLY_CHECKOUT_CHOICE", module: "Front Desk" },
+  STAY_EXTENDED_POST_SETTLEMENT: { action_type: "STAY_EXTENDED_POST_SETTLEMENT", module: "Billing" },
 } as const;
