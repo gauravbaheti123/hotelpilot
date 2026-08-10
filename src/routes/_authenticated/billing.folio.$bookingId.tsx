@@ -1627,6 +1627,78 @@ function FolioPage() {
   // (Owner, Manager) — the totals/GST/balance are re-derived on save.
   const canEditRoomRateLocked = can("invoices", "edit_room_rate_locked");
   const canEditTariff = (isOpen && can("invoices", "edit")) || canEditRoomRateLocked;
+  // Extend stay on a finalised bill: Owner/Manager only.
+  const canExtendStay = can("bookings", "extend_stay_locked");
+
+  function openExtendStay() {
+    if (!booking) return;
+    const cur = new Date(`${booking.check_out}T00:00:00`);
+    cur.setDate(cur.getDate() + 1);
+    setExtendDate(cur.toISOString().slice(0, 10));
+    setExtendTime("");
+    setExtendReason("");
+    setExtendCollect(false);
+    setExtendPayAmount("");
+    setExtendPayMode("");
+    setExtendOpen(true);
+  }
+
+  /** Moves checkout forward, re-prices the room nights and re-derives the
+   *  folio totals/GST/balance through the server routine (permission-gated). */
+  async function saveExtendStay() {
+    if (!folio || !booking) return;
+    if (!extendDate) return toast.error("Pick the new checkout date");
+    if (extendDate <= booking.check_out) {
+      return toast.error(`New checkout must be after ${booking.check_out}`);
+    }
+    const payAmt = extendCollect ? Number(extendPayAmount) : 0;
+    if (extendCollect) {
+      if (!(payAmt > 0)) return toast.error("Enter the amount collected");
+      if (!extendPayMode) return toast.error("Select a payment mode");
+    }
+    setExtendSaving(true);
+    try {
+      const { data, error } = await supabase.rpc("extend_stay" as any, {
+        _folio_id: folio.id,
+        _new_check_out: extendDate,
+        _new_check_out_time: extendTime || null,
+        _reason: extendReason.trim() || null,
+        _payment_amount: payAmt,
+        _payment_mode: extendCollect ? extendPayMode : null,
+      } as any);
+      if (error) return toastError(error);
+      const res = (data ?? {}) as any;
+      await logActivity({
+        property_id: folio.property_id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        ...ACTIVITY.STAY_EXTENDED_POST_SETTLEMENT,
+        reference_id: folio.id,
+        reference_label: `${billNo(folio.invoice_number)} — ${booking.check_out} → ${extendDate}`,
+        details: {
+          folio_id: folio.id,
+          booking_id: booking.id,
+          old_check_out: booking.check_out,
+          new_check_out: extendDate,
+          new_check_out_time: extendTime || null,
+          added_amount: res.added_amount ?? null,
+          total_amount: res.total_amount ?? null,
+          balance_amount: res.balance_amount ?? null,
+          status: res.status ?? null,
+          payment_collected: payAmt,
+          payment_mode: extendCollect ? extendPayMode : null,
+          reason: extendReason.trim() || null,
+        },
+      });
+      setExtendOpen(false);
+      toast.success(
+        `Stay extended to ${extendDate}${res.added_amount ? ` · ${inr(Number(res.added_amount))} added` : ""}`,
+      );
+      load();
+    } finally {
+      setExtendSaving(false);
+    }
+  }
 
   async function markAllServed() {
     const ids = pendingKots.map((k) => k.id);
