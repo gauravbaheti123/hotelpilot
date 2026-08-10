@@ -6453,6 +6453,7 @@ export type Database = {
         Returns: boolean
       }
       is_global_owner: { Args: { _user_id: string }; Returns: boolean }
+      is_hold_payment_mode: { Args: { _mode: string }; Returns: boolean }
       is_owner_or_super: { Args: { _user_id: string }; Returns: boolean }
       is_superadmin: { Args: { _uid: string }; Returns: boolean }
       last_handover_window_start: {
