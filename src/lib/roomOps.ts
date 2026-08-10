@@ -82,7 +82,7 @@ export async function shiftRoomOp(p: ShiftRoomParams): Promise<{ movedKots: numb
       .update({ room_id: p.toRoomId } as never)
       .eq("booking_id", p.bookingId)
       .neq("room_id", p.toRoomId)
-      .in("status", ["open", "pending"]);
+      .eq("status", "open");
     if (sbErr) console.warn("segment bill room transfer failed", sbErr.message);
   } catch (e) { console.warn("segment bill room transfer failed", e); }
 
