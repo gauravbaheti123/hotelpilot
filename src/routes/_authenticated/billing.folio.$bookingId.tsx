@@ -927,8 +927,14 @@ function FolioPage() {
    *  lookup used when the charge was first posted, then folio totals go
    *  through the existing persistTotals()/recomputeFolio() path. */
   function openEditTariff(c: Charge) {
-    if (!isOpen) { toast.error("Tariff can only be changed while the bill is OPEN"); return; }
-    if (!canEditTariff) { toast.error("You don't have permission to edit the tariff"); return; }
+    if (!canEditTariff) {
+      toast.error(
+        isOpen
+          ? "You don't have permission to edit the tariff"
+          : "Only Owner / Manager can change room rent on a finalised bill",
+      );
+      return;
+    }
     setTariffTarget(c);
     setTariffRate(String(Number(c.rate ?? 0)));
     setTariffOpen(true);
@@ -997,7 +1003,6 @@ function FolioPage() {
 
   async function saveEditTariff() {
     if (!folio || !tariffTarget) return;
-    if (!isOpen) return toast.error("Tariff can only be changed while the bill is OPEN");
     if (!canEditTariff) return toast.error("You don't have permission to edit the tariff");
     const newRate = Number(tariffRate);
     if (!Number.isFinite(newRate) || newRate < 0) return toast.error("Enter a valid tariff");
