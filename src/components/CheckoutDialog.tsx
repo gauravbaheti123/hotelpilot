@@ -155,6 +155,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
   // Bill-To confirmation gate (Phase 13.3).
   const [billToCompany, setBillToCompany] = useState<{ name: string; gstin: string | null } | null>(null);
   const [billToConfirmed, setBillToConfirmed] = useState(false);
+  // Deliberate "checkout with an outstanding balance" — replaces the old
+  // "Bill On Hold" workaround. Requires a mandatory reason.
+  const [markDue, setMarkDue] = useState(false);
+  const [dueReason, setDueReason] = useState("");
 
   // Payment form
   const [splitMode, setSplitMode] = useState(false);
