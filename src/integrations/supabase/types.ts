@@ -6596,31 +6596,19 @@ export type Database = {
         Args: { _actor?: string; _auto?: boolean; _bill_id: string }
         Returns: Json
       }
-      shift_room:
-        | {
-            Args: {
-              _booking_room_id: string
-              _new_rate: number
-              _reason: string
-              _shifted_by: string
-              _tariff_choice: string
-              _to_room_id: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              _booking_room_id: string
-              _effective_date?: string
-              _mode?: string
-              _new_rate: number
-              _reason: string
-              _shifted_by: string
-              _tariff_choice: string
-              _to_room_id: string
-            }
-            Returns: string
-          }
+      shift_room: {
+        Args: {
+          _booking_room_id: string
+          _effective_date?: string
+          _mode?: string
+          _new_rate: number
+          _reason: string
+          _shifted_by: string
+          _tariff_choice: string
+          _to_room_id: string
+        }
+        Returns: string
+      }
       split_folio_bill: {
         Args: { _folio_id: string; _payload: Json }
         Returns: Json
