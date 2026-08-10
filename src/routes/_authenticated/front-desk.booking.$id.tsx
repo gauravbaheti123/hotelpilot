@@ -833,7 +833,7 @@ function BookingDetailPage() {
         <Dialog open={shiftOpen} onOpenChange={setShiftOpen}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Shift room — Step {shiftStep} of 4</DialogTitle>
+              <DialogTitle>Shift room — Step {shiftStep} of {SHIFT_LAST_STEP}</DialogTitle>
             </DialogHeader>
             {(() => {
               const br = b.booking_rooms.find((x) => x.id === shiftBrId);
@@ -843,8 +843,37 @@ function BookingDetailPage() {
               const newRate = br ? resolveNewRate(br, target) : 0;
               return (
                 <div className="space-y-4">
-                  {/* Step 1: pick new room */}
+                  {/* Step 1: why is the guest moving? */}
                   {shiftStep === 1 && (
+                    <div className="space-y-3">
+                      <div className="text-xs font-medium text-muted-foreground">Type of shift</div>
+                      <TariffOption
+                        active={shiftMode === "same_day"} onClick={() => setShiftMode("same_day")}
+                        title="Same-day correction"
+                        line1="Wrong room was assigned — no new charge"
+                        line2="The existing room charge continues; only the room (and rate, if you change it) is corrected." />
+                      <TariffOption
+                        active={shiftMode === "mid_stay"} onClick={() => setShiftMode("mid_stay")}
+                        title="Mid-stay shift"
+                        line1="Guest actually moves during the stay"
+                        line2="Nights already stayed remain billed on the old room; a new charge line starts for the new room." />
+                      {shiftMode === "mid_stay" && (
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Moving from date *</Label>
+                          <Input type="date" className="h-9 w-48" value={shiftEffDate}
+                            min={br?.check_in ?? undefined}
+                            max={br?.check_out ?? undefined}
+                            onChange={(e) => setShiftEffDate(e.target.value)} />
+                          <div className="text-xs text-muted-foreground">
+                            Stay: {br?.check_in ?? "—"} → {br?.check_out ?? "—"}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Step 2: pick new room */}
+                  {shiftStep === 2 && (
                     <div className="space-y-3">
                       <div className="space-y-1.5">
                         <Label className="text-xs">Move to vacant room *</Label>
@@ -869,8 +898,8 @@ function BookingDetailPage() {
                     </div>
                   )}
 
-                  {/* Step 2: tariff decision */}
-                  {shiftStep === 2 && br && target && (
+                  {/* Step 3: tariff decision */}
+                  {shiftStep === 3 && br && target && (
                     <div className="space-y-3">
                       <div className="text-xs font-medium text-muted-foreground">Tariff for new room</div>
                       <TariffOption
@@ -925,13 +954,14 @@ function BookingDetailPage() {
                     </div>
                   )}
 
-                  {/* Step 3: food orders transfer */}
-                  {shiftStep === 3 && (
+                  {/* Step 4: food orders transfer */}
+                  {shiftStep === 4 && (
                     <div className="space-y-3">
-                      {pendingKots.length === 0 ? (
+                      {pendingKots.length === 0 && pendingFoodBills.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No pending food orders.</p>
                       ) : (
                         <>
+                          {pendingKots.length > 0 && (
                           <div className="flex items-center gap-2">
                             <input id="ktr" type="checkbox" checked={transferKots}
                               onChange={(e) => setTransferKots(e.target.checked)} />
@@ -939,6 +969,7 @@ function BookingDetailPage() {
                               Transfer {pendingKots.length} pending order(s) to new room
                             </Label>
                           </div>
+                          )}
                           <div className="space-y-1 text-sm">
                             {pendingKots.map((k) => (
                               <div key={k.id} className="flex justify-between border-b last:border-0 pb-1">
@@ -947,15 +978,33 @@ function BookingDetailPage() {
                               </div>
                             ))}
                           </div>
+                          {pendingFoodBills.length > 0 && (
+                            <div className="space-y-1 text-sm">
+                              <div className="text-xs font-medium text-muted-foreground">
+                                Open food bill(s) — always moved with the guest
+                              </div>
+                              {pendingFoodBills.map((fb) => (
+                                <div key={fb.id} className="flex justify-between border-b last:border-0 pb-1">
+                                  <span>{fb.bill_number ?? "Food bill"}</span>
+                                  <span>₹{Number(fb.total_amount || 0).toFixed(2)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
                   )}
 
-                  {/* Step 4: confirm */}
-                  {shiftStep === 4 && br && target && (
+                  {/* Step 5: confirm */}
+                  {shiftStep === 5 && br && target && (
                     <div className="space-y-3 text-sm">
                       <div className="rounded-md border p-3 bg-muted/30 space-y-1">
+                        <div><span className="text-muted-foreground">Type:</span>{" "}
+                          {shiftMode === "same_day"
+                            ? "Same-day correction (no extra room charge)"
+                            : `Mid-stay shift from ${shiftEffDate}`}
+                        </div>
                         <div><span className="text-muted-foreground">From:</span> Room {br.rooms?.room_number} ({br.room_categories?.name}) @ ₹{fromRate}/night</div>
                         <div><span className="text-muted-foreground">To:</span> Room {target.room_number} ({target.room_categories?.name ?? "—"}) @ ₹{newRate}/night
                           {tariffChoice === "custom" && <Badge variant="outline" className="ml-2 text-[10px] border-amber-400 text-amber-700">Custom</Badge>}
@@ -963,6 +1012,9 @@ function BookingDetailPage() {
                           {tariffChoice === "new_standard" && <Badge variant="outline" className="ml-2 text-[10px]">New standard</Badge>}
                         </div>
                         <div><span className="text-muted-foreground">Pending orders transferred:</span> {transferKots ? pendingKots.length : 0}</div>
+                        {pendingFoodBills.length > 0 && (
+                          <div><span className="text-muted-foreground">Open food bills moved:</span> {pendingFoodBills.length}</div>
+                        )}
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs">Reason *</Label>
@@ -979,22 +1031,27 @@ function BookingDetailPage() {
               <Button variant="outline" onClick={() => setShiftOpen(false)} disabled={shiftBusy}>Cancel</Button>
               <div className="flex gap-2">
                 {shiftStep > 1 && (
-                  <Button variant="outline" onClick={() => setShiftStep((s) => (s - 1) as 1 | 2 | 3 | 4)} disabled={shiftBusy}>Back</Button>
+                  <Button variant="outline" onClick={() => setShiftStep((s: ShiftStep) => (s - 1) as ShiftStep)} disabled={shiftBusy}>Back</Button>
                 )}
-                {shiftStep < 4 && (
+                {shiftStep < SHIFT_LAST_STEP && (
                   <Button
                     onClick={async () => {
-                      if (shiftStep === 1 && !shiftToRoom) return toast.error("Pick a target room");
-                      if (shiftStep === 2) {
+                      if (shiftStep === 1 && shiftMode === "mid_stay") {
+                        if (!shiftEffDate) return toast.error("Pick the date the guest moves");
+                        if (br?.check_in && shiftEffDate <= br.check_in) return toast.error("Shift date must be after the check-in date");
+                        if (br?.check_out && shiftEffDate >= br.check_out) return toast.error("Shift date must be before the check-out date");
+                      }
+                      if (shiftStep === 2 && !shiftToRoom) return toast.error("Pick a target room");
+                      if (shiftStep === 3) {
                         if (tariffChoice === "custom" && (!customRate || Number(customRate) <= 0)) return toast.error("Enter a custom rate");
                         if (tariffChoice === "custom" && !mgrApproved) return toast.error("Manager must authorise the custom rate");
                       }
-                      if (shiftStep === 2) await loadPendingKotsFor(shiftBrId);
-                      setShiftStep((s) => (s + 1) as 1 | 2 | 3 | 4);
+                      if (shiftStep === 3) await loadPendingKotsFor(shiftBrId);
+                      setShiftStep((s: ShiftStep) => (s + 1) as ShiftStep);
                     }}
                   >Next</Button>
                 )}
-                {shiftStep === 4 && (
+                {shiftStep === SHIFT_LAST_STEP && (
                   <Button onClick={doShift} disabled={shiftBusy || !shiftReason.trim()}>
                     {shiftBusy ? "Shifting…" : "Confirm Shift"}
                   </Button>
