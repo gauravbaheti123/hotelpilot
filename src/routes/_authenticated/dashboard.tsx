@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
+import { isHoldPayment } from "@/lib/billing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useFolioOpener } from "@/components/FolioOpenButton";
