@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import {
   inr, inrRound, recomputeFolio, computeBillDiscountAmount,
   distributeWithRemainder, weightedGstRate, netSubtotalOf,
+  realPaidTotal, isHoldPayment, overpaymentError,
   type BillDiscount,
 } from "@/lib/billing";
 import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
