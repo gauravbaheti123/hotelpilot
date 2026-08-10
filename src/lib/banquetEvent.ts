@@ -8,6 +8,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { reportQueryError } from "@/lib/queryError";
+import { realPaidTotal, overpaymentError } from "@/lib/billing";
 
 /** Columns that live on `bookings` (all of them now). */
 const UNIFIED_FIELDS = new Set([
