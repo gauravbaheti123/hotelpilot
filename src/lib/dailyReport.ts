@@ -9,6 +9,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import { isHoldPayment, HOLD_PAYMENT_MODE } from "@/lib/billing";
+import { istAddDays } from "@/lib/date";
 import { resolveTaxType } from "@/lib/gst";
 import { reportQueryError } from "@/lib/queryError";
 import type { ReportColumn } from "@/lib/reportExports";
