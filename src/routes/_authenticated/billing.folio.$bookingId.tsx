@@ -37,7 +37,7 @@ import {
   overpaymentError,
 } from "@/lib/billing";
 import { searchGuests } from "@/lib/guestIdLookup";
-import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil, CalendarPlus } from "lucide-react";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
@@ -2331,6 +2331,11 @@ function FolioPage() {
               {canEditNow && (
                 <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
                   <Plus className="h-4 w-4 mr-1" /> Add charge
+                </Button>
+              )}
+              {!isOpen && canExtendStay && (
+                <Button size="sm" variant="outline" onClick={openExtendStay}>
+                  <CalendarPlus className="h-4 w-4 mr-1" /> Extend stay
                 </Button>
               )}
               {isOpen && (
