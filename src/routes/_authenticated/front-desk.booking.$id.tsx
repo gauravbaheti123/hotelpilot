@@ -1037,9 +1037,10 @@ function BookingDetailPage() {
                   <Button
                     onClick={async () => {
                       if (shiftStep === 1 && shiftMode === "mid_stay") {
+                        const cur = b.booking_rooms.find((x) => x.id === shiftBrId);
                         if (!shiftEffDate) return toast.error("Pick the date the guest moves");
-                        if (br?.check_in && shiftEffDate <= br.check_in) return toast.error("Shift date must be after the check-in date");
-                        if (br?.check_out && shiftEffDate >= br.check_out) return toast.error("Shift date must be before the check-out date");
+                        if (cur?.check_in && shiftEffDate <= cur.check_in) return toast.error("Shift date must be after the check-in date");
+                        if (cur?.check_out && shiftEffDate >= cur.check_out) return toast.error("Shift date must be before the check-out date");
                       }
                       if (shiftStep === 2 && !shiftToRoom) return toast.error("Pick a target room");
                       if (shiftStep === 3) {
