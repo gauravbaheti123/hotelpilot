@@ -247,10 +247,16 @@ function FolioPage() {
   // Edit payment mode — dynamic RBAC key, granted to all roles by default.
   const canEditPaymentMode = can("payments", "edit_mode");
   const canDeletePayment = can("payments", "delete");
+  // Date-only edit on a recorded payment — Owner/Manager (payments/edit_date).
+  const canEditPaymentDate = can("payments", "edit_date");
   const [payEditOpen, setPayEditOpen] = useState(false);
   const [payEditTarget, setPayEditTarget] = useState<Payment | null>(null);
   const [payEditMode, setPayEditMode] = useState<string>("cash");
   const [payEditSaving, setPayEditSaving] = useState(false);
+  const [payDateOpen, setPayDateOpen] = useState(false);
+  const [payDateTarget, setPayDateTarget] = useState<Payment | null>(null);
+  const [payDateValue, setPayDateValue] = useState<string>("");
+  const [payDateSaving, setPayDateSaving] = useState(false);
   const [payModeHistory, setPayModeHistory] = useState<Record<string, Array<{ old_mode: string; new_mode: string; user_name: string; created_at: string }>>>({});
   const [editDesc, setEditDesc] = useState("");
   const [editQty, setEditQty] = useState("1");
@@ -1310,6 +1316,62 @@ function FolioPage() {
     setPayEditTarget(p);
     setPayEditMode(p.mode);
     setPayEditOpen(true);
+  }
+
+  /** Local "yyyy-MM-ddTHH:mm" string for a datetime-local input. */
+  function toLocalInput(iso: string) {
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function openEditPaymentDate(p: Payment) {
+    if (!canEditPaymentDate) return;
+    setPayDateTarget(p);
+    setPayDateValue(toLocalInput(p.paid_at));
+    setPayDateOpen(true);
+  }
+
+  /** Date-only correction: amount, mode, reference and folio totals stay untouched. */
+  async function savePaymentDate() {
+    if (!payDateTarget || !folio || !booking) return;
+    if (!payDateValue) return toast.error("Pick a payment date");
+    const next = new Date(payDateValue);
+    if (Number.isNaN(next.getTime())) return toast.error("Invalid payment date");
+    const oldIso = payDateTarget.paid_at;
+    if (new Date(oldIso).getTime() === next.getTime()) { setPayDateOpen(false); return; }
+    setPayDateSaving(true);
+    const { error } = await supabase.rpc("change_payment_date" as any, {
+      _payment_id: payDateTarget.id,
+      _new_paid_at: next.toISOString(),
+      _reason: null,
+    } as any);
+    setPayDateSaving(false);
+    if (error) return toastError(error);
+    const fmt = (v: string | Date) => new Date(v).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    await logActivity({
+      property_id: booking.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      ...ACTIVITY.PAYMENT_DATE_CHANGED,
+      reference_id: payDateTarget.id,
+      reference_label: `${billNo(folio.invoice_number)} — ₹${Number(payDateTarget.amount)}: ${fmt(oldIso)} → ${fmt(next)}`,
+      details: {
+        payment_id: payDateTarget.id,
+        folio_id: folio.id,
+        bill_number: billNo(folio.invoice_number),
+        booking_id: booking.id,
+        amount: Number(payDateTarget.amount),
+        mode: payDateTarget.mode,
+        old_paid_at: oldIso,
+        new_paid_at: next.toISOString(),
+        changed_by: user?.id ?? null,
+        changed_at: new Date().toISOString(),
+      },
+    });
+    setPayDateOpen(false);
+    toast.success("Payment date updated");
+    load();
   }
 
   /** Delete a recorded payment (payments/delete — Owner). The RPC removes the
@@ -2647,6 +2709,16 @@ function FolioPage() {
                                 <Pencil className="h-3 w-3 mr-0.5" /> Mode
                               </button>
                             )}
+                            {canEditPaymentDate && (
+                              <button
+                                type="button"
+                                onClick={() => openEditPaymentDate(p)}
+                                className="print:hidden ml-2 inline-flex items-center rounded border border-gray-300 px-1.5 py-0.5 text-[10px] text-gray-600 hover:bg-gray-50"
+                                title="Edit payment date"
+                              >
+                                <Pencil className="h-3 w-3 mr-0.5" /> Date
+                              </button>
+                            )}
                             {canDeletePayment && (
                               <button
                                 type="button"
@@ -2805,6 +2877,39 @@ function FolioPage() {
                 style={{ background: TEAL, color: "#fff" }}
               >
                 {payEditSaving ? "Saving…" : "Save mode"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* EDIT PAYMENT DATE (Owner/Manager) */}
+        <Dialog open={payDateOpen} onOpenChange={setPayDateOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Edit payment date</DialogTitle></DialogHeader>
+            {payDateTarget && (
+              <div className="space-y-3">
+                <div className="rounded-md border bg-muted/30 p-2 text-xs">
+                  <div><span className="text-muted-foreground">Amount:</span> <span className="font-semibold">{inr(payDateTarget.amount)}</span></div>
+                  <div><span className="text-muted-foreground">Mode:</span> <span className="capitalize">{payDateTarget.mode.replace(/_/g, " ")}</span></div>
+                  <div><span className="text-muted-foreground">Current date:</span> {new Date(payDateTarget.paid_at).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">New payment date &amp; time</Label>
+                  <Input type="datetime-local" value={payDateValue} onChange={(e) => setPayDateValue(e.target.value)} />
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Date only — amount, mode, reference and the bill&apos;s totals stay unchanged.
+                </p>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPayDateOpen(false)}>Cancel</Button>
+              <Button
+                onClick={savePaymentDate}
+                disabled={payDateSaving || !payDateTarget || !payDateValue}
+                style={{ background: TEAL, color: "#fff" }}
+              >
+                {payDateSaving ? "Saving…" : "Save date"}
               </Button>
             </DialogFooter>
           </DialogContent>
