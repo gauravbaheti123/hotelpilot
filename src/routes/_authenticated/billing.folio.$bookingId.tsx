@@ -644,10 +644,18 @@ function FolioPage() {
     const t = recomputeFolio(nextCharges, mode, billDisc);
     // "Bill On Hold" rows are staff markers, not collected money.
     const paid = realPaidTotal(nextPayments as any[]);
+    const balance = Math.max(0, t.total_amount - paid);
+    // A finalised bill (settled / due) that no longer balances must stay
+    // finalised and show up in the Dues report — never silently re-open.
+    const wasFinalised = folio.status === "settled" || folio.status === "due";
+    const statusPatch: Partial<Folio> = wasFinalised
+      ? ({ status: balance > 0.01 ? "due" : "settled" } as Partial<Folio>)
+      : {};
     await supabase.from("folios").update({
       ...t,
       paid_amount: paid,
-      balance_amount: Math.max(0, t.total_amount - paid),
+      balance_amount: balance,
+      ...statusPatch,
       ...extraFolioPatch,
     }).eq("id", folio.id);
   }
