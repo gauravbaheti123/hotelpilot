@@ -72,6 +72,20 @@ export async function shiftRoomOp(p: ShiftRoomParams): Promise<{ movedKots: numb
   const { data: toRoom } = await supabase.from("rooms").select("room_number").eq("id", p.toRoomId).maybeSingle();
   toRoomNumber = (toRoom as { room_number?: string } | null)?.room_number ?? null;
 
+  // Food / restaurant segment bills are room-scoped (segment_bills.room_id), so
+  // they must ALWAYS follow the guest on a shift — unconditionally, unlike the
+  // optional KOT transfer. Otherwise an open food bill stays stuck on the old
+  // room and shows up on the wrong dashboard card.
+  try {
+    const { error: sbErr } = await supabase
+      .from("segment_bills")
+      .update({ room_id: p.toRoomId } as never)
+      .eq("booking_id", p.bookingId)
+      .neq("room_id", p.toRoomId)
+      .eq("status", "open");
+    if (sbErr) console.warn("segment bill room transfer failed", sbErr.message);
+  } catch (e) { console.warn("segment bill room transfer failed", e); }
+
   if (p.transferKots && p.fromRoomId) {
     try {
       const fromId = p.fromRoomId;
