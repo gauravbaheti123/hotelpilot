@@ -3234,6 +3234,62 @@ function FolioPage() {
           </DialogContent>
         </Dialog>
 
+        {/* EXTEND STAY (finalised bill — Owner/Manager) */}
+        <Dialog open={extendOpen} onOpenChange={setExtendOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Extend stay</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div className="text-xs text-muted-foreground">
+                Current checkout: <b>{booking.check_out}</b>. The extra night(s) are billed at the
+                room's current tariff and the bill's totals, GST and balance are recalculated.
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">New checkout date *</Label>
+                  <Input type="date" value={extendDate} min={booking.check_out} onChange={(e) => setExtendDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Checkout time</Label>
+                  <Input type="time" value={extendTime} onChange={(e) => setExtendTime(e.target.value)} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Reason</Label>
+                <Input value={extendReason} onChange={(e) => setExtendReason(e.target.value)} placeholder="e.g. Guest decided to stay one more night" />
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={extendCollect} onChange={(e) => setExtendCollect(e.target.checked)} />
+                Collect payment for the extra night now
+              </label>
+              {extendCollect && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Amount *</Label>
+                    <Input type="number" step="0.01" min="0" value={extendPayAmount} onChange={(e) => setExtendPayAmount(e.target.value)} placeholder="0.00" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Mode *</Label>
+                    <Select value={extendPayMode} onValueChange={setExtendPayMode}>
+                      <SelectTrigger><SelectValue placeholder="Select mode" /></SelectTrigger>
+                      <SelectContent>
+                        {payMethods.map((m) => <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                The invoice number stays the same. If the extra night is left unpaid the bill moves to
+                due and appears in the Dues report.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setExtendOpen(false)} disabled={extendSaving}>Cancel</Button>
+              <Button onClick={saveExtendStay} disabled={extendSaving}>{extendSaving ? "Saving…" : "Extend stay"}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* VOID */}
         <Dialog open={voidOpen} onOpenChange={setVoidOpen}>
           <DialogContent>
