@@ -166,11 +166,14 @@ function BookingDetailPage() {
   const [shiftBrId, setShiftBrId] = useState<string>("");
   const [shiftToRoom, setShiftToRoom] = useState<string>("");
   const [shiftReason, setShiftReason] = useState("");
-  const [shiftStep, setShiftStep] = useState<1 | 2 | 3 | 4>(1);
+  const [shiftStep, setShiftStep] = useState<ShiftStep>(1);
+  const [shiftMode, setShiftMode] = useState<"same_day" | "mid_stay">("same_day");
+  const [shiftEffDate, setShiftEffDate] = useState<string>("");
   const [tariffChoice, setTariffChoice] = useState<"keep" | "new_standard" | "custom">("keep");
   const [customRate, setCustomRate] = useState("");
   const [transferKots, setTransferKots] = useState(true);
   const [pendingKots, setPendingKots] = useState<{ id: string; kot_number: string; status: string; total_amount: number }[]>([]);
+  const [pendingFoodBills, setPendingFoodBills] = useState<{ id: string; bill_number: string | null; total_amount: number }[]>([]);
   const [mgrEmail, setMgrEmail] = useState("");
   const [mgrPass, setMgrPass] = useState("");
   const [mgrBusy, setMgrBusy] = useState(false);
