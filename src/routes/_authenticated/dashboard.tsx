@@ -1577,6 +1577,11 @@ const RoomCard = memo(function RoomCard({
             <div style={{ fontSize: 12, fontWeight: 700, color: pending > 0 ? "#DC2626" : meta.fgMuted }}>
               {pending > 0 ? `₹${pending.toLocaleString("en-IN")} pending` : "Balance ₹0"}
             </div>
+            {pending > 0 && sharedRooms > 1 && (
+              <div style={{ color: meta.fgMuted, fontSize: 10 }}>
+                shared across {sharedRooms} rooms
+              </div>
+            )}
             <div className="mt-auto pt-1">
               <button
                 type="button"
