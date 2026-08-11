@@ -6305,6 +6305,10 @@ export type Database = {
     }
     Functions: {
       auto_cancel_incomplete_bookings: { Args: never; Returns: number }
+      auto_cancel_no_show_bookings: {
+        Args: { _grace_days?: number }
+        Returns: Json
+      }
       auto_close_segment_bills: { Args: never; Returns: number }
       available_rooms: {
         Args: {
