@@ -44,6 +44,86 @@ interface PermState {
   map: PermMap;
 }
 
+// --- Shared realtime watcher (one channel per browser session) -------------
+type RoleIdsRef = { current: string[] };
+
+let watch: {
+  key: string;
+  refs: number;
+  channel: ReturnType<typeof supabase.channel>;
+  timer: ReturnType<typeof setTimeout> | null;
+  roleRefs: Set<RoleIdsRef>;
+} | null = null;
+
+function acquirePermWatch(
+  userId: string,
+  propertyId: string | null,
+  qc: ReturnType<typeof useQueryClient>,
+  roleIdsRef: RoleIdsRef,
+): () => void {
+  const key = `${userId}::${propertyId ?? ""}`;
+
+  if (watch && watch.key !== key) teardownPermWatch();
+
+  if (!watch) {
+    const state = {
+      key,
+      refs: 0,
+      timer: null as ReturnType<typeof setTimeout> | null,
+      roleRefs: new Set<RoleIdsRef>(),
+      channel: supabase.channel(`perm-watch-${userId}-${Math.random().toString(36).slice(2)}`),
+    };
+    const bump = () => {
+      if (state.timer) clearTimeout(state.timer);
+      state.timer = setTimeout(() => {
+        qc.invalidateQueries({ queryKey: permissionsQueryKey(userId, propertyId) });
+      }, 400);
+    };
+    state.channel
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "role_permissions" },
+        (p) => {
+          const rec = (p.new ?? p.old ?? {}) as { role_id?: string };
+          // Only react to grants for roles some mounted hook actually uses.
+          if (rec.role_id) {
+            let used = false;
+            for (const r of state.roleRefs) {
+              if (r.current.includes(rec.role_id)) { used = true; break; }
+            }
+            if (!used) return;
+          }
+          bump();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "user_roles", filter: `user_id=eq.${userId}` },
+        () => bump(),
+      )
+      .subscribe();
+    watch = state;
+  }
+
+  const current = watch;
+  current.refs += 1;
+  current.roleRefs.add(roleIdsRef);
+
+  return () => {
+    if (watch !== current) return;
+    current.roleRefs.delete(roleIdsRef);
+    current.refs -= 1;
+    if (current.refs <= 0) teardownPermWatch();
+  };
+}
+
+function teardownPermWatch() {
+  if (!watch) return;
+  if (watch.timer) clearTimeout(watch.timer);
+  supabase.removeChannel(watch.channel);
+  watch = null;
+}
+
 /**
  * Fetches the effective permission map for the signed-in user within the
  * currently-selected property. Superadmins are treated as fully allowed.
