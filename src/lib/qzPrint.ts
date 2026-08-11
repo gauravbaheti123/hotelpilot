@@ -306,7 +306,13 @@ export async function printToPrinter(
       ]);
       return;
     } catch (err) {
-      console.error("[qz/print-job] raster path failed, falling back to HTML", err);
+      // No HTML fallback for thermal: QZ's own HTML renderer produces the
+      // truncated / missing-column tickets this raster path exists to avoid.
+      // Surfacing the error lets the caller fall back to the browser dialog.
+      console.error("[qz/print-job] raster path failed", err);
+      throw new Error(
+        `Thermal rasterization failed for "${printerName}": ${(err as Error)?.message ?? err}`,
+      );
     }
   }
   await qz.print(cfg, [
