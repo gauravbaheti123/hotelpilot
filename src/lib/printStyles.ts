@@ -80,9 +80,18 @@ export async function fetchBillPrinter(
     .eq("is_active", true)
     .in("type", ["bill", "both"])
     .order("is_default", { ascending: false })
-    .limit(1);
+    .order("name", { ascending: true });
   if (__qe1) reportQueryError("printers", __qe1);
-  const row = data?.[0] as { name?: string; paper_size?: string | null } | undefined;
+  const rows = (data ?? []) as { name?: string; paper_size?: string | null; is_default?: boolean }[];
+  // Food / Laundry counter bills are thermal documents. When no printer is
+  // flagged as default, picking whatever row came back first could route the
+  // ticket to an A4 bill printer (which then renders through QZ's HTML path
+  // and prints truncated). Prefer a thermal roll printer unless one is
+  // explicitly marked default.
+  const row =
+    rows.find((r) => r.is_default) ??
+    rows.find((r) => isThermal(r.paper_size)) ??
+    rows[0];
   if (!row?.name) return null;
   return { name: row.name, paper_size: (row.paper_size as string) ?? "80mm" };
 }
