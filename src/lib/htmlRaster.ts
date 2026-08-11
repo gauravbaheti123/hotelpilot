@@ -146,17 +146,30 @@ export async function rasterizeHtmlToPng(
       ) + 12;
     iframe.style.height = `${heightPx}px`;
     const html2canvas = (await import("html2canvas")).default;
-    const canvas = await html2canvas(doc.body, {
-      backgroundColor: "#ffffff",
-      width: widthPx,
-      height: heightPx,
-      windowWidth: widthPx,
-      windowHeight: heightPx,
-      scale,
-      useCORS: true,
-      logging: false,
-    });
-    const dataUrl = canvas.toDataURL("image/png");
+    const shoot = () =>
+      html2canvas(doc.body, {
+        backgroundColor: "#ffffff",
+        width: widthPx,
+        height: heightPx,
+        windowWidth: widthPx,
+        windowHeight: heightPx,
+        scale,
+        useCORS: true,
+        logging: false,
+      });
+    let canvas = await shoot();
+    let dataUrl: string;
+    try {
+      dataUrl = canvas.toDataURL("image/png");
+    } catch (err) {
+      // Last-resort: a tainted canvas means an image slipped through. Drop
+      // every image and re-shoot — a logo-less bill beats a garbled one.
+      console.warn("[raster] canvas tainted, retrying without images", err);
+      Array.from(doc.images ?? []).forEach((img) => img.remove());
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      canvas = await shoot();
+      dataUrl = canvas.toDataURL("image/png");
+    }
     const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
     console.info("[raster] html→png", {
       cssWidthPx: widthPx,
