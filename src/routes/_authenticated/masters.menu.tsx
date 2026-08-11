@@ -102,12 +102,13 @@ function MenuPage() {
     setLoading(true);
     const [c, i, p] = await Promise.all([
       supabase.from("menu_categories")
-        .select("id,property_id,name,sort_order,is_active,kot_printer_id")
+        .select("id,name,kot_type,sort_order,is_active,kot_printer_id")
         .eq("property_id", current.id).order("sort_order"),
-      // PERF: never `select("*")` here — the master grid only renders these
-      // columns, and the wide row pulled the whole menu table on every visit.
+      // PERF: never `select("*")` here — the grid and the edit dialog only
+      // use these columns, and the wide row pulled the whole menu table
+      // (mean 397 ms) on every visit.
       supabase.from("menu_items")
-        .select("id,property_id,category_id,name,short_code,price,gst_rate,is_available,is_active,kot_station,kitchen_printer_id,sort_order")
+        .select("id,category_id,name,code,short_code,price,gst_rate,hsn_code,is_veg,is_available,kitchen_type,kitchen_printer_id")
         .eq("property_id", current.id).order("name"),
       supabase.from("printers")
         .select("id,name,location,type")
