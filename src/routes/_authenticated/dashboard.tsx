@@ -591,6 +591,10 @@ function OwnerDashboard({
 
   // Live updates: Realtime subscription + 60s polling fallback
   const [liveStatus, setLiveStatus] = useState<"connecting" | "live" | "polling">("connecting");
+  // Read inside the interval so the poll sees the CURRENT status without
+  // tearing down and re-subscribing the channel on every status change.
+  const liveStatusRef = useRef(liveStatus);
+  liveStatusRef.current = liveStatus;
   useEffect(() => {
     if (!propertyId) return;
     let cancelled = false;
@@ -616,6 +620,9 @@ function OwnerDashboard({
       // segment_bills (Phase 17), so a KOT write has nothing to invalidate
       // here — the segment_bills channel below covers it. Do not re-add.
       .on("postgres_changes", { event: "*", schema: "public", table: "event_room_blocks", filter }, debouncedReload)
+      // Pending-food badges come from open segment_bills, so this binding is
+      // what keeps the room tiles live after a KOT is punched/settled.
+      .on("postgres_changes", { event: "*", schema: "public", table: "segment_bills", filter }, debouncedReload)
       .subscribe((status) => {
         if (cancelled) return;
         if (status === "SUBSCRIBED") setLiveStatus("live");
@@ -626,7 +633,15 @@ function OwnerDashboard({
     let interval: ReturnType<typeof setInterval> | null = null;
     const startPolling = () => {
       if (interval) clearInterval(interval);
-      interval = setInterval(() => { if (!cancelled) reload(); }, 60_000);
+      // PERF: this is a FALLBACK, not a safety net. While realtime is
+      // confirmed live the channel already pushes every change, so the tick
+      // skips its 4-query reload entirely. It only fetches when the
+      // subscription is connecting, errored or closed.
+      interval = setInterval(() => {
+        if (cancelled) return;
+        if (liveStatusRef.current === "live") return;
+        reload();
+      }, 60_000);
     };
     const stopPolling = () => {
       if (interval) { clearInterval(interval); interval = null; }
