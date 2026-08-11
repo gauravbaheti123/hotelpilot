@@ -68,15 +68,27 @@ function fmtWhen(iso: string) {
   }
 }
 
-export function RemindersBell({ propertyId, userId }: { propertyId: string | null; userId: string }) {
-  const qc = useQueryClient();
-  const qKey = ["reminders", propertyId] as const;
-  const { data: reminders = [] } = useQuery<Reminder[]>({
-    queryKey: qKey,
+/**
+ * Single source of truth for the reminders poll.
+ *
+ * PERF: the bell and the dashboard section used to each own a
+ * `setInterval(..., 60_000)` firing its own query — two network calls per
+ * minute for the same rows (~29.6k calls observed). They now share one
+ * React Query entry with `refetchInterval`, so React Query dedupes them into
+ * ONE request per minute no matter how many consumers are mounted. Never
+ * re-add a component-local reminders poll.
+ */
+const remindersKey = (propertyId: string | null) => ["reminders", propertyId] as const;
+
+function useRemindersQuery(propertyId: string | null) {
+  return useQuery<Reminder[]>({
+    queryKey: remindersKey(propertyId),
     enabled: !!propertyId,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
     refetchOnWindowFocus: false,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       if (!propertyId) return [];
       const { data, error: __qe1 } = await supabase
@@ -90,6 +102,12 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
       return (data ?? []) as Reminder[];
     },
   });
+}
+
+export function RemindersBell({ propertyId, userId }: { propertyId: string | null; userId: string }) {
+  const qc = useQueryClient();
+  const qKey = remindersKey(propertyId);
+  const { data: reminders = [] } = useRemindersQuery(propertyId);
   const setReminders = (updater: (rs: Reminder[]) => Reminder[]) => {
     qc.setQueryData<Reminder[]>(qKey, (rs) => updater(rs ?? []));
   };
@@ -101,10 +119,12 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
   const alertedRef = useRef<Map<string, { pre: boolean; now: boolean }>>(new Map());
 
   const load = useCallback(async () => {
-    await qc.invalidateQueries({ queryKey: qKey });
+    await qc.invalidateQueries({ queryKey: remindersKey(propertyId) });
   }, [qc, propertyId]);
 
-  // 60-second poll: refresh + check 15-min advance window
+  // 60-second local tick: evaluates the 15-min advance window against the
+  // rows the shared query already holds. NO fetch here — refetching is owned
+  // by useRemindersQuery's refetchInterval.
   useEffect(() => {
     if (!propertyId) return;
     const tick = () => {
@@ -153,7 +173,7 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
       });
     };
     tick();
-    const id = window.setInterval(() => { load(); tick(); }, 60_000);
+    const id = window.setInterval(tick, 60_000);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propertyId, reminders]);
@@ -297,29 +317,21 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
 }
 
 export function RemindersSection({ propertyId, userId }: { propertyId: string | null; userId: string }) {
-  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const qc = useQueryClient();
+  // Shares the SAME query entry as RemindersBell — one poll, two consumers.
+  const { data: fetched = [], refetch } = useRemindersQuery(propertyId);
+  const reminders = [...fetched].sort(
+    (a, b) => a.reminder_datetime.localeCompare(b.reminder_datetime),
+  );
+  const setReminders = (updater: (rs: Reminder[]) => Reminder[]) => {
+    qc.setQueryData<Reminder[]>(remindersKey(propertyId), (rs) => updater(rs ?? []));
+  };
   const [addOpen, setAddOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [when, setWhen] = useState("");
   const [notes, setNotes] = useState("");
 
-  const load = useCallback(async () => {
-    if (!propertyId) { setReminders([]); return; }
-    const { data, error: __qe2 } = await supabase
-      .from("reminders")
-      .select("id, property_id, title, reminder_datetime, notes, is_dismissed, created_at")
-      .eq("property_id", propertyId)
-      .eq("is_dismissed", false)
-      .order("reminder_datetime", { ascending: true });
-    if (__qe2) reportQueryError("reminders", __qe2);
-    setReminders((data ?? []) as Reminder[]);
-  }, [propertyId]);
-
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => {
-    const id = window.setInterval(load, 60_000);
-    return () => window.clearInterval(id);
-  }, [load]);
+  const load = useCallback(async () => { await refetch(); }, [refetch]);
 
   async function dismiss(id: string) {
     await supabase.from("reminders").update({ is_dismissed: true }).eq("id", id);

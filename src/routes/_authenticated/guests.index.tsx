@@ -150,10 +150,16 @@ function GuestsListPage() {
    * Fetches one page of guests. Search and the filter chips are applied
    * server-side now that the client no longer holds the full table.
    */
-  const fetchPage = useCallback(async (offset: number) => {
+  const fetchPage = useCallback(async (offset: number, withCount = offset === 0) => {
     const term = debouncedQ.replace(/[,()]/g, " ").trim();
+    // PERF: the exact count is a second full scan of the filtered set. The
+    // header only needs it once, on the first page — every "load more" page
+    // used to pay for it again. Pass withCount=false for subsequent pages.
     let query = supabase.from("guests")
-      .select("id,name,mobile,email,city,tags,is_blacklisted,gst_number,company,guest_type", { count: "exact" })
+      .select(
+        "id,name,mobile,email,city,tags,is_blacklisted,gst_number,company,guest_type",
+        withCount ? { count: "exact" } : undefined,
+      )
       .eq("property_id", propertyId!);
     if (filter === "blacklist") query = query.eq("is_blacklisted", true);
     if (filter === "corporate") query = query.eq("guest_type", "corporate");
@@ -196,7 +202,7 @@ function GuestsListPage() {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
-      const { batch } = await fetchPage(rows.length);
+      const { batch } = await fetchPage(rows.length, false);
       setRows((prev) => [...prev, ...batch]);
       setHasMore(batch.length === LIST_PAGE_SIZE);
     } catch (error: any) {
