@@ -1467,6 +1467,7 @@ const RoomCard = memo(function RoomCard({
   const hasFood = !!pendingFood && pendingFood.amount > 0;
   const baseBalance = occ?.balance ?? 0;
   const pending = baseBalance + (hasFood ? pendingFood!.amount : 0);
+  const sharedRooms = occ?.roomCount ?? 1;
 
   if (isEventBlock || isEventCheckedIn) {
     const evBg = isEventCheckedIn ? eventInBg() : eventBlockBg();
