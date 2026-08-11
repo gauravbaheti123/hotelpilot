@@ -442,7 +442,8 @@ export function isStepValid(step: number, s: WizardState): boolean {
     if (banquet) return true;
     if ((s.adults ?? 0) < 1) return false;
     return (s.extraGuests ?? []).every(
-      (g) => g.name.trim().length > 0 && g.relation.trim().length > 0 &&
+      // Relation to primary guest is optional.
+      (g) => g.name.trim().length > 0 &&
         (g.mobile.length === 0 || isValidMobile(g.mobile)),
     );
   }
