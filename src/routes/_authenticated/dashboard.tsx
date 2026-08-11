@@ -111,6 +111,7 @@ type OccInfo = {
   checkInTime: string | null;
   checkOutTime: string | null;
   balance: number;
+  roomCount: number;
 };
 
 type RoomEventInfo = {
@@ -305,7 +306,6 @@ function OwnerDashboard({
     const depRows: any[] = grid.departures ?? [];
     const rmsRows: any[] = grid.rooms ?? [];
     const activeBRRows: any[] = grid.active_booking_rooms ?? [];
-    const kotRows: any[] = grid.kots ?? [];
     const revenue = Number(grid.payments_total ?? 0);
 
       const occSet = new Set<string>(
@@ -324,6 +324,7 @@ function OwnerDashboard({
             checkInTime: b.check_in_time ?? null,
             checkOutTime: b.check_out_time ?? null,
             balance: Number(b.balance_amount || 0),
+            roomCount: Number(b.room_count || 1),
           });
         }
       });
@@ -331,45 +332,12 @@ function OwnerDashboard({
       setBookingByRoom(bMap);
       setOccInfoByRoom(oMap);
 
-      // Self-heal: reset only TRUE orphans — rooms flagged occupied with no
-      // active booking_rooms row referencing them at all.
-      //
-      // REGRESSION GUARD (audited: "phantom auto checkout" bug, Phase 16):
-      // NEVER vacate a room because its scheduled check_out date/time has
-      // passed. A guest is released only by the explicit Checkout flow. An
-      // overdue stay keeps an OPEN folio with a pending balance; auto-vacating
-      // it makes the front desk think the room is free and re-let it while the
-      // previous bill is unsettled. Overdue stays are surfaced by the
-      // display-only "Overdue / Checkout due" indicator instead.
-      if (isToday) {
-        const potentialGhosts = rmsRows
-          .filter((r: any) => r.status === "occupied" && !occSet.has(r.id))
-          .map((r: any) => r.id);
-        if (potentialGhosts.length > 0) {
-          // Re-check against ALL active bookings with NO date filter, so an
-          // overdue checked-in booking still holds its room.
-          const { data: stillActive, error: __qe1 } = await supabase
-            .from("booking_rooms")
-            .select("room_id, actual_check_out, bookings!booking_rooms_booking_id_fkey!inner(status,property_id)")
-            .eq("bookings.property_id", propertyId)
-            .in("bookings.status", ["reserved", "checked_in"])
-            .in("room_id", potentialGhosts);
-          if (__qe1) reportQueryError("booking rooms", __qe1);
-          const heldRoomIds = new Set(
-            (stillActive ?? [])
-              .filter((b: any) => !b.actual_check_out)
-              .map((b: any) => b.room_id)
-              .filter(Boolean),
-          );
-          const ghosts = potentialGhosts.filter((id: string) => !heldRoomIds.has(id));
-          if (ghosts.length > 0) {
-            supabase.from("rooms")
-              .update({ status: "vacant" as any, housekeeping_status: "dirty" as any })
-              .in("id", ghosts)
-              .then(({ error }) => { if (error) console.warn("ghost cleanup failed", error); });
-          }
-        }
-      }
+      // NOTE: this screen is READ-ONLY. It never repairs rooms.status.
+      // Room occupancy on the grid is derived from live booking_rooms rows
+      // (see dashboard_grid.active_booking_rooms), so a stale rooms.status
+      // flag cannot produce a ghost tile here. Any genuine drift must be
+      // fixed by the state-changing flows (check-in / checkout / shift),
+      // not papered over on page load.
       setKpi({
         occupied: occSet.size,
         arrivals: arrRows.length,
