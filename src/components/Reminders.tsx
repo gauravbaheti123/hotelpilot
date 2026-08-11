@@ -317,29 +317,21 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
 }
 
 export function RemindersSection({ propertyId, userId }: { propertyId: string | null; userId: string }) {
-  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const qc = useQueryClient();
+  // Shares the SAME query entry as RemindersBell — one poll, two consumers.
+  const { data: fetched = [], refetch } = useRemindersQuery(propertyId);
+  const reminders = [...fetched].sort(
+    (a, b) => a.reminder_datetime.localeCompare(b.reminder_datetime),
+  );
+  const setReminders = (updater: (rs: Reminder[]) => Reminder[]) => {
+    qc.setQueryData<Reminder[]>(remindersKey(propertyId), (rs) => updater(rs ?? []));
+  };
   const [addOpen, setAddOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [when, setWhen] = useState("");
   const [notes, setNotes] = useState("");
 
-  const load = useCallback(async () => {
-    if (!propertyId) { setReminders([]); return; }
-    const { data, error: __qe2 } = await supabase
-      .from("reminders")
-      .select("id, property_id, title, reminder_datetime, notes, is_dismissed, created_at")
-      .eq("property_id", propertyId)
-      .eq("is_dismissed", false)
-      .order("reminder_datetime", { ascending: true });
-    if (__qe2) reportQueryError("reminders", __qe2);
-    setReminders((data ?? []) as Reminder[]);
-  }, [propertyId]);
-
-  useEffect(() => { load(); }, [load]);
-  useEffect(() => {
-    const id = window.setInterval(load, 60_000);
-    return () => window.clearInterval(id);
-  }, [load]);
+  const load = useCallback(async () => { await refetch(); }, [refetch]);
 
   async function dismiss(id: string) {
     await supabase.from("reminders").update({ is_dismissed: true }).eq("id", id);

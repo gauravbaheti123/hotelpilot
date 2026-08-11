@@ -612,7 +612,9 @@ function OwnerDashboard({
       // dashboard. Prior version subscribed unfiltered which caused
       // cross-tenant reload chatter.
       .on("postgres_changes", { event: "*", schema: "public", table: "booking_rooms", filter }, debouncedReload)
-      .on("postgres_changes", { event: "*", schema: "public", table: "kot_orders", filter }, debouncedReload)
+      // NOTE: no kot_orders binding. This screen reads pending food from open
+      // segment_bills (Phase 17), so a KOT write has nothing to invalidate
+      // here — the segment_bills channel below covers it. Do not re-add.
       .on("postgres_changes", { event: "*", schema: "public", table: "event_room_blocks", filter }, debouncedReload)
       .subscribe((status) => {
         if (cancelled) return;
