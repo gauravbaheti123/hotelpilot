@@ -87,43 +87,18 @@ export function usePermissions(): PermState & {
   const roleIds = payload?.roleIds ?? [];
 
   // --- Instant revocation -------------------------------------------------
-  // A single targeted realtime subscription per session. Any change to the
-  // grant grid for one of this user's roles (or to their role assignments)
-  // invalidates the cached permission map immediately instead of waiting for
-  // staleTime. Debounced so a burst of grid saves triggers one refetch.
+  // usePermissions() mounts in many components at once. Every instance used to
+  // call supabase.channel(`perm-watch-${userId}`) — supabase-js returns the
+  // SAME channel object for a duplicate topic, and calling .on() on a channel
+  // that has already been subscribed throws
+  // "cannot add `postgres_changes` callbacks ... after `subscribe()`",
+  // which crashed the whole app into the root error boundary.
+  // The subscription is therefore a module-level singleton with refcounting.
   const roleIdsRef = useRef<string[]>(roleIds);
   roleIdsRef.current = roleIds;
   useEffect(() => {
     if (!enabled || !userId) return;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const bump = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        qc.invalidateQueries({ queryKey: permissionsQueryKey(userId, propertyId) });
-      }, 400);
-    };
-    const channel = supabase
-      .channel(`perm-watch-${userId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "role_permissions" },
-        (p) => {
-          const rec = (p.new ?? p.old ?? {}) as { role_id?: string };
-          // Only react to grants for roles this session actually uses.
-          if (rec.role_id && !roleIdsRef.current.includes(rec.role_id)) return;
-          bump();
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "user_roles", filter: `user_id=eq.${userId}` },
-        () => bump(),
-      )
-      .subscribe();
-    return () => {
-      if (timer) clearTimeout(timer);
-      supabase.removeChannel(channel);
-    };
+    return acquirePermWatch(userId, propertyId, qc, roleIdsRef);
   }, [enabled, userId, propertyId, qc]);
 
   const state: PermState = bypass

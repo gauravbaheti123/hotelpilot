@@ -78,6 +78,21 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           >
             Go home
           </a>
+          <button
+            onClick={async () => {
+              try {
+                window.localStorage.removeItem("hp.currentPropertyId");
+                window.sessionStorage.removeItem("hp_authed_user");
+              } catch { /* ignore */ }
+              try {
+                await supabase.auth.signOut();
+              } catch { /* ignore */ }
+              window.location.href = "/login";
+            }}
+            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+          >
+            Log out
+          </button>
         </div>
       </div>
     </div>
