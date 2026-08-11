@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,11 +38,11 @@ function LoginPage() {
       const needs = await currentUserTotpRequired();
       if (needs) navigate({ to: "/totp-challenge" });
       else {
-        const to = await resolvePostLoginRedirect(data.session.user.id);
+        const to = await resolvePostLoginRedirect(data.session.user.id, queryClient);
         navigate({ to });
       }
     });
-  }, [navigate]);
+  }, [navigate, queryClient]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -66,7 +68,7 @@ function LoginPage() {
         toast.success("Welcome back");
         const { data: sess } = await supabase.auth.getSession();
         const uid = sess.session?.user.id;
-        const to = uid ? await resolvePostLoginRedirect(uid) : "/dashboard";
+        const to = uid ? await resolvePostLoginRedirect(uid, queryClient) : "/dashboard";
         navigate({ to });
       }
     } catch (err) {
