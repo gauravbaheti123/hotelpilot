@@ -6517,6 +6517,7 @@ export type Database = {
         Args: { _folio_id: string; _reason: string }
         Returns: Json
       }
+      my_property_ids: { Args: { _uid: string }; Returns: string[] }
       owner_update_bill_item: {
         Args: {
           _description: string

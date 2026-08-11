@@ -1,14 +1,21 @@
+import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./use-auth";
 import { useCurrentProperty } from "./use-property";
+import {
+  fetchPermissionsPayload,
+  permissionsQueryKey,
+  type PermMap as SharedPermMap,
+  type PermissionsPayload,
+} from "@/lib/permission-map";
 
 // Standard CRUD actions rendered as columns in the permission grid.
 export type PermStdAction = "view" | "create" | "edit" | "delete";
 // Any action string is accepted — modules may define custom actions
 // (e.g. billing/split_bill) in addition to the CRUD set.
 export type PermAction = PermStdAction | (string & {});
-export type PermMap = Record<string, Record<string, boolean>>;
+export type PermMap = SharedPermMap;
 
 const DEBUG_PERMISSION_MODULE = "dashboard";
 const DEBUG_PERMISSION_ACTION = "view";
@@ -56,46 +63,68 @@ export function usePermissions(): PermState & {
   const bypass = isSuperadmin || isOwner;
   const enabled = !authLoading && !!userId && !bypass;
 
-  const { data: map = {}, isLoading: qLoading, refetch } = useQuery<PermMap>({
-    queryKey: ["permissions", userId, propertyId],
+  const { data: payload, isLoading: qLoading, refetch } = useQuery<PermissionsPayload>({
+    queryKey: permissionsQueryKey(userId, propertyId),
     enabled,
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const { data: assigns, error: assignsErr } = await supabase
-        .from("user_roles")
-        .select("role_id, property_id")
-        .eq("user_id", userId!)
-        .not("role_id", "is", null);
-      if (assignsErr) throw assignsErr;
-      const assignments = ((assigns ?? []) as Array<{ role_id: string | null; property_id: string | null }>)
-        .filter((r) => !!r.role_id);
-      const matching = propertyId
-        ? assignments.filter((r) => !r.property_id || r.property_id === propertyId)
-        : [];
-      const effective = matching.length > 0 ? matching : assignments;
-      const roleIds = Array.from(new Set(effective.map((r) => r.role_id as string)));
-      if (roleIds.length === 0) return {};
-      const { data: rps, error: rpsErr } = await supabase
-        .from("role_permissions")
-        .select("allowed, permissions!role_permissions_permission_id_fkey(module, action)")
-        .in("role_id", roleIds)
-        .eq("allowed", true);
-      if (rpsErr) throw rpsErr;
-      const out: PermMap = {};
-      for (const row of (rps ?? []) as any[]) {
-        const p = row.permissions;
-        if (!p) continue;
-        if (!out[p.module]) out[p.module] = { view: false, create: false, edit: false, delete: false };
-        out[p.module][p.action as string] = true;
-      }
+      const result = await fetchPermissionsPayload(userId!, propertyId);
       if (debugEnabled()) {
-        console.log("[usePermissions:debug] built map", { userId, propertyId, roleIds, map: out });
+        console.log("[usePermissions:debug] built map", {
+          userId,
+          propertyId,
+          roleIds: result.roleIds,
+          map: result.map,
+        });
       }
-      return out;
+      return result;
     },
   });
+
+  const map = payload?.map ?? {};
+  const roleIds = payload?.roleIds ?? [];
+
+  // --- Instant revocation -------------------------------------------------
+  // A single targeted realtime subscription per session. Any change to the
+  // grant grid for one of this user's roles (or to their role assignments)
+  // invalidates the cached permission map immediately instead of waiting for
+  // staleTime. Debounced so a burst of grid saves triggers one refetch.
+  const roleIdsRef = useRef<string[]>(roleIds);
+  roleIdsRef.current = roleIds;
+  useEffect(() => {
+    if (!enabled || !userId) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const bump = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        qc.invalidateQueries({ queryKey: permissionsQueryKey(userId, propertyId) });
+      }, 400);
+    };
+    const channel = supabase
+      .channel(`perm-watch-${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "role_permissions" },
+        (p) => {
+          const rec = (p.new ?? p.old ?? {}) as { role_id?: string };
+          // Only react to grants for roles this session actually uses.
+          if (rec.role_id && !roleIdsRef.current.includes(rec.role_id)) return;
+          bump();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "user_roles", filter: `user_id=eq.${userId}` },
+        () => bump(),
+      )
+      .subscribe();
+    return () => {
+      if (timer) clearTimeout(timer);
+      supabase.removeChannel(channel);
+    };
+  }, [enabled, userId, propertyId, qc]);
 
   const state: PermState = bypass
     ? { loading: false, isSuperadmin: true, map: {} }
