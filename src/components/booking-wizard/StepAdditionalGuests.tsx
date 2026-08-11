@@ -191,7 +191,7 @@ function ExtraGuestCard({
           />
         </div>
         <div className="grid gap-2">
-          <Label>Relation to primary guest *</Label>
+          <Label>Relation to primary guest</Label>
           <SearchableSelect
             value={guest.relation}
             onChange={(v) => onChange({ relation: v })}
