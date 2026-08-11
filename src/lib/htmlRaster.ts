@@ -35,6 +35,50 @@ function waitForAssets(doc: Document): Promise<void> {
 }
 
 /**
+ * Inline every remote <img> as a data URL BEFORE html2canvas runs.
+ *
+ * Branded documents (Food/Laundry bills, invoices) carry the property logo as
+ * a Supabase signed URL. That is a cross-origin image: html2canvas draws it
+ * onto the canvas, the canvas becomes tainted, and `toDataURL()` then throws
+ * SecurityError — the whole raster path fails and the caller silently falls
+ * back to QZ Tray's own HTML renderer, which produces the truncated /
+ * missing-column thermal prints. KOT tickets have no logo, which is why they
+ * always printed fine.
+ *
+ * Fetching the bytes ourselves keeps the canvas clean; any image that can't be
+ * fetched is dropped rather than allowed to break the whole bill.
+ */
+async function inlineImages(doc: Document): Promise<void> {
+  const imgs = Array.from(doc.images ?? []);
+  await Promise.all(
+    imgs.map(async (img) => {
+      const src = img.getAttribute("src") ?? "";
+      if (!src || src.startsWith("data:")) return;
+      try {
+        const res = await fetch(src, { mode: "cors", credentials: "omit" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(String(fr.result));
+          fr.onerror = () => reject(fr.error ?? new Error("read failed"));
+          fr.readAsDataURL(blob);
+        });
+        await new Promise<void>((resolve) => {
+          img.addEventListener("load", () => resolve(), { once: true });
+          img.addEventListener("error", () => resolve(), { once: true });
+          img.setAttribute("src", dataUrl);
+          setTimeout(resolve, 2000);
+        });
+      } catch (err) {
+        console.warn("[raster] dropping un-inlinable image", src.slice(0, 80), err);
+        img.remove();
+      }
+    }),
+  );
+}
+
+/**
  * Render a self-contained HTML document to a PNG.
  *
  * `cssWidthPx` is the CSS layout width the template expects (e.g. 72mm ≈ 272
@@ -83,6 +127,8 @@ export async function rasterizeHtmlToPng(
     const win = iframe.contentWindow;
     if (!doc || !win) throw new Error("raster iframe unavailable");
     await waitForAssets(doc);
+    await inlineImages(doc);
+    await waitForAssets(doc);
     // Let layout settle before measuring.
     await new Promise((r) => requestAnimationFrame(() => r(null)));
     // scrollHeight never drops below the iframe viewport, so collapse the frame
@@ -100,17 +146,30 @@ export async function rasterizeHtmlToPng(
       ) + 12;
     iframe.style.height = `${heightPx}px`;
     const html2canvas = (await import("html2canvas")).default;
-    const canvas = await html2canvas(doc.body, {
-      backgroundColor: "#ffffff",
-      width: widthPx,
-      height: heightPx,
-      windowWidth: widthPx,
-      windowHeight: heightPx,
-      scale,
-      useCORS: true,
-      logging: false,
-    });
-    const dataUrl = canvas.toDataURL("image/png");
+    const shoot = () =>
+      html2canvas(doc.body, {
+        backgroundColor: "#ffffff",
+        width: widthPx,
+        height: heightPx,
+        windowWidth: widthPx,
+        windowHeight: heightPx,
+        scale,
+        useCORS: true,
+        logging: false,
+      });
+    let canvas = await shoot();
+    let dataUrl: string;
+    try {
+      dataUrl = canvas.toDataURL("image/png");
+    } catch (err) {
+      // Last-resort: a tainted canvas means an image slipped through. Drop
+      // every image and re-shoot — a logo-less bill beats a garbled one.
+      console.warn("[raster] canvas tainted, retrying without images", err);
+      Array.from(doc.images ?? []).forEach((img) => img.remove());
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      canvas = await shoot();
+      dataUrl = canvas.toDataURL("image/png");
+    }
     const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
     console.info("[raster] html→png", {
       cssWidthPx: widthPx,
