@@ -245,6 +245,7 @@ export async function printThermalHtml(args: {
   html: string;
   paperSize?: string | null;
   label?: string;
+  useDriverPrintableArea?: boolean;
 }): Promise<void> {
   const paperSize = args.paperSize ?? "80mm";
   const what = args.label ?? "Print";
@@ -260,7 +261,9 @@ export async function printThermalHtml(args: {
   }
   if (qzOk) {
     try {
-      await printToPrinter(args.printerName, args.html, paperSize);
+      await printToPrinter(args.printerName, args.html, paperSize, {
+        thermalMarginMode: args.useDriverPrintableArea ? "driver-default" : "zero",
+      });
       return;
     } catch (err: any) {
       console.error("[print/qz] failed", err);
