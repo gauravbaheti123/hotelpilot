@@ -6628,6 +6628,7 @@ export type Database = {
         Args: { _booking_room_id: string; _new_rate: number; _night: string }
         Returns: string
       }
+      stay_ongoing: { Args: { _booking_id: string }; Returns: boolean }
       sync_booking_balance: {
         Args: { _booking_id: string }
         Returns: undefined
