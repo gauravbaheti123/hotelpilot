@@ -173,6 +173,11 @@ function RoomCard({
 }) {
   const [avail, setAvail] = useState<AvailableRoom[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
+  // True only once availability has actually been fetched for the current
+  // property/date/category combination. Without this, the "drop unavailable
+  // room" effect below fired on first render (avail=[] and loadingRooms still
+  // false) and wiped a pre-selected room passed in from the dashboard.
+  const [availLoaded, setAvailLoaded] = useState(false);
   const [availError, setAvailError] = useState<string | null>(null);
   const { slabs: gstSlabs } = useGstSlabs(propertyId);
   const { slabs: ecSlabs } = useEarlyCheckinSlabs(propertyId);
@@ -183,12 +188,17 @@ function RoomCard({
 
   // Re-query availability whenever dates or category change.
   useEffect(() => {
-    if (!showRoomPicker || !propertyId || !datesValid || !room.categoryId) { setAvail([]); return; }
+    if (!showRoomPicker || !propertyId || !datesValid || !room.categoryId) {
+      setAvail([]);
+      setAvailLoaded(false);
+      return;
+    }
     let cancelled = false;
     setLoadingRooms(true);
+    setAvailLoaded(false);
     setAvailError(null);
     fetchAvailableRooms(propertyId, room.checkIn, room.checkOut, room.categoryId)
-      .then((rows) => { if (!cancelled) setAvail(rows); })
+      .then((rows) => { if (!cancelled) { setAvail(rows); setAvailLoaded(true); } })
       .catch((e: any) => { if (!cancelled) { setAvail([]); setAvailError(e?.message ?? "Could not load rooms"); } })
       .finally(() => { if (!cancelled) setLoadingRooms(false); });
     return () => { cancelled = true; };
@@ -196,10 +206,10 @@ function RoomCard({
 
   // Drop a selected room that is no longer available for the current range.
   useEffect(() => {
-    if (!showRoomPicker || loadingRooms || !room.roomId) return;
+    if (!showRoomPicker || loadingRooms || !availLoaded || !room.roomId) return;
     if (!avail.some((a) => a.id === room.roomId)) onChange({ roomId: "" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [avail, loadingRooms]);
+  }, [avail, loadingRooms, availLoaded]);
 
   const planNames = useMemo(
     () => planNamesForCategory(tariffs, room.categoryId, room.checkIn),
