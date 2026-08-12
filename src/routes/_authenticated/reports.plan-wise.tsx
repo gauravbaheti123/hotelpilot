@@ -172,6 +172,101 @@ const columns: ReportColumn<PlanRow>[] = [
   { key: "avgRate", header: "Avg Rate / Night", get: (r) => r.avgRate, currency: true, sortValue: (r) => r.avgRate },
 ];
 
+const detailColumns: ReportColumn<DetailRow>[] = [
+  { key: "date", header: "Date", get: (r) => r.date, type: "date", sortValue: (r) => r.date },
+  { key: "plan", header: "Plan", get: (r) => r.planLabel, sortValue: (r) => r.plan },
+  { key: "room", header: "Room", get: (r) => r.roomNumber, sortValue: (r) => r.roomNumber },
+  { key: "category", header: "Category", get: (r) => r.category, sortValue: (r) => r.category },
+  { key: "guest", header: "Guest", get: (r) => r.guest, sortValue: (r) => r.guest },
+  { key: "nights", header: "Nights", get: (r) => r.nights, numeric: true, sortValue: (r) => r.nights },
+  { key: "rate", header: "Rate", get: (r) => r.rate, currency: true, sortValue: (r) => r.rate },
+  { key: "amount", header: "Amount", get: (r) => r.amount, currency: true, sortValue: (r) => r.amount },
+  { key: "gst", header: "GST", get: (r) => r.gst, currency: true, sortValue: (r) => r.gst },
+  { key: "total", header: "Total", get: (r) => r.total, currency: true, sortValue: (r) => r.total },
+];
+
+const categoryColumns: ReportColumn<CategoryRow>[] = [
+  { key: "date", header: "Date", get: (r) => r.date, type: "date", sortValue: (r) => r.date },
+  { key: "category", header: "Room Category", get: (r) => r.category, sortValue: (r) => r.category },
+  { key: "nights", header: "Room Nights", get: (r) => r.nights, numeric: true, sortValue: (r) => r.nights },
+  { key: "amount", header: "Revenue (pre-tax)", get: (r) => r.amount, currency: true, sortValue: (r) => r.amount },
+  { key: "gst", header: "GST", get: (r) => r.gst, currency: true, sortValue: (r) => r.gst },
+  { key: "total", header: "Total", get: (r) => r.total, currency: true, sortValue: (r) => r.total },
+];
+
+interface DateGroup {
+  date: string;
+  plans: Array<{ plan: string; label: string; rows: DetailRow[]; amount: number; gst: number; total: number; nights: number }>;
+  categories: CategoryRow[];
+  amount: number;
+  gst: number;
+  total: number;
+  nights: number;
+}
+
+/** date → plan → room-level rows, plus a per-date category rollup. */
+function buildDetail(items: RawCharge[]): DateGroup[] {
+  const byDate = new Map<string, RawCharge[]>();
+  for (const it of items) {
+    const arr = byDate.get(it.date) ?? [];
+    arr.push(it);
+    byDate.set(it.date, arr);
+  }
+  return Array.from(byDate.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, list]) => {
+      const planMap = new Map<string, Map<string, DetailRow>>();
+      const catMap = new Map<string, CategoryRow>();
+      for (const it of list) {
+        const rows = planMap.get(it.plan) ?? new Map<string, DetailRow>();
+        const rk = `${it.roomNumber}|${it.bookingId ?? ""}|${it.rate}`;
+        const cur = rows.get(rk) ?? {
+          key: `${date}|${it.plan}|${rk}`,
+          date, plan: it.plan, planLabel: PLAN_LABEL[it.plan] ?? it.plan,
+          roomNumber: it.roomNumber, category: it.category, guest: it.guest,
+          nights: 0, rate: it.rate, amount: 0, gst: 0, total: 0,
+        };
+        cur.nights += it.nights;
+        cur.amount += it.amount;
+        cur.gst += it.gst;
+        cur.total = cur.amount + cur.gst;
+        rows.set(rk, cur);
+        planMap.set(it.plan, rows);
+
+        const c = catMap.get(it.category) ?? {
+          key: `${date}|${it.category}`, date, category: it.category, nights: 0, amount: 0, gst: 0, total: 0,
+        };
+        c.nights += it.nights; c.amount += it.amount; c.gst += it.gst; c.total = c.amount + c.gst;
+        catMap.set(it.category, c);
+      }
+      const plans = PLAN_ORDER
+        .filter((p) => planMap.has(p))
+        .map((p) => {
+          const rows = Array.from(planMap.get(p)!.values())
+            .sort((a, b) => a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true }));
+          return {
+            plan: p as string,
+            label: PLAN_LABEL[p] ?? p,
+            rows,
+            nights: rows.reduce((s, r) => s + r.nights, 0),
+            amount: rows.reduce((s, r) => s + r.amount, 0),
+            gst: rows.reduce((s, r) => s + r.gst, 0),
+            total: rows.reduce((s, r) => s + r.total, 0),
+          };
+        });
+      const categories = Array.from(catMap.values()).sort((a, b) => a.category.localeCompare(b.category));
+      return {
+        date,
+        plans,
+        categories,
+        nights: plans.reduce((s, p) => s + p.nights, 0),
+        amount: plans.reduce((s, p) => s + p.amount, 0),
+        gst: plans.reduce((s, p) => s + p.gst, 0),
+        total: plans.reduce((s, p) => s + p.total, 0),
+      };
+    });
+}
+
 function Page() {
   const { current } = useCurrentProperty();
   const propertyId = current?.id ?? null;
