@@ -16,6 +16,7 @@ import { rasterizeHtmlToPng } from "./htmlRaster";
 import { THERMAL_SAFE_GUTTER_MM, mmToCssPx } from "./printStyles";
 
 export type QZPaperSize = "58mm" | "80mm" | "A4" | string;
+export type ThermalMarginMode = "zero" | "driver-default";
 
 export type QZStatus = {
   connected: boolean;
@@ -202,7 +203,10 @@ export function thermalDotWidth(paperSize: QZPaperSize): number {
 //     → the exact unreadable fragment reported.
 // With `units:"in"` a single unit governs every number, and density 203 is a
 // genuine 203 DPI.
-function paperSizeToConfig(paperSize: QZPaperSize) {
+function paperSizeToConfig(
+  paperSize: QZPaperSize,
+  thermalMarginMode: ThermalMarginMode,
+) {
   if (paperSize === "A4") {
     return {
       units: "in" as const,
@@ -217,15 +221,23 @@ function paperSizeToConfig(paperSize: QZPaperSize) {
   // ("Roll Paper 80 x 297 mm", verified correct on this printer) defines the
   // page and handles the cut. Forcing a size here previously fought the
   // driver. 1:1 raster (scaleContent:false) at the head's native 203 DPI.
-  return {
+  const thermalConfig = {
     units: "in" as const,
-    margins: 0,
     density: THERMAL_DPI,
     scaleContent: false,
     rasterize: true,
     colorType: "blackwhite" as const,
     interpolation: "nearest-neighbor" as const,
   };
+  // Food/Laundry bills must start at the Windows driver's printable-area
+  // origin. Supplying margins:0 makes QZ anchor their full-width bitmap at
+  // the physical roll origin, bypassing the TM-m30's hardware dead-zone.
+  // Omitting `margins` delegates that offset to the driver. KOT keeps its
+  // established zero-margin behavior so this correction cannot move tickets
+  // that already print correctly.
+  return thermalMarginMode === "zero"
+    ? { ...thermalConfig, margins: 0 }
+    : thermalConfig;
 }
 
 /**
@@ -237,6 +249,7 @@ export async function printToPrinter(
   printerName: string,
   htmlContent: string,
   paperSize: QZPaperSize,
+  options?: { thermalMarginMode?: ThermalMarginMode },
 ): Promise<void> {
   if (!isQZConnected()) {
     const status = await connectQZ();
@@ -257,7 +270,8 @@ export async function printToPrinter(
   if (!found) {
     throw new Error(`Printer "${printerName}" not found via QZ Tray.`);
   }
-  const printConfig = paperSizeToConfig(paperSize);
+  const thermalMarginMode = options?.thermalMarginMode ?? "zero";
+  const printConfig = paperSizeToConfig(paperSize, thermalMarginMode);
   const cfg = qz.configs.create(found, printConfig);
   // QZ's embedded webkit renders the HTML at its own default viewport width
   // unless options.pageWidth is supplied, then rasterizes that render onto
@@ -275,6 +289,7 @@ export async function printToPrinter(
     itemRows,
     hasDocument: /<body[\s>]/i.test(htmlContent) && /<\/html>/i.test(htmlContent),
     config: printConfig,
+    thermalMarginMode,
     options: { pageWidth: widthInches },
     units: "in",
     printableWidthMm: printableWidthMm(paperSize),

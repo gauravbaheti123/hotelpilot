@@ -857,6 +857,7 @@ function renderSegmentBill(opts: {
     html,
     paperSize,
     label: opts.segment === "food" ? "Food bill" : "Laundry bill",
+    useDriverPrintableArea: true,
   });
 }
 
