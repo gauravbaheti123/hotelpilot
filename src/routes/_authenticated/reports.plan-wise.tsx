@@ -278,6 +278,7 @@ function Page() {
   const [grouping, setGrouping] = useState<Grouping>("none");
   const [items, setItems] = useState<RawCharge[]>([]);
   const [loading, setLoading] = useState(false);
+  const [openDates, setOpenDates] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     if (!propertyId) return;
@@ -402,13 +403,41 @@ function Page() {
   };
 
   const meta = { reportName: "Plan-Wise Report", propertyName: current?.name ?? "", from, to };
-  const exportSections: ExportSection[] = sections.map((s) => ({
-    title: s.title,
-    columns,
-    rows: s.rows,
-    summary: summaryFor(s.rows),
-    emptyText: "No room charges in this period",
-  }));
+  const detail = useMemo(() => buildDetail(items), [items]);
+  const detailRows = useMemo(() => detail.flatMap((d) => d.plans.flatMap((p) => p.rows)), [detail]);
+  const categoryRows = useMemo(() => detail.flatMap((d) => d.categories), [detail]);
+
+  const exportSections: ExportSection[] = [
+    ...sections.map((s) => ({
+      title: s.title,
+      columns,
+      rows: s.rows,
+      summary: summaryFor(s.rows),
+      emptyText: "No room charges in this period",
+    })),
+    {
+      title: "Detail — Date / Plan / Room",
+      columns: detailColumns,
+      rows: detailRows,
+      summary: [
+        ["Rows", detailRows.length],
+        ["Room Nights", detailRows.reduce((s, r) => s + r.nights, 0)],
+        ["Revenue (pre-tax)", fmtINR(detailRows.reduce((s, r) => s + r.amount, 0))],
+        ["GST", fmtINR(detailRows.reduce((s, r) => s + r.gst, 0))],
+        ["Total", fmtINR(detailRows.reduce((s, r) => s + r.total, 0))],
+      ],
+      emptyText: "No room charges in this period",
+    },
+    {
+      title: "Category Rollup (per date)",
+      columns: categoryColumns,
+      rows: categoryRows,
+      summary: [
+        ["Total", fmtINR(categoryRows.reduce((s, r) => s + r.total, 0))],
+      ],
+      emptyText: "No room charges in this period",
+    },
+  ];
 
   if (!propertyId) return <AppShell title="Plan-Wise Report"><EmptyPropertyState /></AppShell>;
 
@@ -472,6 +501,65 @@ function Page() {
           </CardContent>
         </Card>
       ))}
+
+      {detail.length > 0 && (
+        <Card className="print:break-before-page">
+          <CardHeader className="flex flex-row items-center justify-between gap-3 pb-2">
+            <CardTitle className="text-base">Detailed Breakdown — date → plan → room</CardTitle>
+            <div className="flex gap-2">
+              <Button size="sm" variant="secondary"
+                onClick={() => setOpenDates(Object.fromEntries(detail.map((d) => [d.date, true])))}>
+                Expand all
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setOpenDates({})}>Collapse all</Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {detail.map((d) => {
+              const open = !!openDates[d.date];
+              return (
+                <Collapsible key={d.date} open={open}
+                  onOpenChange={(v) => setOpenDates((s) => ({ ...s, [d.date]: v }))}>
+                  <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm hover:bg-muted/50">
+                    <span className="flex items-center gap-2 font-medium">
+                      {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      {d.date}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {d.nights} night(s) · {fmtINR(d.amount)} + GST {fmtINR(d.gst)} = <span className="font-medium text-foreground">{fmtINR(d.total)}</span>
+                    </span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-3 px-1 py-3">
+                    {d.plans.map((p) => (
+                      <div key={p.plan} className="space-y-1">
+                        <div className="flex justify-between text-sm font-medium">
+                          <span>Plan: {p.label}</span>
+                          <span>{fmtINR(p.total)}</span>
+                        </div>
+                        <ReportDataTable
+                          rows={p.rows}
+                          columns={detailColumns.filter((c) => c.key !== "date" && c.key !== "plan")}
+                          emptyText="No rows"
+                          rowKey={(r: DetailRow) => r.key}
+                        />
+                      </div>
+                    ))}
+                    <div className="space-y-1">
+                      <div className="text-sm font-medium">Category rollup for {d.date}</div>
+                      <ReportDataTable
+                        rows={d.categories}
+                        columns={categoryColumns.filter((c) => c.key !== "date")}
+                        emptyText="No rows"
+                        rowKey={(r: CategoryRow) => r.key}
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
     </ReportShell>
   );
 }
