@@ -30,6 +30,7 @@ const ITEMS = [
   { to: "/reports/cash-handover", label: "Cash Handover", icon: Wallet, desc: "Shift handover & mismatches" },
   { to: "/reports/date-wise-revenue", label: "Date-Wise Revenue", icon: BarChart3, desc: "Revenue by date" },
   { to: "/reports/room-wise", label: "Room-Wise", icon: FileSpreadsheet, desc: "Occupancy & revenue per room" },
+  { to: "/reports/plan-wise", label: "Plan-Wise (EP/CP/MAP/AP)", icon: BedDouble, desc: "Room revenue by meal plan, with period grouping" },
   { to: "/reports/room-shift", label: "Room Shift", icon: FileSpreadsheet, desc: "Shifts & rate decisions" },
   { to: "/reports/food-kot", label: "Food / KOT", icon: FileSpreadsheet, desc: "Restaurant report" },
   { to: "/reports/banquet", label: "Banquet", icon: FileSpreadsheet, desc: "Events report" },
