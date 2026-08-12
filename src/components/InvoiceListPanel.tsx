@@ -549,7 +549,11 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                     {voided ? (
                       <Badge variant="outline" className="bg-rose-100 text-rose-800 border-rose-300">VOIDED</Badge>
                     ) : r.status === "open" ? (
-                      <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">REOPENED</Badge>
+                      Number(r.paid_amount ?? 0) > 0 && Number(r.balance_amount ?? 0) <= 0.01 ? (
+                        <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300">ADVANCE PAID · IN HOUSE</Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">REOPENED</Badge>
+                      )
                     ) : (
                       <Badge variant="outline" className={FOLIO_STATUS_TONE[r.status]}>{r.status.toUpperCase()}</Badge>
                     )}
