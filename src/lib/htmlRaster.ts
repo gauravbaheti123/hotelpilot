@@ -91,9 +91,17 @@ export async function rasterizeHtmlToPng(
   html: string,
   cssWidthPx: number,
   targetWidthPx: number,
+  gutter?: { leftPx?: number; rightPx?: number },
 ): Promise<RasterResult> {
   const widthPx = Math.max(1, Math.round(cssWidthPx));
   const scale = targetWidthPx / widthPx;
+  // Physical safe area: thermal heads (and their drivers) lose the first
+  // couple of millimetres at the left edge of the roll, which clipped the
+  // first 1-2 characters of every line. Content is inset inside the bitmap so
+  // nothing ever sits at pixel column 0.
+  const padLeft = Math.max(0, Math.round(gutter?.leftPx ?? 0));
+  const padRight = Math.max(0, Math.round(gutter?.rightPx ?? 0));
+  const contentWidthPx = Math.max(1, widthPx - padLeft - padRight);
   const iframe = document.createElement("iframe");
   iframe.setAttribute("aria-hidden", "true");
   Object.assign(iframe.style, {
@@ -109,8 +117,10 @@ export async function rasterizeHtmlToPng(
   // Pin the layout viewport to the exact dot width so the template lays out
   // against the same width the bitmap will have.
   const shim = `<style>
-    html,body{margin:0!important;padding:0!important;background:#fff!important;width:${widthPx}px!important;}
-    body>*{max-width:${widthPx}px!important;}
+    html{margin:0!important;padding:0!important;background:#fff!important;width:${widthPx}px!important;}
+    body{margin:0!important;background:#fff!important;width:${widthPx}px!important;
+         padding:0 ${padRight}px 0 ${padLeft}px!important;box-sizing:border-box!important;}
+    body>*{max-width:${contentWidthPx}px!important;width:auto!important;}
     @page{margin:0}
   </style>`;
   const withShim = /<\/head>/i.test(html)
