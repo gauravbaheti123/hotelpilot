@@ -130,8 +130,14 @@ export interface ModifyDatesParams {
 }
 
 /** Extends / reduces the stay. Same sequence the "Modify dates" dialog runs:
- *  booking header totals -> every booking_room's check_out -> guarded room-charge
- *  refresh per room -> folio totals recompute. */
+ *  booking header totals -> the CURRENT live room row(s) check_out -> guarded
+ *  room-charge refresh -> folio totals recompute.
+ *
+ *  Only rows that genuinely represent the guest's ongoing assignment move:
+ *  status active/reserved/checked_in AND ending on the stay's current last day.
+ *  Shifted (historical) rows and short split-slices from a per-night tariff
+ *  correction are left frozen — stretching them re-seeds a full new room charge
+ *  and inflates the bill (root cause of the BK-20260802-0005 overcharge). */
 export async function modifyDatesOp(p: ModifyDatesParams): Promise<void> {
   const nights = Math.max(
     1,
@@ -146,15 +152,31 @@ export async function modifyDatesOp(p: ModifyDatesParams): Promise<void> {
   } as never).eq("id", p.bookingId);
   if (error) throw error;
 
-  for (const r of p.rooms) {
+  // Resolve which rows may legitimately move.
+  const { data: liveRows, error: liveErr } = await supabase
+    .from("booking_rooms")
+    .select("id,rate,check_out,status")
+    .eq("booking_id", p.bookingId)
+    .in("status", ["active", "reserved", "checked_in"]);
+  if (liveErr) throw liveErr;
+  const live = (liveRows ?? []) as Array<{ id: string; rate: number | string | null; check_out: string }>;
+  const lastDay = live.reduce((m, r) => (r.check_out > m ? r.check_out : m), "");
+  const movable = live.filter((r) => r.check_out === lastDay);
+  const target = movable.length > 0
+    ? movable
+    : // Nothing resolvable (e.g. RLS-trimmed read): fall back to the caller's
+      // rows, intersected with the live set so shifted rows still stay frozen.
+      p.rooms.filter((r) => live.some((l) => l.id === r.id));
+
+  for (const r of target) {
     const { error: brErr } = await supabase.from("booking_rooms")
       .update({ check_out: p.newCheckOut } as never).eq("id", r.id);
     if (brErr) throw brErr;
   }
 
   try {
-    for (const r of p.rooms) {
-      if (Number(r.rate) <= 0) continue;
+    for (const r of target) {
+      if (Number(r.rate ?? 0) <= 0) continue;
       const { error: seedErr } = await supabase.rpc("seed_room_charge_for_booking_room", {
         _booking_room_id: r.id,
       } as never);
