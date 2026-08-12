@@ -18,6 +18,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName, ACTIVITY } from "@/lib/activityLog";
 import { toastError } from "@/lib/errorMessage";
 import { billNo } from "@/lib/billNumber";
+import { withinGraceWindow } from "@/lib/graceWindow";
 
 export interface ChangePaymentModeFolio {
   id: string;
@@ -26,6 +27,8 @@ export interface ChangePaymentModeFolio {
   booking_id: string | null;
   status: string;
   is_deleted?: boolean | null;
+  /** Used for the 60-minute post-settlement grace window. */
+  settled_at?: string | null;
 }
 
 interface PaymentRow {
@@ -46,8 +49,11 @@ interface Props {
 export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: Props) {
   const { user } = useAuth();
   const { can } = usePermissions();
-  const canEditAmount = can("payments", "edit_amount");
-  const canDeletePayment = can("payments", "delete");
+  // 60-minute post-settlement grace window: any role may correct payments.
+  const inGrace = withinGraceWindow(folio?.settled_at ?? null);
+  const canEditAmount = can("payments", "edit_amount") || inGrace;
+  const canDeletePayment = can("payments", "delete") || inGrace;
+  const viaGrace = inGrace && !can("payments", "edit_amount");
   const { methods } = usePaymentMethods(folio?.property_id ?? null);
   const activeMethods = methods.filter((m) => m.is_active);
 
@@ -93,6 +99,7 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
           amount: Number(p.amount),
           mode: p.mode,
           reference_no: p.reference_no,
+          via_grace_window: inGrace && !can("payments", "delete"),
           reason: reason.trim() || null,
         },
       });
@@ -199,6 +206,7 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
             changed_by: user?.id ?? null,
             changed_at: new Date().toISOString(),
             locked,
+            via_grace_window: viaGrace,
             reason: reason.trim() || null,
           },
         });
