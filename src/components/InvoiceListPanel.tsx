@@ -579,6 +579,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                         onClick={(e) => { e.preventDefault(); setPayModeTarget({
                           id: r.id, invoice_number: billNo(r.invoice_number), property_id: propertyId!,
                           booking_id: r.booking_id, status: r.status, is_deleted: r.is_deleted,
+                          settled_at: r.settled_at ?? null,
                         }); }}>
                         <Wallet className="h-4 w-4" />
                       </Button>
@@ -605,6 +606,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                         onClick={(e) => { e.preventDefault(); setPayModeTarget({
                           id: r.id, invoice_number: billNo(r.invoice_number), property_id: propertyId!,
                           booking_id: r.booking_id, status: r.status, is_deleted: r.is_deleted,
+                          settled_at: r.settled_at ?? null,
                         }); }}>
                         <Wallet className="h-4 w-4" />
                       </Button>

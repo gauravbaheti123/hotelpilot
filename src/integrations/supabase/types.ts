@@ -6339,6 +6339,7 @@ export type Database = {
         Args: { _property_id: string; _segment: string }
         Returns: string
       }
+      booking_in_undo_grace: { Args: { _booking_id: string }; Returns: boolean }
       can_billing: {
         Args: { _property_id: string; _user_id: string }
         Returns: boolean
@@ -6411,6 +6412,7 @@ export type Database = {
         }
         Returns: Json
       }
+      folio_in_grace: { Args: { _folio_id: string }; Returns: boolean }
       generate_bill_number: {
         Args: { _property_id: string; _segment: string }
         Returns: string
@@ -6467,6 +6469,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      in_grace_window: { Args: { _ts: string }; Returns: boolean }
       is_conforming_bill_number: {
         Args: { _prefix: string; _value: string }
         Returns: boolean
