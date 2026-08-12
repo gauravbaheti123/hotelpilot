@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -60,6 +62,36 @@ interface RawCharge {
   nights: number;
   amount: number;
   gst: number;
+  roomNumber: string;
+  category: string;
+  guest: string;
+  rate: number;
+}
+
+/** One room-level line inside a date + plan group. */
+interface DetailRow {
+  key: string;
+  date: string;
+  plan: string;
+  planLabel: string;
+  roomNumber: string;
+  category: string;
+  guest: string;
+  nights: number;
+  rate: number;
+  amount: number;
+  gst: number;
+  total: number;
+}
+
+interface CategoryRow {
+  key: string;
+  date: string;
+  category: string;
+  nights: number;
+  amount: number;
+  gst: number;
+  total: number;
 }
 
 function normalisePlan(v: unknown): string {
