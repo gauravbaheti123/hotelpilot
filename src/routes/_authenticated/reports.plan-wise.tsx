@@ -204,20 +204,73 @@ function Page() {
         charges.filter((c) => c.source_table === "booking_rooms" && c.source_id).map((c) => c.source_id as string),
       ));
       const planById = new Map<string, string>();
+      const brMeta = new Map<string, { rate: number; roomId: string | null; categoryId: string | null }>();
       // Chunked so a long range never blows past the URL length limit.
       for (let i = 0; i < brIds.length; i += 200) {
         const { data } = await supabase.from("booking_rooms")
-          .select("id,meal_plan").in("id", brIds.slice(i, i + 200));
-        for (const r of (data ?? []) as any[]) planById.set(r.id, normalisePlan(r.meal_plan));
+          .select("id,meal_plan,rate,room_id,category_id").in("id", brIds.slice(i, i + 200));
+        for (const r of (data ?? []) as any[]) {
+          planById.set(r.id, normalisePlan(r.meal_plan));
+          brMeta.set(r.id, { rate: Number(r.rate || 0), roomId: r.room_id ?? null, categoryId: r.category_id ?? null });
+        }
       }
-      setItems(charges.map((c) => ({
-        date: String(c.charged_on).slice(0, 10),
-        plan: c.source_table === "booking_rooms" ? (planById.get(c.source_id) ?? "Unspecified") : "Unspecified",
-        bookingId: c.folios?.booking_id ?? null,
-        nights: Number(c.qty || 0) || 1,
-        amount: Number(c.amount || 0),
-        gst: Number(c.gst_amount || 0),
-      })));
+
+      // Room numbers + categories (separate queries — booking_rooms has two FKs to rooms).
+      const roomIds = Array.from(new Set(Array.from(brMeta.values()).map((m) => m.roomId).filter(Boolean) as string[]));
+      const roomById = new Map<string, { number: string; categoryId: string | null }>();
+      for (let i = 0; i < roomIds.length; i += 200) {
+        const { data } = await supabase.from("rooms")
+          .select("id,room_number,category_id").in("id", roomIds.slice(i, i + 200));
+        for (const r of (data ?? []) as any[]) roomById.set(r.id, { number: r.room_number, categoryId: r.category_id ?? null });
+      }
+      const catById = new Map<string, string>();
+      {
+        const { data } = await supabase.from("room_categories")
+          .select("id,name").eq("property_id", propertyId);
+        for (const r of (data ?? []) as any[]) catById.set(r.id, r.name);
+      }
+
+      // Guest names per booking.
+      const bookingIds = Array.from(new Set(
+        charges.map((c) => c.folios?.booking_id).filter(Boolean) as string[],
+      ));
+      const guestByBooking = new Map<string, string>();
+      const guestIdByBooking = new Map<string, string>();
+      for (let i = 0; i < bookingIds.length; i += 200) {
+        const { data } = await supabase.from("bookings")
+          .select("id,guest_id").in("id", bookingIds.slice(i, i + 200));
+        for (const b of (data ?? []) as any[]) if (b.guest_id) guestIdByBooking.set(b.id, b.guest_id);
+      }
+      const guestIds = Array.from(new Set(guestIdByBooking.values()));
+      const nameByGuest = new Map<string, string>();
+      for (let i = 0; i < guestIds.length; i += 200) {
+        const { data } = await supabase.from("guests")
+          .select("id,name").in("id", guestIds.slice(i, i + 200));
+        for (const g of (data ?? []) as any[]) nameByGuest.set(g.id, g.name ?? "");
+      }
+      for (const [bid, gid] of guestIdByBooking) guestByBooking.set(bid, nameByGuest.get(gid) ?? "");
+
+      setItems(charges.map((c) => {
+        const isBr = c.source_table === "booking_rooms" && c.source_id;
+        const meta = isBr ? brMeta.get(c.source_id as string) : undefined;
+        const room = meta?.roomId ? roomById.get(meta.roomId) : undefined;
+        const catId = meta?.categoryId ?? room?.categoryId ?? null;
+        const nights = Number(c.qty || 0) || 1;
+        const amount = Number(c.amount || 0);
+        const bookingId = c.folios?.booking_id ?? null;
+        return {
+          date: String(c.charged_on).slice(0, 10),
+          plan: isBr ? (planById.get(c.source_id) ?? "Unspecified") : "Unspecified",
+          bookingId,
+          nights,
+          amount,
+          gst: Number(c.gst_amount || 0),
+          roomNumber: room?.number ?? "—",
+          category: (catId ? catById.get(catId) : null) ?? "Uncategorised",
+          guest: (bookingId ? guestByBooking.get(bookingId) : "") || "—",
+          rate: meta?.rate ?? (nights > 0 ? amount / nights : amount),
+        };
+      }));
     } finally {
       setLoading(false);
     }
