@@ -2193,6 +2193,11 @@ function FolioPage() {
           <Badge variant="outline" className={FOLIO_STATUS_TONE[folio.status]}>
             {folio.status.toUpperCase()}
           </Badge>
+          {isOpen && Number(folio.paid_amount ?? 0) > 0 && Number(folio.balance_amount ?? 0) <= 0.01 && (
+            <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300">
+              ADVANCE PAID · IN HOUSE
+            </Badge>
+          )}
           {isSettled && (
             <Badge style={{ background: TEAL, color: "#fff" }} className="border-0">PAID</Badge>
           )}
