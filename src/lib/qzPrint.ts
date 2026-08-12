@@ -13,6 +13,7 @@ import qz from "qz-tray";
 import { supabase } from "@/integrations/supabase/client";
 import { QZ_PUBLIC_CERTIFICATE } from "./qzCertificate";
 import { rasterizeHtmlToPng } from "./htmlRaster";
+import { THERMAL_SAFE_GUTTER_MM, mmToCssPx } from "./printStyles";
 
 export type QZPaperSize = "58mm" | "80mm" | "A4" | string;
 
@@ -288,11 +289,18 @@ export async function printToPrinter(
     // Templates lay out in mm; convert the printable width to CSS px so the
     // content fills the sheet, then scale up to the head's dot width.
     const cssWidth = (printableWidthMm(paperSize) * 96) / 25.4;
+    // Inset the content so the head's physical left dead-zone can't clip the
+    // first character of each line (shared by every thermal template).
+    const gutter = {
+      leftPx: Math.round(mmToCssPx(THERMAL_SAFE_GUTTER_MM.left)),
+      rightPx: Math.round(mmToCssPx(THERMAL_SAFE_GUTTER_MM.right)),
+    };
     try {
-      const png = await rasterizeHtmlToPng(htmlContent, cssWidth, dots);
+      const png = await rasterizeHtmlToPng(htmlContent, cssWidth, dots, gutter);
       console.info("[qz/print-job] image path", {
         printer: printerName,
         dotWidth: dots,
+        gutterMm: THERMAL_SAFE_GUTTER_MM,
         pngWidthPx: png.widthPx,
         pngHeightPx: png.heightPx,
       });
