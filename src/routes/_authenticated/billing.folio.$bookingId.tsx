@@ -257,7 +257,7 @@ function FolioPage() {
 
   // Edit payment mode — dynamic RBAC key, granted to all roles by default.
   const canEditPaymentMode = can("payments", "edit_mode");
-  const canDeletePayment = can("payments", "delete");
+  const canDeletePaymentPerm = can("payments", "delete");
   // Date-only edit on a recorded payment — Owner/Manager (payments/edit_date).
   const canEditPaymentDate = can("payments", "edit_date");
   const [payEditOpen, setPayEditOpen] = useState(false);
@@ -772,6 +772,7 @@ function FolioPage() {
           // Correction applied after the bill was finalised (invoice number,
           // GST and amounts are untouched — Bill-To identity only).
           locked_correction: !isOpen,
+          via_grace_window: viaGrace && !canEditBillToPerm,
           folio_status: folio.status ?? null,
         },
       });
@@ -1106,6 +1107,7 @@ function FolioPage() {
             previous_rate: oldRate,
             new_rate: newRate,
             previous_bill_total: prevTotal,
+            via_grace_window: viaGrace && !canEditRoomRatePerm,
             edited_by: userDisplayName(user as any),
             edited_at: new Date().toISOString(),
           },
@@ -1482,6 +1484,7 @@ function FolioPage() {
         amount: Number(p.amount),
         mode: p.mode,
         reference_no: p.reference_no ?? null,
+        via_grace_window: viaGrace && !canDeletePaymentPerm,
       },
     });
     toast.success("Payment deleted");
@@ -1684,17 +1687,26 @@ function FolioPage() {
   // (Owner + Manager by default). Previously this was mistakenly wired to invoices/delete,
   // which hid the edit UI on settled/paid bills whenever a role had edit but not delete.
   const canEditAnyStatus = can("invoices", "edit");
-  const canEditNow = isOpen || canEditAnyStatus || can("invoices", "edit_room_rate_locked");
+  // 60-minute post-settlement grace window — any role at the property may
+  // correct a freshly settled bill (mirrored server-side by RLS + RPC guards).
+  const inGraceWindow = withinGraceWindow(folio.settled_at ?? null, nowTick);
+  const graceLeft = graceMinutesLeft(folio.settled_at ?? null, nowTick);
+  const canEditNow = isOpen || canEditAnyStatus || can("invoices", "edit_room_rate_locked") || inGraceWindow;
   // Bill-To identity corrections on a finalised bill: Owner/Manager only.
   // Everyone else keeps seeing "Locked — the bill is finalised."
-  const canEditBillToLocked = can("invoices", "edit_billto_locked");
+  const canEditBillToPerm = can("invoices", "edit_billto_locked");
+  const canEditBillToLocked = canEditBillToPerm || inGraceWindow;
   const billToEditable = isOpen || canEditBillToLocked;
   // Room tariff is editable by ANY role holding the folio-edit permission
   // (invoices/edit) while the bill is OPEN. Once the folio is finalised it
   // locks for everyone except roles holding invoices/edit_room_rate_locked
   // (Owner, Manager) — the totals/GST/balance are re-derived on save.
-  const canEditRoomRateLocked = can("invoices", "edit_room_rate_locked");
+  const canEditRoomRatePerm = can("invoices", "edit_room_rate_locked");
+  const canEditRoomRateLocked = canEditRoomRatePerm || inGraceWindow;
   const canEditTariff = (isOpen && can("invoices", "edit")) || canEditRoomRateLocked;
+  // True when this user only has access because the grace window is still open.
+  const viaGrace = inGraceWindow;
+  const canDeletePayment = canDeletePaymentPerm || inGraceWindow;
   // Extend stay on a finalised bill: Owner/Manager only.
   const canExtendStay = can("bookings", "extend_stay_locked");
 
