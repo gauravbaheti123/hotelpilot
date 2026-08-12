@@ -59,6 +59,7 @@ import { printIsolated, withPrintStyles } from "@/lib/printStyles";
 import { RequirePermission } from "@/components/RequirePermission";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
+import { withinGraceWindow, graceMinutesLeft } from "@/lib/graceWindow";
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
   head: () => ({ meta: [{ title: "Folio — HotelPilot" }] }),
   validateSearch: (search: Record<string, unknown>): { folio?: string } => {
@@ -93,6 +94,7 @@ interface Folio {
   complimentary_food_used?: number;
   billing_company_id?: string | null;
   billing_guest_id?: string | null;
+  settled_at?: string | null;
 }
 /** Another individual guest picked as the Bill-To party. */
 /** Bill-level discount stored on the folio (not materialised as a charge line). */
