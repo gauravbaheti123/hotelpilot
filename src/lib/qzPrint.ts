@@ -13,6 +13,7 @@ import qz from "qz-tray";
 import { supabase } from "@/integrations/supabase/client";
 import { QZ_PUBLIC_CERTIFICATE } from "./qzCertificate";
 import { rasterizeHtmlToPng } from "./htmlRaster";
+import { THERMAL_SAFE_GUTTER_MM, mmToCssPx } from "./printStyles";
 
 export type QZPaperSize = "58mm" | "80mm" | "A4" | string;
 
