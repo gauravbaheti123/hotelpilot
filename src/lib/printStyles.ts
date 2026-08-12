@@ -56,6 +56,24 @@ export function getPrintContainerStyle(paperSize: string | null | undefined): st
  */
 export const THERMAL_FEED_HTML = `<div class="print-feed">&nbsp;<br/>&nbsp;<br/>&nbsp;</div>`;
 
+/**
+ * Safe print area for thermal rolls, in millimetres.
+ *
+ * The print head / driver loses the first ~2mm at the left edge of the roll,
+ * so a bitmap whose content starts at pixel column 0 comes out with the first
+ * 1-2 characters of every line sliced off. Every thermal document goes
+ * through the shared rasterizer, so this inset is applied there once and
+ * therefore applies to Laundry bills, Food bills, KOT/counter copies and any
+ * future 80mm/58mm template. It is a hardcoded default rather than a
+ * per-printer setting: the offset is a property of thermal hardware in
+ * general, and the printers master has no margin/offset field to hang it on.
+ */
+export const THERMAL_SAFE_GUTTER_MM = { left: 3, right: 1 } as const;
+
+export function mmToCssPx(mm: number): number {
+  return (mm * 96) / 25.4;
+}
+
 export function getThermalFeedCss(): string {
   return `.print-feed{height:14mm;min-height:14mm;line-height:4.5mm;font-size:10px;visibility:hidden;}`;
 }
