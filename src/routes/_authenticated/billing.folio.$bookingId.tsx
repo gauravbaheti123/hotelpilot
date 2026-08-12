@@ -59,7 +59,7 @@ import { printIsolated, withPrintStyles } from "@/lib/printStyles";
 import { RequirePermission } from "@/components/RequirePermission";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
-import { withinGraceWindow, graceMinutesLeft } from "@/lib/graceWindow";
+import { withinGraceWindow } from "@/lib/graceWindow";
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
   head: () => ({ meta: [{ title: "Folio — HotelPilot" }] }),
   validateSearch: (search: Record<string, unknown>): { folio?: string } => {
@@ -1692,7 +1692,6 @@ function FolioPage() {
   // 60-minute post-settlement grace window — any role at the property may
   // correct a freshly settled bill (mirrored server-side by RLS + RPC guards).
   const inGraceWindow = withinGraceWindow(folio.settled_at ?? null, nowTick);
-  const graceLeft = graceMinutesLeft(folio.settled_at ?? null, nowTick);
   const canEditNow = isOpen || canEditAnyStatus || can("invoices", "edit_room_rate_locked") || inGraceWindow;
   // Bill-To identity corrections on a finalised bill: Owner/Manager only.
   // Everyone else keeps seeing "Locked — the bill is finalised."
