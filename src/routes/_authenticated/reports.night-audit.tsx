@@ -737,7 +737,7 @@ function NightAuditPage() {
         </Card>
 
         <Dialog open={!!viewReport} onOpenChange={(o) => !o && setViewReport(null)}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-auto">
+          <DialogContent className="max-w-3xl max-h-[90dvh] overflow-auto">
             <DialogHeader>
               <DialogTitle>Audit Report — {viewReport?.audit_date}</DialogTitle>
             </DialogHeader>

@@ -287,7 +287,7 @@ export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: 
         ) : payments.length === 0 ? (
           <p className="text-sm text-muted-foreground">No payments recorded for this bill.</p>
         ) : (
-          <div className="space-y-3 max-h-[50vh] overflow-auto pr-1">
+          <div className="space-y-3 max-h-[50dvh] overflow-auto pr-1">
             {payments.map((p) => (
               <div key={p.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 border rounded-md p-2">
                 <div className="min-w-0">

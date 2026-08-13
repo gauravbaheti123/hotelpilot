@@ -1934,7 +1934,7 @@ function BulkCheckinDialog({
     <Dialog open={!!event} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader><DialogTitle>Bulk Check-in — {event.event_name}</DialogTitle></DialogHeader>
-        <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+        <div className="space-y-2 max-h-[50dvh] overflow-y-auto">
           <label className="flex items-center gap-2 text-sm font-medium">
             <Checkbox checked={allSelected}
               onCheckedChange={(c) => setSelected(c ? new Set(blocked.map((b) => b.id)) : new Set())} />
@@ -1992,7 +1992,7 @@ function BulkCheckoutDialog({
     <Dialog open={!!event} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader><DialogTitle>Bulk Checkout — {event.event_name}</DialogTitle></DialogHeader>
-        <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+        <div className="space-y-2 max-h-[50dvh] overflow-y-auto">
           {checked.map((b) => (
             <label key={b.id} className="flex items-center gap-2 text-sm border-t py-2">
               <Checkbox checked={selected.has(b.id)} onCheckedChange={() => toggle(b.id)} />

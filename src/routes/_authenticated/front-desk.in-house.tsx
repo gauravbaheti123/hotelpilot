@@ -360,7 +360,7 @@ function AssignRoomDialog({
           <DialogTitle>Assign Room</DialogTitle>
           <DialogDescription>Select a vacant room for this booking.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+        <div className="space-y-2 max-h-[50dvh] overflow-y-auto">
           {rooms.length === 0 ? (
             <div className="text-sm text-muted-foreground">No vacant rooms available.</div>
           ) : rooms.map((r) => (
