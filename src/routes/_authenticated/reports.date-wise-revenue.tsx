@@ -72,7 +72,7 @@ function Page() {
       const r = map.get(key); if (!r) continue;
       const a = Number(c.amount || 0);
       if (c.charge_type === "room") r.rooms += a;
-      else if (c.charge_type === "food" || c.charge_type === "restaurant") r.food += a;
+      else if (c.charge_type === "food" || c.charge_type === "laundry") r.food += a;
       else r.other += a;
     }
     for (const b of banquetRows) {
