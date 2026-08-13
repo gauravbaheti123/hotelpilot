@@ -1366,11 +1366,11 @@ function SegmentRoomCard({
           className="relative transition cursor-pointer overflow-hidden flex flex-col text-left"
           style={{ backgroundColor: c.bg, color: c.fg, minHeight: 118, borderRadius: 10 }}
         >
-      <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
-        <div className="flex items-start justify-between gap-2">
-          <span style={{ color: c.fg, fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
+      <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 min-w-0 flex flex-col">
+        <div className="flex items-start justify-between gap-1.5 min-w-0">
+          <span className="truncate" style={{ color: c.fg, fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
           <span
-            className="font-semibold uppercase tracking-wide rounded-full"
+            className="font-semibold uppercase tracking-wide rounded-full shrink-0"
             style={{ backgroundColor: c.btnBg, color: c.btnFg, fontSize: 10, padding: "2px 7px" }}
           >
             {label}
@@ -1382,10 +1382,10 @@ function SegmentRoomCard({
         <div className="mt-auto pt-1">
           {hasPending ? (
             <>
-              <div style={{ fontSize: 12, fontWeight: 700, color: c.fg }}>
+              <div className="truncate" style={{ fontSize: 12, fontWeight: 700, color: c.fg }}>
                 ₹{amount.toLocaleString("en-IN")} pending
               </div>
-              <div style={{ fontSize: 10, color: c.fgMuted }}>
+              <div className="truncate" style={{ fontSize: 10, color: c.fgMuted }}>
                 {pending!.count} open bill{pending!.count > 1 ? "s" : ""} · tap to add more
               </div>
             </>
@@ -1499,9 +1499,9 @@ const RoomCard = memo(function RoomCard({
         className="relative transition cursor-pointer overflow-hidden flex flex-col"
         style={{ backgroundColor: evBg, color: "#ffffff", minHeight: 118, borderRadius: 10 }}
       >
-        <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
-          <div className="flex items-start justify-between gap-2">
-            <span style={{ color: "#ffffff", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
+        <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 min-w-0 flex flex-col">
+          <div className="flex items-start justify-between gap-1.5 min-w-0">
+            <span className="truncate" style={{ color: "#ffffff", fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
           </div>
           <div className="truncate" style={{ color: "rgba(255,255,255,0.8)", fontSize: 13, fontStyle: "italic", fontWeight: 500, marginTop: 2 }}>
             — {eventInfo!.eventName} —
@@ -1509,7 +1509,7 @@ const RoomCard = memo(function RoomCard({
           <div className="truncate" style={{ color: eventInfo!.guestName ? "#ffffff" : "rgba(255,255,255,0.75)", fontStyle: eventInfo!.guestName ? "normal" : "italic", fontSize: 14, fontWeight: eventInfo!.guestName ? 700 : 500 }}>
             {eventInfo!.guestName ?? "Guest Unassigned"}
           </div>
-          <div style={{ color: "rgba(255,255,255,0.85)", fontSize: 11 }}>{fmtShort(eventInfo!.checkin)} → {fmtShort(eventInfo!.checkout)}</div>
+          <div className="truncate" style={{ color: "rgba(255,255,255,0.85)", fontSize: 11 }}>{fmtShort(eventInfo!.checkin)} → {fmtShort(eventInfo!.checkout)}</div>
           <div className="mt-auto pt-1 flex flex-wrap gap-1">
             {isEventBlock && !eventInfo!.guestName && (
               <button type="button"
@@ -1570,9 +1570,9 @@ const RoomCard = memo(function RoomCard({
       className="relative transition cursor-pointer overflow-hidden flex flex-col"
       style={{ backgroundColor: meta.bg, color: meta.fg, minHeight: 118, borderRadius: 10, border: `1px solid ${meta.border}` }}
     >
-      <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
-        <div className="flex items-start justify-between gap-2">
-          <span style={{ color: meta.fg, fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
+      <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 min-w-0 flex flex-col">
+        <div className="flex items-start justify-between gap-1.5 min-w-0">
+          <span className="truncate" style={{ color: meta.fg, fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
         </div>
 
         {(kind === "occupied" || kind === "overdue") && occ && (
@@ -1581,21 +1581,21 @@ const RoomCard = memo(function RoomCard({
               {occ.guestName ?? "Guest"}
             </div>
             {kind === "overdue" ? (
-              <div style={{ color: meta.fgMuted, fontSize: 11, fontWeight: 600 }}>
-                <div>{fmtShortDT(occ.checkIn, occ.checkInTime)} →</div>
-                <div>Due: {fmtShortDT(occ.checkOut, occ.checkOutTime)} → ⚠️</div>
+              <div className="min-w-0" style={{ color: meta.fgMuted, fontSize: 11, fontWeight: 600 }}>
+                <div className="truncate">{fmtShortDT(occ.checkIn, occ.checkInTime)} →</div>
+                <div className="truncate">Due: {fmtShortDT(occ.checkOut, occ.checkOutTime)} → ⚠️</div>
               </div>
             ) : (
-              <div style={{ color: meta.fgMuted, fontSize: 11 }}>
-                <div>{fmtShortDT(occ.checkIn, occ.checkInTime)} →</div>
-                <div>{fmtShortDT(occ.checkOut, occ.checkOutTime)} →</div>
+              <div className="min-w-0" style={{ color: meta.fgMuted, fontSize: 11 }}>
+                <div className="truncate">{fmtShortDT(occ.checkIn, occ.checkInTime)} →</div>
+                <div className="truncate">{fmtShortDT(occ.checkOut, occ.checkOutTime)} →</div>
               </div>
             )}
-            <div style={{ fontSize: 12, fontWeight: 700, color: pending > 0 ? "#DC2626" : meta.fgMuted }}>
+            <div className="truncate" style={{ fontSize: 12, fontWeight: 700, color: pending > 0 ? "#DC2626" : meta.fgMuted }}>
               {pending > 0 ? `₹${pending.toLocaleString("en-IN")} pending` : "Balance ₹0"}
             </div>
             {pending > 0 && sharedRooms > 1 && (
-              <div style={{ color: meta.fgMuted, fontSize: 10 }}>
+              <div className="truncate" style={{ color: meta.fgMuted, fontSize: 10 }}>
                 shared across {sharedRooms} rooms
               </div>
             )}
@@ -1616,7 +1616,7 @@ const RoomCard = memo(function RoomCard({
         )}
 
         {hintText && (
-          <div className="mt-auto" style={{ color: meta.fgMuted, fontSize: 11 }}>
+          <div className="mt-auto line-clamp-2 break-words" style={{ color: meta.fgMuted, fontSize: 11 }}>
             {hintText}
           </div>
         )}
