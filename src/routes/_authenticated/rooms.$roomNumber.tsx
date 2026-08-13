@@ -377,7 +377,7 @@ function RoomDetailPage() {
           ) : (
             <ul className="divide-y">
               {tasks.map((t) => (
-                <li key={t.id} className="py-2 flex items-center justify-between gap-3">
+                <li key={t.id} className="py-2 flex flex-wrap items-center justify-between gap-2 gap-3">
                   <div className="min-w-0">
                     <div className="text-sm font-medium capitalize">{t.task_type}</div>
                     <div className="text-xs text-muted-foreground">
@@ -415,7 +415,7 @@ function RoomDetailPage() {
           ) : (
             <ul className="divide-y">
               {history.map((h) => (
-                <li key={h.id} className="py-2 flex items-center justify-between gap-3">
+                <li key={h.id} className="py-2 flex flex-wrap items-center justify-between gap-2 gap-3">
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate">
                       <Link to="/front-desk/booking/$id" params={{ id: h.id }} className="hover:underline">{h.guest_name ?? "Guest"}</Link>

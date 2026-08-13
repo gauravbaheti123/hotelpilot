@@ -797,7 +797,7 @@ function RestaurantPage() {
           <TabsContent value="active" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex flex-wrap items-center justify-between gap-2">
                   <span>Active Restaurant Credits ({MONTHS[month - 1]} {year})</span>
                   <span className="text-sm font-normal text-muted-foreground text-right">
                     Total outstanding this month: <span className="font-semibold text-foreground">₹{totalActive.toLocaleString()}</span>
@@ -970,7 +970,7 @@ function RestaurantPage() {
           <TabsContent value="direct" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex flex-wrap items-center justify-between gap-2">
                   <span>Direct Restaurant Charges</span>
                   <Button size="sm" onClick={() => setPostOpen(true)}>
                     <Plus className="h-4 w-4 mr-1" /> Post Restaurant Charge
@@ -1045,7 +1045,7 @@ function RestaurantPage() {
           <TabsContent value="payables" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex flex-wrap items-center justify-between gap-2">
                   <span>Owed to Restaurant (Direct Charges)</span>
                   <span className="text-sm font-normal">
                     Total outstanding: <span className="font-bold text-destructive">₹{totalPayable.toLocaleString()}</span>
@@ -1063,7 +1063,7 @@ function RestaurantPage() {
                   const byOutlet = groupByOutlet(rows, payableOutlet, (p) => Number(p.amount));
                   return (
                     <div key={ym} className="border rounded-md p-3">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                         <div>
                           <div className="font-medium">{ym} · {rows.length} entries · ₹{total.toLocaleString()}</div>
                           <OutletBreakdown parts={byOutlet} className="mt-0.5" />

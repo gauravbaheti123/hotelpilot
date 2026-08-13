@@ -501,7 +501,7 @@ function GuestDetail() {
               {stays.map((s) => (
                 <Link key={s.id} to="/front-desk/booking/$id" params={{ id: s.id }}
                   className="block px-4 py-3 text-sm hover:bg-accent">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="font-medium">
                       {s.rooms?.length
                         ? `Room ${s.rooms.join(", ")}${s.categories?.length ? ` · ${s.categories.join(", ")}` : ""}`
@@ -552,7 +552,7 @@ function GuestDetail() {
               {feedback.length === 0 && <p className="p-4 text-sm text-muted-foreground">No feedback received yet.</p>}
               {feedback.map((f) => (
                 <div key={f.id} className="px-4 py-3 text-sm">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="font-medium">★ {f.overall_rating}/5</div>
                     <div className="text-xs text-muted-foreground">{f.feedback_date} · {f.source}</div>
                   </div>

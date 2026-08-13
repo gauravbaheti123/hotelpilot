@@ -1016,7 +1016,7 @@ function NewBookingPage() {
             <CardContent className="space-y-4">
               {extras.map((g, idx) => (
                 <div key={g.key} className="rounded-md border p-3 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       {g.kind === "adult" ? `Adult guest #${idx + 1}` : `Child #${idx + 1 - extras.filter((e) => e.kind === "adult").length}`}
                     </div>

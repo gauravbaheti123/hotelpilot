@@ -210,7 +210,7 @@ function WhatsAppInboxPage() {
                   activeConv?.number === c.number ? "bg-muted" : ""
                 }`}
               >
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 gap-2">
                   <div className="font-medium truncate">{c.name ?? c.number}</div>
                   {c.unread > 0 && (
                     <Badge className="h-5 px-1.5 text-[10px] bg-emerald-600">{c.unread}</Badge>
@@ -233,7 +233,7 @@ function WhatsAppInboxPage() {
             </div>
           ) : (
             <>
-              <div className="p-3 border-b flex items-center justify-between">
+              <div className="p-3 border-b flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <div className="font-medium">{activeConv.name ?? "Unknown guest"}</div>
                   <div className="text-xs text-muted-foreground">{activeConv.number}</div>

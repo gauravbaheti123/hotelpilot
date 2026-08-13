@@ -1079,7 +1079,7 @@ function BanquetBillPage() {
         {balance > 0.01 && (
           <Card className="no-print">
             <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-sm font-semibold uppercase tracking-wider">
                   Collect Payment
                 </div>

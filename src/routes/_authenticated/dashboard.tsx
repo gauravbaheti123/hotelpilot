@@ -1861,7 +1861,7 @@ function ScheduleCard({
         ) : (
           <ul className="divide-y">
             {rows.map((r) => (
-              <li key={r.id} className="flex items-center justify-between gap-2 py-2.5">
+              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 gap-2 py-2.5">
                 <div className="min-w-0">
                   <div className="text-sm font-medium truncate">{r.guest_name ?? "Guest"}</div>
                   <div className="text-xs text-muted-foreground">

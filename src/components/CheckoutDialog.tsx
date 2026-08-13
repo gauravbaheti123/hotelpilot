@@ -1045,7 +1045,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
               </div>
               <div className="space-y-1 text-sm">
                 {pendingSegments.map((s) => (
-                  <div key={s.id} className="flex items-center justify-between gap-2">
+                  <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 gap-2">
                     <span className="uppercase text-xs flex-1 min-w-0 truncate">
                       <Badge variant="outline" className="mr-1 text-[10px]">{s.segment}</Badge>
                       {s.bill_number}
@@ -1300,7 +1300,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
 
             {totals.balance > 0.01 && (
               <div className="rounded border p-3 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="font-medium">Collect Payment</div>
                   <label className="flex items-center gap-2 text-xs">
                     <input

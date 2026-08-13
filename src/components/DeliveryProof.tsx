@@ -97,7 +97,7 @@ export function DeliveryProof({ kotId, propertyId, proofUrl, takenAt, takenBy, o
 
   return (
     <div className="rounded-lg border p-3 bg-card">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 gap-2">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Camera className="h-4 w-4" /> Delivery Proof
           {hasProof && <span className="inline-flex items-center gap-1 text-emerald-700 text-xs"><Check className="h-3 w-3" /> Captured</span>}

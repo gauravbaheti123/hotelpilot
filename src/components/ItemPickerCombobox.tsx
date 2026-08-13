@@ -88,7 +88,7 @@ export function ItemPickerCombobox({
                     key={it.id}
                     value={it.id}
                     onSelect={() => { onSelect(it); setOpen(false); }}
-                    className="flex items-center justify-between gap-2"
+                    className="flex flex-wrap items-center justify-between gap-2 gap-2"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <Check className={cn("h-3.5 w-3.5", selectedId === it.id ? "opacity-100" : "opacity-0")} />

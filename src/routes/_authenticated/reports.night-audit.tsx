@@ -498,7 +498,7 @@ function NightAuditPage() {
           {/* Occupied */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex flex-wrap items-center justify-between gap-2">
                 Occupied Rooms
                 <Badge variant="secondary">{occupied.length}</Badge>
               </CardTitle>
@@ -526,7 +526,7 @@ function NightAuditPage() {
           {/* Open KOTs */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex flex-wrap items-center justify-between gap-2">
                 Open KOTs
                 <Badge variant="secondary">{openKots.length}</Badge>
               </CardTitle>
@@ -553,7 +553,7 @@ function NightAuditPage() {
           {/* Unsettled */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex flex-wrap items-center justify-between gap-2">
                 Unsettled Bills
                 <Badge variant="secondary">{unsettled.length}</Badge>
               </CardTitle>

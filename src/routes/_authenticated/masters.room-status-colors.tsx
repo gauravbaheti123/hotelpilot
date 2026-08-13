@@ -203,7 +203,7 @@ function RoomStatusColorsPage() {
                     className="rounded-lg p-3 border"
                     style={{ backgroundColor: c.bg, color: c.fg, borderColor: c.border }}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2 font-semibold">
                         <BedDouble className="h-4 w-4" /> 101
                       </div>

@@ -2829,7 +2829,7 @@ function FolioPage() {
                   </Button>
                 </div>
               )}
-              <div style={{ background: TEAL, color: "#fff", boxSizing: "border-box", width: "100%" }} className="grand-total-row mt-2 flex items-center justify-between rounded px-4 py-3">
+              <div style={{ background: TEAL, color: "#fff", boxSizing: "border-box", width: "100%" }} className="grand-total-row mt-2 flex flex-wrap items-center justify-between gap-2 rounded px-4 py-3">
                 <span className="text-sm font-bold uppercase tracking-wider">Grand Total</span>
                 <span className="text-2xl font-extrabold tabular-nums">{inrRound(folio.total_amount)}</span>
               </div>

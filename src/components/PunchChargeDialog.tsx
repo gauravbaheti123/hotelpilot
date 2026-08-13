@@ -557,7 +557,7 @@ export function PunchChargeDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
           <div className="text-sm">
             {walkin ? (
               <span className="text-muted-foreground">No folio — settled at counter</span>

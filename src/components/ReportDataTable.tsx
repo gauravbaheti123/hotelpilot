@@ -407,7 +407,7 @@ function FilterEditor({
   }
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-xs font-medium">Include</div>
         <div className="flex gap-1">
           <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs"

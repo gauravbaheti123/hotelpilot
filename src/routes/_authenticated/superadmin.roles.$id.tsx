@@ -317,7 +317,7 @@ function EditRolePage() {
         <div className="max-w-6xl space-y-4">
           <BackButton variant="ghost" fallbackTo="/superadmin/roles" />
 
-          <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-background/95 backdrop-blur border-b flex items-center justify-between gap-4">
+          <div className="sticky top-0 z-20 -mx-4 px-4 py-3 bg-background/95 backdrop-blur border-b flex flex-wrap items-center justify-between gap-2 gap-4">
             <div>
               <h2 className="text-2xl font-semibold tracking-tight">Edit Permissions — {role?.name ?? "Role"}</h2>
               {role?.description ? <p className="text-sm text-muted-foreground">{role.description}</p> : null}

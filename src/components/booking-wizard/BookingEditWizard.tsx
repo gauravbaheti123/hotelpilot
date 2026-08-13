@@ -195,10 +195,11 @@ export function BookingEditWizard({ bookingId, onSaved, onCancel }: Props) {
 
         {step === 5 && <StepEditReview state={state} />}
 
-        <div className="flex items-center justify-between border-t pt-4">
+        <div className="sticky bottom-0 z-10 -mx-6 flex flex-col-reverse gap-2 border-t bg-background/95 px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:static sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:bg-transparent sm:px-0 sm:pt-4 sm:pb-0 sm:backdrop-blur-none">
           <Button
             type="button"
             variant="outline"
+            className="w-full sm:w-auto"
             disabled={saving}
             onClick={() => (step === 0 ? onCancel() : setStep((s) => s - 1))}
           >
@@ -206,12 +207,12 @@ export function BookingEditWizard({ bookingId, onSaved, onCancel }: Props) {
             {step === 0 ? "Cancel" : "Back"}
           </Button>
           {last ? (
-            <Button type="button" disabled={saving || !valid} onClick={handleSave}>
+            <Button type="button" className="w-full sm:w-auto" disabled={saving || !valid} onClick={handleSave}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Save changes
             </Button>
           ) : (
-            <Button type="button" disabled={!valid} onClick={() => setStep((s) => s + 1)}>
+            <Button type="button" className="w-full sm:w-auto" disabled={!valid} onClick={() => setStep((s) => s + 1)}>
               Next
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

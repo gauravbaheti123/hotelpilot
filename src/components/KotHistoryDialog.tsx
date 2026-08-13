@@ -486,7 +486,7 @@ export function KotHistoryDialog({
               </div>
             ))}
           </div>
-          <div className="flex items-center justify-between text-sm border-t pt-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm border-t pt-2">
             <span className="text-muted-foreground">
               {removedIds.length > 0 ? `${removedIds.length} item(s) will be removed` : `${draft.length} item(s)`}
             </span>

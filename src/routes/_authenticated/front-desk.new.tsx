@@ -433,7 +433,7 @@ function NewBookingWizardPage() {
     <AppShell title="New Booking">
       <Card className="mx-auto max-w-4xl">
         <CardHeader className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 gap-3">
             <CardTitle>New Booking</CardTitle>
             {draft.savedAt && (
               <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -543,10 +543,11 @@ function NewBookingWizardPage() {
             />
           )}
 
-          <div className="flex items-center justify-between border-t pt-4">
+          <div className="sticky bottom-0 z-10 -mx-6 flex flex-col-reverse gap-2 border-t bg-background/95 px-6 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:static sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:bg-transparent sm:px-0 sm:pt-4 sm:pb-0 sm:backdrop-blur-none">
             <Button
               type="button"
               variant="outline"
+              className="w-full sm:w-auto"
               disabled={saving}
               onClick={() =>
                 step === 0
@@ -559,17 +560,17 @@ function NewBookingWizardPage() {
             </Button>
             {onReview ? (
               banquet ? (
-                <Button type="button" disabled={saving} onClick={handleBanquetSubmit}>
+                <Button type="button" className="w-full sm:w-auto" disabled={saving} onClick={handleBanquetSubmit}>
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Save event
                 </Button>
               ) : (
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button type="button" variant="outline" disabled={saving} onClick={() => handleSubmit(false)}>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+                <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={saving} onClick={() => handleSubmit(false)}>
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Save as reservation
                 </Button>
-                <Button type="button" disabled={saving} onClick={() => handleSubmit(true)}>
+                <Button type="button" className="w-full sm:w-auto" disabled={saving} onClick={() => handleSubmit(true)}>
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Save &amp; check-in now
                 </Button>
@@ -578,6 +579,7 @@ function NewBookingWizardPage() {
             ) : (
               <Button
                 type="button"
+                className="w-full sm:w-auto"
                 disabled={!stepValid || (step === STEP.STAY && !banquet && stepBlocked)}
                 onClick={() => setStep((s) => nextStepIndex(s, state))}
               >
