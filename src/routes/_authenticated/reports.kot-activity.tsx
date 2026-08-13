@@ -29,16 +29,32 @@ export const Route = createFileRoute("/_authenticated/reports/kot-activity")({
 });
 
 const ALL = "__all__";
-const ACTIONS = ["KOT_EDITED", "KOT_VOIDED", "KOT_DELETED"];
+const ACTIONS = [
+  "SEGMENT_BILL_EDITED",
+  "SEGMENT_BILL_DELETED",
+  "SEGMENT_BILL_SETTLED",
+  "SEGMENT_BILL_AUTO_CLOSED",
+  "BILL_VOIDED",
+  "RESTAURANT_DIRECT_CHARGE_DELETED",
+  "KOT_PUNCH_DELETED",
+];
 const ACTION_LABEL: Record<string, string> = {
-  KOT_EDITED: "Edited",
-  KOT_VOIDED: "Voided",
-  KOT_DELETED: "Deleted",
+  SEGMENT_BILL_EDITED: "Bill Edited",
+  SEGMENT_BILL_DELETED: "Bill Deleted",
+  SEGMENT_BILL_SETTLED: "Bill Settled",
+  SEGMENT_BILL_AUTO_CLOSED: "Auto-Closed",
+  BILL_VOIDED: "Voided",
+  RESTAURANT_DIRECT_CHARGE_DELETED: "Direct Charge Deleted",
+  KOT_PUNCH_DELETED: "Punch Deleted",
 };
 const ACTION_TONE: Record<string, string> = {
-  KOT_EDITED: "bg-blue-100 text-blue-800 border-blue-300",
-  KOT_VOIDED: "bg-amber-100 text-amber-800 border-amber-300",
-  KOT_DELETED: "bg-rose-100 text-rose-800 border-rose-300",
+  SEGMENT_BILL_EDITED: "bg-blue-100 text-blue-800 border-blue-300",
+  SEGMENT_BILL_SETTLED: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  SEGMENT_BILL_AUTO_CLOSED: "bg-slate-100 text-slate-800 border-slate-300",
+  BILL_VOIDED: "bg-amber-100 text-amber-800 border-amber-300",
+  SEGMENT_BILL_DELETED: "bg-rose-100 text-rose-800 border-rose-300",
+  RESTAURANT_DIRECT_CHARGE_DELETED: "bg-rose-100 text-rose-800 border-rose-300",
+  KOT_PUNCH_DELETED: "bg-rose-100 text-rose-800 border-rose-300",
 };
 
 interface KotDisplayRow {
@@ -48,12 +64,12 @@ interface KotDisplayRow {
 
 const KOT_COLUMNS: ReportColumn<KotDisplayRow>[] = [
   { key: "when", header: "Date-Time", get: (r) => r.when, type: "date", sortValue: (r) => r.when },
-  { key: "kot", header: "KOT Number", get: (r) => r.kotNumber },
+  { key: "kot", header: "Bill / KOT Number", get: (r) => r.kotNumber },
   { key: "action", header: "Action", get: (r) => ACTION_LABEL[r.action] ?? r.action, type: "enum" },
   { key: "staff", header: "Performed By", get: (r) => r.staff, type: "enum" },
   { key: "loc", header: "Table / Room", get: (r) => r.loc, type: "enum" },
   { key: "before", header: "Amount Before", get: (r) => (r.before != null ? r.before : ""), currency: true },
-  { key: "after", header: "Amount After", get: (r) => (r.action === "KOT_EDITED" && r.after != null ? r.after : ""), currency: true },
+  { key: "after", header: "Amount After", get: (r) => (r.after != null ? r.after : ""), currency: true },
   { key: "reason", header: "Reason", get: (r) => r.reason },
 ];
 
