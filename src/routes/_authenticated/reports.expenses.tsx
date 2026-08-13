@@ -42,9 +42,9 @@ function Page() {
   useEffect(() => {
     if (!propertyId) return;
     supabase.from("expense_categories").select("id,name").eq("property_id", propertyId).then(guardQuery("expense categories")).then(({ data }) => setCats((data ?? []) as any));
-    supabase.from("profiles").select("user_id,full_name,email").limit(200).then(guardQuery("profiles")).then(({ data }) => {
+    supabase.from("profiles").select("id,name,email").limit(500).then(guardQuery("profiles")).then(({ data }) => {
       const m = new Map<string, string>();
-      for (const p of (data ?? []) as any[]) m.set(p.user_id, p.full_name ?? p.email ?? "");
+      for (const p of (data ?? []) as any[]) m.set(p.id, p.name ?? p.email ?? "");
       setProfiles(m);
     });
   }, [propertyId]);

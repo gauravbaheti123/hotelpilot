@@ -74,7 +74,7 @@ function Page() {
       const m = chargeMap.get(c.folio_id) ?? { room: 0, food: 0, other: 0 };
       const a = Number(c.amount || 0);
       if (c.charge_type === "room") m.room += a;
-      else if (c.charge_type === "food" || c.charge_type === "restaurant") m.food += a;
+      else if (c.charge_type === "food" || c.charge_type === "laundry") m.food += a;
       else m.other += a;
       chargeMap.set(c.folio_id, m);
     }

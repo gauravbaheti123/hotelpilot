@@ -207,19 +207,20 @@ function NightAuditPage() {
       folioId: folioMap.get(c.booking_id) ?? null,
     })));
 
-    // Open KOTs
+    // Open (unsettled) food / laundry bills — live source is segment_bills.
     const { data: kots, error: __qe2 } = await supabase
-      .from("kot_orders")
-      .select("id, kot_number, total_amount, status, rooms(room_number), kot_items(item_name, qty)")
-      .eq("property_id", propertyId).eq("kot_copy", "hotel_copy")
-      .in("status", ["open", "printed", "served"]);
-    if (__qe2) reportQueryError("kot orders", __qe2);
+      .from("segment_bills")
+      .select("id, bill_number, total_amount, status, rooms(room_number), segment_bill_items(description, qty)")
+      .eq("property_id", propertyId)
+      .in("segment", ["food", "laundry"])
+      .neq("status", "settled");
+    if (__qe2) reportQueryError("open food bills", __qe2);
     setOpenKots(((kots ?? []) as any[]).map((k) => ({
-      id: k.id, kot_number: k.kot_number,
+      id: k.id, kot_number: k.bill_number ?? "—",
       room_number: k.rooms?.room_number ?? null,
       total_amount: Number(k.total_amount || 0),
       status: k.status,
-      items: (k.kot_items ?? []).map((i: any) => `${i.item_name}×${i.qty}`).join(", "),
+      items: (k.segment_bill_items ?? []).map((i: any) => `${i.description}×${i.qty}`).join(", "),
     })));
 
     // Unsettled bills
