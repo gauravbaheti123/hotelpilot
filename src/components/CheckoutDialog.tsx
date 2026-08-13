@@ -1027,7 +1027,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Checkout Summary</DialogTitle>
         </DialogHeader>

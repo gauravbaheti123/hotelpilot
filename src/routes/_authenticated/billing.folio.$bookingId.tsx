@@ -3233,7 +3233,7 @@ function FolioPage() {
                   Your role allows maximum {Math.max(0, Math.min(100, maxDiscPct))}% discount.
                 </div>
               )}
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Qty</Label>
                   <Input type="number" value={addQty} onChange={(e) => setAddQty(e.target.value)} />
@@ -3266,7 +3266,7 @@ function FolioPage() {
                 <Label className="text-xs">Description *</Label>
                 <Input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Qty</Label>
                   <Input type="number" value={editQty} onChange={(e) => setEditQty(e.target.value)} />

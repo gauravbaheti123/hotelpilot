@@ -40,7 +40,7 @@ export function PropertySelector() {
     <div className="flex items-center gap-2">
       <Building2 className="h-4 w-4 text-muted-foreground" />
       <Select value={currentId ?? undefined} onValueChange={setCurrentId}>
-        <SelectTrigger className="h-8 w-[200px] text-sm">
+        <SelectTrigger className="h-8 w-full max-w-[200px] text-sm">
           <SelectValue placeholder="Select property" />
         </SelectTrigger>
         <SelectContent>

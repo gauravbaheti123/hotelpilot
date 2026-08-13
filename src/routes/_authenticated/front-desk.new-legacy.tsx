@@ -1249,7 +1249,7 @@ function NewBookingPage() {
             <CardTitle className="text-base">Payment at Check-in (Advance)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid grid-cols-4 gap-3 text-sm">
+            <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
               <Stat label="Nights" value={String(nights)} />
               <Stat label="Room total" value={`₹${total.toLocaleString("en-IN")}`} />
               <F label="Advance ₹"><Input type="number" value={advance} onChange={(e) => setAdvance(Number(e.target.value))} /></F>

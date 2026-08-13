@@ -181,7 +181,7 @@ function PayrollPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Card><CardContent className="pt-4">
             <div className="text-xs text-muted-foreground">Gross</div>
             <div className="text-2xl font-semibold">₹{totals.gross.toFixed(2)}</div>

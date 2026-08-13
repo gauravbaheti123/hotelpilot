@@ -815,7 +815,7 @@ function BookingDetailPage() {
                         </div>
                       ))}
                     </div>
-                    <div className="border-t pt-2 grid grid-cols-3 gap-2">
+                    <div className="border-t pt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                       <SummaryStat label="Total food" value={`₹${total.toLocaleString("en-IN")}`} />
                       <SummaryStat label="Settled" value={`₹${settled.toLocaleString("en-IN")}`} />
                       <SummaryStat label="Pending" value={`₹${pending.toLocaleString("en-IN")}`} highlight={pending > 0} />

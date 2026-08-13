@@ -235,7 +235,7 @@ export function BulkCsvButtons(props: BulkCsvButtonsProps) {
           <DialogHeader>
             <DialogTitle>Preview import — {parsedRows.length} rows</DialogTitle>
           </DialogHeader>
-          <div className="max-h-[60vh] overflow-auto border rounded">
+          <div className="max-h-[60dvh] overflow-auto border rounded">
             <Table>
               <TableHeader>
                 <TableRow>

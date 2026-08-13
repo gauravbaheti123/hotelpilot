@@ -206,3 +206,47 @@ body {
     min-width: 44px;
   }
 }
+
+/* ---- Global mobile responsiveness guards ----------------------------------
+   1. No page-level sideways scrolling. Wide content (tables, grids) must
+      scroll inside its own container (see <ResponsiveTable />).
+      `clip` is used instead of `hidden` so position:sticky keeps working.
+   2. Media/embeds never exceed their container.
+   3. iOS refuses to honour a form control smaller than 16px without zooming
+      the whole page in, which is what makes the layout "jump" when the
+      keyboard opens.
+--------------------------------------------------------------------------- */
+html {
+  overflow-x: clip;
+}
+
+body {
+  overflow-x: clip;
+  max-width: 100%;
+}
+
+img,
+svg,
+video,
+canvas,
+iframe {
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Comfortable tap targets for non-<button> triggers (Radix select/combobox,
+   switches, links styled as actions) on touch devices. */
+@media (pointer: coarse) {
+  [role="combobox"]:not(table [role="combobox"]),
+  [role="switch"],
+  [data-slot="select-trigger"]:not(table [data-slot="select-trigger"]) {
+    min-height: 44px;
+  }
+}
