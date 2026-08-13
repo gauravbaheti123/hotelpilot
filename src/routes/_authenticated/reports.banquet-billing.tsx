@@ -574,7 +574,7 @@ function Page() {
           ) : edit ? (
             <div className="space-y-3">
               <div><Label>Description</Label><Input value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} /></div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 <div><Label>Qty</Label><Input type="number" value={edit.qty} onChange={(e) => setEdit({ ...edit, qty: Number(e.target.value) })} /></div>
                 <div><Label>Rate</Label><Input type="number" value={edit.rate} onChange={(e) => setEdit({ ...edit, rate: Number(e.target.value) })} /></div>
                 <div><Label>GST %</Label><Input type="number" value={edit.gst_rate} onChange={(e) => setEdit({ ...edit, gst_rate: Number(e.target.value) })} /></div>

@@ -407,7 +407,7 @@ function HotelSettingsForm({
           <CardDescription>Used on invoice header and dashboard.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="w-[300px] h-[100px] rounded border bg-muted flex items-center justify-center overflow-hidden">
+          <div className="w-full max-w-[300px] h-[100px] rounded border bg-muted flex items-center justify-center overflow-hidden">
             {logoSignedUrl
               ? <img src={logoSignedUrl} alt="logo" className="object-contain max-h-full max-w-full" />
               : <div className="text-3xl font-bold text-muted-foreground">{hotelInitials}</div>}

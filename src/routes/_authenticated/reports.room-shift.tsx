@@ -168,7 +168,7 @@ function Page() {
         <>
           <div><Label className="text-xs">From</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
           <div><Label className="text-xs">To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
-          <div className="min-w-[180px]">
+          <div className="w-full sm:w-auto sm:min-w-[180px]">
             <Label className="text-xs">Rate Type</Label>
             <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -179,7 +179,7 @@ function Page() {
               </SelectContent>
             </Select>
           </div>
-          <div className="min-w-[180px]">
+          <div className="w-full sm:w-auto sm:min-w-[180px]">
             <Label className="text-xs">Room Category</Label>
             <Select value={catFilter} onValueChange={setCatFilter}>
               <SelectTrigger><SelectValue /></SelectTrigger>
