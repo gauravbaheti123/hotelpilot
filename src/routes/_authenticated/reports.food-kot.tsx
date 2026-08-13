@@ -55,17 +55,33 @@ function Page() {
     if (!propertyId) return;
     const fromIso = `${from}T00:00:00`;
     const toIso = `${to}T23:59:59`;
-    const { data: kotData, error: __qe1 } = await supabase.from("kot_orders").select(`
-      id,kot_number,created_at,total_amount,status,booking_id,
+    // Live data source: segment_bills / segment_bill_items (kot_orders is retired).
+    const { data: kotData, error: __qe1 } = await supabase.from("segment_bills").select(`
+      id,bill_number,created_at,total_amount,status,booking_id,segment,guest_name,
       rooms(room_number),bookings(guests(name)),
-      kot_items(id,item_name,qty,rate,amount,menu_items(category_id,kitchen_type,menu_categories(name)))
-    `).eq("property_id", propertyId).gte("created_at", fromIso).lte("created_at", toIso)
+      segment_bill_items(id,description,qty,rate,amount)
+    `).eq("property_id", propertyId)
+      .in("segment", ["food", "laundry"])
+      .gte("created_at", fromIso).lte("created_at", toIso)
       .order("created_at", { ascending: false });
-    if (__qe1) reportQueryError("kot orders", __qe1);
-    // KOTs raised against banquet event-block rooms are excluded from the
+    if (__qe1) reportQueryError("food bills", __qe1);
+    // Bills raised against banquet event-block rooms are excluded from the
     // operational food report (Owner-only Banquet Billing report shows them).
     const scope = await fetchBanquetScope(propertyId);
     const kotRows = ((kotData ?? []) as any[]).filter((k) => !isBanquetRecord(scope, { booking_id: k.booking_id }));
+    // segment_bill_items carries no menu_item_id, so recover Kitchen/Category by
+    // matching item description against the menu master (case-insensitive).
+    const { data: menuRows } = await supabase.from("menu_items")
+      .select("name,kitchen_type,menu_categories(id,name)")
+      .eq("property_id", propertyId).limit(2000);
+    const menuMap = new Map<string, { kitchen: string; catId: string; catName: string }>();
+    for (const m of (menuRows ?? []) as any[]) {
+      menuMap.set(String(m.name ?? "").trim().toLowerCase(), {
+        kitchen: m.kitchen_type ?? "hotel",
+        catId: m.menu_categories?.id ?? "",
+        catName: m.menu_categories?.name ?? "",
+      });
+    }
     // Fetch food bill numbers for the bookings involved in this window.
     const bookingIds = Array.from(new Set(kotRows.map((k) => k.booking_id).filter(Boolean)));
     const fbMap = new Map<string, string>();
@@ -81,15 +97,16 @@ function Page() {
     const itemAgg = new Map<string, ItemRow>();
     for (const k of kotRows) {
       const kitchens = new Set<string>();
-      for (const it of (k.kot_items ?? [])) {
-        const kt = it.menu_items?.kitchen_type ?? "hotel";
-        const cid = it.menu_items?.category_id ?? "";
-        const cname = it.menu_items?.menu_categories?.name ?? "";
+      for (const it of (k.segment_bill_items ?? [])) {
+        const match = menuMap.get(String(it.description ?? "").trim().toLowerCase());
+        const kt = match?.kitchen ?? "hotel";
+        const cid = match?.catId ?? "";
+        const cname = match?.catName ?? "—";
         kitchens.add(kt);
         if (kitchen !== "all" && kt !== kitchen) continue;
         if (catId !== "all" && cid !== catId) continue;
-        const key = `${it.item_name}__${kt}`;
-        const ex = itemAgg.get(key) ?? { _id: key, item: it.item_name, category: cname, kitchen: kt, qty: 0, rate: Number(it.rate || 0), total: 0 };
+        const key = `${it.description}__${kt}`;
+        const ex = itemAgg.get(key) ?? { _id: key, item: it.description ?? "", category: cname, kitchen: kt, qty: 0, rate: Number(it.rate || 0), total: 0 };
         ex.qty += Number(it.qty || 0);
         ex.total += Number(it.amount || 0);
         itemAgg.set(key, ex);
@@ -97,10 +114,10 @@ function Page() {
       const kk = Array.from(kitchens).join(", ") || "—";
       if (kitchen !== "all" && !kitchens.has(kitchen)) continue;
       kr.push({
-        _id: k.id, kot_no: k.kot_number, date: k.created_at,
+        _id: k.id, kot_no: k.bill_number ?? "—", date: k.created_at,
         room_no: k.rooms?.room_number ?? "",
         guest: k.bookings?.guests?.name ?? k.guest_name ?? "",
-        items_count: (k.kot_items ?? []).length,
+        items_count: (k.segment_bill_items ?? []).length,
         total: Number(k.total_amount || 0), kitchen: kk, status: k.status,
         food_bill: k.booking_id ? (fbMap.get(k.booking_id) ?? "") : "",
       });
