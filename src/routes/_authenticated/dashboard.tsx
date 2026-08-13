@@ -1366,11 +1366,11 @@ function SegmentRoomCard({
           className="relative transition cursor-pointer overflow-hidden flex flex-col text-left"
           style={{ backgroundColor: c.bg, color: c.fg, minHeight: 118, borderRadius: 10 }}
         >
-      <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 flex flex-col">
-        <div className="flex items-start justify-between gap-2">
-          <span style={{ color: c.fg, fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
+      <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 min-w-0 flex flex-col">
+        <div className="flex items-start justify-between gap-1.5 min-w-0">
+          <span className="truncate" style={{ color: c.fg, fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{room.room_number}</span>
           <span
-            className="font-semibold uppercase tracking-wide rounded-full"
+            className="font-semibold uppercase tracking-wide rounded-full shrink-0"
             style={{ backgroundColor: c.btnBg, color: c.btnFg, fontSize: 10, padding: "2px 7px" }}
           >
             {label}
@@ -1382,10 +1382,10 @@ function SegmentRoomCard({
         <div className="mt-auto pt-1">
           {hasPending ? (
             <>
-              <div style={{ fontSize: 12, fontWeight: 700, color: c.fg }}>
+              <div className="truncate" style={{ fontSize: 12, fontWeight: 700, color: c.fg }}>
                 ₹{amount.toLocaleString("en-IN")} pending
               </div>
-              <div style={{ fontSize: 10, color: c.fgMuted }}>
+              <div className="truncate" style={{ fontSize: 10, color: c.fgMuted }}>
                 {pending!.count} open bill{pending!.count > 1 ? "s" : ""} · tap to add more
               </div>
             </>
