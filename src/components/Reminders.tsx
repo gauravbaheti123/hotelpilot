@@ -235,7 +235,7 @@ export function RemindersBell({ propertyId, userId }: { propertyId: string | nul
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-80 p-0">
-          <div className="flex items-center justify-between px-3 py-2 border-b">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-b">
             <div className="font-semibold text-sm">Reminders</div>
             <div className="flex items-center gap-1">
               {count > 0 && (

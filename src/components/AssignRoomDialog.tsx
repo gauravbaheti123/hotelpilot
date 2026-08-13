@@ -344,7 +344,7 @@ export function AssignRoomDialog({
       <button
         type="button"
         onClick={onClick}
-        className={`w-full text-left rounded border p-2 text-sm flex items-center justify-between ${
+        className={`w-full text-left rounded border p-2 text-sm flex flex-wrap items-center justify-between gap-2 ${
           active ? "border-primary bg-primary/5" : "hover:bg-accent/50"
         }`}
       >

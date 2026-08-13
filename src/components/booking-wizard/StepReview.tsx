@@ -39,7 +39,7 @@ function Section({
 }: { title: string; step: number; onEdit: (s: number) => void; children: React.ReactNode }) {
   return (
     <div className="rounded-lg border">
-      <div className="flex items-center justify-between border-b px-4 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-2">
         <h4 className="text-sm font-semibold">{title}</h4>
         <Button type="button" variant="ghost" size="sm" onClick={() => onEdit(step)}>
           <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit

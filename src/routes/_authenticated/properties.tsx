@@ -276,7 +276,7 @@ function PropertiesPage() {
   return (
     <AppShell title="Properties">
       <div className="max-w-6xl space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm text-muted-foreground">
             Hotels and outlets you manage. Switch the active property from the header dropdown.
           </p>

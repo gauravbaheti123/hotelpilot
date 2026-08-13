@@ -493,7 +493,7 @@ function StartHandoverPage() {
           </CardContent>
         </Card>
 
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 gap-3">
           <div className="text-xs text-muted-foreground">
             <Badge variant="outline" className="mr-2">Immutable</Badge>
             Submitted handovers can only be modified by Owner/Superadmin via override.

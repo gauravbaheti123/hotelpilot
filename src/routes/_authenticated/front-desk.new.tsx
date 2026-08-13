@@ -433,7 +433,7 @@ function NewBookingWizardPage() {
     <AppShell title="New Booking">
       <Card className="mx-auto max-w-4xl">
         <CardHeader className="space-y-4">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 gap-3">
             <CardTitle>New Booking</CardTitle>
             {draft.savedAt && (
               <span className="flex items-center gap-1 text-[11px] text-muted-foreground">

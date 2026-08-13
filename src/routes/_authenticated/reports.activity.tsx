@@ -296,7 +296,7 @@ function ActivityLogPage() {
               </table>
             </div>
             {totalCount > PAGE_SIZE && (
-              <div className="flex items-center justify-between p-3 border-t text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 p-3 border-t text-xs">
                 <div className="text-muted-foreground">
                   Page {page + 1} of {pages}
                 </div>

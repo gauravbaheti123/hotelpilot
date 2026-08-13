@@ -158,7 +158,7 @@ function MasterBillPage() {
         .no-print { display: none !important; }
       }`}</style>
       <div className="p-6 max-w-4xl mx-auto space-y-4">
-        <div className="flex items-center justify-between no-print">
+        <div className="flex flex-wrap items-center justify-between gap-2 no-print">
           <BackButton variant="ghost" fallbackTo={`/banquet/event/${ev.id}`} />
           <Button size="sm" onClick={doPrint}>
             <Printer className="h-4 w-4 mr-1" /> Print

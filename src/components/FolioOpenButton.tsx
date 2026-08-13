@@ -128,7 +128,7 @@ export function useFolioOpener() {
                 if (bId) go(bId, f.id);
               }}
             >
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 gap-2">
                 <span className="font-medium truncate">
                   Portion {i + 1} — {folioLabel(f)}
                 </span>

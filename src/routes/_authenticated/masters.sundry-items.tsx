@@ -168,7 +168,7 @@ function SundryItemsPage() {
       contentAfterHeader={
       <Card className="w-full overflow-hidden">
         <CardContent className="space-y-4 p-4 sm:p-5">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-sm font-semibold">POS Categories</h2>
               <p className="text-xs text-muted-foreground">

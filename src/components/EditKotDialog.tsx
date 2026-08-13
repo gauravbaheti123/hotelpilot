@@ -275,7 +275,7 @@ export function EditKotDialog({
                   </div>
                 ))}
               </div>
-              <div className="border-t p-2 flex items-center justify-between text-sm">
+              <div className="border-t p-2 flex flex-wrap items-center justify-between gap-2 text-sm">
                 <span className="text-muted-foreground">Sub ₹{totals.sub_total} · GST ₹{totals.gst_amount}</span>
                 <span className="font-semibold">Total ₹{totals.total_amount.toLocaleString("en-IN")}</span>
               </div>
@@ -289,7 +289,7 @@ export function EditKotDialog({
                   {filtered.map((it) => (
                     <button key={it.id} onClick={() => addItem(it)}
                       className="text-left rounded border p-2 hover:bg-accent text-sm">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="font-medium truncate">{it.name}</div>
                         <Badge variant="outline" className="text-[10px]">{it.kot_station || "—"}</Badge>
                       </div>

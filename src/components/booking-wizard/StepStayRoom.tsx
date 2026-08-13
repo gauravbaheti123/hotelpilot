@@ -283,7 +283,7 @@ function RoomCard({
 
   return (
     <div className="space-y-4 rounded-lg border p-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-sm font-semibold">Room {index + 1}</h4>
         {onRemove && (
           <Button type="button" size="icon" variant="ghost" onClick={onRemove} aria-label="Remove room">

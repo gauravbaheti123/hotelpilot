@@ -148,7 +148,7 @@ function KpiCard({ title, value, hint }: { title: string; value: string; hint?: 
 
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
-    <div className={`flex items-center justify-between ${bold ? "font-semibold pt-2 border-t" : ""}`}>
+    <div className={`flex flex-wrap items-center justify-between gap-2 ${bold ? "font-semibold pt-2 border-t" : ""}`}>
       <span className="text-muted-foreground">{label}</span>
       <span>{value}</span>
     </div>

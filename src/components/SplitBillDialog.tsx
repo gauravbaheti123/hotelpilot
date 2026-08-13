@@ -1149,7 +1149,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
               const ok = Math.abs(sum - p.amount) < 0.01;
               return (
                 <div key={p.id} className="rounded border p-3 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                     <div>
                       <div className="font-semibold">{inr(p.amount)} · {formatPaymentMethodLabel(p.mode)}</div>
                       <div className="text-xs text-muted-foreground">
@@ -1450,7 +1450,7 @@ function ShareEditor({
         })}
       </div>
 
-      <div className="flex items-center justify-between rounded border p-2 text-xs">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded border p-2 text-xs">
         <div className="flex items-center gap-3">
           <Button size="sm" variant="outline" onClick={() => setParties((prev) => [...prev, newParty()])}>
             <Plus className="h-3.5 w-3.5 mr-1" /> Add party

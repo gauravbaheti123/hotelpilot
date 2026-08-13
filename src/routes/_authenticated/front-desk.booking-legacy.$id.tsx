@@ -569,7 +569,7 @@ function BookingDetailPage() {
           <CardContent>
             <div className="space-y-2">
               {b.booking_rooms.map((br) => (
-                <div key={br.id} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
+                <div key={br.id} className="flex flex-wrap items-center justify-between gap-2 rounded border px-3 py-2 text-sm">
                   <div>
                     <div className="font-medium">
                       {br.room_id ? (
@@ -679,7 +679,7 @@ function BookingDetailPage() {
                     <div className="space-y-2">
                       {kots.map((k) => (
                         <div key={k.id} className="rounded border p-2">
-                          <div className="flex items-center justify-between font-medium">
+                          <div className="flex flex-wrap items-center justify-between gap-2 font-medium">
                             <span>
                               {k.kot_number}
                               <Badge variant="outline" className="ml-2 text-[10px] uppercase">{k.status}</Badge>

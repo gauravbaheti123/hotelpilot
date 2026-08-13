@@ -167,7 +167,7 @@ export function StepEventDetails({ propertyId, value, onChange }: Props) {
       </div>
 
       <div className="space-y-3 border-t pt-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold">Extra Charges</h3>
           <Button
             type="button"
