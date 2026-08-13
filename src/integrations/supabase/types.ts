@@ -6603,6 +6603,15 @@ export type Database = {
         Args: { _booking_room_id: string }
         Returns: string
       }
+      settle_folio_at_checkout: {
+        Args: { _folio_id: string; _settled_at?: string }
+        Returns: {
+          folio_id: string
+          invoice_number: string
+          settled_at: string
+          status: string
+        }[]
+      }
       settle_segment_bill: {
         Args: { _actor?: string; _auto?: boolean; _bill_id: string }
         Returns: Json

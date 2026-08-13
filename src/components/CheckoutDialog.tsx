@@ -36,7 +36,7 @@ import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 import { payableFolios } from "@/lib/folioSelect";
 import { mergeSegmentBillToFolio } from "@/lib/paymentTargets";
-import { finalizeFolioSettlement } from "@/lib/folioFinalize";
+import { finalizeBookingSettlement } from "@/lib/folioFinalize";
 
 interface Props {
   bookingId: string | null;
@@ -795,10 +795,17 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         },
       });
     } else {
-      // Balance is zero — explicitly finalize the folio. A re-opened folio that
-      // needs no payment never triggers recompute_folio_totals, so it would
-      // otherwise stay stuck in 'open' and vanish from the invoice list.
-      await finalizeFolioSettlement(folio.id);
+      // Balance is zero — explicitly finalize EVERY live folio of this booking
+      // (a split bill has one child per portion). Runs through a SECURITY
+      // DEFINER RPC so it can't be silently denied by RLS, and any failure
+      // aborts the checkout instead of freeing the room with an unsettled bill.
+      try {
+        await finalizeBookingSettlement(booking.id, folio.id);
+      } catch (e) {
+        setBusy(false);
+        console.error("[CheckoutDialog] settle failed", e);
+        return toastError(e, "Checkout stopped — the bill could not be settled");
+      }
     }
 
     const now = new Date().toISOString();
