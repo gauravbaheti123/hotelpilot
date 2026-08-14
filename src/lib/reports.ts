@@ -4,6 +4,7 @@ import { stateNameFromCode } from "@/lib/indiaGeo";
 import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { istDateISO } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { resolveInvoiceDate } from "@/lib/invoiceDate";
 
 export interface DailySummary {
   date: string;
