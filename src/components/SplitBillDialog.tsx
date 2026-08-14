@@ -113,7 +113,10 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   const [splitMode, setSplitMode] = useState<SplitMode>("item");
   const [splitScope, setSplitScope] = useState<SplitScope>("whole");
   const [scopeChargeId, setScopeChargeId] = useState<string>("");
-  const [bill1Ids, setBill1Ids] = useState<Set<string>>(new Set());
+  /** How many bills this split produces (item mode). 2 = the historic flow. */
+  const [billCount, setBillCount] = useState<number>(2);
+  /** chargeId -> destination bill index (0-based). */
+  const [assign, setAssign] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
   const [discOpen, setDiscOpen] = useState(false);
@@ -161,6 +164,8 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     name: "", mobile: "", gstin: "",
     bill_type: "gst_invoice",
   });
+  /** Parties for bills 3..N (index 0 here = Bill 3). */
+  const [moreParties, setMoreParties] = useState<PartyDetails[]>([]);
 
   // Resolve the parent folio's Bill-To company and seed Party 1 from it.
   useEffect(() => {
@@ -229,15 +234,15 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       name: "", mobile: "", gstin: "",
       bill_type: "gst_invoice",
     });
+    setMoreParties([]);
+    setBillCount(2);
     setParties([
       newParty({ name: guestName, mobile: guestMobile, gstin: guestGstin, bill_type: folioGst }),
       newParty({ name: "", mobile: "", gstin: "", bill_type: "gst_invoice" }),
     ]);
-    const ids = new Set<string>();
-    for (const c of charges) {
-      if (c.charge_type !== "food") ids.add(c.id);
-    }
-    setBill1Ids(ids);
+    const nextAssign: Record<string, number> = {};
+    for (const c of charges) nextAssign[c.id] = c.charge_type === "food" ? 1 : 0;
+    setAssign(nextAssign);
     setPayRows([
       { mode: "cash", amount: "", reference: "" },
       { mode: "cash", amount: "", reference: "" },
@@ -272,8 +277,34 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     })();
   }, [open, folio?.id]);
 
-  const bill1Charges = useMemo(() => charges.filter((c) => bill1Ids.has(c.id)), [charges, bill1Ids]);
-  const bill2Charges = useMemo(() => charges.filter((c) => !bill1Ids.has(c.id)), [charges, bill1Ids]);
+  /** Charges grouped per destination bill — index 0..billCount-1. */
+  const billCharges = useMemo(() => {
+    const buckets: Charge[][] = Array.from({ length: billCount }, () => []);
+    for (const c of charges) {
+      const idx = Math.min(Math.max(0, assign[c.id] ?? 0), billCount - 1);
+      buckets[idx].push(c);
+    }
+    return buckets;
+  }, [charges, assign, billCount]);
+  const bill1Charges = billCharges[0] ?? [];
+  const bill2Charges = billCharges[1] ?? [];
+
+  /** Party details for a given bill index (same-party mode reuses Party 1). */
+  const partyForBill = (i: number): PartyDetails => {
+    if (i === 0 || splitType === "same") return party1;
+    if (i === 1) return party2;
+    return moreParties[i - 2] ?? { name: "", mobile: "", gstin: "", bill_type: "gst_invoice" };
+  };
+  const setPartyForBill = (i: number, p: PartyDetails) => {
+    if (i === 0) return setParty1(p);
+    if (i === 1) return setParty2(p);
+    setMoreParties((prev) => {
+      const next = [...prev];
+      while (next.length < i - 1) next.push({ name: "", mobile: "", gstin: "", bill_type: "gst_invoice" });
+      next[i - 2] = p;
+      return next;
+    });
+  };
 
   // === Base charges for share (% / ₹) modes ===
   //   whole  → every non-tax charge line
@@ -340,16 +371,19 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     const share = Math.round((amt * (netSubOf(subset) / parentNet)) * 100) / 100;
     return share > 0 ? { type: "amount", value: share } : null;
   };
-  const bill1Total = useMemo(
-    () => recomputeFolio(bill1Charges as any, party1.bill_type === "gst_invoice" ? "gst" : "cash", carriedDiscountFor(bill1Charges)).total_amount,
+  /** Live total per destination bill (item mode). */
+  const billTotals = useMemo(
+    () => billCharges.map((items, i) =>
+      recomputeFolio(
+        items as any,
+        partyForBill(i).bill_type === "gst_invoice" ? "gst" : "cash",
+        carriedDiscountFor(items),
+      ).total_amount),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [bill1Charges, party1.bill_type, charges, folio?.discount_type, folio?.discount_value],
+    [billCharges, party1.bill_type, party2.bill_type, moreParties, splitType, charges, folio?.discount_type, folio?.discount_value],
   );
-  const bill2Total = useMemo(
-    () => recomputeFolio(bill2Charges as any, party2.bill_type === "gst_invoice" ? "gst" : "cash", carriedDiscountFor(bill2Charges)).total_amount,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [bill2Charges, party2.bill_type, charges, folio?.discount_type, folio?.discount_value],
-  );
+  const bill1Total = billTotals[0] ?? 0;
+  const bill2Total = billTotals[1] ?? 0;
 
   /**
    * The child bills this split will produce, with their expected totals.
@@ -359,17 +393,18 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
    */
   const childTargets = useMemo(() => {
     if (splitMode === "item") {
-      return [
-        { label: `Bill 1 — ${party1.name || guestName}`, total: Number(bill1Total) },
-        { label: `Bill 2 — ${splitType === "same" ? (party1.name || guestName) : (party2.name || "Party 2")}`, total: Number(bill2Total) },
-      ];
+      return billTotals.map((t, i) => ({
+        label: `Bill ${i + 1} — ${partyForBill(i).name || (i === 0 ? guestName : `Party ${i + 1}`)}`,
+        total: Number(t),
+      }));
     }
     return parties.map((p, i) => {
       const net = Number(shareDistribution.nets[i] ?? 0);
       const gst = p.bill_type === "gst_invoice" ? round2(net * baseGstRate / 100) : 0;
       return { label: `Bill ${i + 1} — ${p.name || `Party ${i + 1}`}`, total: round2(net + gst) };
     });
-  }, [splitMode, party1.name, party2.name, splitType, guestName, bill1Total, bill2Total, parties, shareDistribution, baseGstRate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [splitMode, party1.name, party2.name, moreParties, splitType, guestName, billTotals, parties, shareDistribution, baseGstRate]);
 
   /** Default (proportional) allocation of a payment across the child bills. */
   function defaultAllocFor(amount: number, totals: number[]): number[] {
@@ -501,24 +536,31 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     }
   }
 
-  function moveToBill1(id: string) {
-    setBill1Ids((s) => new Set(s).add(id));
+  function assignCharge(id: string, billIdx: number) {
+    setAssign((prev) => ({ ...prev, [id]: billIdx }));
   }
-  function moveToBill2(id: string) {
-    setBill1Ids((s) => { const n = new Set(s); n.delete(id); return n; });
-  }
-  function quickRoomsToBill1() {
-    setBill1Ids((s) => {
-      const n = new Set(s);
-      for (const c of charges) if (c.charge_type === "room" || c.charge_type === "extra" || c.charge_type === "sundry" || c.charge_type === "discount") n.add(c.id);
-      return n;
+  /** Auto-group: Lodge → Bill 1, Food → Bill 2, Laundry → Bill 3 (when it exists). */
+  function autoGroupBySegment() {
+    setAssign(() => {
+      const next: Record<string, number> = {};
+      for (const c of charges) {
+        const t = c.charge_type;
+        let idx = 0;
+        if (t === "food") idx = Math.min(1, billCount - 1);
+        else if (t === "laundry" || t === "sundry") idx = Math.min(2, billCount - 1);
+        next[c.id] = idx;
+      }
+      return next;
     });
   }
-  function quickFoodToBill2() {
-    setBill1Ids((s) => {
-      const n = new Set(s);
-      for (const c of charges) if (c.charge_type === "food") n.delete(c.id);
-      return n;
+  /** Changing the bill count clamps any assignment that points past the end. */
+  function changeBillCount(n: number) {
+    const count = Math.max(2, Math.min(6, Math.round(n) || 2));
+    setBillCount(count);
+    setAssign((prev) => {
+      const next = { ...prev };
+      for (const c of charges) next[c.id] = Math.min(next[c.id] ?? 0, count - 1);
+      return next;
     });
   }
 
@@ -540,14 +582,17 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     if (splitMode !== "item") {
       return confirmShareSplit();
     }
-    if (bill1Charges.length === 0 || bill2Charges.length === 0) {
-      return toast.error("Both bills must have at least one line item");
+    const emptyIdx = billCharges.findIndex((items) => items.length === 0);
+    if (emptyIdx >= 0) {
+      return toast.error(`Bill ${emptyIdx + 1} has no line items — every bill needs at least one`);
     }
-    if (splitType === "different" && !party2.name.trim()) {
-      return toast.error("Party 2 name required");
+    for (let i = 0; i < billCount; i++) {
+      const party = partyForBill(i);
+      if (splitType === "different" && i > 0 && !party.name.trim()) {
+        return toast.error(`Party ${i + 1} name required`);
+      }
+      if (!isValidOrEmptyGSTIN(party.gstin ?? "")) return toast.error(`Party ${i + 1}: ${GSTIN_ERROR}`);
     }
-    if (!isValidOrEmptyGSTIN(party1.gstin ?? "")) return toast.error(`Party 1: ${GSTIN_ERROR}`);
-    if (splitType === "different" && !isValidOrEmptyGSTIN(party2.gstin ?? "")) return toast.error(`Party 2: ${GSTIN_ERROR}`);
     setBusy(true);
     const parentTotalBefore = Number(folio?.total_amount) || 0;
     try {
@@ -565,11 +610,10 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       const parentNet = netSubOf(charges);
       const parentBillDiscAmt = computeBillDiscountAmount(parentNet, parentBillDisc);
 
-      const parties = [0, 1].map((i) => (i === 0 ? party1 : (splitType === "same" ? party1 : party2)));
-      const children = [0, 1].map((i) => {
-        const party = parties[i];
+      const splitParties = Array.from({ length: billCount }, (_, i) => partyForBill(i));
+      const children = splitParties.map((party, i) => {
         const mode = party.bill_type === "gst_invoice" ? "gst" : "cash";
-        const items = i === 0 ? bill1Charges : bill2Charges;
+        const items = billCharges[i] ?? [];
         const thisNet = netSubOf(items);
         const shareAmt =
           parentBillDiscAmt > 0 && parentNet > 0
@@ -581,11 +625,11 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           gst_mode: mode,
           bill_type: party.bill_type,
           guest_gstin: party.gstin || null,
-          guest_company: splitType === "different" && i === 1 ? party.name : (folio.guest_company ?? null),
+          guest_company: splitType === "different" && i > 0 ? party.name : (folio.guest_company ?? null),
           billing_company_id: childCompanyId(
-            splitType === "different" && i === 1 ? party.name : (folio.guest_company ?? party.name),
+            splitType === "different" && i > 0 ? party.name : (folio.guest_company ?? party.name),
           ),
-          notes: `Split bill ${i + 1}/2 of voided ${billNo(folio.invoice_number)}${splitType === "different" ? ` — Party: ${party.name}` : ""}`,
+          notes: `Split bill ${i + 1}/${billCount} of voided ${billNo(folio.invoice_number)}${splitType === "different" ? ` — Party: ${party.name}` : ""}`,
           discount_type: carryDisc?.type ?? null,
           discount_value: carryDisc?.value ?? 0,
           ...totals,
@@ -609,11 +653,11 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         };
       });
 
-      const rows = await runAtomicSplit(children, `Split into 2 bills (${splitType})`);
+      const rows = await runAtomicSplit(children, `Split into ${billCount} bills (${splitType})`);
       const created: typeof createdBills = rows.map((r, i) => ({
         folio_id: r.folio_id,
         invoice_number: r.invoice_number,
-        party: parties[i],
+        party: splitParties[i],
         total: Number(r.total_amount) || 0,
       }));
       const newFolioIds = created.map((c) => c.folio_id);
@@ -627,15 +671,19 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         action_type: "BILL_SPLIT",
         module: "Billing",
         reference_id: booking.id,
-        reference_label: `${billNo(folio.invoice_number)} → ${billNo(created[0].invoice_number)} + ${billNo(created[1].invoice_number)}`,
+        reference_label: `${billNo(folio.invoice_number)} → ${created.map((c) => billNo(c.invoice_number)).join(" + ")}`,
         details: {
           original_bill: billNo(folio.invoice_number),
-          bill1_number: billNo(created[0].invoice_number),
-          bill2_number: billNo(created[1].invoice_number),
           split_type: splitType,
+          bill_count: created.length,
+          bills: created.map((c) => ({
+            bill_number: billNo(c.invoice_number),
+            party: c.party.name,
+            amount: c.total,
+          })),
         },
       });
-      toast.success(`Bills created: ${billNo(created[0].invoice_number)} + ${billNo(created[1].invoice_number)}`);
+      toast.success(`Bills created: ${created.map((c) => billNo(c.invoice_number)).join(" + ")}`);
       setStep(4);
       onDone?.(newFolioIds);
     } catch (e: any) {
@@ -917,7 +965,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
 
   // Net subtotal for the currently-targeted split bill (base for bill-level %/₹)
   const discBase = (() => {
-    const items = discBillIdx === 0 ? bill1Charges : bill2Charges;
+    const items = billCharges[discBillIdx] ?? [];
     return items.reduce((s, c) => {
       if (c.charge_type === "discount" || c.charge_type === "tax") return s;
       const amt = Math.abs(Number(c.amount) || 0);
@@ -955,7 +1003,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
                 <ModeCard
                   active={splitMode === "item"}
                   title="Item-wise"
-                  hint="Assign each charge line to one of two bills"
+                  hint="Assign each charge line to any of the N bills"
                   onClick={() => setSplitMode("item")}
                 />
                 <ModeCard
@@ -974,6 +1022,35 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
             </div>
             {splitMode === "item" && (
               <>
+            <div className="space-y-2 pt-2">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                How many bills?
+              </Label>
+              <div className="flex flex-wrap items-center gap-2">
+                {[2, 3, 4].map((n) => (
+                  <Button
+                    key={n}
+                    type="button"
+                    size="sm"
+                    variant={billCount === n ? "default" : "outline"}
+                    onClick={() => changeBillCount(n)}
+                  >
+                    {n} bills
+                  </Button>
+                ))}
+                <Input
+                  type="number"
+                  min={2}
+                  max={6}
+                  className="h-9 w-24"
+                  value={billCount}
+                  onChange={(e) => changeBillCount(Number(e.target.value))}
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                e.g. 3 bills for Lodge / Food / Laundry. Maximum 6.
+              </p>
+            </div>
             <div className="text-xs font-medium text-muted-foreground pt-2">Party type</div>
             <RadioGroup value={splitType} onValueChange={(v) => setSplitType(v as SplitType)} className="gap-3">
               <label className="flex items-start gap-3 rounded border p-3 cursor-pointer hover:bg-accent">
@@ -1050,49 +1127,53 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
 
         {step === 2 && splitMode === "item" && (
           <div className="space-y-3">
-            <div className="text-sm font-medium">Step 2 — Assign Line Items</div>
+            <div className="text-sm font-medium">Step 2 — Assign Line Items ({billCount} bills)</div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={quickRoomsToBill1}>Move all Room → Bill 1</Button>
-              <Button size="sm" variant="outline" onClick={quickFoodToBill2}>Move all Food → Bill 2</Button>
+              <Button size="sm" variant="outline" onClick={autoGroupBySegment}>
+                Auto-group: Lodge / Food / Laundry
+              </Button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {[1, 2].map((side) => {
-                const items = side === 1 ? bill1Charges : bill2Charges;
-                const total = side === 1 ? bill1Total : bill2Total;
-                return (
-                  <div key={side} className="rounded border">
-                    <div className="border-b bg-muted/30 px-3 py-2 text-xs font-semibold uppercase">
-                      Bill {side}
-                    </div>
-                    <div className="divide-y max-h-72 overflow-y-auto">
-                      {items.length === 0 ? (
-                        <div className="p-3 text-xs text-muted-foreground italic">No items</div>
-                      ) : items.map((c) => (
-                        <div key={c.id} className="flex items-center gap-2 p-2 text-xs">
-                          {side === 2 && (
-                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveToBill1(c.id)}>
-                              <ArrowLeft className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="truncate">{c.description}</div>
-                            <div className="text-[10px] uppercase text-muted-foreground">{c.charge_type}</div>
-                          </div>
-                          <div className="tabular-nums font-medium">{inr(c.amount)}</div>
-                          {side === 1 && (
-                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveToBill2(c.id)}>
-                              <ArrowRight className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex justify-between border-t px-3 py-2 text-sm font-semibold">
-                      <span>Total</span><span>{inrRound(total)}</span>
-                    </div>
+            <div className="rounded border divide-y max-h-80 overflow-y-auto">
+              {charges.map((c) => (
+                <div key={c.id} className="flex items-center gap-2 p-2 text-xs">
+                  <div className="flex-1 min-w-0">
+                    <div className="truncate">{c.description}</div>
+                    <div className="text-[10px] uppercase text-muted-foreground">{c.charge_type}</div>
                   </div>
-                );
-              })}
+                  <div className="tabular-nums font-medium">{inr(c.amount)}</div>
+                  <Select
+                    value={String(Math.min(assign[c.id] ?? 0, billCount - 1))}
+                    onValueChange={(v) => assignCharge(c.id, Number(v))}
+                  >
+                    <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: billCount }, (_, i) => (
+                        <SelectItem key={i} value={String(i)}>Bill {i + 1}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {billCharges.map((items, i) => (
+                <div key={i} className="rounded border p-2 text-xs">
+                  <div className="flex justify-between font-semibold">
+                    <span>Bill {i + 1}</span>
+                    <span className="tabular-nums">{inrRound(billTotals[i] ?? 0)}</span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {items.length === 0 ? "No items" : `${items.length} line${items.length > 1 ? "s" : ""}`}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="rounded border bg-muted/30 p-2 text-xs flex justify-between">
+              <span>Sum of all bills</span>
+              <span className="tabular-nums font-semibold">
+                {inrRound(billTotals.reduce((a, b) => a + Number(b || 0), 0))}
+                <span className="text-muted-foreground"> / original {inrRound(Number(folio?.total_amount) || 0)}</span>
+              </span>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep(1)}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
@@ -1120,18 +1201,43 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         {step === 3 && splitMode === "item" && (
           <div className="space-y-4">
             <div className="text-sm font-medium">Step 3 — Party Details</div>
-            <PartyEditor label="Bill 1 Party" party={party1} setParty={setParty1} disabledName={splitType === "same"} />
-            {splitType === "different" ? (
-              <PartyEditor label="Bill 2 Party" party={party2} setParty={setParty2} showMobile />
-            ) : (
+            {Array.from({ length: billCount }, (_, i) => (
+              i === 0 || splitType === "different" ? (
+                <PartyEditor
+                  key={i}
+                  label={`Bill ${i + 1} Party`}
+                  party={partyForBill(i)}
+                  setParty={(p) => setPartyForBill(i, p)}
+                  disabledName={i === 0 && splitType === "same"}
+                  showMobile={i > 0}
+                />
+              ) : null
+            ))}
+            {splitType === "same" && (
               <div className="rounded border bg-muted/30 p-3 text-xs text-muted-foreground">
-                Bill 2 will use the same party as Bill 1 ({party1.name}).
+                All {billCount} bills will use the same party ({party1.name}).
               </div>
             )}
             <div className="rounded border p-3 text-xs space-y-1">
               <div className="font-semibold">Summary</div>
-              <div>Bill 1: {party1.name} · <Badge variant="outline" className="text-[10px]">{party1.bill_type}</Badge> · <b>{inrRound(bill1Total)}</b></div>
-              <div>Bill 2: {splitType === "same" ? party1.name : (party2.name || "—")} · <Badge variant="outline" className="text-[10px]">{party2.bill_type}</Badge> · <b>{inrRound(bill2Total)}</b></div>
+              {Array.from({ length: billCount }, (_, i) => {
+                const party = partyForBill(i);
+                return (
+                  <div key={i}>
+                    Bill {i + 1}: {party.name || "—"} ·{" "}
+                    <Badge variant="outline" className="text-[10px]">{party.bill_type}</Badge> ·{" "}
+                    {(billCharges[i] ?? []).length} line(s) · <b>{inrRound(billTotals[i] ?? 0)}</b>
+                  </div>
+                );
+              })}
+              <div className="pt-1 border-t">
+                Total across bills: <b>{inrRound(billTotals.reduce((a, b) => a + Number(b || 0), 0))}</b>
+                {" "}vs original <b>{inrRound(Number(folio?.total_amount) || 0)}</b>
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                Each bill draws its own number from this property's bill series; the split is atomic —
+                if any part fails nothing is changed.
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep(2)}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
