@@ -899,11 +899,6 @@ function OwnerDashboard({
                 tables={tables}
                 bills={tableBills}
                 onPick={(t) => {
-                  const bill = tableBills.get(t.id);
-                  if (bill) {
-                    navigate({ to: "/billing/invoices", search: { seg: "food", bill: bill.bill_number } });
-                    return;
-                  }
                   setPunchTarget({
                     segment: "food",
                     bookingId: null,
@@ -911,6 +906,17 @@ function OwnerDashboard({
                     roomNumber: null,
                     guestName: null,
                     tableId: t.id,
+                  });
+                }}
+                onView={(t) => {
+                  setKotHistoryTarget({
+                    segment: "food",
+                    bookingId: null,
+                    roomId: null,
+                    roomNumber: null,
+                    guestName: null,
+                    tableId: t.id,
+                    tableName: t.name,
                   });
                 }}
               />
