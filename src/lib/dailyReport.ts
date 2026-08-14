@@ -115,7 +115,7 @@ export async function loadDailyReport(
     // the Invoices → Food tab reads. kot_orders is unused by the current flow.
     supabase.from("segment_bills").select(`
       id,bill_number,status,payment_mode,total_amount,gst_amount,paid_amount,
-      guest_name,is_walkin,booking_id,folio_id,created_at,
+      guest_name,is_walkin,booking_id,folio_id,created_at,is_complimentary,complimentary_reason,
       rooms:room_id(room_number),
       bookings:booking_id(guests(name)),
       segment_bill_items(description,qty,rate,amount)
@@ -227,7 +227,8 @@ export async function loadDailyReport(
   const food: FoodRow[] = ((kotRes.data ?? []) as Record<string, any>[]).map((b) => {
     const items = (b.segment_bill_items ?? []) as Record<string, any>[];
     let status: string;
-    if (isHoldPayment(b.payment_mode)) status = `${HOLD_PAYMENT_MODE} (not collected)`;
+    if (b.is_complimentary) status = `Complimentary — ${b.complimentary_reason ?? "no reason"}`;
+    else if (isHoldPayment(b.payment_mode)) status = `${HOLD_PAYMENT_MODE} (not collected)`;
     else if (b.status === "settled") status = "Settled";
     else if (b.folio_id) status = "Billed to folio";
     else status = "Open";
@@ -406,12 +407,17 @@ export function sectionSummary(key: SectionKey, d: DailyReportData): Array<[stri
   }
   if (key === "food") {
     const hold = d.food.filter((f) => f.status.startsWith(HOLD_PAYMENT_MODE));
+    // Complimentary bills are given away, never collected — they must not
+    // inflate revenue, but the total given is tracked separately.
+    const comp = d.food.filter((f) => f.status.startsWith("Complimentary"));
+    const real = d.food.filter((f) => !f.status.startsWith("Complimentary"));
     return [
       ["Total food bills", String(d.food.length)],
-      ["Total food revenue (pre-tax)", fmtINR(sum(d.food, (r) => r.amount))],
-      ["Total GST", fmtINR(sum(d.food, (r) => r.gst))],
-      ["Total (incl. GST)", fmtINR(sum(d.food, (r) => r.total))],
+      ["Total food revenue (pre-tax)", fmtINR(sum(real, (r) => r.amount))],
+      ["Total GST", fmtINR(sum(real, (r) => r.gst))],
+      ["Total (incl. GST)", fmtINR(sum(real, (r) => r.total))],
       ["Of which Bill On Hold (not collected)", fmtINR(sum(hold, (r) => r.total))],
+      ["Complimentary given (excluded from revenue)", fmtINR(sum(comp, (r) => r.total))],
     ];
   }
   if (key === "restaurant") {
