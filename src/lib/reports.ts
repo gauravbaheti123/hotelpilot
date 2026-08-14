@@ -4,6 +4,7 @@ import { stateNameFromCode } from "@/lib/indiaGeo";
 import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { istDateISO } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { resolveInvoiceDate } from "@/lib/invoiceDate";
 
 export interface DailySummary {
   date: string;
@@ -204,15 +205,23 @@ export async function fetchGstInvoices(propertyId: string, from: string, to: str
 export async function fetchGstInvoiceSlabs(
   propertyId: string, from: string, to: string,
 ): Promise<GstInvoiceSlabRow[]> {
-  const start = new Date(`${from}T00:00:00`).toISOString();
+  // P1 — the GST period basis must match the date printed on the tax invoice,
+  // i.e. the guest's checkout date (see lib/invoiceDate.ts), NOT settled_at.
+  // Since that date lives on booking_rooms.actual_check_out we cannot filter it
+  // in SQL: fetch a widened settlement/creation window and filter in memory on
+  // the resolved invoice date so each folio lands in exactly one month bucket.
   const endD = new Date(`${to}T00:00:00`);
   endD.setDate(endD.getDate() + 1);
   const end = endD.toISOString();
-  // P1 — invoice numbers are issued at settlement, so the GST period basis is
-  // the invoice (settlement) date, falling back to folio creation for legacy
-  // rows that never recorded settled_at.
+  const PAD_DAYS = 120;
+  const padStartD = new Date(`${from}T00:00:00`);
+  padStartD.setDate(padStartD.getDate() - PAD_DAYS);
+  const padStart = padStartD.toISOString();
+  const padEndD = new Date(end);
+  padEndD.setDate(padEndD.getDate() + PAD_DAYS);
+  const padEnd = padEndD.toISOString();
   const { data, error: __qe2 } = await supabase.from("folios")
-    .select("id,booking_id,invoice_number,created_at,settled_at,guest_gstin,guest_company,billing_company_id,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name,state,state_code,gst_number)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
+    .select("id,booking_id,invoice_number,created_at,settled_at,guest_gstin,guest_company,billing_company_id,sub_total,gst_amount,total_amount,gst_mode,status,bookings(check_out,guests(name,state,state_code,gst_number),booking_rooms!booking_rooms_booking_id_fkey(actual_check_out)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
     .eq("property_id", propertyId)
     .eq("gst_mode", "gst")
     .neq("status", "void")
@@ -222,8 +231,8 @@ export async function fetchGstInvoiceSlabs(
     // still carry a number issued under the old creation-time trigger.
     .neq("status", "open")
     .or(
-      `and(settled_at.gte.${start},settled_at.lt.${end}),` +
-      `and(settled_at.is.null,created_at.gte.${start},created_at.lt.${end})`,
+      `and(settled_at.gte.${padStart},settled_at.lt.${padEnd}),` +
+      `and(settled_at.is.null,created_at.gte.${padStart},created_at.lt.${padEnd})`,
     )
     .order("created_at", { ascending: false });
   if (__qe2) reportQueryError("folios", __qe2);
@@ -248,11 +257,14 @@ export async function fetchGstInvoiceSlabs(
       guest_gstin: string | null; guest_company: string | null;
       billing_company_id: string | null;
       sub_total: number; gst_amount: number; total_amount: number;
+      status?: string | null;
       bookings: {
+        check_out?: string | null;
         guests: {
           name: string; state: string | null;
           state_code?: string | null; gst_number?: string | null;
         } | null;
+        booking_rooms?: Array<{ actual_check_out: string | null }> | null;
       } | null;
       folio_charges: Array<{
         charge_type: string; amount: number | string;
@@ -261,6 +273,13 @@ export async function fetchGstInvoiceSlabs(
         discount_amount: number | string | null;
       }> | null;
     };
+    // Document date = printed invoice date (checkout date, IST) with the same
+    // resolver the invoice templates use; keeps report period == invoice period.
+    const invIso = resolveInvoiceDate(
+      { status: f.status, settled_at: f.settled_at },
+      { check_out: f.bookings?.check_out, booking_rooms: f.bookings?.booking_rooms ?? [] },
+    ).iso;
+    if (invIso < from || invIso > to) continue;
     const co = f.billing_company_id ? coParty.get(f.billing_company_id) ?? null : null;
     const g = f.bookings?.guests ?? null;
     const billToParty = co
@@ -303,7 +322,7 @@ export async function fetchGstInvoiceSlabs(
       const cgst = igstBill ? 0 : round2(gstScaled / 2);
       out.push({
         invoice_number: f.invoice_number,
-        created_at: f.settled_at ?? f.created_at,
+        created_at: invIso,
         guest_name: f.bookings?.guests?.name ?? null,
         guest_gstin: f.guest_gstin,
         guest_company: f.guest_company,
@@ -325,7 +344,7 @@ export async function fetchGstInvoiceSlabs(
     if (bySlab.size === 0) {
       out.push({
         invoice_number: f.invoice_number,
-        created_at: f.settled_at ?? f.created_at,
+        created_at: invIso,
         guest_name: f.bookings?.guests?.name ?? null,
         guest_gstin: f.guest_gstin,
         guest_company: f.guest_company,
