@@ -274,6 +274,8 @@ function OwnerDashboard({
     roomId: string | null;
     roomNumber: string | null;
     guestName: string | null;
+    tableId?: string | null;
+    tableName?: string | null;
   } | null>(null);
   const navigate = useNavigate();
   const { openFolio, picker: folioPicker } = useFolioOpener();
