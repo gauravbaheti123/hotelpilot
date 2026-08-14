@@ -439,6 +439,13 @@ export function PunchChargeDialog({
         if (payErr) throw payErr;
       }
 
+      // Stamp the ticket with the bill's real timestamp, not the print moment.
+      const { data: billRow } = await supabase
+        .from("segment_bills" as any)
+        .select("settled_at,created_at")
+        .eq("id", bill.id)
+        .maybeSingle();
+
       printSegmentBill({
         billNumber: bill.bill_number, segment, propertyName: propertyName ?? "", propertyId,
         guestName: walkin ? walkinGuest.trim() : (guestName ?? "Guest"),
@@ -449,6 +456,7 @@ export function PunchChargeDialog({
         })),
         sub: t.sub, gst: t.gst, total: t.total,
         isWalkin: walkin, paymentMode: walkin ? payMode : null,
+        billDate: (billRow as any)?.settled_at ?? (billRow as any)?.created_at ?? null,
       });
       toast.success(walkin ? `${bill.bill_number} settled` : `${bill.bill_number} posted to folio`);
       onSaved?.();
