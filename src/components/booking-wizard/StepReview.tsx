@@ -6,6 +6,7 @@ import { nightsBetween } from "@/lib/front-desk";
 import { roomsTotal, STEP, type WizardState } from "@/lib/bookingWizard";
 import { eventTotals, type WizardEventRoomRow } from "@/lib/bookingWizard";
 import { SOURCES } from "@/lib/front-desk";
+import { sourceDetailLabel } from "@/components/booking-wizard/BookingSourceFields";
 import { ID_PROOF_LABELS } from "@/lib/guests";
 
 const MEAL_PLAN_LABELS: Record<string, string> = {
@@ -161,7 +162,9 @@ export function StepReview({
         <Row label="Type" value={state.kind === "lodge" ? "Lodge" : "Banquet"} />
         <Row label="Mode" value={state.reservation ? "Reservation (no check-in yet)" : "Walk-in / check-in"} />
         <Row label="Source" value={sourceLabel(state.source)} />
-        {state.otaPartnerName && <Row label="OTA partner" value={state.otaPartnerName} />}
+        {state.otaPartnerName && (
+          <Row label={sourceDetailLabel(state.source)} value={state.otaPartnerName} />
+        )}
       </Section>
 
       <Section title="Primary guest" step={STEP.GUEST} onEdit={onEdit}>

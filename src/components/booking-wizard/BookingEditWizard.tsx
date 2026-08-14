@@ -15,6 +15,7 @@ import { StepGuestDetails } from "@/components/booking-wizard/StepGuestDetails";
 import { StepAdditionalGuests } from "@/components/booking-wizard/StepAdditionalGuests";
 import { StepBillTo } from "@/components/booking-wizard/StepBillTo";
 import { StepRemarks } from "@/components/booking-wizard/StepRemarks";
+import { BookingSourceFields } from "@/components/booking-wizard/BookingSourceFields";
 import { StepEditStayRoom } from "@/components/booking-wizard/StepEditStayRoom";
 import { StepEditReview } from "@/components/booking-wizard/StepEditReview";
 import { useAuth } from "@/hooks/use-auth";
@@ -190,7 +191,22 @@ export function BookingEditWizard({ bookingId, onSaved, onCancel }: Props) {
         )}
 
         {step === 4 && (
-          <StepRemarks value={state.customRemark} onChange={(customRemark) => patch({ customRemark })} />
+          <div className="space-y-6">
+            <StepRemarks value={state.customRemark} onChange={(customRemark) => patch({ customRemark })} />
+            <div className="border-t pt-4">
+              <h3 className="mb-3 text-sm font-semibold">Booking source</h3>
+              <BookingSourceFields
+                source={state.source}
+                detail={state.otaPartnerName}
+                onChange={(p) =>
+                  patch({
+                    ...(p.source !== undefined ? { source: p.source } : {}),
+                    ...(p.otaPartnerName !== undefined ? { otaPartnerName: p.otaPartnerName } : {}),
+                  })
+                }
+              />
+            </div>
+          </div>
         )}
 
         {step === 5 && <StepEditReview state={state} />}

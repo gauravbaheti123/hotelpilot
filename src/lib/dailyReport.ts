@@ -77,6 +77,7 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 function sourceLabel(source: string | null, otaPartner: string | null): string {
   const s = (source ?? "").toLowerCase();
   if (s === "ota") return otaPartner ? `OTA — ${otaPartner}` : "OTA";
+  if (s === "other") return otaPartner ? otaPartner : "Other";
   if (s === "walk_in") return "Walk-in";
   if (s === "phone") return "Phone";
   if (s === "corporate") return "Corporate";

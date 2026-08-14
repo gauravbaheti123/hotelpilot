@@ -17,6 +17,7 @@ import {
 } from "@/lib/tariff";
 import { useRoomCategories, useTariffPlans } from "@/hooks/use-rooms";
 import { SOURCES, isValidStayRange, nightsBetween } from "@/lib/front-desk";
+import { BookingSourceFields } from "@/components/booking-wizard/BookingSourceFields";
 import { useGstSlabs } from "@/hooks/use-gst-slabs";
 import { resolveGstRate, resolveGstRateInclusive } from "@/lib/gst";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
@@ -128,27 +129,8 @@ export function StepStayRoom({
         </Button>
       )}
 
-      <div className="grid gap-4 border-t pt-4 sm:max-w-md sm:grid-cols-2">
-        <div className="grid gap-2">
-          <Label>Source</Label>
-          <SearchableSelect
-            value={source}
-            onChange={(v) => onMetaChange({ source: v })}
-            options={SOURCES.map((s) => ({ value: s.value, label: s.label }))}
-            placeholder="Select source"
-            searchPlaceholder="Type to filter…"
-            alwaysShowSearch
-          />
-        </div>
-        {source === "ota" && (
-          <div className="grid gap-2">
-            <Label>OTA Partner</Label>
-            <Input
-              value={otaPartnerName} maxLength={80}
-              onChange={(e) => onMetaChange({ otaPartnerName: e.target.value })}
-            />
-          </div>
-        )}
+      <div className="border-t pt-4">
+        <BookingSourceFields source={source} detail={otaPartnerName} onChange={onMetaChange} />
       </div>
     </div>
   );

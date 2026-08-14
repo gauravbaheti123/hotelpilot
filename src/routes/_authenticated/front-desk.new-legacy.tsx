@@ -567,7 +567,7 @@ function NewBookingPage() {
           guest_id: guestId!,
           source,
           ota_partner_name:
-            (source === "ota" || source === "agent") && otaPartnerName.trim()
+            (source === "ota" || source === "agent" || source === "other") && otaPartnerName.trim()
               ? otaPartnerName.trim()
               : null,
           billing_company_id: billToOther && billingCompanyId ? billingCompanyId : null,
@@ -1199,8 +1199,8 @@ function NewBookingPage() {
                 </SelectContent>
               </Select>
             </F>
-            {(source === "ota" || source === "agent") && (
-              <F label="OTA / Travel Partner Name (optional)">
+            {(source === "ota" || source === "agent" || source === "other") && (
+              <F label={source === "other" ? "Source name" : "OTA / Travel Partner Name (optional)"}>
                 <Input
                   value={otaPartnerName}
                   onChange={(e) => setOtaPartnerName(e.target.value)}
