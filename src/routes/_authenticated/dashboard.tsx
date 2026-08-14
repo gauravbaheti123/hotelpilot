@@ -1293,6 +1293,8 @@ function OwnerDashboard({
           roomNumber={kotHistoryTarget.roomNumber}
           guestName={kotHistoryTarget.guestName}
           bookingId={kotHistoryTarget.bookingId}
+          tableId={kotHistoryTarget.tableId ?? null}
+          tableName={kotHistoryTarget.tableName ?? null}
           onChanged={() => { setSegmentReloadTick((t) => t + 1); reload(); }}
         />
       )}
