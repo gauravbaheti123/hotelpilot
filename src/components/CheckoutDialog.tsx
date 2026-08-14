@@ -1462,6 +1462,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
                   )}
                 </div>
               </label>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
