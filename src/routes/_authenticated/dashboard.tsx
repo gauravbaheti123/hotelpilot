@@ -2180,10 +2180,12 @@ function TableGroups({
   tables,
   bills,
   onPick,
+  onView,
 }: {
   tables: RestaurantTable[];
   bills: Map<string, TableBill>;
   onPick: (t: RestaurantTable) => void;
+  onView: (t: RestaurantTable) => void;
 }) {
   const groups = new Map<string, RestaurantTable[]>();
   tables.forEach((t) => {
@@ -2210,13 +2212,12 @@ function TableGroups({
               const bill = bills.get(t.id);
               const tone = bill ? ROOM_STATUS_COLORS.occupied : ROOM_STATUS_COLORS.vacant;
               return (
-                <button
+                <div
                   key={t.id}
-                  type="button"
-                  onClick={() => onPick(t)}
                   className="rounded-lg border p-3 text-left min-h-[44px] transition-shadow hover:shadow-md"
                   style={{ backgroundColor: tone.bg, borderColor: tone.border ?? undefined, color: tone.fg }}
                 >
+                <button type="button" className="w-full text-left" onClick={() => onPick(t)}>
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold truncate">{t.name}</span>
                     {t.capacity ? <span className="text-[10px] opacity-70">{t.capacity} seats</span> : null}
@@ -2232,6 +2233,17 @@ function TableGroups({
                     </div>
                   )}
                 </button>
+                {bill && (
+                  <button
+                    type="button"
+                    onClick={() => onView(t)}
+                    className="mt-2 w-full rounded border px-2 py-1 text-[11px] font-medium min-h-[32px]"
+                    style={{ borderColor: tone.border ?? undefined }}
+                  >
+                    View KOT
+                  </button>
+                )}
+                </div>
               );
             })}
           </div>
