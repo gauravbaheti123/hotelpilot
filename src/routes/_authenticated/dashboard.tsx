@@ -919,6 +919,10 @@ function OwnerDashboard({
                     tableName: t.name,
                   });
                 }}
+                onViewInvoice={(t) => {
+                  const latest = tableBills.get(t.id)?.bill_number ?? undefined;
+                  navigate({ to: "/billing/invoices", search: { seg: "food", bill: latest } });
+                }}
               />
             )}
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
@@ -2181,11 +2185,13 @@ function TableGroups({
   bills,
   onPick,
   onView,
+  onViewInvoice,
 }: {
   tables: RestaurantTable[];
   bills: Map<string, TableBill>;
   onPick: (t: RestaurantTable) => void;
   onView: (t: RestaurantTable) => void;
+  onViewInvoice: (t: RestaurantTable) => void;
 }) {
   const groups = new Map<string, RestaurantTable[]>();
   tables.forEach((t) => {
@@ -2211,39 +2217,60 @@ function TableGroups({
             {list.map((t) => {
               const bill = bills.get(t.id);
               const tone = bill ? ROOM_STATUS_COLORS.occupied : ROOM_STATUS_COLORS.vacant;
-              return (
+              const body = (
                 <div
-                  key={t.id}
-                  className="rounded-lg border p-3 text-left min-h-[44px] transition-shadow hover:shadow-md"
-                  style={{ backgroundColor: tone.bg, borderColor: tone.border ?? undefined, color: tone.fg }}
+                  className="relative transition cursor-pointer overflow-hidden flex flex-col text-left"
+                  style={{ backgroundColor: tone.bg, borderColor: tone.border ?? undefined, color: tone.fg, minHeight: 118, borderRadius: 10, border: tone.border ? `1px solid ${tone.border}` : undefined }}
                 >
-                <button type="button" className="w-full text-left" onClick={() => onPick(t)}>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold truncate">{t.name}</span>
-                    {t.capacity ? <span className="text-[10px] opacity-70">{t.capacity} seats</span> : null}
-                  </div>
-                  <div className="text-[11px] mt-1 opacity-80">
-                    {bill ? "Occupied" : "Vacant"}
-                  </div>
-                  {bill && (
-                    <div className="mt-1 space-y-0.5 text-[11px]">
-                      {bill.guest_name && <div className="truncate">{bill.guest_name}</div>}
-                      <div className="font-medium">₹{Number(bill.amount || 0).toLocaleString()}</div>
-                      {sinceLabel(bill.since) && <div className="opacity-70">{sinceLabel(bill.since)} ago</div>}
+                  <div className="px-2 pt-1.5 pb-1 flex-1 min-h-0 min-w-0 flex flex-col">
+                    <div className="flex items-start justify-between gap-1.5 min-w-0">
+                      <span className="truncate" style={{ color: tone.fg, fontSize: 20, fontWeight: 700, lineHeight: 1 }}>{t.name}</span>
+                      {t.capacity ? <span className="text-[10px] opacity-70">{t.capacity} seats</span> : null}
                     </div>
-                  )}
-                </button>
-                {bill && (
-                  <button
-                    type="button"
-                    onClick={() => onView(t)}
-                    className="mt-2 w-full rounded border px-2 py-1 text-[11px] font-medium min-h-[32px]"
-                    style={{ borderColor: tone.border ?? undefined }}
-                  >
-                    View KOT
-                  </button>
-                )}
+                    <div className="truncate" style={{ color: tone.fg, fontSize: 13, fontWeight: 700, marginTop: 2 }}>
+                      {bill ? "Occupied" : "Vacant"}
+                    </div>
+                    {bill ? (
+                      <div className="mt-auto pt-1 space-y-0.5 text-[11px]">
+                        {bill.guest_name && <div className="truncate">{bill.guest_name}</div>}
+                        <div className="font-medium">₹{Number(bill.amount || 0).toLocaleString()}</div>
+                        {sinceLabel(bill.since) && <div className="opacity-70">{sinceLabel(bill.since)} ago</div>}
+                      </div>
+                    ) : (
+                      <div className="mt-auto pt-1 text-[11px] opacity-80">Tap to start order</div>
+                    )}
+                  </div>
                 </div>
+              );
+              // Vacant table — directly open the Punch dialog (same as a vacant
+              // room in food mode). No menu needed; there's nothing to view yet.
+              if (!bill) {
+                return (
+                  <div key={t.id} role="button" tabIndex={0} onClick={() => onPick(t)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onPick(t); }}>
+                    {body}
+                  </div>
+                );
+              }
+              // Occupied table — same 3-option popup menu as an occupied room:
+              // View KOT / New KOT / View Invoice.
+              return (
+                <DropdownMenu key={t.id}>
+                  <DropdownMenuTrigger asChild>
+                    {body}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    <DropdownMenuItem onSelect={() => onView(t)}>
+                      View KOT
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => onPick(t)}>
+                      New KOT
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => onViewInvoice(t)}>
+                      View Invoice
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               );
             })}
           </div>
