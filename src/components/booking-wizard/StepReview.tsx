@@ -6,6 +6,7 @@ import { nightsBetween } from "@/lib/front-desk";
 import { roomsTotal, STEP, type WizardState } from "@/lib/bookingWizard";
 import { eventTotals, type WizardEventRoomRow } from "@/lib/bookingWizard";
 import { SOURCES } from "@/lib/front-desk";
+import { sourceDetailLabel } from "@/components/booking-wizard/BookingSourceFields";
 import { ID_PROOF_LABELS } from "@/lib/guests";
 
 const MEAL_PLAN_LABELS: Record<string, string> = {

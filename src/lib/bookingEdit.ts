@@ -65,6 +65,10 @@ export interface BookingEditState {
   extraGuests: WizardExtraGuest[];
   billTo: WizardBillTo;
   customRemark: string;
+  /** `bookings.source` bucket (free text; see BookingSourceFields). */
+  source: string;
+  /** Free-text channel name — OTA partner, agent, or a custom "other" source. */
+  otaPartnerName: string;
   stay: StayEdit;
 }
 
@@ -121,6 +125,7 @@ export async function loadBookingForEdit(bookingId: string): Promise<BookingEdit
     .from("bookings")
     .select(
       `id, property_id, booking_number, status, adults, children, custom_remark, billing_company_id, rate_type,
+       source, ota_partner_name,
        check_in, check_out, advance_amount,
        guests!bookings_guest_id_fkey (
          id, name, mobile, email, dob, city, state, country, nationality, address, pincode,
@@ -250,6 +255,8 @@ export async function loadBookingForEdit(bookingId: string): Promise<BookingEdit
     extraGuests,
     billTo,
     customRemark: (b.custom_remark as string) ?? "",
+    source: (b.source as string) ?? "walk_in",
+    otaPartnerName: (b.ota_partner_name as string) ?? "",
     stay: {
       checkIn, checkOut,
       origCheckIn: checkIn, origCheckOut: checkOut,
@@ -310,6 +317,11 @@ export async function saveBookingEdit(s: BookingEditState, actorName: string | n
         })),
       billing_company_id: billingCompanyId,
       custom_remark: s.customRemark.trim() || null,
+      source: s.source || null,
+      ota_partner_name:
+        (s.source === "ota" || s.source === "agent" || s.source === "other") && s.otaPartnerName.trim()
+          ? s.otaPartnerName.trim()
+          : null,
       actor_name: actorName,
     },
   } as never);
