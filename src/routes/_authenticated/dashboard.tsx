@@ -919,6 +919,10 @@ function OwnerDashboard({
                     tableName: t.name,
                   });
                 }}
+                onViewInvoice={(t) => {
+                  const latest = tableBills.get(t.id)?.bill_number ?? undefined;
+                  navigate({ to: "/billing/invoices", search: { seg: "food", bill: latest } });
+                }}
               />
             )}
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
