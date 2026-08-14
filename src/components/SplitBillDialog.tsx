@@ -113,7 +113,10 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   const [splitMode, setSplitMode] = useState<SplitMode>("item");
   const [splitScope, setSplitScope] = useState<SplitScope>("whole");
   const [scopeChargeId, setScopeChargeId] = useState<string>("");
-  const [bill1Ids, setBill1Ids] = useState<Set<string>>(new Set());
+  /** How many bills this split produces (item mode). 2 = the historic flow. */
+  const [billCount, setBillCount] = useState<number>(2);
+  /** chargeId -> destination bill index (0-based). */
+  const [assign, setAssign] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
   const [discOpen, setDiscOpen] = useState(false);
@@ -161,6 +164,8 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     name: "", mobile: "", gstin: "",
     bill_type: "gst_invoice",
   });
+  /** Parties for bills 3..N (index 0 here = Bill 3). */
+  const [moreParties, setMoreParties] = useState<PartyDetails[]>([]);
 
   // Resolve the parent folio's Bill-To company and seed Party 1 from it.
   useEffect(() => {
@@ -229,15 +234,15 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       name: "", mobile: "", gstin: "",
       bill_type: "gst_invoice",
     });
+    setMoreParties([]);
+    setBillCount(2);
     setParties([
       newParty({ name: guestName, mobile: guestMobile, gstin: guestGstin, bill_type: folioGst }),
       newParty({ name: "", mobile: "", gstin: "", bill_type: "gst_invoice" }),
     ]);
-    const ids = new Set<string>();
-    for (const c of charges) {
-      if (c.charge_type !== "food") ids.add(c.id);
-    }
-    setBill1Ids(ids);
+    const nextAssign: Record<string, number> = {};
+    for (const c of charges) nextAssign[c.id] = c.charge_type === "food" ? 1 : 0;
+    setAssign(nextAssign);
     setPayRows([
       { mode: "cash", amount: "", reference: "" },
       { mode: "cash", amount: "", reference: "" },
@@ -272,8 +277,34 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     })();
   }, [open, folio?.id]);
 
-  const bill1Charges = useMemo(() => charges.filter((c) => bill1Ids.has(c.id)), [charges, bill1Ids]);
-  const bill2Charges = useMemo(() => charges.filter((c) => !bill1Ids.has(c.id)), [charges, bill1Ids]);
+  /** Charges grouped per destination bill — index 0..billCount-1. */
+  const billCharges = useMemo(() => {
+    const buckets: Charge[][] = Array.from({ length: billCount }, () => []);
+    for (const c of charges) {
+      const idx = Math.min(Math.max(0, assign[c.id] ?? 0), billCount - 1);
+      buckets[idx].push(c);
+    }
+    return buckets;
+  }, [charges, assign, billCount]);
+  const bill1Charges = billCharges[0] ?? [];
+  const bill2Charges = billCharges[1] ?? [];
+
+  /** Party details for a given bill index (same-party mode reuses Party 1). */
+  const partyForBill = (i: number): PartyDetails => {
+    if (i === 0 || splitType === "same") return party1;
+    if (i === 1) return party2;
+    return moreParties[i - 2] ?? { name: "", mobile: "", gstin: "", bill_type: "gst_invoice" };
+  };
+  const setPartyForBill = (i: number, p: PartyDetails) => {
+    if (i === 0) return setParty1(p);
+    if (i === 1) return setParty2(p);
+    setMoreParties((prev) => {
+      const next = [...prev];
+      while (next.length < i - 1) next.push({ name: "", mobile: "", gstin: "", bill_type: "gst_invoice" });
+      next[i - 2] = p;
+      return next;
+    });
+  };
 
   // === Base charges for share (% / ₹) modes ===
   //   whole  → every non-tax charge line
