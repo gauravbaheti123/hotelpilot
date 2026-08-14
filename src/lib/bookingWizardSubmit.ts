@@ -169,7 +169,7 @@ export function buildBookingPayload(opts: {
     payment_ref: s.payment.reference.trim() || null,
     source: s.source,
     ota_partner_name:
-      (s.source === "ota" || s.source === "agent") && s.otaPartnerName.trim()
+      (s.source === "ota" || s.source === "agent" || s.source === "other") && s.otaPartnerName.trim()
         ? s.otaPartnerName.trim()
         : null,
     billing_company_id: billingCompanyId,

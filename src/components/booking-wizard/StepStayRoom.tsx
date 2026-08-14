@@ -17,6 +17,7 @@ import {
 } from "@/lib/tariff";
 import { useRoomCategories, useTariffPlans } from "@/hooks/use-rooms";
 import { SOURCES, isValidStayRange, nightsBetween } from "@/lib/front-desk";
+import { BookingSourceFields } from "@/components/booking-wizard/BookingSourceFields";
 import { useGstSlabs } from "@/hooks/use-gst-slabs";
 import { resolveGstRate, resolveGstRateInclusive } from "@/lib/gst";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
