@@ -481,6 +481,92 @@ export function PunchChargeDialog({
 
   const title = segment === "food" ? "Punch Food Charge" : "Punch Laundry Charge";
 
+  /**
+   * Settle today's bill as complimentary: zero real money, no folio posting,
+   * a mandatory stored reason and an audit entry. Never creates a fake payment.
+   */
+  async function markComplimentary() {
+    const reason = (compPreset === COMPLIMENTARY_OTHER ? compOther : compPreset).trim();
+    if (!reason) { toast.error("Enter a reason"); return; }
+    if (inFlight.current) return;
+    if (walkin && !walkinGuest.trim()) { toast.error("Enter walk-in customer name"); return; }
+    inFlight.current = true;
+    setCompBusy(true);
+    try {
+      const clean = cleanLines();
+      let bill: { id: string; bill_number: string; folio_id: string | null };
+      if (clean.length > 0) {
+        bill = await appendToTodayBill(clean);
+      } else {
+        const existing = await findTodayBill();
+        if (!existing) { toast.error("Nothing to bill yet"); return; }
+        bill = existing;
+      }
+      const { data: allItems, error: iErr } = await supabase
+        .from("segment_bill_items" as any)
+        .select("description,qty,rate,amount,gst_rate,gst_amount")
+        .eq("segment_bill_id", bill.id)
+        .order("id");
+      if (iErr) throw iErr;
+      const rowsAll = (allItems ?? []) as any[];
+      if (rowsAll.length === 0) { toast.error("Nothing to bill yet"); return; }
+      const t = await recalcBillTotals(bill.id);
+
+      const { data: res, error: rpcErr } = await supabase.rpc(
+        "settle_segment_bill_complimentary" as any,
+        { _bill_id: bill.id, _reason: reason, _actor: user?.id ?? null } as any,
+      );
+      if (rpcErr) throw rpcErr;
+      const out = res as any;
+      if (out && out.ok === false) {
+        throw new Error(
+          out.reason === "not_allowed"
+            ? "Only a Manager or Owner can mark a bill complimentary"
+            : out.reason === "no_items" ? "Nothing to bill yet" : "Could not mark complimentary",
+        );
+      }
+      await logActivity({
+        property_id: propertyId,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "BILL_MARKED_COMPLIMENTARY",
+        module: segment === "food" ? "Food" : "Laundry",
+        reference_id: bill.id,
+        reference_label: bill.bill_number,
+        details: { segment, reason, total_amount: t.total, gst_amount: t.gst },
+      });
+
+      const { data: billRow } = await supabase
+        .from("segment_bills" as any)
+        .select("settled_at,created_at")
+        .eq("id", bill.id)
+        .maybeSingle();
+
+      printSegmentBill({
+        billNumber: bill.bill_number, segment, propertyName: propertyName ?? "", propertyId,
+        guestName: walkin ? walkinGuest.trim() : (guestName ?? "Guest"),
+        roomNumber: walkin ? null : (roomNumber ?? null),
+        items: rowsAll.map((l) => ({
+          description: l.description, qty: Number(l.qty), rate: Number(l.rate),
+          amount: Number(l.amount), gst_rate: Number(l.gst_rate),
+        })),
+        sub: t.sub, gst: t.gst, total: t.total,
+        isWalkin: walkin, paymentMode: null,
+        complimentaryReason: reason,
+        billDate: (billRow as any)?.settled_at ?? (billRow as any)?.created_at ?? null,
+      });
+      toast.success(`${bill.bill_number} settled as complimentary`);
+      setCompOpen(false);
+      onSaved?.();
+      onClose();
+    } catch (e: any) {
+      toastError(e, "Could not mark complimentary");
+    } finally {
+      setCompBusy(false);
+      inFlight.current = false;
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
