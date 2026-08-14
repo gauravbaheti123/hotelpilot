@@ -439,6 +439,13 @@ export function PunchChargeDialog({
         if (payErr) throw payErr;
       }
 
+      // Stamp the ticket with the bill's real timestamp, not the print moment.
+      const { data: billRow } = await supabase
+        .from("segment_bills" as any)
+        .select("settled_at,created_at")
+        .eq("id", bill.id)
+        .maybeSingle();
+
       printSegmentBill({
         billNumber: bill.bill_number, segment, propertyName: propertyName ?? "", propertyId,
         guestName: walkin ? walkinGuest.trim() : (guestName ?? "Guest"),
@@ -449,6 +456,7 @@ export function PunchChargeDialog({
         })),
         sub: t.sub, gst: t.gst, total: t.total,
         isWalkin: walkin, paymentMode: walkin ? payMode : null,
+        billDate: (billRow as any)?.settled_at ?? (billRow as any)?.created_at ?? null,
       });
       toast.success(walkin ? `${bill.bill_number} settled` : `${bill.bill_number} posted to folio`);
       onSaved?.();
@@ -637,6 +645,8 @@ export function printSegmentBill(opts: {
   sub: number; gst: number; total: number;
   isWalkin: boolean;
   paymentMode: string | null;
+  /** Real bill timestamp (settled_at ?? created_at). Falls back to now for brand-new bills. */
+  billDate?: string | null;
 }) {
   void (async () => {
     let head = { name: opts.propertyName, address: "", phone: "", gstin: "", fssai: "", logo: "" };
@@ -677,6 +687,7 @@ function renderSegmentBill(opts: {
   sub: number; gst: number; total: number;
   isWalkin: boolean;
   paymentMode: string | null;
+  billDate?: string | null;
 }, head: SegBillHead, printer: { name: string; paper_size: string } | null) {
   const paperSize = printer?.paper_size ?? "80mm";
   const contentWidth = getPrintContainerWidth(paperSize);
@@ -688,8 +699,13 @@ function renderSegmentBill(opts: {
       <td class="r">${it.gst_rate}%</td>
       <td class="r">${it.amount.toFixed(2)}</td>
     </tr>`).join("");
-  const now = new Date();
-  const dt = now.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+  // Always stamp the real bill date (settled_at ?? created_at), never the
+  // moment of printing/reprinting. Only brand-new, unsaved tickets use now.
+  const stamp = opts.billDate ? new Date(opts.billDate) : new Date();
+  const dt = (isNaN(stamp.getTime()) ? new Date() : stamp).toLocaleString("en-IN", {
+    day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true,
+    timeZone: "Asia/Kolkata",
+  });
   const heading = opts.segment === "food" ? "Food Bill" : "Laundry Bill";
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>${opts.billNumber}</title>
 <style>

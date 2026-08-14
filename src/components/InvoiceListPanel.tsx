@@ -461,6 +461,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
   async function printSegBill(bill: {
     id: string; bill_number: string; segment: string;
     total_amount: number; is_walkin: boolean; guest_name: string | null; room_id: string | null;
+    settled_at?: string | null; created_at?: string | null;
   }) {
     try {
       const [{ data: items, error: __qp1 }, { data: room, error: __qp2 }] = await Promise.all([
@@ -490,6 +491,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
         sub, gst, total: sub + gst,
         isWalkin: !!bill.is_walkin,
         paymentMode: null,
+        billDate: bill.settled_at ?? bill.created_at ?? null,
       });
     } catch (e: any) {
       toastError(e, "Print failed");
