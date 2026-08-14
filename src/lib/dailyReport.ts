@@ -437,7 +437,10 @@ export function sectionSummary(key: SectionKey, d: DailyReportData): Array<[stri
     ];
   }
   const roomRev = sum(d.rooms, (r) => r.total);
-  const foodRev = sum(d.food, (r) => r.total);
+  // Complimentary food bills are excluded from revenue and reported separately.
+  const compFood = d.food.filter((r) => r.status.startsWith("Complimentary"));
+  const realFood = d.food.filter((r) => !r.status.startsWith("Complimentary"));
+  const foodRev = sum(realFood, (r) => r.total);
   const restRev = sum(d.restaurant, (r) => r.amount);
   const bqRev = sum(d.banquet, (r) => r.total);
   return [
@@ -446,11 +449,12 @@ export function sectionSummary(key: SectionKey, d: DailyReportData): Array<[stri
     ["Dues added this period", fmtINR(d.duesAdded)],
     ["Room revenue", fmtINR(roomRev)],
     ["Food / KOT revenue", fmtINR(foodRev)],
+    ["Complimentary food given (not revenue)", fmtINR(sum(compFood, (r) => r.total))],
     ["Direct restaurant revenue", fmtINR(restRev)],
     ["Banquet revenue", fmtINR(bqRev)],
     ["Grand total revenue", fmtINR(r2(roomRev + foodRev + restRev + bqRev))],
     ["Total GST collected (all categories)", fmtINR(r2(
-      sum(d.rooms, (r) => r.cgst + r.sgst + r.igst) + sum(d.food, (r) => r.gst) + sum(d.banquet, (r) => r.gst),
+      sum(d.rooms, (r) => r.cgst + r.sgst + r.igst) + sum(realFood, (r) => r.gst) + sum(d.banquet, (r) => r.gst),
     ))],
   ];
 }

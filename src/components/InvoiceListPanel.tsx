@@ -152,6 +152,8 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
     created_at: string;
     settled_at?: string | null;
     updated_at?: string | null;
+    is_complimentary?: boolean | null;
+    complimentary_reason?: string | null;
   }>>([]);
   const [audit, setAudit] = useState(false);
   const [delTarget, setDelTarget] = useState<Row | null>(null);
@@ -236,7 +238,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
     (async () => {
       const { data, error } = await supabase
         .from("segment_bills" as any)
-        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,folio_id,booking_id,created_at,updated_at,settled_at")
+        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,folio_id,booking_id,created_at,updated_at,settled_at,is_complimentary,complimentary_reason")
         .eq("property_id", propertyId)
         .eq("segment", segTab)
         .order("updated_at" as any, { ascending: false, nullsFirst: false })
@@ -462,6 +464,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
     id: string; bill_number: string; segment: string;
     total_amount: number; is_walkin: boolean; guest_name: string | null; room_id: string | null;
     settled_at?: string | null; created_at?: string | null;
+    is_complimentary?: boolean | null; complimentary_reason?: string | null;
   }) {
     try {
       const [{ data: items, error: __qp1 }, { data: room, error: __qp2 }] = await Promise.all([
@@ -491,6 +494,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
         sub, gst, total: sub + gst,
         isWalkin: !!bill.is_walkin,
         paymentMode: null,
+        complimentaryReason: bill.is_complimentary ? (bill.complimentary_reason ?? "Complimentary") : null,
         billDate: bill.settled_at ?? bill.created_at ?? null,
       });
     } catch (e: any) {
@@ -660,23 +664,39 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                 <DateDivider label={g.label} />
                 <div className="divide-y">
               {g.items.map((r) => {
-                const balance = Math.max(0, Number(r.total_amount || 0) - Number(r.paid_amount || 0));
+                const isComp = !!r.is_complimentary;
+                const balance = isComp
+                  ? 0
+                  : Math.max(0, Number(r.total_amount || 0) - Number(r.paid_amount || 0));
                 return (
                   <div key={r.id} className="flex items-center gap-3 px-4 py-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
                         <div className="font-medium text-sm break-all">{segmentBillNo(r.bill_number)}</div>
-                        <Badge variant="outline" className="uppercase text-[10px]">{r.status}</Badge>
+                        {isComp ? (
+                          <Badge
+                            variant="outline"
+                            className="uppercase text-[10px] border-emerald-500 text-emerald-600"
+                            title={r.complimentary_reason ?? undefined}
+                          >
+                            Complimentary
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="uppercase text-[10px]">{r.status}</Badge>
+                        )}
                         <Badge variant="outline" className="text-[10px] uppercase">{segTab}</Badge>
                         {r.is_walkin && <Badge variant="outline" className="text-[10px]">Walk-in</Badge>}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {r.guest_name ?? "—"} · {new Date(r.created_at).toLocaleString("en-IN")}
+                        {isComp && r.complimentary_reason ? ` · ${r.complimentary_reason}` : ""}
                       </div>
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-sm font-medium">{inr(r.total_amount)}</div>
-                      <div className="text-xs text-muted-foreground">Bal {inr(balance)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {isComp ? "No charge" : `Bal ${inr(balance)}`}
+                      </div>
                     </div>
                     <Button size="sm" variant="ghost" title="Print bill" onClick={() => printSegBill(r)}>
                       <Printer className="h-4 w-4" />
