@@ -210,7 +210,6 @@ export async function fetchGstInvoiceSlabs(
   // Since that date lives on booking_rooms.actual_check_out we cannot filter it
   // in SQL: fetch a widened settlement/creation window and filter in memory on
   // the resolved invoice date so each folio lands in exactly one month bucket.
-  const start = new Date(`${from}T00:00:00`).toISOString();
   const endD = new Date(`${to}T00:00:00`);
   endD.setDate(endD.getDate() + 1);
   const end = endD.toISOString();
