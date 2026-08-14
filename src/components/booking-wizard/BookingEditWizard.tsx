@@ -190,7 +190,22 @@ export function BookingEditWizard({ bookingId, onSaved, onCancel }: Props) {
         )}
 
         {step === 4 && (
-          <StepRemarks value={state.customRemark} onChange={(customRemark) => patch({ customRemark })} />
+          <div className="space-y-6">
+            <StepRemarks value={state.customRemark} onChange={(customRemark) => patch({ customRemark })} />
+            <div className="border-t pt-4">
+              <h3 className="mb-3 text-sm font-semibold">Booking source</h3>
+              <BookingSourceFields
+                source={state.source}
+                detail={state.otaPartnerName}
+                onChange={(p) =>
+                  patch({
+                    ...(p.source !== undefined ? { source: p.source } : {}),
+                    ...(p.otaPartnerName !== undefined ? { otaPartnerName: p.otaPartnerName } : {}),
+                  })
+                }
+              />
+            </div>
+          </div>
         )}
 
         {step === 5 && <StepEditReview state={state} />}
