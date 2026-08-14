@@ -2513,7 +2513,7 @@ function FolioPage() {
                     <div style={{ fontSize: 11, marginTop: 4, fontWeight: 700, letterSpacing: 0.4 }}>{PROVISIONAL_DOC_TITLE}</div>
                   )}
                   <div style={{ fontSize: 13, marginTop: 8, fontWeight: 700 }}>Bill No: <span style={{ fontWeight: 700 }}>{isProvisional ? provisionalRef : draftMode ? "—" : billNo(folio.invoice_number, "—")}</span></div>
-                  <div style={{ fontSize: 12 }}>Date: <b>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</b></div>
+                  <div style={{ fontSize: 12 }}>Date: <b>{invoiceDate.text}</b>{invoiceDate.note ? <span style={{ fontSize: 10, marginLeft: 4 }}>{invoiceDate.note}</span> : null}</div>
                   <div style={{ fontSize: 12 }}>Booking: <b>{booking.booking_number}</b></div>
                 </div>
               </div>
@@ -2549,7 +2549,7 @@ function FolioPage() {
             </div>
             <div className="text-xs text-right">
               <div><span className="text-muted-foreground">{isProvisional ? "Reference:" : "Invoice No:"}</span> <span className="font-semibold">{isProvisional ? provisionalRef : draftMode ? "—" : billNo(folio.invoice_number, "—")}</span>{!isProvisional && !draftMode && isSettled && <span className="ml-2 rounded px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ background: TEAL }}>PAID</span>}</div>
-              <div><span className="text-muted-foreground">Date:</span> <span className="font-semibold">{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span></div>
+              <div><span className="text-muted-foreground">Date:</span> <span className="font-semibold">{invoiceDate.text}</span>{invoiceDate.note ? <span className="ml-1 text-[10px] text-amber-700">{invoiceDate.note}</span> : null}</div>
               <div><span className="text-muted-foreground">Booking:</span> <span className="font-semibold">{booking.booking_number}</span></div>
               {foodBillNumber && (
                 <div><span className="text-muted-foreground">Food Bill Ref:</span> <span className="font-semibold">{foodBillNumber}</span></div>
