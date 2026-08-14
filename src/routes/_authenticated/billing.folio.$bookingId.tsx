@@ -54,6 +54,7 @@ import {
   resolveLogoUrl,
   type InvoiceProperty,
 } from "@/lib/invoiceTemplates";
+import { invoiceDateLabel } from "@/lib/invoiceDate";
 import { printIsolated, withPrintStyles } from "@/lib/printStyles";
 
 import { RequirePermission } from "@/components/RequirePermission";
