@@ -30,6 +30,7 @@ import {
 import { RequirePermission } from "@/components/RequirePermission";
 import { useRegisterRefresh } from "@/components/PullToRefresh";
 import { istToday, istDateISO, IST_TZ } from "@/lib/date";
+import { invoiceDateLabel } from "@/lib/invoiceDate";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 
