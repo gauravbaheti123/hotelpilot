@@ -1403,7 +1403,12 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
                   </div>
                 )}
 
-                <div className={`rounded-md border-2 p-3 ${markDue ? "border-red-400 bg-red-50" : "border-dashed"}`}>
+              </div>
+            )}
+
+            <div className="mb-2 flex flex-col gap-2 sm:flex-row">
+              {totals.balance > 0.01 && (
+                <div className={`flex-1 min-w-0 rounded-md border-2 p-2.5 ${markDue ? "border-red-400 bg-red-50" : "border-dashed"}`}>
                   <label className="flex items-start gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -1418,8 +1423,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
                           : Number(singleAmount) || 0)))} as Due
                       </div>
                       <div className="text-[11px] text-muted-foreground mt-0.5">
-                        Checks the guest out with the balance outstanding. The bill stays
-                        unpaid and appears in the Dues report and the guest's ledger.
+                        Checkout without full payment — tracked in Dues.
                       </div>
                     </div>
                   </label>
@@ -1434,31 +1438,31 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
                     </div>
                   )}
                 </div>
-              </div>
-            )}
+              )}
 
-            <div className={`mb-2 rounded-md border-2 p-3 ${billToConfirmed ? "border-emerald-500 bg-emerald-50" : "border-amber-500 bg-amber-50"}`}>
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={billToConfirmed}
-                  onChange={(e) => setBillToConfirmed(e.target.checked)}
-                />
-                <div className="text-sm">
-                  <div className="font-semibold">
-                    Confirm: bill will be raised to{" "}
-                    <span className="text-primary">
-                      {billToCompany
-                        ? `${billToCompany.name}${billToCompany.gstin ? ` (${billToCompany.gstin})` : ""}`
-                        : (booking?.guests?.name ?? "Guest")}
-                    </span>
+              <div className={`flex-1 min-w-0 rounded-md border-2 p-2.5 ${billToConfirmed ? "border-emerald-500 bg-emerald-50" : "border-amber-500 bg-amber-50"}`}>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={billToConfirmed}
+                    onChange={(e) => setBillToConfirmed(e.target.checked)}
+                  />
+                  <div className="text-sm">
+                    <div className="font-semibold">
+                      Confirm: bill will be raised to{" "}
+                      <span className="text-primary">
+                        {billToCompany
+                          ? `${billToCompany.name}${billToCompany.gstin ? ` (${billToCompany.gstin})` : ""}`
+                          : (booking?.guests?.name ?? "Guest")}
+                      </span>
+                    </div>
+                    {!billToConfirmed && (
+                      <div className="text-[11px] text-amber-800 mt-0.5">Tick to enable Collect &amp; Checkout.</div>
+                    )}
                   </div>
-                  {!billToConfirmed && (
-                    <div className="text-[11px] text-amber-800 mt-0.5">Tick to enable Collect &amp; Checkout.</div>
-                  )}
-                </div>
-              </label>
+                </label>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
