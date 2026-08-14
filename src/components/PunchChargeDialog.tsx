@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Trash2, Plus, Printer, Check, ChevronsUpDown } from "lucide-react";
+import { Trash2, Plus, Printer, Check, ChevronsUpDown, Gift } from "lucide-react";
 import { inr } from "@/lib/billing";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useAuth } from "@/hooks/use-auth";
@@ -715,6 +715,12 @@ export function PunchChargeDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          {mayComp && (
+            <Button type="button" variant="outline" onClick={() => setCompOpen(true)} disabled={saving || compBusy}>
+              <Gift className="h-4 w-4 mr-1.5" />
+              Mark Complimentary
+            </Button>
+          )}
           <Button type="button" variant="secondary" onClick={printKot} disabled={saving}>
             <Printer className="h-4 w-4 mr-1.5" />
             {busy === "kot" ? "Working..." : segment === "food" ? "Print KOT" : "Print Ticket"}
@@ -725,6 +731,43 @@ export function PunchChargeDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <Dialog open={compOpen} onOpenChange={(v) => !v && setCompOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Settle as Complimentary</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            The bill closes at zero — no money collected, nothing posted to the folio and it will
+            never show as due. A reason is required and is recorded for audit.
+          </p>
+          <div className="space-y-3">
+            <div>
+              <Label>Reason</Label>
+              <Select value={compPreset} onValueChange={setCompPreset}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {COMPLIMENTARY_PRESETS.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
+                  <SelectItem value={COMPLIMENTARY_OTHER}>{COMPLIMENTARY_OTHER}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {compPreset === COMPLIMENTARY_OTHER && (
+              <div>
+                <Label>Specify reason</Label>
+                <Input value={compOther} maxLength={160} onChange={(e) => setCompOther(e.target.value)}
+                  placeholder="e.g. Compensation for AC fault" />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCompOpen(false)} disabled={compBusy}>Cancel</Button>
+            <Button onClick={markComplimentary} disabled={compBusy}>
+              {compBusy ? "Working…" : "Confirm Complimentary"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
