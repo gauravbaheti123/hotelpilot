@@ -56,6 +56,8 @@ interface Props {
   roomId?: string | null;
   roomNumber?: string | null;
   guestName?: string | null;
+  /** Optional dine-in table (walk-in orders punched from the Food dashboard). */
+  tableId?: string | null;
   onSaved?: () => void;
 }
 
@@ -63,7 +65,7 @@ function uid() { return Math.random().toString(36).slice(2, 10); }
 
 export function PunchChargeDialog({
   open, onClose, segment, propertyId, propertyName,
-  bookingId, roomId, roomNumber, guestName, onSaved,
+  bookingId, roomId, roomNumber, guestName, tableId: tableIdProp, onSaved,
 }: Props) {
   const { user, roles } = useAuth();
   const { methods: paymentMethods } = usePaymentMethods(propertyId);
@@ -71,6 +73,9 @@ export function PunchChargeDialog({
   const [pickerItems, setPickerItems] = useState<PickerItem[]>([]);
   const [walkin, setWalkin] = useState(!bookingId);
   const [walkinGuest, setWalkinGuest] = useState("");
+  /** Dine-in table for walk-in orders (food only). */
+  const [tables, setTables] = useState<{ id: string; name: string; area: string | null }[]>([]);
+  const [tableId, setTableId] = useState<string | null>(tableIdProp ?? null);
   const [payMode, setPayMode] = useState<string>("cash");
   // Per-action busy state so one button's click never renders/locks the other's label.
   const [busy, setBusy] = useState<null | "kot" | "bill">(null);
@@ -96,7 +101,24 @@ export function PunchChargeDialog({
     setWalkin(!bookingId);
     setWalkinGuest("");
     setEventId(null);
-  }, [open, segment, bookingId]);
+    setTableId(tableIdProp ?? null);
+  }, [open, segment, bookingId, tableIdProp]);
+
+  // Dine-in tables master (food walk-ins only).
+  useEffect(() => {
+    if (!open || !propertyId || segment !== "food") { setTables([]); return; }
+    let cancelled = false;
+    supabase.from("restaurant_tables" as any)
+      .select("id,name,area,sort_order")
+      .eq("property_id", propertyId)
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true })
+      .then(guardQuery("restaurant tables")).then(({ data }) => {
+        if (cancelled) return;
+        setTables(((data ?? []) as any[]).map((t) => ({ id: t.id, name: t.name, area: t.area ?? null })));
+      });
+    return () => { cancelled = true; };
+  }, [open, propertyId, segment]);
 
   useEffect(() => {
     if (!open || !propertyId || segment !== "food") { setEvents([]); return; }
@@ -182,6 +204,10 @@ export function PunchChargeDialog({
       .then(guardQuery("get gst rate")).then(({ data }) => { if (typeof data === "number") setDefaultGst(data); });
   }, [open, segment, propertyId]);
 
+  const selectedTable = tables.find((t) => t.id === tableId) ?? null;
+  /** Name printed on a walk-in bill: typed customer name, else the table. */
+  const walkinLabel = walkinGuest.trim() || (selectedTable ? selectedTable.name : "");
+
   const totals = useMemo(() => {
     let sub = 0, gst = 0;
     for (const l of lines) {
@@ -234,7 +260,7 @@ export function PunchChargeDialog({
       kot_number: billNumber,
       kot_type: roomNumber && !walkin ? "room" : "table",
       room_number: walkin ? null : (roomNumber ?? null),
-      guest_name: walkin ? walkinGuest.trim() : (guestName ?? null),
+      guest_name: walkin ? (walkinLabel || null) : (guestName ?? null),
       notes: null,
       created_at: new Date().toISOString(),
     }, jobs);
@@ -293,7 +319,9 @@ export function PunchChargeDialog({
       .eq("is_walkin", walkin)
       .gte("created_at", istDayStartIso());
     const scoped = walkin
-      ? q.is("booking_id", null).eq("guest_name", walkinGuest.trim())
+      ? (tableId
+          ? q.is("booking_id", null).eq("table_id", tableId)
+          : q.is("booking_id", null).is("table_id", null).eq("guest_name", walkinGuest.trim()))
       : q.eq("booking_id", bookingId!);
     const { data: existing, error: exErr } = await scoped
       .order("created_at", { ascending: false })
@@ -310,9 +338,12 @@ export function PunchChargeDialog({
         booking_id: walkin ? null : bookingId,
         folio_id: folioId,
         room_id: walkin ? null : roomId,
+        table_id: walkin ? tableId : null,
         is_walkin: walkin,
         event_booking_id: walkin && segment === "food" ? eventId : null,
-        guest_name: walkin ? walkinGuest.trim() : (guestName ?? null),
+        guest_name: walkin
+          ? (walkinLabel || null)
+          : (guestName ?? null),
         total_amount: 0,
         gst_amount: 0,
         paid_amount: 0,
@@ -361,7 +392,9 @@ export function PunchChargeDialog({
       .eq("is_walkin", walkin)
       .gte("created_at", istDayStartIso());
     const scoped = walkin
-      ? q.is("booking_id", null).eq("guest_name", walkinGuest.trim())
+      ? (tableId
+          ? q.is("booking_id", null).eq("table_id", tableId)
+          : q.is("booking_id", null).is("table_id", null).eq("guest_name", walkinGuest.trim()))
       : q.eq("booking_id", bookingId!);
     const { data, error } = await scoped
       .order("created_at", { ascending: false })
@@ -380,7 +413,7 @@ export function PunchChargeDialog({
     if (inFlight.current) return;
     const clean = cleanLines();
     if (clean.length === 0) { toast.error("Add at least one item"); return; }
-    if (walkin && !walkinGuest.trim()) { toast.error("Enter walk-in customer name"); return; }
+    if (walkin && !walkinLabel) { toast.error("Enter a customer name or pick a table"); return; }
     inFlight.current = true;
     setBusy("kot");
     try {
@@ -404,7 +437,7 @@ export function PunchChargeDialog({
   /** Consolidated bill: append any pending lines, print everything for today, post to folio once. */
   async function printBill() {
     if (inFlight.current) return;
-    if (walkin && !walkinGuest.trim()) { toast.error("Enter walk-in customer name"); return; }
+    if (walkin && !walkinLabel) { toast.error("Enter a customer name or pick a table"); return; }
     inFlight.current = true;
     setBusy("bill");
     try {
@@ -458,7 +491,7 @@ export function PunchChargeDialog({
 
       printSegmentBill({
         billNumber: bill.bill_number, segment, propertyName: propertyName ?? "", propertyId,
-        guestName: walkin ? walkinGuest.trim() : (guestName ?? "Guest"),
+        guestName: walkin ? (walkinLabel || "Walk-in") : (guestName ?? "Guest"),
         roomNumber: walkin ? null : (roomNumber ?? null),
         items: rowsAll.map((l) => ({
           description: l.description, qty: Number(l.qty), rate: Number(l.rate),
@@ -489,7 +522,7 @@ export function PunchChargeDialog({
     const reason = (compPreset === COMPLIMENTARY_OTHER ? compOther : compPreset).trim();
     if (!reason) { toast.error("Enter a reason"); return; }
     if (inFlight.current) return;
-    if (walkin && !walkinGuest.trim()) { toast.error("Enter walk-in customer name"); return; }
+    if (walkin && !walkinLabel) { toast.error("Enter a customer name or pick a table"); return; }
     inFlight.current = true;
     setCompBusy(true);
     try {
@@ -544,7 +577,7 @@ export function PunchChargeDialog({
 
       printSegmentBill({
         billNumber: bill.bill_number, segment, propertyName: propertyName ?? "", propertyId,
-        guestName: walkin ? walkinGuest.trim() : (guestName ?? "Guest"),
+        guestName: walkin ? (walkinLabel || "Walk-in") : (guestName ?? "Guest"),
         roomNumber: walkin ? null : (roomNumber ?? null),
         items: rowsAll.map((l) => ({
           description: l.description, qty: Number(l.qty), rate: Number(l.rate),
@@ -603,6 +636,25 @@ export function PunchChargeDialog({
               <Label>Customer name</Label>
               <Input value={walkinGuest} onChange={(e) => setWalkinGuest(e.target.value)} placeholder="Walk-in customer" />
             </div>
+            {segment === "food" && (
+              <div>
+                <Label>Table (optional)</Label>
+                <Select
+                  value={tableId ?? "none"}
+                  onValueChange={(v) => setTableId(v === "none" ? null : v)}
+                >
+                  <SelectTrigger><SelectValue placeholder="Counter / takeaway" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Counter / takeaway</SelectItem>
+                    {tables.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.area ? `${t.area} · ${t.name}` : t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <Label>Payment mode</Label>
               <Select value={payMode} onValueChange={setPayMode}>

@@ -103,6 +103,23 @@ type PendingFoodRow = {
   lastAt: string | null;
 };
 
+/** Dine-in restaurant table (Masters → Restaurant Tables). */
+type RestaurantTable = {
+  id: string;
+  name: string;
+  area: string | null;
+  capacity: number | null;
+};
+
+/** The open walk-in food bill currently running on a table. */
+type TableBill = {
+  id: string;
+  bill_number: string;
+  guest_name: string | null;
+  amount: number;
+  since: string | null;
+};
+
 type OccInfo = {
   bookingId: string;
   guestName: string | null;
@@ -247,7 +264,10 @@ function OwnerDashboard({
     roomId: string | null;
     roomNumber: string | null;
     guestName: string | null;
+    tableId?: string | null;
   } | null>(null);
+  const [tables, setTables] = useState<RestaurantTable[]>([]);
+  const [tableBills, setTableBills] = useState<Map<string, TableBill>>(new Map());
   const [kotHistoryTarget, setKotHistoryTarget] = useState<{
     segment: "food" | "laundry";
     bookingId: string | null;
@@ -509,6 +529,47 @@ function OwnerDashboard({
     })();
     return () => { cancelled = true; };
   }, [propertyId, segment, viewDate, segmentReloadTick]);
+
+  // Restaurant tables + their open walk-in food bills (Food tab only).
+  useEffect(() => {
+    if (!propertyId || segment !== "food") { setTables([]); setTableBills(new Map()); return; }
+    let cancelled = false;
+    (async () => {
+      const [tRes, bRes] = await Promise.all([
+        supabase.from("restaurant_tables" as any)
+          .select("id,name,area,capacity,sort_order")
+          .eq("property_id", propertyId)
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true }),
+        supabase.from("segment_bills" as any)
+          .select("id,bill_number,table_id,guest_name,total_amount,paid_amount,created_at")
+          .eq("property_id", propertyId)
+          .eq("segment", "food")
+          .eq("status", "open")
+          .not("table_id", "is", null),
+      ]);
+      if (cancelled) return;
+      if (tRes.error) { console.warn("restaurant tables load failed", tRes.error); return; }
+      setTables(((tRes.data ?? []) as any[]).map((t) => ({
+        id: t.id, name: t.name, area: t.area ?? null, capacity: t.capacity ?? null,
+      })));
+      const m = new Map<string, TableBill>();
+      ((bRes.data ?? []) as any[]).forEach((b) => {
+        if (!b.table_id) return;
+        const prev = m.get(b.table_id);
+        const amount = Number(b.total_amount || 0) + (prev?.amount ?? 0);
+        m.set(b.table_id, {
+          id: b.id,
+          bill_number: b.bill_number,
+          guest_name: b.guest_name ?? null,
+          amount,
+          since: prev?.since && prev.since < b.created_at ? prev.since : b.created_at,
+        });
+      });
+      setTableBills(m);
+    })();
+    return () => { cancelled = true; };
+  }, [propertyId, segment, segmentReloadTick]);
 
   // Realtime: refresh the segment-pending map when segment_bills change.
   useEffect(() => {
@@ -828,6 +889,27 @@ function OwnerDashboard({
                   } catch (e: any) {
                     toastError(e, "Check-in failed");
                   }
+                }}
+              />
+            )}
+            {segment === "food" && tables.length > 0 && (
+              <TableGroups
+                tables={tables}
+                bills={tableBills}
+                onPick={(t) => {
+                  const bill = tableBills.get(t.id);
+                  if (bill) {
+                    navigate({ to: "/billing/invoices", search: { seg: "food", bill: bill.bill_number } });
+                    return;
+                  }
+                  setPunchTarget({
+                    segment: "food",
+                    bookingId: null,
+                    roomId: null,
+                    roomNumber: null,
+                    guestName: null,
+                    tableId: t.id,
+                  });
                 }}
               />
             )}
@@ -1195,7 +1277,8 @@ function OwnerDashboard({
           roomId={punchTarget.roomId}
           roomNumber={punchTarget.roomNumber}
           guestName={punchTarget.guestName}
-          onSaved={() => { setPunchTarget(null); reload(); }}
+          tableId={punchTarget.tableId ?? null}
+          onSaved={() => { setPunchTarget(null); setSegmentReloadTick((n) => n + 1); reload(); }}
         />
       )}
       {kotHistoryTarget && propertyId && (
@@ -2077,5 +2160,73 @@ function AssignGuestDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+/**
+ * Dine-in tables on the Food tab. Grouped by Area/Section when set — the same
+ * way rooms group by Floor — otherwise a single flat grid.
+ */
+function TableGroups({
+  tables,
+  bills,
+  onPick,
+}: {
+  tables: RestaurantTable[];
+  bills: Map<string, TableBill>;
+  onPick: (t: RestaurantTable) => void;
+}) {
+  const groups = new Map<string, RestaurantTable[]>();
+  tables.forEach((t) => {
+    const key = (t.area ?? "").trim() || "Tables";
+    const list = groups.get(key) ?? [];
+    list.push(t);
+    groups.set(key, list);
+  });
+
+  const sinceLabel = (iso: string | null) => {
+    if (!iso) return null;
+    const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    return mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  };
+
+  return (
+    <div className="mt-6 space-y-4 border-t pt-4">
+      <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tables</div>
+      {Array.from(groups.entries()).map(([area, list]) => (
+        <section key={area}>
+          <div className="mb-2 text-xs font-medium text-muted-foreground">{area}</div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            {list.map((t) => {
+              const bill = bills.get(t.id);
+              const tone = bill ? ROOM_STATUS_COLORS.occupied : ROOM_STATUS_COLORS.vacant;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => onPick(t)}
+                  className="rounded-lg border p-3 text-left min-h-[44px] transition-shadow hover:shadow-md"
+                  style={{ backgroundColor: tone.bg, borderColor: tone.border ?? undefined, color: tone.fg }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold truncate">{t.name}</span>
+                    {t.capacity ? <span className="text-[10px] opacity-70">{t.capacity} seats</span> : null}
+                  </div>
+                  <div className="text-[11px] mt-1 opacity-80">
+                    {bill ? "Occupied" : "Vacant"}
+                  </div>
+                  {bill && (
+                    <div className="mt-1 space-y-0.5 text-[11px]">
+                      {bill.guest_name && <div className="truncate">{bill.guest_name}</div>}
+                      <div className="font-medium">₹{Number(bill.amount || 0).toLocaleString()}</div>
+                      {sinceLabel(bill.since) && <div className="opacity-70">{sinceLabel(bill.since)} ago</div>}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+    </div>
   );
 }

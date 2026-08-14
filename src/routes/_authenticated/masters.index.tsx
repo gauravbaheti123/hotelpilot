@@ -5,6 +5,7 @@ import { RequirePermission } from "@/components/RequirePermission";
 import {
   BedDouble, IndianRupee, TrendingUp, UtensilsCrossed, PartyPopper,
   Users, Printer, Tags, MessageSquare, ShoppingCart, Cloud, CalendarDays, Wallet, Clock, Palette,
+  Armchair,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/masters/")({
@@ -34,6 +35,7 @@ const GROUPS: Array<{
       { to: "/masters/menu", label: "Menu", icon: UtensilsCrossed },
       { to: "/masters/sundry-items", label: "Sundry Items & POS Categories", icon: ShoppingCart },
       { to: "/masters/restaurant-outlets", label: "Restaurant Outlets", icon: UtensilsCrossed },
+      { to: "/masters/tables", label: "Restaurant Tables", icon: Armchair },
       { to: "/masters/payment-methods", label: "Payment Methods", icon: Wallet },
     ],
   },
