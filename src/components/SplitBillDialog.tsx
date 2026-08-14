@@ -371,16 +371,19 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     const share = Math.round((amt * (netSubOf(subset) / parentNet)) * 100) / 100;
     return share > 0 ? { type: "amount", value: share } : null;
   };
-  const bill1Total = useMemo(
-    () => recomputeFolio(bill1Charges as any, party1.bill_type === "gst_invoice" ? "gst" : "cash", carriedDiscountFor(bill1Charges)).total_amount,
+  /** Live total per destination bill (item mode). */
+  const billTotals = useMemo(
+    () => billCharges.map((items, i) =>
+      recomputeFolio(
+        items as any,
+        partyForBill(i).bill_type === "gst_invoice" ? "gst" : "cash",
+        carriedDiscountFor(items),
+      ).total_amount),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [bill1Charges, party1.bill_type, charges, folio?.discount_type, folio?.discount_value],
+    [billCharges, party1.bill_type, party2.bill_type, moreParties, splitType, charges, folio?.discount_type, folio?.discount_value],
   );
-  const bill2Total = useMemo(
-    () => recomputeFolio(bill2Charges as any, party2.bill_type === "gst_invoice" ? "gst" : "cash", carriedDiscountFor(bill2Charges)).total_amount,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [bill2Charges, party2.bill_type, charges, folio?.discount_type, folio?.discount_value],
-  );
+  const bill1Total = billTotals[0] ?? 0;
+  const bill2Total = billTotals[1] ?? 0;
 
   /**
    * The child bills this split will produce, with their expected totals.
@@ -390,17 +393,18 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
    */
   const childTargets = useMemo(() => {
     if (splitMode === "item") {
-      return [
-        { label: `Bill 1 — ${party1.name || guestName}`, total: Number(bill1Total) },
-        { label: `Bill 2 — ${splitType === "same" ? (party1.name || guestName) : (party2.name || "Party 2")}`, total: Number(bill2Total) },
-      ];
+      return billTotals.map((t, i) => ({
+        label: `Bill ${i + 1} — ${partyForBill(i).name || (i === 0 ? guestName : `Party ${i + 1}`)}`,
+        total: Number(t),
+      }));
     }
     return parties.map((p, i) => {
       const net = Number(shareDistribution.nets[i] ?? 0);
       const gst = p.bill_type === "gst_invoice" ? round2(net * baseGstRate / 100) : 0;
       return { label: `Bill ${i + 1} — ${p.name || `Party ${i + 1}`}`, total: round2(net + gst) };
     });
-  }, [splitMode, party1.name, party2.name, splitType, guestName, bill1Total, bill2Total, parties, shareDistribution, baseGstRate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [splitMode, party1.name, party2.name, moreParties, splitType, guestName, billTotals, parties, shareDistribution, baseGstRate]);
 
   /** Default (proportional) allocation of a payment across the child bills. */
   function defaultAllocFor(amount: number, totals: number[]): number[] {
@@ -532,24 +536,31 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     }
   }
 
-  function moveToBill1(id: string) {
-    setBill1Ids((s) => new Set(s).add(id));
+  function assignCharge(id: string, billIdx: number) {
+    setAssign((prev) => ({ ...prev, [id]: billIdx }));
   }
-  function moveToBill2(id: string) {
-    setBill1Ids((s) => { const n = new Set(s); n.delete(id); return n; });
-  }
-  function quickRoomsToBill1() {
-    setBill1Ids((s) => {
-      const n = new Set(s);
-      for (const c of charges) if (c.charge_type === "room" || c.charge_type === "extra" || c.charge_type === "sundry" || c.charge_type === "discount") n.add(c.id);
-      return n;
+  /** Auto-group: Lodge → Bill 1, Food → Bill 2, Laundry → Bill 3 (when it exists). */
+  function autoGroupBySegment() {
+    setAssign(() => {
+      const next: Record<string, number> = {};
+      for (const c of charges) {
+        const t = c.charge_type;
+        let idx = 0;
+        if (t === "food") idx = Math.min(1, billCount - 1);
+        else if (t === "laundry" || t === "sundry") idx = Math.min(2, billCount - 1);
+        next[c.id] = idx;
+      }
+      return next;
     });
   }
-  function quickFoodToBill2() {
-    setBill1Ids((s) => {
-      const n = new Set(s);
-      for (const c of charges) if (c.charge_type === "food") n.delete(c.id);
-      return n;
+  /** Changing the bill count clamps any assignment that points past the end. */
+  function changeBillCount(n: number) {
+    const count = Math.max(2, Math.min(6, Math.round(n) || 2));
+    setBillCount(count);
+    setAssign((prev) => {
+      const next = { ...prev };
+      for (const c of charges) next[c.id] = Math.min(next[c.id] ?? 0, count - 1);
+      return next;
     });
   }
 
