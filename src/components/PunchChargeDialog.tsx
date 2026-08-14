@@ -25,6 +25,10 @@ import {
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
+import {
+  COMPLIMENTARY_PRESETS, COMPLIMENTARY_OTHER, canMarkComplimentary, complimentaryLabel,
+} from "@/lib/complimentary";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 export type SegmentKind = "food" | "laundry";
 
@@ -61,7 +65,7 @@ export function PunchChargeDialog({
   open, onClose, segment, propertyId, propertyName,
   bookingId, roomId, roomNumber, guestName, onSaved,
 }: Props) {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const { methods: paymentMethods } = usePaymentMethods(propertyId);
   const [lines, setLines] = useState<Line[]>([]);
   const [pickerItems, setPickerItems] = useState<PickerItem[]>([]);
@@ -79,6 +83,12 @@ export function PunchChargeDialog({
   const [events, setEvents] = useState<{ id: string; label: string }[]>([]);
   const [eventId, setEventId] = useState<string | null>(null);
   const [eventOpen, setEventOpen] = useState(false);
+  /** Complimentary settlement (plan-inclusive / approved freebie). */
+  const [compOpen, setCompOpen] = useState(false);
+  const [compPreset, setCompPreset] = useState<string>(COMPLIMENTARY_PRESETS[0]);
+  const [compOther, setCompOther] = useState("");
+  const [compBusy, setCompBusy] = useState(false);
+  const mayComp = canMarkComplimentary(roles as string[]);
 
   useEffect(() => {
     if (!open) return;
