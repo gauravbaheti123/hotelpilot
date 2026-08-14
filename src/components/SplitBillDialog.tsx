@@ -1003,7 +1003,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
                 <ModeCard
                   active={splitMode === "item"}
                   title="Item-wise"
-                  hint="Assign each charge line to one of two bills"
+                  hint="Assign each charge line to any of the N bills"
                   onClick={() => setSplitMode("item")}
                 />
                 <ModeCard
@@ -1022,6 +1022,35 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
             </div>
             {splitMode === "item" && (
               <>
+            <div className="space-y-2 pt-2">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                How many bills?
+              </Label>
+              <div className="flex flex-wrap items-center gap-2">
+                {[2, 3, 4].map((n) => (
+                  <Button
+                    key={n}
+                    type="button"
+                    size="sm"
+                    variant={billCount === n ? "default" : "outline"}
+                    onClick={() => changeBillCount(n)}
+                  >
+                    {n} bills
+                  </Button>
+                ))}
+                <Input
+                  type="number"
+                  min={2}
+                  max={6}
+                  className="h-9 w-24"
+                  value={billCount}
+                  onChange={(e) => changeBillCount(Number(e.target.value))}
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                e.g. 3 bills for Lodge / Food / Laundry. Maximum 6.
+              </p>
+            </div>
             <div className="text-xs font-medium text-muted-foreground pt-2">Party type</div>
             <RadioGroup value={splitType} onValueChange={(v) => setSplitType(v as SplitType)} className="gap-3">
               <label className="flex items-start gap-3 rounded border p-3 cursor-pointer hover:bg-accent">
@@ -1098,49 +1127,53 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
 
         {step === 2 && splitMode === "item" && (
           <div className="space-y-3">
-            <div className="text-sm font-medium">Step 2 — Assign Line Items</div>
+            <div className="text-sm font-medium">Step 2 — Assign Line Items ({billCount} bills)</div>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={quickRoomsToBill1}>Move all Room → Bill 1</Button>
-              <Button size="sm" variant="outline" onClick={quickFoodToBill2}>Move all Food → Bill 2</Button>
+              <Button size="sm" variant="outline" onClick={autoGroupBySegment}>
+                Auto-group: Lodge / Food / Laundry
+              </Button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {[1, 2].map((side) => {
-                const items = side === 1 ? bill1Charges : bill2Charges;
-                const total = side === 1 ? bill1Total : bill2Total;
-                return (
-                  <div key={side} className="rounded border">
-                    <div className="border-b bg-muted/30 px-3 py-2 text-xs font-semibold uppercase">
-                      Bill {side}
-                    </div>
-                    <div className="divide-y max-h-72 overflow-y-auto">
-                      {items.length === 0 ? (
-                        <div className="p-3 text-xs text-muted-foreground italic">No items</div>
-                      ) : items.map((c) => (
-                        <div key={c.id} className="flex items-center gap-2 p-2 text-xs">
-                          {side === 2 && (
-                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveToBill1(c.id)}>
-                              <ArrowLeft className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="truncate">{c.description}</div>
-                            <div className="text-[10px] uppercase text-muted-foreground">{c.charge_type}</div>
-                          </div>
-                          <div className="tabular-nums font-medium">{inr(c.amount)}</div>
-                          {side === 1 && (
-                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => moveToBill2(c.id)}>
-                              <ArrowRight className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex justify-between border-t px-3 py-2 text-sm font-semibold">
-                      <span>Total</span><span>{inrRound(total)}</span>
-                    </div>
+            <div className="rounded border divide-y max-h-80 overflow-y-auto">
+              {charges.map((c) => (
+                <div key={c.id} className="flex items-center gap-2 p-2 text-xs">
+                  <div className="flex-1 min-w-0">
+                    <div className="truncate">{c.description}</div>
+                    <div className="text-[10px] uppercase text-muted-foreground">{c.charge_type}</div>
                   </div>
-                );
-              })}
+                  <div className="tabular-nums font-medium">{inr(c.amount)}</div>
+                  <Select
+                    value={String(Math.min(assign[c.id] ?? 0, billCount - 1))}
+                    onValueChange={(v) => assignCharge(c.id, Number(v))}
+                  >
+                    <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: billCount }, (_, i) => (
+                        <SelectItem key={i} value={String(i)}>Bill {i + 1}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {billCharges.map((items, i) => (
+                <div key={i} className="rounded border p-2 text-xs">
+                  <div className="flex justify-between font-semibold">
+                    <span>Bill {i + 1}</span>
+                    <span className="tabular-nums">{inrRound(billTotals[i] ?? 0)}</span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {items.length === 0 ? "No items" : `${items.length} line${items.length > 1 ? "s" : ""}`}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="rounded border bg-muted/30 p-2 text-xs flex justify-between">
+              <span>Sum of all bills</span>
+              <span className="tabular-nums font-semibold">
+                {inrRound(billTotals.reduce((a, b) => a + Number(b || 0), 0))}
+                <span className="text-muted-foreground"> / original {inrRound(Number(folio?.total_amount) || 0)}</span>
+              </span>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep(1)}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
@@ -1168,18 +1201,43 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         {step === 3 && splitMode === "item" && (
           <div className="space-y-4">
             <div className="text-sm font-medium">Step 3 — Party Details</div>
-            <PartyEditor label="Bill 1 Party" party={party1} setParty={setParty1} disabledName={splitType === "same"} />
-            {splitType === "different" ? (
-              <PartyEditor label="Bill 2 Party" party={party2} setParty={setParty2} showMobile />
-            ) : (
+            {Array.from({ length: billCount }, (_, i) => (
+              i === 0 || splitType === "different" ? (
+                <PartyEditor
+                  key={i}
+                  label={`Bill ${i + 1} Party`}
+                  party={partyForBill(i)}
+                  setParty={(p) => setPartyForBill(i, p)}
+                  disabledName={i === 0 && splitType === "same"}
+                  showMobile={i > 0}
+                />
+              ) : null
+            ))}
+            {splitType === "same" && (
               <div className="rounded border bg-muted/30 p-3 text-xs text-muted-foreground">
-                Bill 2 will use the same party as Bill 1 ({party1.name}).
+                All {billCount} bills will use the same party ({party1.name}).
               </div>
             )}
             <div className="rounded border p-3 text-xs space-y-1">
               <div className="font-semibold">Summary</div>
-              <div>Bill 1: {party1.name} · <Badge variant="outline" className="text-[10px]">{party1.bill_type}</Badge> · <b>{inrRound(bill1Total)}</b></div>
-              <div>Bill 2: {splitType === "same" ? party1.name : (party2.name || "—")} · <Badge variant="outline" className="text-[10px]">{party2.bill_type}</Badge> · <b>{inrRound(bill2Total)}</b></div>
+              {Array.from({ length: billCount }, (_, i) => {
+                const party = partyForBill(i);
+                return (
+                  <div key={i}>
+                    Bill {i + 1}: {party.name || "—"} ·{" "}
+                    <Badge variant="outline" className="text-[10px]">{party.bill_type}</Badge> ·{" "}
+                    {(billCharges[i] ?? []).length} line(s) · <b>{inrRound(billTotals[i] ?? 0)}</b>
+                  </div>
+                );
+              })}
+              <div className="pt-1 border-t">
+                Total across bills: <b>{inrRound(billTotals.reduce((a, b) => a + Number(b || 0), 0))}</b>
+                {" "}vs original <b>{inrRound(Number(folio?.total_amount) || 0)}</b>
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                Each bill draws its own number from this property's bill series; the split is atomic —
+                if any part fails nothing is changed.
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep(2)}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
