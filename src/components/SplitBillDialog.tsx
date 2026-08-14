@@ -582,14 +582,17 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     if (splitMode !== "item") {
       return confirmShareSplit();
     }
-    if (bill1Charges.length === 0 || bill2Charges.length === 0) {
-      return toast.error("Both bills must have at least one line item");
+    const emptyIdx = billCharges.findIndex((items) => items.length === 0);
+    if (emptyIdx >= 0) {
+      return toast.error(`Bill ${emptyIdx + 1} has no line items — every bill needs at least one`);
     }
-    if (splitType === "different" && !party2.name.trim()) {
-      return toast.error("Party 2 name required");
+    for (let i = 0; i < billCount; i++) {
+      const party = partyForBill(i);
+      if (splitType === "different" && i > 0 && !party.name.trim()) {
+        return toast.error(`Party ${i + 1} name required`);
+      }
+      if (!isValidOrEmptyGSTIN(party.gstin ?? "")) return toast.error(`Party ${i + 1}: ${GSTIN_ERROR}`);
     }
-    if (!isValidOrEmptyGSTIN(party1.gstin ?? "")) return toast.error(`Party 1: ${GSTIN_ERROR}`);
-    if (splitType === "different" && !isValidOrEmptyGSTIN(party2.gstin ?? "")) return toast.error(`Party 2: ${GSTIN_ERROR}`);
     setBusy(true);
     const parentTotalBefore = Number(folio?.total_amount) || 0;
     try {
@@ -607,11 +610,10 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       const parentNet = netSubOf(charges);
       const parentBillDiscAmt = computeBillDiscountAmount(parentNet, parentBillDisc);
 
-      const parties = [0, 1].map((i) => (i === 0 ? party1 : (splitType === "same" ? party1 : party2)));
-      const children = [0, 1].map((i) => {
-        const party = parties[i];
+      const splitParties = Array.from({ length: billCount }, (_, i) => partyForBill(i));
+      const children = splitParties.map((party, i) => {
         const mode = party.bill_type === "gst_invoice" ? "gst" : "cash";
-        const items = i === 0 ? bill1Charges : bill2Charges;
+        const items = billCharges[i] ?? [];
         const thisNet = netSubOf(items);
         const shareAmt =
           parentBillDiscAmt > 0 && parentNet > 0
@@ -623,11 +625,11 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
           gst_mode: mode,
           bill_type: party.bill_type,
           guest_gstin: party.gstin || null,
-          guest_company: splitType === "different" && i === 1 ? party.name : (folio.guest_company ?? null),
+          guest_company: splitType === "different" && i > 0 ? party.name : (folio.guest_company ?? null),
           billing_company_id: childCompanyId(
-            splitType === "different" && i === 1 ? party.name : (folio.guest_company ?? party.name),
+            splitType === "different" && i > 0 ? party.name : (folio.guest_company ?? party.name),
           ),
-          notes: `Split bill ${i + 1}/2 of voided ${billNo(folio.invoice_number)}${splitType === "different" ? ` — Party: ${party.name}` : ""}`,
+          notes: `Split bill ${i + 1}/${billCount} of voided ${billNo(folio.invoice_number)}${splitType === "different" ? ` — Party: ${party.name}` : ""}`,
           discount_type: carryDisc?.type ?? null,
           discount_value: carryDisc?.value ?? 0,
           ...totals,
@@ -651,11 +653,11 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         };
       });
 
-      const rows = await runAtomicSplit(children, `Split into 2 bills (${splitType})`);
+      const rows = await runAtomicSplit(children, `Split into ${billCount} bills (${splitType})`);
       const created: typeof createdBills = rows.map((r, i) => ({
         folio_id: r.folio_id,
         invoice_number: r.invoice_number,
-        party: parties[i],
+        party: splitParties[i],
         total: Number(r.total_amount) || 0,
       }));
       const newFolioIds = created.map((c) => c.folio_id);
@@ -669,15 +671,19 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         action_type: "BILL_SPLIT",
         module: "Billing",
         reference_id: booking.id,
-        reference_label: `${billNo(folio.invoice_number)} → ${billNo(created[0].invoice_number)} + ${billNo(created[1].invoice_number)}`,
+        reference_label: `${billNo(folio.invoice_number)} → ${created.map((c) => billNo(c.invoice_number)).join(" + ")}`,
         details: {
           original_bill: billNo(folio.invoice_number),
-          bill1_number: billNo(created[0].invoice_number),
-          bill2_number: billNo(created[1].invoice_number),
           split_type: splitType,
+          bill_count: created.length,
+          bills: created.map((c) => ({
+            bill_number: billNo(c.invoice_number),
+            party: c.party.name,
+            amount: c.total,
+          })),
         },
       });
-      toast.success(`Bills created: ${billNo(created[0].invoice_number)} + ${billNo(created[1].invoice_number)}`);
+      toast.success(`Bills created: ${created.map((c) => billNo(c.invoice_number)).join(" + ")}`);
       setStep(4);
       onDone?.(newFolioIds);
     } catch (e: any) {
@@ -959,7 +965,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
 
   // Net subtotal for the currently-targeted split bill (base for bill-level %/₹)
   const discBase = (() => {
-    const items = discBillIdx === 0 ? bill1Charges : bill2Charges;
+    const items = billCharges[discBillIdx] ?? [];
     return items.reduce((s, c) => {
       if (c.charge_type === "discount" || c.charge_type === "tax") return s;
       const amt = Math.abs(Number(c.amount) || 0);
