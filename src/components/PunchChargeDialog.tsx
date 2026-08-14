@@ -741,6 +741,8 @@ export function printSegmentBill(opts: {
   sub: number; gst: number; total: number;
   isWalkin: boolean;
   paymentMode: string | null;
+  /** When set, the bill was settled as complimentary — printed instead of a payment line. */
+  complimentaryReason?: string | null;
   /** Real bill timestamp (settled_at ?? created_at). Falls back to now for brand-new bills. */
   billDate?: string | null;
 }) {
@@ -783,6 +785,7 @@ function renderSegmentBill(opts: {
   sub: number; gst: number; total: number;
   isWalkin: boolean;
   paymentMode: string | null;
+  complimentaryReason?: string | null;
   billDate?: string | null;
 }, head: SegBillHead, printer: { name: string; paper_size: string } | null) {
   const paperSize = printer?.paper_size ?? "80mm";
@@ -864,7 +867,9 @@ function renderSegmentBill(opts: {
   <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:11px; line-height:1.5;"><span>Subtotal</span><span>${opts.sub.toFixed(2)}</span></div>
   <div style="display:flex; justify-content:space-between; font-size:11px; line-height:1.5;"><span>GST</span><span>${opts.gst.toFixed(2)}</span></div>
   <div class="total"><span>Total</span><span>₹${opts.total.toFixed(2)}</span></div>
-  ${opts.isWalkin && opts.paymentMode ? `<div style="margin-top:3px; font-size:11px;">Paid via ${escape(opts.paymentMode.toUpperCase())}</div>` : ""}
+  ${opts.complimentaryReason
+    ? `<div style="margin-top:4px; font-size:11px; font-weight:bold; text-align:center; border:1px dashed #000; padding:3px;">${escape(complimentaryLabel(opts.complimentaryReason).toUpperCase())}<br/>No amount collected</div>`
+    : (opts.isWalkin && opts.paymentMode ? `<div style="margin-top:3px; font-size:11px;">Paid via ${escape(opts.paymentMode.toUpperCase())}</div>` : "")}
   <div class="sign"><div class="line">Customer Signature</div></div>
   <div class="foot">Thank you!</div>
   <div class="tailgap"></div>
