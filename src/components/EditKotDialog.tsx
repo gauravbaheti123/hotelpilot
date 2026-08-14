@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { AlertTriangle, Plus, Minus, Trash2 } from "lucide-react";
 import { reportQueryError } from "@/lib/queryError";
+import { renderKotHtml, printThermalHtml } from "@/lib/kotPrint";
 
 interface MenuItem {
   id: string; name: string; price: number; gst_rate: number;
@@ -206,21 +207,45 @@ export function EditKotDialog({
     if (__qe4) reportQueryError("kot orders", __qe4);
     const k = data as any;
     if (!k) return;
-    const esc = (s: unknown) => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    const html = `<html><head><title>${esc(k.kot_number)} (Re-print)</title>
-      <style>body{font:12px monospace;padding:8px}h2{margin:0;font-size:14px}hr{border:none;border-top:1px dashed #999;margin:6px 0}.row{display:flex;justify-content:space-between}</style>
-      </head><body>
-      <h2>KOT ${esc(k.kot_number)} (RE-PRINT)</h2>
-      <div>${new Date().toLocaleString()}</div>
-      <div>${k.kot_type === "room" ? `Room ${esc(k.rooms?.room_number ?? "—")}` : `Table ${esc(k.table_no ?? "—")}`}</div>
-      <hr/>
-      ${(k.kot_items ?? []).map((i: any) => `<div class="row"><span>${i.qty} × ${esc(i.item_name)}</span><span>₹${(i.qty*i.rate).toFixed(0)}</span></div>`).join("")}
-      <hr/>
-      <div class="row"><span>Total</span><span>₹${Number(k.total_amount).toFixed(2)}</span></div>
-      </body></html>`;
-    const w = window.open("", "_blank", "width=320,height=600");
-    if (!w) return;
-    w.document.write(html); w.document.close(); w.focus(); w.print();
+    // Use the shared thermal KOT template (proper @page size/margins + QZ
+    // silent print) instead of the old raw-HTML window.print() ticket.
+    const { data: pData, error: __qe5 } = await supabase
+      .from("printers")
+      .select("name,paper_size,type,is_default")
+      .eq("property_id", kot.property_id)
+      .eq("is_active", true)
+      .in("type", ["kot", "both"])
+      .order("is_default", { ascending: false })
+      .limit(1);
+    if (__qe5) reportQueryError("printers", __qe5);
+    const printer = (pData?.[0] ?? null) as { name?: string; paper_size?: string | null } | null;
+    const paperSize = printer?.paper_size ?? "80mm";
+    const html = renderKotHtml(
+      {
+        kot_number: `${k.kot_number} (RE-PRINT)`,
+        kot_type: k.kot_type,
+        table_no: k.table_no,
+        room_number: k.rooms?.room_number ?? null,
+        notes: k.notes,
+        created_at: k.created_at,
+      },
+      (k.kot_items ?? []).map((i: any) => ({
+        item_name: i.item_name,
+        qty: Number(i.qty),
+        rate: Number(i.rate),
+        notes: i.notes ?? null,
+        printer_id: null,
+      })),
+      paperSize,
+      "KITCHEN COPY",
+      printer?.name ?? "KITCHEN",
+    );
+    await printThermalHtml({
+      printerName: printer?.name ?? null,
+      html,
+      paperSize,
+      label: "KOT reprint",
+    });
   }
 
   return (

@@ -89,6 +89,7 @@ export function isThermal(paperSize: string | null | undefined): boolean {
  */
 export async function fetchBillPrinter(
   propertyId: string | null | undefined,
+  opts?: { prefer?: "thermal" | "a4" },
 ): Promise<{ name: string; paper_size: string } | null> {
   if (!propertyId) return null;
   const { data, error: __qe1 } = await supabase
@@ -101,17 +102,25 @@ export async function fetchBillPrinter(
     .order("name", { ascending: true });
   if (__qe1) reportQueryError("printers", __qe1);
   const rows = (data ?? []) as { name?: string; paper_size?: string | null; is_default?: boolean }[];
-  // Food / Laundry counter bills are thermal documents. When no printer is
-  // flagged as default, picking whatever row came back first could route the
-  // ticket to an A4 bill printer (which then renders through QZ's HTML path
-  // and prints truncated). Prefer a thermal roll printer unless one is
-  // explicitly marked default.
-  const row =
-    rows.find((r) => r.is_default) ??
-    rows.find((r) => isThermal(r.paper_size)) ??
-    rows[0];
+  // Food / Laundry counter bills are thermal documents; folio / GRC / invoice
+  // documents are A4. Match the document type FIRST — a printer flagged as
+  // default must never drag a thermal ticket onto an A4 printer (that mismatch
+  // is what produced the "MOTEL A4" clipping) or vice versa.
+  const prefer = opts?.prefer ?? "thermal";
+  const wanted =
+    prefer === "thermal"
+      ? rows.filter((r) => isThermal(r.paper_size))
+      : rows.filter((r) => !isThermal(r.paper_size));
+  const pool = wanted.length > 0 ? wanted : rows;
+  const row = pool.find((r) => r.is_default) ?? pool[0];
   if (!row?.name) return null;
-  return { name: row.name, paper_size: (row.paper_size as string) ?? "80mm" };
+  // Never let a thermal ticket inherit an A4 page size in the browser
+  // fallback: 80mm roll is the real-world target for Food/Laundry bills.
+  const size = (row.paper_size as string) ?? (prefer === "thermal" ? "80mm" : "A4");
+  return {
+    name: row.name,
+    paper_size: prefer === "thermal" && !isThermal(size) ? "80mm" : size,
+  };
 }
 
 /**

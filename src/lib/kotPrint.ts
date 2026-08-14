@@ -250,8 +250,10 @@ export async function printThermalHtml(args: {
   const paperSize = args.paperSize ?? "80mm";
   const what = args.label ?? "Print";
   if (!args.printerName) {
-    toast.warning(`${what}: no printer assigned. Set one in Master Data → Printers.`);
-    await printHtmlViaIframe(args.html);
+    toast.warning(
+      `${what}: no printer assigned. Add a thermal (80mm) printer in Master Data → Printers.`,
+      { action: { label: "Print via browser", onClick: () => { void printHtmlViaIframe(args.html); } } },
+    );
     return;
   }
   let qzOk = isQZConnected();
@@ -267,12 +269,27 @@ export async function printThermalHtml(args: {
       return;
     } catch (err: any) {
       console.error("[print/qz] failed", err);
-      toast.error(`Printer "${args.printerName}" is unreachable. ${errorMessage(err, "printing the KOT")}`);
+      // Do NOT silently fall back: the browser dialog prints raw HTML at the
+      // configured page size, which mismatches whatever destination the user
+      // then picks in Chrome. Surface the fix and let the user opt in.
+      toast.error(
+        `Could not print to "${args.printerName}" via QZ Tray. Check that QZ Tray is running and the printer name matches the Windows printer name exactly (case-sensitive) in Master Data → Printers.`,
+        {
+          duration: 12000,
+          description: errorMessage(err, "printing"),
+          action: { label: "Print via browser", onClick: () => { void printHtmlViaIframe(args.html); } },
+        },
+      );
+      return;
     }
-  } else {
-    toast.warning("Printer service (QZ Tray) not connected — using browser print dialog.");
   }
-  await printHtmlViaIframe(args.html);
+  toast.warning(
+    "Printer service (QZ Tray) isn't connected, so this can't print silently. Start QZ Tray, or print through the browser dialog (choose the 80mm roll printer).",
+    {
+      duration: 12000,
+      action: { label: "Print via browser", onClick: () => { void printHtmlViaIframe(args.html); } },
+    },
+  );
 }
 
 export async function runKotPrintJobs(header: KotHeader, jobs: PrintJob[]): Promise<void> {
