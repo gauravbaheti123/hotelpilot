@@ -205,15 +205,24 @@ export async function fetchGstInvoices(propertyId: string, from: string, to: str
 export async function fetchGstInvoiceSlabs(
   propertyId: string, from: string, to: string,
 ): Promise<GstInvoiceSlabRow[]> {
+  // P1 — the GST period basis must match the date printed on the tax invoice,
+  // i.e. the guest's checkout date (see lib/invoiceDate.ts), NOT settled_at.
+  // Since that date lives on booking_rooms.actual_check_out we cannot filter it
+  // in SQL: fetch a widened settlement/creation window and filter in memory on
+  // the resolved invoice date so each folio lands in exactly one month bucket.
   const start = new Date(`${from}T00:00:00`).toISOString();
   const endD = new Date(`${to}T00:00:00`);
   endD.setDate(endD.getDate() + 1);
   const end = endD.toISOString();
-  // P1 — invoice numbers are issued at settlement, so the GST period basis is
-  // the invoice (settlement) date, falling back to folio creation for legacy
-  // rows that never recorded settled_at.
+  const PAD_DAYS = 120;
+  const padStartD = new Date(`${from}T00:00:00`);
+  padStartD.setDate(padStartD.getDate() - PAD_DAYS);
+  const padStart = padStartD.toISOString();
+  const padEndD = new Date(end);
+  padEndD.setDate(padEndD.getDate() + PAD_DAYS);
+  const padEnd = padEndD.toISOString();
   const { data, error: __qe2 } = await supabase.from("folios")
-    .select("id,booking_id,invoice_number,created_at,settled_at,guest_gstin,guest_company,billing_company_id,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name,state,state_code,gst_number)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
+    .select("id,booking_id,invoice_number,created_at,settled_at,guest_gstin,guest_company,billing_company_id,sub_total,gst_amount,total_amount,gst_mode,status,bookings(check_out,guests(name,state,state_code,gst_number),booking_rooms(actual_check_out)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
     .eq("property_id", propertyId)
     .eq("gst_mode", "gst")
     .neq("status", "void")
@@ -223,8 +232,8 @@ export async function fetchGstInvoiceSlabs(
     // still carry a number issued under the old creation-time trigger.
     .neq("status", "open")
     .or(
-      `and(settled_at.gte.${start},settled_at.lt.${end}),` +
-      `and(settled_at.is.null,created_at.gte.${start},created_at.lt.${end})`,
+      `and(settled_at.gte.${padStart},settled_at.lt.${padEnd}),` +
+      `and(settled_at.is.null,created_at.gte.${padStart},created_at.lt.${padEnd})`,
     )
     .order("created_at", { ascending: false });
   if (__qe2) reportQueryError("folios", __qe2);
