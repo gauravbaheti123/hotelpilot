@@ -69,7 +69,7 @@ export function PunchChargeDialog({
   const [walkinGuest, setWalkinGuest] = useState("");
   const [payMode, setPayMode] = useState<string>("cash");
   // Per-action busy state so one button's click never renders/locks the other's label.
-  const [busy, setBusy] = useState<null | "kot" | "bill" | "save">(null);
+  const [busy, setBusy] = useState<null | "kot" | "bill">(null);
   const inFlight = useRef(false);
   const saving = busy !== null;
   const [defaultGst, setDefaultGst] = useState<number>(segment === "food" ? 5 : 5);
@@ -461,107 +461,6 @@ export function PunchChargeDialog({
     }
   }
 
-  async function save() {
-    const clean = lines.filter((l) => l.description.trim() && Number(l.qty) > 0 && Number(l.rate) >= 0);
-    if (clean.length === 0) { toast.error("Add at least one item"); return; }
-    if (walkin && !walkinGuest.trim()) { toast.error("Enter walk-in customer name"); return; }
-    if (inFlight.current) return;
-    inFlight.current = true;
-    setBusy("save");
-    try {
-      const folioId = walkin ? null : await ensureFolio();
-      const insertBill = {
-        property_id: propertyId,
-        segment,
-        booking_id: walkin ? null : bookingId,
-        folio_id: walkin ? null : folioId,
-        room_id: walkin ? null : roomId,
-        is_walkin: walkin,
-        event_booking_id: walkin && segment === "food" ? eventId : null,
-        guest_name: walkin ? walkinGuest.trim() : (guestName ?? null),
-        total_amount: totals.total,
-        gst_amount: totals.gst,
-        paid_amount: walkin ? totals.total : 0,
-        payment_mode: walkin ? payMode : null,
-        status: walkin ? "settled" : "open",
-        settled_at: walkin ? new Date().toISOString() : null,
-        created_by: user?.id ?? null,
-      };
-      const { data: bill, error: bErr } = await supabase
-        .from("segment_bills").insert(insertBill as any).select("id,bill_number").single();
-      if (bErr) throw bErr;
-      const billNumber = (bill as any).bill_number as string;
-      const billId = (bill as any).id as string;
-
-      const items = clean.map((l) => {
-        const amt = Number(l.qty) * Number(l.rate);
-        const gAmt = amt * Number(l.gst_rate || 0) / 100;
-        return {
-          segment_bill_id: billId,
-          description: l.description.trim(),
-          qty: l.qty,
-          rate: l.rate,
-          amount: Math.round(amt * 100) / 100,
-          gst_rate: l.gst_rate,
-          gst_amount: Math.round(gAmt * 100) / 100,
-          note: (l.note ?? "").trim() || null,
-        };
-      });
-      const { error: iErr } = await supabase.from("segment_bill_items").insert(items as any);
-      if (iErr) throw iErr;
-
-      // Post to folio if linked to a booking
-      if (!walkin && folioId) {
-        const chargeType = segment === "food" ? "food" : "laundry";
-        const rows = clean.map((l) => {
-          const amt = Number(l.qty) * Number(l.rate);
-          const gAmt = amt * Number(l.gst_rate || 0) / 100;
-          return {
-            folio_id: folioId,
-            charge_type: chargeType,
-            description: `${l.description.trim()} (${billNumber})`,
-            qty: l.qty,
-            rate: l.rate,
-            amount: Math.round(amt * 100) / 100,
-            gst_rate: l.gst_rate,
-            gst_amount: Math.round(gAmt * 100) / 100,
-            source_table: "segment_bills",
-            source_id: billId,
-            segment_bill_ref: billNumber,
-            created_by: user?.id ?? null,
-          };
-        });
-        const { error: fcErr } = await supabase.from("folio_charges").insert(rows as any);
-        if (fcErr) throw fcErr;
-      }
-
-      toast.success(`${segment === "food" ? "Food" : "Laundry"} bill ${billNumber} created`);
-      try {
-        await printKitchenTicket(billNumber, clean);
-      } catch (pe: any) {
-        toastError(pe, "Kitchen print failed");
-      }
-      printSegmentBill({
-        billNumber, segment, propertyName: propertyName ?? "", propertyId,
-        guestName: walkin ? walkinGuest.trim() : (guestName ?? "Guest"),
-        roomNumber: walkin ? null : (roomNumber ?? null),
-        items: clean.map((l) => ({
-          description: l.description.trim(), qty: l.qty, rate: l.rate,
-          amount: Number(l.qty) * Number(l.rate), gst_rate: l.gst_rate,
-        })),
-        sub: totals.sub, gst: totals.gst, total: totals.total,
-        isWalkin: walkin, paymentMode: walkin ? payMode : null,
-      });
-      onSaved?.();
-      onClose();
-    } catch (e: any) {
-      toastError(e, "Failed to save");
-    } finally {
-      setBusy(null);
-      inFlight.current = false;
-    }
-  }
-
   const title = segment === "food" ? "Punch Food Charge" : "Punch Laundry Charge";
 
   return (
@@ -712,23 +611,14 @@ export function PunchChargeDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          {walkin ? (
-            <Button type="button" onClick={save} disabled={saving}>
-              <Printer className="h-4 w-4 mr-1.5" />
-              {busy === "save" ? "Saving..." : "Save & Print"}
-            </Button>
-          ) : (
-            <>
-              <Button type="button" variant="secondary" onClick={printKot} disabled={saving}>
-                <Printer className="h-4 w-4 mr-1.5" />
-                {busy === "kot" ? "Working..." : segment === "food" ? "Print KOT" : "Print Ticket"}
-              </Button>
-              <Button type="button" onClick={printBill} disabled={saving}>
-                <Printer className="h-4 w-4 mr-1.5" />
-                {busy === "bill" ? "Working..." : "Print Bill"}
-              </Button>
-            </>
-          )}
+          <Button type="button" variant="secondary" onClick={printKot} disabled={saving}>
+            <Printer className="h-4 w-4 mr-1.5" />
+            {busy === "kot" ? "Working..." : segment === "food" ? "Print KOT" : "Print Ticket"}
+          </Button>
+          <Button type="button" onClick={printBill} disabled={saving}>
+            <Printer className="h-4 w-4 mr-1.5" />
+            {busy === "bill" ? "Working..." : "Print Bill"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
