@@ -274,31 +274,35 @@ export function PunchChargeDialog({
    * Day-scoped on purpose: a new day always starts a fresh bill number.
    */
   async function getOrCreateTodayBill(): Promise<{ id: string; bill_number: string; folio_id: string | null }> {
-    const { data: existing, error: exErr } = await supabase
+    const q = supabase
       .from("segment_bills" as any)
       .select("id,bill_number,folio_id")
       .eq("property_id", propertyId)
       .eq("segment", segment)
       .eq("status", "open")
-      .eq("is_walkin", false)
-      .eq("booking_id", bookingId!)
-      .gte("created_at", istDayStartIso())
+      .eq("is_walkin", walkin)
+      .gte("created_at", istDayStartIso());
+    const scoped = walkin
+      ? q.is("booking_id", null).eq("guest_name", walkinGuest.trim())
+      : q.eq("booking_id", bookingId!);
+    const { data: existing, error: exErr } = await scoped
       .order("created_at", { ascending: false })
       .limit(1);
     if (exErr) throw exErr;
     if (existing && existing.length > 0) return existing[0] as any;
 
-    const folioId = await ensureFolio();
+    const folioId = walkin ? null : await ensureFolio();
     const { data: bill, error: bErr } = await supabase
       .from("segment_bills" as any)
       .insert({
         property_id: propertyId,
         segment,
-        booking_id: bookingId,
+        booking_id: walkin ? null : bookingId,
         folio_id: folioId,
-        room_id: roomId,
-        is_walkin: false,
-        guest_name: guestName ?? null,
+        room_id: walkin ? null : roomId,
+        is_walkin: walkin,
+        event_booking_id: walkin && segment === "food" ? eventId : null,
+        guest_name: walkin ? walkinGuest.trim() : (guestName ?? null),
         total_amount: 0,
         gst_amount: 0,
         paid_amount: 0,
@@ -338,15 +342,18 @@ export function PunchChargeDialog({
   }
 
   async function findTodayBill() {
-    const { data, error } = await supabase
+    const q = supabase
       .from("segment_bills" as any)
       .select("id,bill_number,folio_id")
       .eq("property_id", propertyId)
       .eq("segment", segment)
       .eq("status", "open")
-      .eq("is_walkin", false)
-      .eq("booking_id", bookingId!)
-      .gte("created_at", istDayStartIso())
+      .eq("is_walkin", walkin)
+      .gte("created_at", istDayStartIso());
+    const scoped = walkin
+      ? q.is("booking_id", null).eq("guest_name", walkinGuest.trim())
+      : q.eq("booking_id", bookingId!);
+    const { data, error } = await scoped
       .order("created_at", { ascending: false })
       .limit(1);
     if (error) throw error;
@@ -363,6 +370,7 @@ export function PunchChargeDialog({
     if (inFlight.current) return;
     const clean = cleanLines();
     if (clean.length === 0) { toast.error("Add at least one item"); return; }
+    if (walkin && !walkinGuest.trim()) { toast.error("Enter walk-in customer name"); return; }
     inFlight.current = true;
     setBusy("kot");
     try {
@@ -386,6 +394,7 @@ export function PunchChargeDialog({
   /** Consolidated bill: append any pending lines, print everything for today, post to folio once. */
   async function printBill() {
     if (inFlight.current) return;
+    if (walkin && !walkinGuest.trim()) { toast.error("Enter walk-in customer name"); return; }
     inFlight.current = true;
     setBusy("bill");
     try {
@@ -410,7 +419,7 @@ export function PunchChargeDialog({
 
       // Ensure a folio exists for in-house bills, then settle through the single
       // shared DB routine (same one the 23:59 auto-close job uses).
-      if (!bill.folio_id) await ensureFolio();
+      if (!walkin && !bill.folio_id) await ensureFolio();
       const { data: settleRes, error: settleErr } = await supabase.rpc(
         "settle_segment_bill" as any,
         { _bill_id: bill.id, _actor: user?.id ?? null, _auto: false } as any,
@@ -421,18 +430,27 @@ export function PunchChargeDialog({
         throw new Error(settled.reason === "no_items" ? "Nothing to bill yet" : "Could not settle bill");
       }
 
+      // Walk-in bills collect cash at the counter — record the tender on settle.
+      if (walkin) {
+        const { error: payErr } = await supabase
+          .from("segment_bills" as any)
+          .update({ paid_amount: t.total, payment_mode: payMode })
+          .eq("id", bill.id);
+        if (payErr) throw payErr;
+      }
+
       printSegmentBill({
         billNumber: bill.bill_number, segment, propertyName: propertyName ?? "", propertyId,
-        guestName: guestName ?? "Guest",
-        roomNumber: roomNumber ?? null,
+        guestName: walkin ? walkinGuest.trim() : (guestName ?? "Guest"),
+        roomNumber: walkin ? null : (roomNumber ?? null),
         items: rowsAll.map((l) => ({
           description: l.description, qty: Number(l.qty), rate: Number(l.rate),
           amount: Number(l.amount), gst_rate: Number(l.gst_rate),
         })),
         sub: t.sub, gst: t.gst, total: t.total,
-        isWalkin: false, paymentMode: null,
+        isWalkin: walkin, paymentMode: walkin ? payMode : null,
       });
-      toast.success(`${bill.bill_number} posted to folio`);
+      toast.success(walkin ? `${bill.bill_number} settled` : `${bill.bill_number} posted to folio`);
       onSaved?.();
       onClose();
     } catch (e: any) {
