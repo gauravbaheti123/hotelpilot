@@ -13,6 +13,10 @@ export interface LedgerRow {
   total: number;
   paid: number;
   due: number;
+  /** Actual payment receipts against this bill (Lodge folios), each with its
+   *  own real `payments.paid_at` date. The ledger statement must date credit
+   *  rows from these, NOT from the bill's own creation date. */
+  payments?: Array<{ id: string; date: string; amount: number }>;
 }
 
 export interface GuestLedger {
@@ -86,7 +90,31 @@ export async function fetchGuestLedger(guestId: string): Promise<GuestLedger> {
   {
     const { data: folios, error: __qe2 } = foliosRes as any;
     if (__qe2) reportQueryError("folios", __qe2);
-    for (const f of folios ?? []) {
+    const liveFolios = ((folios ?? []) as any[]).filter(
+      (f) => !(f as { is_deleted?: boolean }).is_deleted && f.status !== "void",
+    );
+    // Real receipt dates for the credit rows (paid_at), keyed by folio.
+    const payByFolio = new Map<string, Array<{ id: string; date: string; amount: number }>>();
+    if (liveFolios.length) {
+      const { data: pays, error: __qe7 } = await supabase
+        .from("payments")
+        .select("id,folio_id,amount,paid_at")
+        .in("folio_id", liveFolios.map((f) => f.id as string))
+        .order("paid_at", { ascending: true });
+      if (__qe7) reportQueryError("payments", __qe7);
+      for (const p of (pays ?? []) as any[]) {
+        const fid = p.folio_id as string;
+        if (!fid) continue;
+        const list = payByFolio.get(fid) ?? [];
+        list.push({
+          id: p.id as string,
+          date: String(p.paid_at ?? "").slice(0, 10),
+          amount: n(p.amount),
+        });
+        payByFolio.set(fid, list);
+      }
+    }
+    for (const f of liveFolios) {
       if ((f as { is_deleted?: boolean }).is_deleted) continue;
       if (f.status === "void") continue;
       rows.push({
@@ -98,6 +126,7 @@ export async function fetchGuestLedger(guestId: string): Promise<GuestLedger> {
         total: n(f.total_amount),
         paid: n(f.paid_amount),
         due: n(f.balance_amount),
+        payments: payByFolio.get(f.id as string) ?? [],
       });
     }
   }
