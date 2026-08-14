@@ -1831,6 +1831,9 @@ function FolioPage() {
   const isGst = folio.gst_mode === "gst";
   // P1 — until the folio is settled it carries no number: show a proforma.
   const isProvisional = isProvisionalDoc(folio.invoice_number, folio.status);
+  // Document date = the guest's actual checkout date (settled_at only as a
+  // flagged fallback); provisional/open bills stay "as of today".
+  const invoiceDate = invoiceDateLabel(folio as any, booking as any);
   const provisionalRef = `Ref: ${booking.booking_number} (provisional)`;
   const propAddrLine = [property?.address, property?.city, property?.state, property?.pincode]
     .filter(Boolean).join(", ");
