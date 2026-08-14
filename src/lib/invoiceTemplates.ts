@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { consolidateSegmentCharges, expandRoomNights, inr } from "@/lib/billing";
 import { resolveTaxType, splitGst } from "@/lib/gst";
 import { billNo, isProvisional as isProvisionalDoc, PROVISIONAL_DOC_TITLE } from "@/lib/billNumber";
+import { invoiceDateLabel } from "@/lib/invoiceDate";
 
 export interface InvoiceProperty {
   name: string;
@@ -50,6 +51,8 @@ export interface InvoiceFolio {
   guest_company?: string | null;
   notes?: string | null;
   status: string;
+  /** Only used as a fallback for the document date when no checkout exists. */
+  settled_at?: string | null;
 }
 
 export interface InvoiceCharge {
@@ -99,6 +102,8 @@ export interface InvoiceBooking {
   booking_rooms?: {
     rooms?: { room_number: string } | null;
     room_categories?: { name: string } | null;
+    /** Real checkout instant — drives the printed invoice date. */
+    actual_check_out?: string | null;
   }[];
 }
 
@@ -273,6 +278,8 @@ function metaBlock(ctx: InvoiceContext): string {
   const billToPrimary = hasCompany
     ? `${esc(folio.guest_company)} <span style="font-weight:500;color:#374151">(${esc(guestName)})</span>`
     : esc(guestName);
+  // Document date = actual checkout date (falls back to settlement date, flagged).
+  const invDate = invoiceDateLabel(folio, booking);
 
   return `
     <div style="display:flex;justify-content:space-between;gap:24px;margin-bottom:14px">
@@ -295,7 +302,7 @@ function metaBlock(ctx: InvoiceContext): string {
         <div style="margin-top:8px"><span class="small">No:</span> <strong>${billNoLabel}</strong></div>
         ${provisional ? `<div class="small" style="max-width:220px;white-space:normal">Charges as of now — more may be added before checkout.</div>` : ""}
         <div class="small">Booking: ${esc(booking.booking_number)}</div>
-        <div class="small">Date: ${new Date().toLocaleDateString("en-IN")}</div>
+        <div class="small">Date: ${esc(invDate.text)}${invDate.note ? ` <span style="color:#b45309">${esc(invDate.note)}</span>` : ""}</div>
         ${rooms ? `<div class="small">Room: ${esc(rooms)}</div>` : ""}
         <div class="small">Guest: ${esc(guestName || "—")}${booking.guests?.mobile ? ` · ${esc(booking.guests.mobile)}` : ""}</div>
         <div class="small">Check-in: ${esc(booking.check_in)} ${property.default_checkin_time ? esc(property.default_checkin_time.slice(0,5)) : ""}</div>
