@@ -56,4 +56,5 @@ export const SOURCES = [
   { value: "ota", label: "OTA" },
   { value: "agent", label: "Travel Agent" },
   { value: "corporate", label: "Corporate" },
+  { value: "other", label: "Other (specify)" },
 ];
