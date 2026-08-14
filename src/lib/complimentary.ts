@@ -17,8 +17,20 @@ export const COMPLIMENTARY_PRESETS = [
 
 export const COMPLIMENTARY_OTHER = "Other (specify)";
 
-/** Roles allowed to give away revenue by settling a bill as complimentary. */
-export const COMPLIMENTARY_ROLES = ["owner", "manager", "superadmin"] as const;
+/**
+ * Roles allowed to settle a bill as complimentary.
+ *
+ * MAP/AP plan-inclusive settlement is routine daily food service, not an
+ * exceptional approval, so every food-service role can do it. Accountability
+ * lives in the mandatory reason + activity_log audit entry, not in gating.
+ */
+export const COMPLIMENTARY_ROLES = [
+  "owner",
+  "manager",
+  "superadmin",
+  "receptionist",
+  "kitchen",
+] as const;
 
 export function canMarkComplimentary(roles: string[] | undefined | null): boolean {
   return (roles ?? []).some((r) => (COMPLIMENTARY_ROLES as readonly string[]).includes(r));

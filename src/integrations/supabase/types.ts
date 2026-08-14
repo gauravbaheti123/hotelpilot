@@ -4940,6 +4940,50 @@ export type Database = {
           },
         ]
       }
+      restaurant_tables: {
+        Row: {
+          area: string | null
+          capacity: number | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          property_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          area?: string | null
+          capacity?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          property_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          area?: string | null
+          capacity?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          property_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_tables_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           allowed: boolean
@@ -5332,6 +5376,7 @@ export type Database = {
           segment: string
           settled_at: string | null
           status: string
+          table_id: string | null
           total_amount: number
           updated_at: string
         }
@@ -5359,6 +5404,7 @@ export type Database = {
           segment: string
           settled_at?: string | null
           status?: string
+          table_id?: string | null
           total_amount?: number
           updated_at?: string
         }
@@ -5386,6 +5432,7 @@ export type Database = {
           segment?: string
           settled_at?: string | null
           status?: string
+          table_id?: string | null
           total_amount?: number
           updated_at?: string
         }
@@ -5451,6 +5498,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "segment_bills_table_id_fkey"
+            columns: ["table_id"]
+            isOneToOne: false
+            referencedRelation: "restaurant_tables"
             referencedColumns: ["id"]
           },
         ]
