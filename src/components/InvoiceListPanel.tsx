@@ -30,6 +30,7 @@ import {
 import { RequirePermission } from "@/components/RequirePermission";
 import { useRegisterRefresh } from "@/components/PullToRefresh";
 import { istToday, istDateISO, IST_TZ } from "@/lib/date";
+import { invoiceDateLabel } from "@/lib/invoiceDate";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 
@@ -46,7 +47,7 @@ interface Row {
   bookings: {
     booking_number: string;
     guests: { name: string } | null;
-    booking_rooms?: Array<{ rooms: { room_number: string } | null }> | null;
+    booking_rooms?: Array<{ rooms: { room_number: string } | null; actual_check_out?: string | null }> | null;
   } | null;
 }
 
@@ -182,7 +183,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
   const runLoad = async () => {
     if (!propertyId) return;
       let qb = supabase.from("folios")
-        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,updated_at,settled_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number)))" as any)
+        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,updated_at,settled_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms!booking_rooms_booking_id_fkey(actual_check_out,rooms!booking_rooms_room_id_fkey(room_number)))" as any)
         .eq("property_id", propertyId);
       if (!audit) qb = qb.eq("is_deleted" as any, false);
       const { data, error } = await qb
@@ -561,6 +562,12 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                   </div>
                   <div className="text-xs text-muted-foreground truncate">
                     {roomLabel(r)} · {r.bookings?.guests?.name ?? "—"}
+                    {(() => {
+                      const d = invoiceDateLabel(r, r.bookings);
+                      return d.text && r.status !== "open"
+                        ? <span className="ml-2">· {d.text}{d.note ? <span className="ml-1 text-amber-700">{d.note}</span> : null}</span>
+                        : null;
+                    })()}
                     {voided && r.deleted_at && (
                       <span className="ml-2 text-rose-600">Voided on {new Date(r.deleted_at).toLocaleDateString("en-IN")}</span>
                     )}
