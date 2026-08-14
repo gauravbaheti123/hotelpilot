@@ -62,6 +62,9 @@ interface Props {
   roomNumber: string | null;
   guestName: string | null;
   bookingId?: string | null;
+  /** Dine-in table scope — used instead of roomId for table-linked walk-in bills. */
+  tableId?: string | null;
+  tableName?: string | null;
   onChanged?: () => void;
 }
 
@@ -102,7 +105,7 @@ async function recalcBillTotals(billId: string) {
 }
 
 export function KotHistoryDialog({
-  open, onClose, segment, propertyId, roomId, roomNumber, guestName, bookingId, onChanged,
+  open, onClose, segment, propertyId, roomId, roomNumber, guestName, bookingId, tableId, tableName, onChanged,
 }: Props) {
   const { user, roles } = useAuth();
   const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
@@ -134,14 +137,20 @@ export function KotHistoryDialog({
       // Phase 53 — scope STRICTLY to the room that was tapped. room_id is the
       // hard filter (never replaced by booking_id, which can span rooms), and
       // booking_id further narrows to the current guest's stay when known.
-      if (!roomId) { setPunches([]); return; }
+      if (!roomId && !tableId) { setPunches([]); return; }
       let qb = supabase
         .from("segment_bills" as any)
         .select("id,bill_number,status,created_at,room_id,booking_id")
         .eq("property_id", propertyId)
-        .eq("segment", segment)
-        .eq("room_id", roomId);
-      if (bookingId) qb = qb.eq("booking_id", bookingId);
+        .eq("segment", segment);
+      if (roomId) {
+        qb = qb.eq("room_id", roomId);
+        if (bookingId) qb = qb.eq("booking_id", bookingId);
+      } else {
+        // Table-linked walk-in bills: scoped exactly the same way the punch
+        // dialog scopes getOrCreateTodayBill/findTodayBill.
+        qb = qb.eq("table_id", tableId!).is("booking_id", null);
+      }
       const { data: bills, error } = await qb.order("created_at", { ascending: false }).limit(10);
       if (error) throw error;
       const billRows = (bills ?? []) as unknown as BillRow[];
@@ -168,7 +177,7 @@ export function KotHistoryDialog({
     } finally {
       setLoading(false);
     }
-  }, [open, propertyId, segment, bookingId, roomId]);
+  }, [open, propertyId, segment, bookingId, roomId, tableId]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -379,7 +388,7 @@ export function KotHistoryDialog({
           <DialogHeader>
             <DialogTitle>
               {segment === "food" ? "Food" : "Laundry"} punches
-              {roomNumber ? ` — Room ${roomNumber}` : ""}
+              {roomNumber ? ` — Room ${roomNumber}` : tableName ? ` — ${tableName}` : ""}
             </DialogTitle>
           </DialogHeader>
 
