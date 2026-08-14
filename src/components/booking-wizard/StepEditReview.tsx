@@ -84,6 +84,8 @@ export function StepEditReview({ state }: { state: BookingEditState }) {
         <h3 className="text-sm font-medium">Remarks</h3>
         <div className="rounded-md border px-3">
           <Row label="Remark" from="" to={state.customRemark} />
+        <Row label="Source" from="" to={state.source} />
+        {state.otaPartnerName && <Row label="Source name" from="" to={state.otaPartnerName} />}
         </div>
       </section>
     </div>

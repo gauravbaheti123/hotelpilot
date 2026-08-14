@@ -15,6 +15,7 @@ import { StepGuestDetails } from "@/components/booking-wizard/StepGuestDetails";
 import { StepAdditionalGuests } from "@/components/booking-wizard/StepAdditionalGuests";
 import { StepBillTo } from "@/components/booking-wizard/StepBillTo";
 import { StepRemarks } from "@/components/booking-wizard/StepRemarks";
+import { BookingSourceFields } from "@/components/booking-wizard/BookingSourceFields";
 import { StepEditStayRoom } from "@/components/booking-wizard/StepEditStayRoom";
 import { StepEditReview } from "@/components/booking-wizard/StepEditReview";
 import { useAuth } from "@/hooks/use-auth";
