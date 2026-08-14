@@ -161,7 +161,9 @@ export function StepReview({
         <Row label="Type" value={state.kind === "lodge" ? "Lodge" : "Banquet"} />
         <Row label="Mode" value={state.reservation ? "Reservation (no check-in yet)" : "Walk-in / check-in"} />
         <Row label="Source" value={sourceLabel(state.source)} />
-        {state.otaPartnerName && <Row label="OTA partner" value={state.otaPartnerName} />}
+        {state.otaPartnerName && (
+          <Row label={sourceDetailLabel(state.source)} value={state.otaPartnerName} />
+        )}
       </Section>
 
       <Section title="Primary guest" step={STEP.GUEST} onEdit={onEdit}>
