@@ -167,7 +167,14 @@ export async function fetchBillPrinter(
     .order("is_default", { ascending: false })
     .limit(1);
   if (__qe1) reportQueryError("printers", __qe1);
-  const row = (data as any[] | null)?.[0];
+  const rows = (data as any[] | null) ?? [];
+  // DOM-based prints here are page documents (folio bill, banquet bill, GRC):
+  // prefer a non-thermal (A4) bill printer, even if a thermal roll printer is
+  // flagged as the property default.
+  const isThermal = (s: any) => ["80MM", "58MM"].includes(String(s ?? "").toUpperCase());
+  const a4 = rows.filter((r) => !isThermal(r.paper_size));
+  const pool = a4.length > 0 ? a4 : rows;
+  const row = pool.find((r) => r.is_default) ?? pool[0];
   if (!row) return null;
   return { name: row.name as string, paper_size: (row.paper_size as string) ?? "A4" };
 }
