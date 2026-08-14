@@ -212,7 +212,23 @@ function GuestDetail() {
         credit: 0,
         balance: bal,
       });
-      if (r.paid > 0) {
+      // Credit rows are dated from the payment's own `paid_at` (not the bill's
+      // creation date). Fall back to one lumped row when receipt-level dates
+      // are not available (segment / banquet bills).
+      const receipts = (r.payments ?? []).filter((p) => p.amount > 0);
+      if (receipts.length) {
+        for (const p of receipts) {
+          bal -= p.amount;
+          out.push({
+            key: `${r.type}-${r.id}-c-${p.id}`,
+            date: p.date || r.date || "—",
+            description: `Payment received — ${r.number}`,
+            debit: 0,
+            credit: p.amount,
+            balance: bal,
+          });
+        }
+      } else if (r.paid > 0) {
         bal -= r.paid;
         out.push({
           key: `${r.type}-${r.id}-c`,
