@@ -5311,6 +5311,9 @@ export type Database = {
         Row: {
           bill_number: string
           booking_id: string | null
+          complimentary_at: string | null
+          complimentary_by: string | null
+          complimentary_reason: string | null
           created_at: string
           created_by: string | null
           event_booking_id: string | null
@@ -5319,6 +5322,7 @@ export type Database = {
           guest_id: string | null
           guest_name: string | null
           id: string
+          is_complimentary: boolean
           is_walkin: boolean
           notes: string | null
           paid_amount: number
@@ -5334,6 +5338,9 @@ export type Database = {
         Insert: {
           bill_number: string
           booking_id?: string | null
+          complimentary_at?: string | null
+          complimentary_by?: string | null
+          complimentary_reason?: string | null
           created_at?: string
           created_by?: string | null
           event_booking_id?: string | null
@@ -5342,6 +5349,7 @@ export type Database = {
           guest_id?: string | null
           guest_name?: string | null
           id?: string
+          is_complimentary?: boolean
           is_walkin?: boolean
           notes?: string | null
           paid_amount?: number
@@ -5357,6 +5365,9 @@ export type Database = {
         Update: {
           bill_number?: string
           booking_id?: string | null
+          complimentary_at?: string | null
+          complimentary_by?: string | null
+          complimentary_reason?: string | null
           created_at?: string
           created_by?: string | null
           event_booking_id?: string | null
@@ -5365,6 +5376,7 @@ export type Database = {
           guest_id?: string | null
           guest_name?: string | null
           id?: string
+          is_complimentary?: boolean
           is_walkin?: boolean
           notes?: string | null
           paid_amount?: number
@@ -6614,6 +6626,10 @@ export type Database = {
       }
       settle_segment_bill: {
         Args: { _actor?: string; _auto?: boolean; _bill_id: string }
+        Returns: Json
+      }
+      settle_segment_bill_complimentary: {
+        Args: { _actor?: string; _bill_id: string; _reason: string }
         Returns: Json
       }
       shift_room: {

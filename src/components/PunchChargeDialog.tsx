@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Trash2, Plus, Printer, Check, ChevronsUpDown } from "lucide-react";
+import { Trash2, Plus, Printer, Check, ChevronsUpDown, Gift } from "lucide-react";
 import { inr } from "@/lib/billing";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useAuth } from "@/hooks/use-auth";
@@ -25,6 +25,10 @@ import {
 import { resolveLogoUrl } from "@/lib/invoiceTemplates";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
+import {
+  COMPLIMENTARY_PRESETS, COMPLIMENTARY_OTHER, canMarkComplimentary, complimentaryLabel,
+} from "@/lib/complimentary";
+import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 export type SegmentKind = "food" | "laundry";
 
@@ -61,7 +65,7 @@ export function PunchChargeDialog({
   open, onClose, segment, propertyId, propertyName,
   bookingId, roomId, roomNumber, guestName, onSaved,
 }: Props) {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const { methods: paymentMethods } = usePaymentMethods(propertyId);
   const [lines, setLines] = useState<Line[]>([]);
   const [pickerItems, setPickerItems] = useState<PickerItem[]>([]);
@@ -79,6 +83,12 @@ export function PunchChargeDialog({
   const [events, setEvents] = useState<{ id: string; label: string }[]>([]);
   const [eventId, setEventId] = useState<string | null>(null);
   const [eventOpen, setEventOpen] = useState(false);
+  /** Complimentary settlement (plan-inclusive / approved freebie). */
+  const [compOpen, setCompOpen] = useState(false);
+  const [compPreset, setCompPreset] = useState<string>(COMPLIMENTARY_PRESETS[0]);
+  const [compOther, setCompOther] = useState("");
+  const [compBusy, setCompBusy] = useState(false);
+  const mayComp = canMarkComplimentary(roles as string[]);
 
   useEffect(() => {
     if (!open) return;
@@ -471,6 +481,92 @@ export function PunchChargeDialog({
 
   const title = segment === "food" ? "Punch Food Charge" : "Punch Laundry Charge";
 
+  /**
+   * Settle today's bill as complimentary: zero real money, no folio posting,
+   * a mandatory stored reason and an audit entry. Never creates a fake payment.
+   */
+  async function markComplimentary() {
+    const reason = (compPreset === COMPLIMENTARY_OTHER ? compOther : compPreset).trim();
+    if (!reason) { toast.error("Enter a reason"); return; }
+    if (inFlight.current) return;
+    if (walkin && !walkinGuest.trim()) { toast.error("Enter walk-in customer name"); return; }
+    inFlight.current = true;
+    setCompBusy(true);
+    try {
+      const clean = cleanLines();
+      let bill: { id: string; bill_number: string; folio_id: string | null };
+      if (clean.length > 0) {
+        bill = await appendToTodayBill(clean);
+      } else {
+        const existing = await findTodayBill();
+        if (!existing) { toast.error("Nothing to bill yet"); return; }
+        bill = existing;
+      }
+      const { data: allItems, error: iErr } = await supabase
+        .from("segment_bill_items" as any)
+        .select("description,qty,rate,amount,gst_rate,gst_amount")
+        .eq("segment_bill_id", bill.id)
+        .order("id");
+      if (iErr) throw iErr;
+      const rowsAll = (allItems ?? []) as any[];
+      if (rowsAll.length === 0) { toast.error("Nothing to bill yet"); return; }
+      const t = await recalcBillTotals(bill.id);
+
+      const { data: res, error: rpcErr } = await supabase.rpc(
+        "settle_segment_bill_complimentary" as any,
+        { _bill_id: bill.id, _reason: reason, _actor: user?.id ?? null } as any,
+      );
+      if (rpcErr) throw rpcErr;
+      const out = res as any;
+      if (out && out.ok === false) {
+        throw new Error(
+          out.reason === "not_allowed"
+            ? "Only a Manager or Owner can mark a bill complimentary"
+            : out.reason === "no_items" ? "Nothing to bill yet" : "Could not mark complimentary",
+        );
+      }
+      await logActivity({
+        property_id: propertyId,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as any),
+        action_type: "BILL_MARKED_COMPLIMENTARY",
+        module: segment === "food" ? "Food" : "Laundry",
+        reference_id: bill.id,
+        reference_label: bill.bill_number,
+        details: { segment, reason, total_amount: t.total, gst_amount: t.gst },
+      });
+
+      const { data: billRow } = await supabase
+        .from("segment_bills" as any)
+        .select("settled_at,created_at")
+        .eq("id", bill.id)
+        .maybeSingle();
+
+      printSegmentBill({
+        billNumber: bill.bill_number, segment, propertyName: propertyName ?? "", propertyId,
+        guestName: walkin ? walkinGuest.trim() : (guestName ?? "Guest"),
+        roomNumber: walkin ? null : (roomNumber ?? null),
+        items: rowsAll.map((l) => ({
+          description: l.description, qty: Number(l.qty), rate: Number(l.rate),
+          amount: Number(l.amount), gst_rate: Number(l.gst_rate),
+        })),
+        sub: t.sub, gst: t.gst, total: t.total,
+        isWalkin: walkin, paymentMode: null,
+        complimentaryReason: reason,
+        billDate: (billRow as any)?.settled_at ?? (billRow as any)?.created_at ?? null,
+      });
+      toast.success(`${bill.bill_number} settled as complimentary`);
+      setCompOpen(false);
+      onSaved?.();
+      onClose();
+    } catch (e: any) {
+      toastError(e, "Could not mark complimentary");
+    } finally {
+      setCompBusy(false);
+      inFlight.current = false;
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
@@ -619,6 +715,12 @@ export function PunchChargeDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          {mayComp && (
+            <Button type="button" variant="outline" onClick={() => setCompOpen(true)} disabled={saving || compBusy}>
+              <Gift className="h-4 w-4 mr-1.5" />
+              Mark Complimentary
+            </Button>
+          )}
           <Button type="button" variant="secondary" onClick={printKot} disabled={saving}>
             <Printer className="h-4 w-4 mr-1.5" />
             {busy === "kot" ? "Working..." : segment === "food" ? "Print KOT" : "Print Ticket"}
@@ -629,6 +731,43 @@ export function PunchChargeDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <Dialog open={compOpen} onOpenChange={(v) => !v && setCompOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Settle as Complimentary</DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground">
+            The bill closes at zero — no money collected, nothing posted to the folio and it will
+            never show as due. A reason is required and is recorded for audit.
+          </p>
+          <div className="space-y-3">
+            <div>
+              <Label>Reason</Label>
+              <Select value={compPreset} onValueChange={setCompPreset}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {COMPLIMENTARY_PRESETS.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
+                  <SelectItem value={COMPLIMENTARY_OTHER}>{COMPLIMENTARY_OTHER}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {compPreset === COMPLIMENTARY_OTHER && (
+              <div>
+                <Label>Specify reason</Label>
+                <Input value={compOther} maxLength={160} onChange={(e) => setCompOther(e.target.value)}
+                  placeholder="e.g. Compensation for AC fault" />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCompOpen(false)} disabled={compBusy}>Cancel</Button>
+            <Button onClick={markComplimentary} disabled={compBusy}>
+              {compBusy ? "Working…" : "Confirm Complimentary"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
@@ -645,6 +784,8 @@ export function printSegmentBill(opts: {
   sub: number; gst: number; total: number;
   isWalkin: boolean;
   paymentMode: string | null;
+  /** When set, the bill was settled as complimentary — printed instead of a payment line. */
+  complimentaryReason?: string | null;
   /** Real bill timestamp (settled_at ?? created_at). Falls back to now for brand-new bills. */
   billDate?: string | null;
 }) {
@@ -687,6 +828,7 @@ function renderSegmentBill(opts: {
   sub: number; gst: number; total: number;
   isWalkin: boolean;
   paymentMode: string | null;
+  complimentaryReason?: string | null;
   billDate?: string | null;
 }, head: SegBillHead, printer: { name: string; paper_size: string } | null) {
   const paperSize = printer?.paper_size ?? "80mm";
@@ -768,7 +910,9 @@ function renderSegmentBill(opts: {
   <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:11px; line-height:1.5;"><span>Subtotal</span><span>${opts.sub.toFixed(2)}</span></div>
   <div style="display:flex; justify-content:space-between; font-size:11px; line-height:1.5;"><span>GST</span><span>${opts.gst.toFixed(2)}</span></div>
   <div class="total"><span>Total</span><span>₹${opts.total.toFixed(2)}</span></div>
-  ${opts.isWalkin && opts.paymentMode ? `<div style="margin-top:3px; font-size:11px;">Paid via ${escape(opts.paymentMode.toUpperCase())}</div>` : ""}
+  ${opts.complimentaryReason
+    ? `<div style="margin-top:4px; font-size:11px; font-weight:bold; text-align:center; border:1px dashed #000; padding:3px;">${escape(complimentaryLabel(opts.complimentaryReason).toUpperCase())}<br/>No amount collected</div>`
+    : (opts.isWalkin && opts.paymentMode ? `<div style="margin-top:3px; font-size:11px;">Paid via ${escape(opts.paymentMode.toUpperCase())}</div>` : "")}
   <div class="sign"><div class="line">Customer Signature</div></div>
   <div class="foot">Thank you!</div>
   <div class="tailgap"></div>
