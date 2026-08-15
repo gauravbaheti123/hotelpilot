@@ -42,7 +42,7 @@ import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, M
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
-import { resolveGstRate, resolveTaxType, splitGst } from "@/lib/gst";
+import { resolveGstRate, resolveStateCode, resolveTaxType, splitGst } from "@/lib/gst";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
