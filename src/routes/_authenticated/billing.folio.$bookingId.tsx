@@ -42,7 +42,7 @@ import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, M
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
 import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
-import { resolveGstRate, resolveTaxType, splitGst } from "@/lib/gst";
+import { resolveGstRate, resolveStateCode, resolveTaxType, splitGst } from "@/lib/gst";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
@@ -724,6 +724,24 @@ function FolioPage() {
       : null;
     if (companyId && !co) { toast.error("Company not found"); return; }
     if (guestId && !gu) { toast.error("Guest not found"); return; }
+    // Place of supply must be re-derived the moment Bill-To changes — the same
+    // resolver the invoice/report use, so the printed GST Breakup (CGST+SGST vs
+    // IGST) follows the NEW party's state, not the old one.
+    const propertyParty = {
+      gstin: property?.gstin, stateCode: property?.state_code, state: property?.state,
+    };
+    const nextParty = co
+      ? { gstin: co.gstin ?? null, stateCode: co.state_code ?? null, state: co.state ?? null }
+      : gu
+        ? { gstin: gu.gst_number ?? null, stateCode: gu.state_code ?? null, state: gu.state ?? null }
+        : {
+            gstin: booking?.guests?.gst_number ?? null,
+            stateCode: booking?.guests?.state_code ?? null,
+            state: booking?.guests?.state ?? null,
+          };
+    const prevTax = taxType;
+    const next = resolveTaxType(nextParty, propertyParty);
+    const nextTax = next.taxType;
     const patch: Partial<Folio> = {
       // A folio bills to exactly one party — company and guest are mutually exclusive.
       billing_company_id: companyId,
@@ -777,10 +795,29 @@ function FolioPage() {
           locked_correction: !isOpen,
           via_grace_window: viaGrace && !canEditBillToPerm,
           folio_status: folio.status ?? null,
+          // Tax-type recalculation trail (total GST is unchanged — only the
+          // CGST+SGST vs IGST split/labelling changes).
+          from_tax_type: prevTax,
+          to_tax_type: nextTax,
+          tax_type_changed: prevTax !== nextTax,
+          to_bill_to_state_code: next.billToStateCode,
+          property_state_code: next.propertyStateCode,
+          gst_amount: Number(folio.gst_amount ?? 0),
         },
       });
     }
     toast.success(`Bill To: ${label}`);
+    if (prevTax !== nextTax) {
+      toast.info(
+        nextTax === "igst"
+          ? "Inter-state supply — GST breakup switched to IGST (total tax unchanged)."
+          : "Intra-state supply — GST breakup switched to CGST + SGST (total tax unchanged).",
+      );
+    } else if (!resolveStateCode(nextParty)) {
+      toast.warning(
+        "Bill-To has no GSTIN or state on record — treated as intra-state (CGST + SGST). Add its GSTIN/state to bill IGST.",
+      );
+    }
     load();
   }
 
