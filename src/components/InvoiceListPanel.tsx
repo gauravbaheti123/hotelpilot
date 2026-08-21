@@ -511,11 +511,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
       <Card>
         <CardContent className="p-0 divide-y">
           {filtered.length === 0 && <p className="p-4 text-sm text-muted-foreground">No invoices.</p>}
-          {groupBySettledDate(filtered).map((g) => (
-            <div key={g.key}>
-              <DateDivider label={g.label} />
-              <div className="divide-y">
-          {g.items.map((r) => {
+          {sortByBillNumberDesc(filtered).map((r) => {
             const voided = !!r.is_deleted;
             return (
               <div key={r.id} className={`flex items-center gap-3 px-4 py-3 cursor-pointer ${voided ? "bg-rose-50/30" : "hover:bg-muted/50"}`}>
@@ -609,9 +605,6 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
               </div>
             );
           })}
-              </div>
-            </div>
-          ))}
         </CardContent>
       </Card>
       )}
@@ -625,15 +618,11 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
             ).length === 0 && (
               <p className="p-4 text-sm text-muted-foreground">No {segTab} bills.</p>
             )}
-            {groupBySettledDate(segRows.filter((r) => !q ||
+            {sortByBillNumberDesc(segRows.filter((r) => !q ||
                 r.bill_number.toLowerCase().includes(q.toLowerCase()) ||
                 (r.guest_name ?? "").toLowerCase().includes(q.toLowerCase()))
-            ).map((g) => (
-              <div key={g.key}>
-                <DateDivider label={g.label} />
-                <div className="divide-y">
-              {g.items.map((r) => {
-                const isComp = !!r.is_complimentary;
+            ).map((r) => {
+              const isComp = !!r.is_complimentary;
                 const balance = isComp
                   ? 0
                   : Math.max(0, Number(r.total_amount || 0) - Number(r.paid_amount || 0));
@@ -700,9 +689,6 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                   </div>
                 );
               })}
-                </div>
-              </div>
-            ))}
           </CardContent>
         </Card>
       )}
