@@ -29,7 +29,7 @@ import {
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { useRegisterRefresh } from "@/components/PullToRefresh";
-import { istToday, istDateISO, IST_TZ } from "@/lib/date";
+import { istToday } from "@/lib/date";
 import { invoiceDateLabel } from "@/lib/invoiceDate";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
@@ -65,56 +65,25 @@ export interface InvoiceListPanelProps {
 }
 
 /**
- * Last-activity instant for grouping/sorting: the newest of updated_at,
- * settled_at and created_at. `folios` has a BEFORE UPDATE set_updated_at
- * trigger, so a reopen (checkout-undo clears settled_at) still bumps
- * updated_at and the row surfaces at the top under today's divider.
+ * Trailing numeric sequence of a bill/invoice number, e.g. "BRIJ-0123" → 123
+ * or "BRIJ-F-0456" → 456. 0 when the string carries no trailing digits
+ * (provisional / un-numbered bills), so those sink below real invoices.
  */
-const activityAt = (r: {
-  settled_at?: string | null; updated_at?: string | null; created_at: string;
-}) => {
-  const ts = [r.updated_at, r.settled_at, r.created_at]
-    .map((v) => (v ? new Date(v).getTime() : NaN))
-    .filter((n) => !Number.isNaN(n));
-  return new Date(Math.max(...ts)).toISOString();
-};
-
-/** "4 August 2026" style header label for a YYYY-MM-DD key. */
-function dateHeaderLabel(iso: string) {
-  const d = new Date(`${iso}T12:00:00Z`);
-  return new Intl.DateTimeFormat("en-IN", {
-    timeZone: IST_TZ, day: "numeric", month: "long", year: "numeric",
-  }).format(d);
+function billNumericSeq(n?: string | null): number {
+  const m = (n ?? "").match(/(\d+)\s*$/);
+  return m ? parseInt(m[1], 10) : 0;
 }
 
 /**
- * Sort newest-first by last activity and split into date buckets
- * (chat-app style date dividers). Runs on the already-filtered list so
- * search/filter keeps working inside the grouped view.
+ * Sort invoices by invoice number alone — newest (highest) number first.
+ * No date, status or activity ordering. Used for both Lodge (invoice_number)
+ * and Food/Laundry (bill_number) lists.
  */
-function groupBySettledDate<T extends {
-  settled_at?: string | null; updated_at?: string | null; created_at: string;
-}>(
-  list: T[],
-): Array<{ key: string; label: string; items: T[] }> {
-  const sorted = [...list].sort(
-    (a, b) => new Date(activityAt(b)).getTime() - new Date(activityAt(a)).getTime(),
-  );
-  const out: Array<{ key: string; label: string; items: T[] }> = [];
-  for (const item of sorted) {
-    const key = istDateISO(activityAt(item));
-    const last = out[out.length - 1];
-    if (last && last.key === key) last.items.push(item);
-    else out.push({ key, label: dateHeaderLabel(key), items: [item] });
-  }
-  return out;
-}
-
-function DateDivider({ label }: { label: string }) {
-  return (
-    <div className="px-4 py-1.5 bg-muted/40 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-      {label}
-    </div>
+function sortByBillNumberDesc<T extends {
+  invoice_number?: string | null; bill_number?: string | null;
+}>(list: T[]): T[] {
+  return [...list].sort(
+    (a, b) => billNumericSeq(b.invoice_number ?? b.bill_number) - billNumericSeq(a.invoice_number ?? a.bill_number),
   );
 }
 
@@ -542,11 +511,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
       <Card>
         <CardContent className="p-0 divide-y">
           {filtered.length === 0 && <p className="p-4 text-sm text-muted-foreground">No invoices.</p>}
-          {groupBySettledDate(filtered).map((g) => (
-            <div key={g.key}>
-              <DateDivider label={g.label} />
-              <div className="divide-y">
-          {g.items.map((r) => {
+          {sortByBillNumberDesc(filtered).map((r) => {
             const voided = !!r.is_deleted;
             return (
               <div key={r.id} className={`flex items-center gap-3 px-4 py-3 cursor-pointer ${voided ? "bg-rose-50/30" : "hover:bg-muted/50"}`}>
@@ -640,9 +605,6 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
               </div>
             );
           })}
-              </div>
-            </div>
-          ))}
         </CardContent>
       </Card>
       )}
@@ -656,15 +618,11 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
             ).length === 0 && (
               <p className="p-4 text-sm text-muted-foreground">No {segTab} bills.</p>
             )}
-            {groupBySettledDate(segRows.filter((r) => !q ||
+            {sortByBillNumberDesc(segRows.filter((r) => !q ||
                 r.bill_number.toLowerCase().includes(q.toLowerCase()) ||
                 (r.guest_name ?? "").toLowerCase().includes(q.toLowerCase()))
-            ).map((g) => (
-              <div key={g.key}>
-                <DateDivider label={g.label} />
-                <div className="divide-y">
-              {g.items.map((r) => {
-                const isComp = !!r.is_complimentary;
+            ).map((r) => {
+              const isComp = !!r.is_complimentary;
                 const balance = isComp
                   ? 0
                   : Math.max(0, Number(r.total_amount || 0) - Number(r.paid_amount || 0));
@@ -731,9 +689,6 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                   </div>
                 );
               })}
-                </div>
-              </div>
-            ))}
           </CardContent>
         </Card>
       )}
