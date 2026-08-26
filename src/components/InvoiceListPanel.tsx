@@ -220,19 +220,29 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
     if (!propertyId || segTab === "lodge") { setSegRows([]); return; }
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
-        .from("segment_bills" as any)
-        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,folio_id,booking_id,created_at,updated_at,settled_at,is_complimentary,complimentary_reason")
-        .eq("property_id", propertyId)
-        .eq("segment", segTab)
-        .order("updated_at" as any, { ascending: false, nullsFirst: false })
-        .order("settled_at" as any, { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(300);
+      // Paged, same reason as the lodge list above — never cap silently.
+      const PAGE = 1000;
+      const all: any[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from("segment_bills" as any)
+          .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,folio_id,booking_id,created_at,updated_at,settled_at,is_complimentary,complimentary_reason")
+          .eq("property_id", propertyId)
+          .eq("segment", segTab)
+          .order("updated_at" as any, { ascending: false, nullsFirst: false })
+          .order("settled_at" as any, { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (cancelled) return;
+        if (error) { toastError(error); return; }
+        const chunk = (data ?? []) as any[];
+        all.push(...chunk);
+        if (chunk.length < PAGE) break;
+      }
       if (cancelled) return;
-      if (error) { toastError(error); return; }
-      setSegRows((data ?? []) as any);
+      setSegRows(all as any);
     })();
+
     return () => { cancelled = true; };
   }, [propertyId, segTab, segRefresh]);
 
