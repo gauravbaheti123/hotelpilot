@@ -153,17 +153,32 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
   /** Awaitable loader — pull-to-refresh needs to know when the fetch ends. */
   const runLoad = async () => {
     if (!propertyId) return;
-      let qb = supabase.from("folios")
-        .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,updated_at,settled_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms!booking_rooms_booking_id_fkey(actual_check_out,rooms!booking_rooms_room_id_fkey(room_number)))" as any)
-        .eq("property_id", propertyId);
-      if (!audit) qb = qb.eq("is_deleted" as any, false);
-      const { data, error } = await qb
-        // Most recently active first — updated_at bumps on settle, reopen and
-        // every charge/edit (folios has a set_updated_at trigger).
-        .order("updated_at" as any, { ascending: false, nullsFirst: false })
-        .order("settled_at" as any, { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(300);
+      // Paged fetch — a fixed cap silently hid older invoices once the
+      // property grew past it (settled bills that haven't been touched since
+      // fall to the bottom of the updated_at sort). Page until exhausted so
+      // search and browsing always see the complete list.
+      const PAGE = 1000;
+      const all: any[] = [];
+      let error: unknown = null;
+      for (let from = 0; ; from += PAGE) {
+        let qb = supabase.from("folios")
+          .select("id,invoice_number,gst_mode,status,total_amount,paid_amount,balance_amount,created_at,updated_at,settled_at,booking_id,is_deleted,deleted_at,deleted_by,bookings(booking_number,source,guests(name),booking_rooms!booking_rooms_booking_id_fkey(actual_check_out,rooms!booking_rooms_room_id_fkey(room_number)))" as any)
+          .eq("property_id", propertyId);
+        if (!audit) qb = qb.eq("is_deleted" as any, false);
+        const page = await qb
+          // Most recently active first — updated_at bumps on settle, reopen and
+          // every charge/edit (folios has a set_updated_at trigger).
+          .order("updated_at" as any, { ascending: false, nullsFirst: false })
+          .order("settled_at" as any, { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (page.error) { error = page.error; break; }
+        const chunk = (page.data ?? []) as any[];
+        all.push(...chunk);
+        if (chunk.length < PAGE) break;
+      }
+      const data = all;
+
       // Surface PostgREST failures instead of silently rendering "No invoices."
       if (error) {
         console.error("[invoices] load failed", error);
@@ -205,19 +220,29 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
     if (!propertyId || segTab === "lodge") { setSegRows([]); return; }
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
-        .from("segment_bills" as any)
-        .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,folio_id,booking_id,created_at,updated_at,settled_at,is_complimentary,complimentary_reason")
-        .eq("property_id", propertyId)
-        .eq("segment", segTab)
-        .order("updated_at" as any, { ascending: false, nullsFirst: false })
-        .order("settled_at" as any, { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(300);
+      // Paged, same reason as the lodge list above — never cap silently.
+      const PAGE = 1000;
+      const all: any[] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabase
+          .from("segment_bills" as any)
+          .select("id,bill_number,segment,status,total_amount,paid_amount,is_walkin,guest_name,room_id,folio_id,booking_id,created_at,updated_at,settled_at,is_complimentary,complimentary_reason")
+          .eq("property_id", propertyId)
+          .eq("segment", segTab)
+          .order("updated_at" as any, { ascending: false, nullsFirst: false })
+          .order("settled_at" as any, { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (cancelled) return;
+        if (error) { toastError(error); return; }
+        const chunk = (data ?? []) as any[];
+        all.push(...chunk);
+        if (chunk.length < PAGE) break;
+      }
       if (cancelled) return;
-      if (error) { toastError(error); return; }
-      setSegRows((data ?? []) as any);
+      setSegRows(all as any);
     })();
+
     return () => { cancelled = true; };
   }, [propertyId, segTab, segRefresh]);
 
