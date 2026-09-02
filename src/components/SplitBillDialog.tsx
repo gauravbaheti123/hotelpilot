@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import {
   inr, inrRound, recomputeFolio, computeBillDiscountAmount,
   distributeWithRemainder, weightedGstRate, netSubtotalOf,
-  realPaidTotal, isHoldPayment, overpaymentError,
+  realPaidTotal, isHoldPayment, overpaymentError, expandRoomNights,
   type BillDiscount,
 } from "@/lib/billing";
 import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
@@ -219,6 +219,65 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     { mode: "cash", amount: "", reference: "" },
   ]);
 
+  /**
+   * Assignable units for Step 2 (display + assignment only — storage is
+   * unchanged). Room charges spanning several nights are expanded into one
+   * derived row per night (amounts distributed with remainder so they sum
+   * EXACTLY to the stored charge). Food charges that came from a segment bill
+   * are grouped into one row per bill reference; their underlying item rows
+   * still travel individually into the split payload. Everything else stays
+   * a single row, as before.
+   */
+  const units = useMemo(() => {
+    const list: { id: string; label: string; kind: string; amount: number; members: Charge[] }[] = [];
+    const groupAt = new Map<string, number>();
+    for (const c of charges) {
+      const nights = Math.round(Number(c.qty ?? 0));
+      if (c.charge_type === "room" && nights > 1) {
+        const parts = expandRoomNights([c as any]) as any[];
+        parts.forEach((p, i) => {
+          const day = String(p.charged_on ?? "").slice(0, 10);
+          list.push({
+            id: String(p.id ?? `${c.id}:n${i}`),
+            label: `${p.description}${day ? ` — ${day.split("-").reverse().join("/")}` : ` — Night ${i + 1}`}`,
+            kind: "room (night)",
+            amount: Number(p.amount ?? 0),
+            members: [{ ...(c as any), ...p, id: String(p.id ?? `${c.id}:n${i}`) } as Charge],
+          });
+        });
+        continue;
+      }
+      const ref = (c.segment_bill_ref ?? "").trim();
+      if (c.charge_type === "food" && ref) {
+        const key = `food::${ref}`;
+        const at = groupAt.get(key);
+        if (at === undefined) {
+          groupAt.set(key, list.length);
+          list.push({
+            id: `seg:${key}`,
+            label: `Food Bill ${ref}`,
+            kind: "food",
+            amount: Number(c.amount ?? 0),
+            members: [c],
+          });
+        } else {
+          const row = list[at]!;
+          row.amount = round2(row.amount + Number(c.amount ?? 0));
+          row.members.push(c);
+        }
+        continue;
+      }
+      list.push({
+        id: c.id,
+        label: c.description,
+        kind: c.charge_type,
+        amount: Number(c.amount ?? 0),
+        members: [c],
+      });
+    }
+    return list;
+  }, [charges]);
+
   // Default assignment: room/sundry/extra/discount → Bill 1; food → Bill 2.
   useEffect(() => {
     if (!open) return;
@@ -241,7 +300,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       newParty({ name: "", mobile: "", gstin: "", bill_type: "gst_invoice" }),
     ]);
     const nextAssign: Record<string, number> = {};
-    for (const c of charges) nextAssign[c.id] = c.charge_type === "food" ? 1 : 0;
+    for (const u of units) nextAssign[u.id] = u.kind === "food" ? 1 : 0;
     setAssign(nextAssign);
     setPayRows([
       { mode: "cash", amount: "", reference: "" },
@@ -280,12 +339,12 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   /** Charges grouped per destination bill — index 0..billCount-1. */
   const billCharges = useMemo(() => {
     const buckets: Charge[][] = Array.from({ length: billCount }, () => []);
-    for (const c of charges) {
-      const idx = Math.min(Math.max(0, assign[c.id] ?? 0), billCount - 1);
-      buckets[idx].push(c);
+    for (const u of units) {
+      const idx = Math.min(Math.max(0, assign[u.id] ?? 0), billCount - 1);
+      for (const m of u.members) buckets[idx].push(m);
     }
     return buckets;
-  }, [charges, assign, billCount]);
+  }, [units, assign, billCount]);
   const bill1Charges = billCharges[0] ?? [];
   const bill2Charges = billCharges[1] ?? [];
 
@@ -543,12 +602,12 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   function autoGroupBySegment() {
     setAssign(() => {
       const next: Record<string, number> = {};
-      for (const c of charges) {
-        const t = c.charge_type;
+      for (const u of units) {
+        const t = u.members[0]?.charge_type ?? "";
         let idx = 0;
         if (t === "food") idx = Math.min(1, billCount - 1);
         else if (t === "laundry" || t === "sundry") idx = Math.min(2, billCount - 1);
-        next[c.id] = idx;
+        next[u.id] = idx;
       }
       return next;
     });
@@ -559,7 +618,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     setBillCount(count);
     setAssign((prev) => {
       const next = { ...prev };
-      for (const c of charges) next[c.id] = Math.min(next[c.id] ?? 0, count - 1);
+      for (const u of units) next[u.id] = Math.min(next[u.id] ?? 0, count - 1);
       return next;
     });
   }
@@ -1134,16 +1193,19 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
               </Button>
             </div>
             <div className="rounded border divide-y max-h-80 overflow-y-auto">
-              {charges.map((c) => (
-                <div key={c.id} className="flex items-center gap-2 p-2 text-xs">
+              {units.map((u) => (
+                <div key={u.id} className="flex items-center gap-2 p-2 text-xs">
                   <div className="flex-1 min-w-0">
-                    <div className="truncate">{c.description}</div>
-                    <div className="text-[10px] uppercase text-muted-foreground">{c.charge_type}</div>
+                    <div className="truncate">{u.label}</div>
+                    <div className="text-[10px] uppercase text-muted-foreground">
+                      {u.kind}
+                      {u.members.length > 1 ? ` · ${u.members.length} items` : ""}
+                    </div>
                   </div>
-                  <div className="tabular-nums font-medium">{inr(c.amount)}</div>
+                  <div className="tabular-nums font-medium">{inr(u.amount)}</div>
                   <Select
-                    value={String(Math.min(assign[c.id] ?? 0, billCount - 1))}
-                    onValueChange={(v) => assignCharge(c.id, Number(v))}
+                    value={String(Math.min(assign[u.id] ?? 0, billCount - 1))}
+                    onValueChange={(v) => assignCharge(u.id, Number(v))}
                   >
                     <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
