@@ -41,7 +41,9 @@ import { loadPaymentTargets, mergeSegmentBillToFolio, type PaymentTarget } from 
 import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil, CalendarPlus } from "lucide-react";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
-import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
+import { isValidGSTIN, isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
+import { gstinLookup } from "@/lib/gstinLookup.functions";
+import { parseGstinProfile } from "@/lib/gstinProfile";
 import { resolveGstRate, resolveStateCode, resolveTaxType, splitGst } from "@/lib/gst";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
@@ -711,7 +713,7 @@ function FolioPage() {
    *  so the checkout dialog reflects the latest choice, clears the manual
    *  guest GSTIN when a company takes over (company GSTIN drives place of
    *  supply), and writes an audit trail. */
-  async function updateBillTo(selection: string) {
+  async function updateBillTo(selection: string, companyOverride?: (typeof billingCompanies)[number]) {
     if (!folio) return;
     if (!isOpen && !canEditBillToLocked) return;
     const prevCompanyId = folio.billing_company_id ?? null;
@@ -719,7 +721,9 @@ function FolioPage() {
     const companyId = selection.startsWith("co:") ? selection.slice(3) : null;
     const guestId = selection.startsWith("gu:") ? selection.slice(3) : null;
     if (prevCompanyId === companyId && prevGuestId === guestId) return;
-    const co = companyId ? billingCompanies.find((c) => c.id === companyId) ?? null : null;
+    const co = companyId
+      ? billingCompanies.find((c) => c.id === companyId) ?? companyOverride ?? null
+      : null;
     const gu = guestId
       ? (guestHits.find((g) => g.id === guestId) ?? (billToGuest?.id === guestId ? billToGuest : null))
       : null;
@@ -820,6 +824,64 @@ function FolioPage() {
       );
     }
     load();
+  }
+
+  /** Forward-only auto-switch: a valid GSTIN typed into "Guest GSTIN" that
+   *  matches a billing company flips Bill-To to that company. No match →
+   *  fetch details from the GST portal and create the company. Clearing the
+   *  field never reverts a manually chosen Bill-To. */
+  async function autoBillToFromGstin() {
+    if (!folio) return;
+    // Don't fight the staff member when a company/other guest is already Bill-To.
+    if (folio.billing_company_id || folio.billing_guest_id) return;
+    const gstin = (folio.guest_gstin ?? "").trim().toUpperCase();
+    if (!isValidGSTIN(gstin)) return;
+
+    let co = billingCompanies.find((c) => (c.gstin ?? "").trim().toUpperCase() === gstin) ?? null;
+
+    if (!co) {
+      // Create a billing company from the GST portal profile when possible.
+      const t = toast.loading("GSTIN not on file — fetching company details…");
+      try {
+        const res = await gstinLookup({ data: { gstin } });
+        toast.dismiss(t);
+        if (res.status < 200 || res.status >= 300) {
+          toast.warning(
+            "No billing company matches this GSTIN. Create it under Billing → Companies, then pick it in Bill To.",
+          );
+          return;
+        }
+        const profile = parseGstinProfile(res.body);
+        const { data: inserted, error } = await supabase
+          .from("billing_companies")
+          .insert({
+            property_id: folio.property_id,
+            name: profile.name || `GSTIN ${gstin}`,
+            gstin,
+            address: profile.address || null,
+            state: profile.state || null,
+            gst_status: profile.gstStatus || null,
+            is_active: true,
+          } as any)
+          .select("id,name,gstin,address,phone,email,city,state,state_code,nation")
+          .single();
+        if (error || !inserted) {
+          toastError(error ?? new Error("insert failed"));
+          return;
+        }
+        co = inserted as unknown as (typeof billingCompanies)[number];
+        setBillingCompanies((prev) => [...prev, co!]);
+        toast.success(`Billing company "${co.name}" created from GSTIN.`);
+      } catch {
+        toast.dismiss(t);
+        toast.warning(
+          "No billing company matches this GSTIN and the GST lookup service is unreachable. Create it under Billing → Companies.",
+        );
+        return;
+      }
+    }
+
+    if (co) await updateBillTo(`co:${co.id}`, co);
   }
 
   async function addCharge() {
@@ -2383,6 +2445,7 @@ function FolioPage() {
                       setFolio({ ...folio, guest_gstin: v });
                       await supabase.from("folios").update({ guest_gstin: v }).eq("id", folio.id);
                     }}
+                    onBlur={() => void autoBillToFromGstin()}
                   />
                   {folio.guest_gstin && !isValidOrEmptyGSTIN(folio.guest_gstin) && (
                     <p className="text-[11px] text-red-600">{GSTIN_ERROR}</p>
