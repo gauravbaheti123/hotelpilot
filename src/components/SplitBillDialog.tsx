@@ -1193,16 +1193,19 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
               </Button>
             </div>
             <div className="rounded border divide-y max-h-80 overflow-y-auto">
-              {charges.map((c) => (
-                <div key={c.id} className="flex items-center gap-2 p-2 text-xs">
+              {units.map((u) => (
+                <div key={u.id} className="flex items-center gap-2 p-2 text-xs">
                   <div className="flex-1 min-w-0">
-                    <div className="truncate">{c.description}</div>
-                    <div className="text-[10px] uppercase text-muted-foreground">{c.charge_type}</div>
+                    <div className="truncate">{u.label}</div>
+                    <div className="text-[10px] uppercase text-muted-foreground">
+                      {u.kind}
+                      {u.members.length > 1 ? ` · ${u.members.length} items` : ""}
+                    </div>
                   </div>
-                  <div className="tabular-nums font-medium">{inr(c.amount)}</div>
+                  <div className="tabular-nums font-medium">{inr(u.amount)}</div>
                   <Select
-                    value={String(Math.min(assign[c.id] ?? 0, billCount - 1))}
-                    onValueChange={(v) => assignCharge(c.id, Number(v))}
+                    value={String(Math.min(assign[u.id] ?? 0, billCount - 1))}
+                    onValueChange={(v) => assignCharge(u.id, Number(v))}
                   >
                     <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
