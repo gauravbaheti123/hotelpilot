@@ -162,7 +162,8 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
   const [dueReason, setDueReason] = useState("");
   // Late-checkout prompt (staff decides; never auto-applied).
   const [latePrompt, setLatePrompt] = useState<
-    { graceStr: string; rate: number; roomId: string | null; roomNo: string } | null
+    | { graceStr: string; rate: number; roomId: string | null; roomNo: string; category: string; bookingRoomId: string | null }
+    | null
   >(null);
   const [lateChoice, setLateChoice] = useState<"full" | "custom">("full");
   const [lateCustom, setLateCustom] = useState("");
@@ -424,8 +425,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     setLatePrompt({
       graceStr,
       rate,
-      roomId: primaryRoom?.id ?? null,
+      roomId: primaryRoom?.room_id ?? null,
       roomNo: primaryRoom?.rooms?.room_number ? String(primaryRoom.rooms.room_number) : "",
+      category: primaryRoom?.room_categories?.name ? String(primaryRoom.room_categories.name) : "",
+      bookingRoomId: primaryRoom?.id ?? null,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, loading, folio?.id, booking?.id, property?.checkout_grace_time, hasAnyLateChargeRow]);
