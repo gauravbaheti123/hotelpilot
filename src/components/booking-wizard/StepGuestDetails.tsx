@@ -192,44 +192,6 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
 
   return (
     <div className="space-y-8">
-      {/* Find existing guest */}
-      <div className="space-y-2">
-        <Label htmlFor="wiz-guest-search">Find existing guest</Label>
-        <div className="relative sm:max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            id="wiz-guest-search"
-            className="pl-9"
-            placeholder="Search by name, mobile or email…"
-            value={term}
-            onChange={(e) => setTerm(e.target.value)}
-          />
-          {searching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
-        </div>
-        {matches.length > 0 && (
-          <div className="divide-y rounded-md border sm:max-w-md">
-            {matches.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
-                onClick={() => applyGuest(m)}
-              >
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{m.name}</span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {m.mobile ?? "—"}{m.company ? ` · ${m.company}` : ""}
-                  </span>
-                </span>
-                <span className="ml-3 shrink-0 text-xs text-muted-foreground">
-                  {m.visit_count} stay{m.visit_count === 1 ? "" : "s"}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
       {dupe && (
         <div className="flex flex-wrap items-center gap-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:bg-amber-950/30">
           <UserCheck className="h-4 w-4" />
@@ -250,11 +212,46 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="wiz-name">Name *</Label>
-            <Input
-              id="wiz-name" value={guest.name} maxLength={120}
-              onChange={(e) => onChange({ name: e.target.value })}
-              onBlur={(e) => onChange({ name: titleCase(e.target.value) })}
-            />
+            <div ref={nameWrapRef} className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="wiz-name" value={guest.name} maxLength={120}
+                className="pl-9"
+                placeholder="Start typing — repeat guests auto-fill"
+                autoComplete="off"
+                onChange={(e) => handleNameChange(e.target.value)}
+                onFocus={() => setListOpen(true)}
+                onBlur={(e) => onChange({ name: titleCase(e.target.value) })}
+              />
+              {searching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+              {listOpen && matches.length > 0 && (
+                <div className="absolute z-50 mt-1 max-h-64 w-full min-w-72 overflow-auto divide-y rounded-md border bg-popover shadow-md">
+                  {matches.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
+                      onMouseDown={(e) => { e.preventDefault(); applyGuest(m); }}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">{m.name}</span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {m.mobile ?? "—"}{m.company ? ` · ${m.company}` : ""}
+                        </span>
+                      </span>
+                      <span className="ml-3 shrink-0 text-xs text-muted-foreground">
+                        {m.visit_count} stay{m.visit_count === 1 ? "" : "s"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {guest.guestId && (
+              <p className="text-xs text-muted-foreground">
+                Linked to existing guest — edits save back to their record.
+              </p>
+            )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="wiz-mobile">Mobile *</Label>
