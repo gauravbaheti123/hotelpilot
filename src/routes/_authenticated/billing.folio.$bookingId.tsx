@@ -881,7 +881,7 @@ function FolioPage() {
       }
     }
 
-    if (co) await updateBillTo(`co:${co.id}`);
+    if (co) await updateBillTo(`co:${co.id}`, co);
   }
 
   async function addCharge() {
