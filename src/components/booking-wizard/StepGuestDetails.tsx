@@ -40,18 +40,25 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge" }: Props) {
   const banquet = variant === "banquet";
-  const [term, setTerm] = useState("");
   const [matches, setMatches] = useState<GuestSearchDetail[]>([]);
   const [searching, setSearching] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
   const [dupe, setDupe] = useState<GuestIdLookupResult | null>(null);
   const dismissedRef = useRef<string | null>(null);
+  // Suppress the search once after programmatic fills (guest picked from list).
+  const skipSearchRef = useRef(false);
+  // Name at the moment a guest was picked — manual edits that diverge unlink guestId.
+  const selectedNameRef = useRef<string | null>(null);
+  const nameWrapRef = useRef<HTMLDivElement>(null);
 
   const foreign = isForeign(guest.nation);
 
-  // Debounced "find existing guest" search (consolidated Part 1 helper).
+  // Live typeahead on the Name field — typing a repeat guest's name searches
+  // existing guests by name / mobile / email (most recently active first).
   useEffect(() => {
-    const q = term.trim();
-    if (q.length < 2) { setMatches([]); return; }
+    if (skipSearchRef.current) { skipSearchRef.current = false; return; }
+    const q = guest.name.trim();
+    if (q.length < 2 || !listOpen) { setMatches([]); return; }
     setSearching(true);
     const t = window.setTimeout(async () => {
       const rows = await searchGuestsDetailed(propertyId, q, 8);
@@ -59,7 +66,28 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
       setSearching(false);
     }, 350);
     return () => { window.clearTimeout(t); setSearching(false); };
-  }, [term, propertyId]);
+  }, [guest.name, propertyId, listOpen]);
+
+  // Close the dropdown on outside click.
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (nameWrapRef.current && !nameWrapRef.current.contains(e.target as Node)) setListOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  /** Manual name typing: open suggestions; unlink guestId if it no longer matches the picked guest. */
+  function handleNameChange(v: string) {
+    const picked = selectedNameRef.current;
+    if (guest.guestId && picked && v.trim().toLowerCase() !== picked.trim().toLowerCase()) {
+      selectedNameRef.current = null;
+      onChange({ name: v, guestId: null });
+    } else {
+      onChange({ name: v });
+    }
+    setListOpen(true);
+  }
 
   // Duplicate detection once a full mobile number is typed.
   useEffect(() => {
@@ -74,6 +102,9 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
   }, [guest.mobile, guest.idProofNumber, guest.guestId, propertyId]);
 
   function applyGuest(g: GuestSearchDetail) {
+    skipSearchRef.current = true;
+    selectedNameRef.current = g.name ?? "";
+    setListOpen(false);
     onChange({
       guestId: g.id,
       name: g.name ?? "",
@@ -89,7 +120,6 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
       company: g.company ?? "",
       gstNumber: g.gst_number ?? "",
     });
-    setTerm("");
     setMatches([]);
     void attachExistingDoc(g.mobile ?? "", g.id_proof_number ?? "");
   }
@@ -161,44 +191,6 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
 
   return (
     <div className="space-y-8">
-      {/* Find existing guest */}
-      <div className="space-y-2">
-        <Label htmlFor="wiz-guest-search">Find existing guest</Label>
-        <div className="relative sm:max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            id="wiz-guest-search"
-            className="pl-9"
-            placeholder="Search by name, mobile or email…"
-            value={term}
-            onChange={(e) => setTerm(e.target.value)}
-          />
-          {searching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
-        </div>
-        {matches.length > 0 && (
-          <div className="divide-y rounded-md border sm:max-w-md">
-            {matches.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
-                onClick={() => applyGuest(m)}
-              >
-                <span className="min-w-0">
-                  <span className="block truncate font-medium">{m.name}</span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {m.mobile ?? "—"}{m.company ? ` · ${m.company}` : ""}
-                  </span>
-                </span>
-                <span className="ml-3 shrink-0 text-xs text-muted-foreground">
-                  {m.visit_count} stay{m.visit_count === 1 ? "" : "s"}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
       {dupe && (
         <div className="flex flex-wrap items-center gap-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm dark:bg-amber-950/30">
           <UserCheck className="h-4 w-4" />
@@ -219,11 +211,46 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="wiz-name">Name *</Label>
-            <Input
-              id="wiz-name" value={guest.name} maxLength={120}
-              onChange={(e) => onChange({ name: e.target.value })}
-              onBlur={(e) => onChange({ name: titleCase(e.target.value) })}
-            />
+            <div ref={nameWrapRef} className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="wiz-name" value={guest.name} maxLength={120}
+                className="pl-9"
+                placeholder="Start typing — repeat guests auto-fill"
+                autoComplete="off"
+                onChange={(e) => handleNameChange(e.target.value)}
+                onFocus={() => setListOpen(true)}
+                onBlur={(e) => onChange({ name: titleCase(e.target.value) })}
+              />
+              {searching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />}
+              {listOpen && matches.length > 0 && (
+                <div className="absolute z-50 mt-1 max-h-64 w-full min-w-72 overflow-auto divide-y rounded-md border bg-popover shadow-md">
+                  {matches.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted"
+                      onMouseDown={(e) => { e.preventDefault(); applyGuest(m); }}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">{m.name}</span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {m.mobile ?? "—"}{m.company ? ` · ${m.company}` : ""}
+                        </span>
+                      </span>
+                      <span className="ml-3 shrink-0 text-xs text-muted-foreground">
+                        {m.visit_count} stay{m.visit_count === 1 ? "" : "s"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {guest.guestId && (
+              <p className="text-xs text-muted-foreground">
+                Linked to existing guest — edits save back to their record.
+              </p>
+            )}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="wiz-mobile">Mobile *</Label>
