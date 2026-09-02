@@ -3754,6 +3754,7 @@ export type Database = {
           paid_at: string
           property_id: string
           reference_no: string | null
+          segment_bill_id: string | null
           wipe_log_id: string | null
           wiped_at: string | null
         }
@@ -3770,6 +3771,7 @@ export type Database = {
           paid_at?: string
           property_id: string
           reference_no?: string | null
+          segment_bill_id?: string | null
           wipe_log_id?: string | null
           wiped_at?: string | null
         }
@@ -3786,6 +3788,7 @@ export type Database = {
           paid_at?: string
           property_id?: string
           reference_no?: string | null
+          segment_bill_id?: string | null
           wipe_log_id?: string | null
           wiped_at?: string | null
         }
@@ -3823,6 +3826,13 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_segment_bill_id_fkey"
+            columns: ["segment_bill_id"]
+            isOneToOne: false
+            referencedRelation: "segment_bills"
             referencedColumns: ["id"]
           },
           {
@@ -6684,6 +6694,15 @@ export type Database = {
       }
       settle_segment_bill_complimentary: {
         Args: { _actor?: string; _bill_id: string; _reason: string }
+        Returns: Json
+      }
+      settle_segment_bill_with_payment: {
+        Args: {
+          _actor?: string
+          _bill_id: string
+          _mode: string
+          _reference_no?: string
+        }
         Returns: Json
       }
       shift_room: {
