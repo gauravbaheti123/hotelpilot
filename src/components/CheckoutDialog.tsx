@@ -162,7 +162,8 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
   const [dueReason, setDueReason] = useState("");
   // Late-checkout prompt (staff decides; never auto-applied).
   const [latePrompt, setLatePrompt] = useState<
-    { graceStr: string; rate: number; roomId: string | null; roomNo: string } | null
+    | { graceStr: string; rate: number; roomId: string | null; roomNo: string; category: string; bookingRoomId: string | null }
+    | null
   >(null);
   const [lateChoice, setLateChoice] = useState<"full" | "custom">("full");
   const [lateCustom, setLateCustom] = useState("");
@@ -424,8 +425,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     setLatePrompt({
       graceStr,
       rate,
-      roomId: primaryRoom?.id ?? null,
+      roomId: primaryRoom?.room_id ?? null,
       roomNo: primaryRoom?.rooms?.room_number ? String(primaryRoom.rooms.room_number) : "",
+      category: primaryRoom?.room_categories?.name ? String(primaryRoom.room_categories.name) : "",
+      bookingRoomId: primaryRoom?.id ?? null,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, loading, folio?.id, booking?.id, property?.checkout_grace_time, hasAnyLateChargeRow]);
@@ -470,11 +473,13 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         toast.error("GST slab missing for late-checkout rate. Configure it in Master Data → GST Slabs.");
         return;
       }
-      const roomNo = p.roomNo ? ` — Rm ${p.roomNo}` : "";
-      const label =
-        lateChoice === "full"
-          ? `Late Checkout — 1 additional night${roomNo} (after ${p.graceStr})`
-          : `Late Checkout charge${roomNo} (after ${p.graceStr})`;
+      // Guest-facing label matches the standard room-night format used by
+      // seed_room_charge_for_booking_room — no "Late Checkout" wording on the
+      // printed bill. The late-checkout origin is tracked internally via
+      // source_table = 'late_checkout' (never rendered on invoices).
+      const label = `Room ${p.roomNo} · ${p.category} · 1 night(s)`;
+      // The added night is the scheduled checkout date (the night being paid for).
+      const nightDate = String(booking.check_out).slice(0, 10);
       const { error } = await supabase.from("folio_charges").insert({
         folio_id: folio.id,
         charge_type: "room",
@@ -484,7 +489,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         amount: tax.amount,
         gst_rate: tax.gstRate,
         gst_amount: tax.gstAmount,
-        charged_on: istToday(),
+        charged_on: nightDate,
         source_table: "late_checkout",
         source_id: p.roomId,
         created_by: user?.id ?? null,
@@ -492,6 +497,17 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       if (error) {
         toastError(error, "Late checkout charge could not be added");
         return;
+      }
+      // Extend the stay by one night so the bill's Duration/night count
+      // reflects the extra night seamlessly.
+      const nextDay = (() => {
+        const d = new Date(`${nightDate}T00:00:00`);
+        d.setDate(d.getDate() + 1);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      })();
+      await supabase.from("bookings").update({ check_out: nextDay } as any).eq("id", booking.id);
+      if (p.bookingRoomId) {
+        await supabase.from("booking_rooms").update({ check_out: nextDay } as any).eq("id", p.bookingRoomId);
       }
       await logActivity({
         property_id: booking.property_id,
