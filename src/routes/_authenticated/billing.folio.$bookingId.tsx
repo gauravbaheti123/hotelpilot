@@ -2443,6 +2443,7 @@ function FolioPage() {
                       setFolio({ ...folio, guest_gstin: v });
                       await supabase.from("folios").update({ guest_gstin: v }).eq("id", folio.id);
                     }}
+                    onBlur={() => void autoBillToFromGstin()}
                   />
                   {folio.guest_gstin && !isValidOrEmptyGSTIN(folio.guest_gstin) && (
                     <p className="text-[11px] text-red-600">{GSTIN_ERROR}</p>
