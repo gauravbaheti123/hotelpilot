@@ -23,6 +23,8 @@ import {
 } from "@/lib/kotPrint";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
+import { SettleFoodBillDialog } from "@/components/SettleFoodBillDialog";
+
 
 export type SegmentKind = "food" | "laundry";
 
@@ -119,6 +121,23 @@ export function KotHistoryDialog({
   const [delTarget, setDelTarget] = useState<Punch | null>(null);
   const [busy, setBusy] = useState(false);
   const [removedIds, setRemovedIds] = useState<string[]>([]);
+  const [settleOpen, setSettleOpen] = useState(false);
+
+  /**
+   * Standalone settlement target: the running (open) in-house bill for this
+   * room. Walk-in / table bills keep their existing counter flow.
+   */
+  const openBill = (() => {
+    if (!roomId || !bookingId) return null;
+    const rows = punches.filter((p) => p.bill.status === "open");
+    if (rows.length === 0) return null;
+    const id = rows[0].bill.id;
+    const items = rows.filter((p) => p.bill.id === id).flatMap((p) => p.items);
+    const total = items.reduce((s, i) => s + Number(i.amount || 0) + Number(i.gst_amount || 0), 0);
+    if (total <= 0) return null;
+    return { id, bill_number: rows[0].bill.bill_number, total: Math.round(total * 100) / 100 };
+  })();
+
 
   /**
    * Pre-checkout gate: once the segment bill is settled (which happens at
@@ -442,9 +461,27 @@ export function KotHistoryDialog({
             })}
           </div>
 
+          {openBill && (
+            <div className="rounded-md border p-3 flex flex-wrap items-center gap-2">
+              <div className="text-sm">
+                <div className="font-medium">Running bill {openBill.bill_number}</div>
+                <div className="text-xs text-muted-foreground">
+                  Collect payment now — room stays open.
+                </div>
+              </div>
+              <div className="ml-auto flex items-center gap-3">
+                <span className="text-sm font-semibold">{inr(openBill.total)}</span>
+                <Button size="sm" onClick={() => setSettleOpen(true)}>
+                  Settle {segment === "food" ? "food" : "laundry"} bill
+                </Button>
+              </div>
+            </div>
+          )}
+
           <DialogFooter>
             <Button variant="outline" onClick={onClose}>Close</Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
 
@@ -530,6 +567,18 @@ export function KotHistoryDialog({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SettleFoodBillDialog
+        open={settleOpen && !!openBill}
+        onClose={() => setSettleOpen(false)}
+        propertyId={propertyId}
+        billId={openBill?.id ?? null}
+        billNumber={openBill?.bill_number ?? null}
+        amount={openBill?.total ?? 0}
+        segment={segment}
+        onSettled={() => { void load(); onChanged?.(); }}
+      />
     </>
+
   );
 }
