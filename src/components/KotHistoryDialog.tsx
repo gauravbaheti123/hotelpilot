@@ -119,6 +119,23 @@ export function KotHistoryDialog({
   const [delTarget, setDelTarget] = useState<Punch | null>(null);
   const [busy, setBusy] = useState(false);
   const [removedIds, setRemovedIds] = useState<string[]>([]);
+  const [settleOpen, setSettleOpen] = useState(false);
+
+  /**
+   * Standalone settlement target: the running (open) in-house bill for this
+   * room. Walk-in / table bills keep their existing counter flow.
+   */
+  const openBill = (() => {
+    if (!roomId || !bookingId) return null;
+    const rows = punches.filter((p) => p.bill.status === "open");
+    if (rows.length === 0) return null;
+    const id = rows[0].bill.id;
+    const items = rows.filter((p) => p.bill.id === id).flatMap((p) => p.items);
+    const total = items.reduce((s, i) => s + Number(i.amount || 0) + Number(i.gst_amount || 0), 0);
+    if (total <= 0) return null;
+    return { id, bill_number: rows[0].bill.bill_number, total: Math.round(total * 100) / 100 };
+  })();
+
 
   /**
    * Pre-checkout gate: once the segment bill is settled (which happens at
