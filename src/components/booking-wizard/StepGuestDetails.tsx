@@ -102,6 +102,9 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
   }, [guest.mobile, guest.idProofNumber, guest.guestId, propertyId]);
 
   function applyGuest(g: GuestSearchDetail) {
+    skipSearchRef.current = true;
+    selectedNameRef.current = g.name ?? "";
+    setListOpen(false);
     onChange({
       guestId: g.id,
       name: g.name ?? "",
