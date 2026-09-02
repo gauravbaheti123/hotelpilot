@@ -219,6 +219,65 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     { mode: "cash", amount: "", reference: "" },
   ]);
 
+  /**
+   * Assignable units for Step 2 (display + assignment only — storage is
+   * unchanged). Room charges spanning several nights are expanded into one
+   * derived row per night (amounts distributed with remainder so they sum
+   * EXACTLY to the stored charge). Food charges that came from a segment bill
+   * are grouped into one row per bill reference; their underlying item rows
+   * still travel individually into the split payload. Everything else stays
+   * a single row, as before.
+   */
+  const units = useMemo(() => {
+    const list: { id: string; label: string; kind: string; amount: number; members: Charge[] }[] = [];
+    const groupAt = new Map<string, number>();
+    for (const c of charges) {
+      const nights = Math.round(Number(c.qty ?? 0));
+      if (c.charge_type === "room" && nights > 1) {
+        const parts = expandRoomNights([c as any]) as any[];
+        parts.forEach((p, i) => {
+          const day = String(p.charged_on ?? "").slice(0, 10);
+          list.push({
+            id: String(p.id ?? `${c.id}:n${i}`),
+            label: `${p.description}${day ? ` — ${day.split("-").reverse().join("/")}` : ` — Night ${i + 1}`}`,
+            kind: "room (night)",
+            amount: Number(p.amount ?? 0),
+            members: [{ ...(c as any), ...p, id: String(p.id ?? `${c.id}:n${i}`) } as Charge],
+          });
+        });
+        continue;
+      }
+      const ref = (c.segment_bill_ref ?? "").trim();
+      if (c.charge_type === "food" && ref) {
+        const key = `food::${ref}`;
+        const at = groupAt.get(key);
+        if (at === undefined) {
+          groupAt.set(key, list.length);
+          list.push({
+            id: `seg:${key}`,
+            label: `Food Bill ${ref}`,
+            kind: "food",
+            amount: Number(c.amount ?? 0),
+            members: [c],
+          });
+        } else {
+          const row = list[at]!;
+          row.amount = round2(row.amount + Number(c.amount ?? 0));
+          row.members.push(c);
+        }
+        continue;
+      }
+      list.push({
+        id: c.id,
+        label: c.description,
+        kind: c.charge_type,
+        amount: Number(c.amount ?? 0),
+        members: [c],
+      });
+    }
+    return list;
+  }, [charges]);
+
   // Default assignment: room/sundry/extra/discount → Bill 1; food → Bill 2.
   useEffect(() => {
     if (!open) return;
@@ -241,7 +300,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
       newParty({ name: "", mobile: "", gstin: "", bill_type: "gst_invoice" }),
     ]);
     const nextAssign: Record<string, number> = {};
-    for (const c of charges) nextAssign[c.id] = c.charge_type === "food" ? 1 : 0;
+    for (const u of units) nextAssign[u.id] = u.kind === "food" ? 1 : 0;
     setAssign(nextAssign);
     setPayRows([
       { mode: "cash", amount: "", reference: "" },
