@@ -565,6 +565,18 @@ export function KotHistoryDialog({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SettleFoodBillDialog
+        open={settleOpen && !!openBill}
+        onClose={() => setSettleOpen(false)}
+        propertyId={propertyId}
+        billId={openBill?.id ?? null}
+        billNumber={openBill?.bill_number ?? null}
+        amount={openBill?.total ?? 0}
+        segment={segment}
+        onSettled={() => { void load(); onChanged?.(); }}
+      />
     </>
+
   );
 }
