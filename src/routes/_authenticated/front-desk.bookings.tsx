@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,7 +24,6 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
-import { toast } from "sonner";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_TONE } from "@/lib/front-desk";
 import { PlusCircle, FileText } from "lucide-react";
 
@@ -50,6 +49,23 @@ interface BookingRow {
   guests: { name: string; mobile: string | null } | null;
 }
 
+const BOOKING_SELECT =
+  "id,booking_number,status,check_in,check_out,adults,children,total_amount,balance_amount,guests(name,mobile)";
+
+function applyStatus(q: any, status: string) {
+  return status !== "all" ? q.eq("status", status as any) : q;
+}
+
+async function fetchBanquetFiltered(
+  propertyId: string,
+  rows: any[],
+): Promise<BookingRow[]> {
+  const scope = await fetchBanquetScope(propertyId);
+  return rows.filter(
+    (b) => !isBanquetRecord(scope, { booking_id: b.id }),
+  ) as unknown as BookingRow[];
+}
+
 function BookingsPage() {
   const { current, loading: propLoading } = useCurrentProperty();
   const [rows, setRows] = useState<BookingRow[]>([]);
@@ -57,43 +73,99 @@ function BookingsPage() {
   const [status, setStatus] = useState<string>("all");
   const [search, setSearch] = useState("");
 
+  // Debounced search term so server-side search only fires once typing pauses.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [search]);
+
   async function load() {
     if (!current) return;
     setLoading(true);
-    let q = supabase
-      .from("bookings")
-      .select("id,booking_number,status,check_in,check_out,adults,children,total_amount,balance_amount,guests(name,mobile)")
-      .eq("property_id", current.id)
-      .order("created_at", { ascending: false })
-      .limit(200);
-    if (status !== "all") q = q.eq("status", status as any);
-    const { data, error } = await q;
-    if (error) toastError(error);
-    // Banquet event-block stays stay listed for 48h after the event ends.
-    const scope = await fetchBanquetScope(current.id);
-    setRows(((data ?? []) as any[]).filter(
-      (b) => !isBanquetRecord(scope, { booking_id: b.id }),
-    ) as unknown as BookingRow[]);
-    setLoading(false);
+    const term = debouncedSearch;
+    try {
+      if (term) {
+        // Active search: no date/created_at window — find the booking anywhere
+        // in the property's history. Match by booking number OR by guest
+        // name/mobile (resolved through the guests table), then union client-side.
+        const byNumber = applyStatus(
+          supabase
+            .from("bookings")
+            .select(BOOKING_SELECT)
+            .eq("property_id", current.id)
+            .ilike("booking_number", `%${term}%`)
+            .order("created_at", { ascending: false })
+            .limit(200),
+          status,
+        );
+
+        // Guest name/mobile matches: resolve guest ids, then fetch their bookings.
+        const { data: guestRows } = await supabase
+          .from("guests")
+          .select("id")
+          .or(`name.ilike.%${term}%,mobile.ilike.%${term}%`)
+          .limit(200);
+        const guestIds = (guestRows ?? []).map((g: any) => g.id);
+
+        const { data: numData, error: numErr } = await byNumber;
+        if (numErr) toastError(numErr);
+
+        let nameData: any[] = [];
+        if (guestIds.length) {
+          const { data, error } = await applyStatus(
+            supabase
+              .from("bookings")
+              .select(BOOKING_SELECT)
+              .eq("property_id", current.id)
+              .in("guest_id", guestIds)
+              .order("created_at", { ascending: false })
+              .limit(200),
+            status,
+          );
+          if (error) toastError(error);
+          nameData = (data ?? []) as any[];
+        }
+
+        const seen = new Set<string>();
+        const merged = [...(numData ?? []), ...nameData].filter((b: any) => {
+          if (seen.has(b.id)) return false;
+          seen.add(b.id);
+          return true;
+        }) as any[];
+
+        setRows(await fetchBanquetFiltered(current.id, merged));
+      } else {
+        // Browse view (no search text): keep the capped recent-window fetch.
+        const q = applyStatus(
+          supabase
+            .from("bookings")
+            .select(BOOKING_SELECT)
+            .eq("property_id", current.id)
+            .order("created_at", { ascending: false })
+            .limit(200),
+          status,
+        );
+        const { data, error } = await q;
+        if (error) toastError(error);
+        setRows(await fetchBanquetFiltered(current.id, (data ?? []) as any[]));
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
     if (current) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id, status]);
+  }, [current?.id, status, debouncedSearch]);
 
   // Pull-to-refresh (native shell only).
   useRegisterRefresh(load);
-
-  const filtered = rows.filter((r) => {
-    if (!search.trim()) return true;
-    const s = search.toLowerCase();
-    return (
-      r.booking_number.toLowerCase().includes(s) ||
-      (r.guests?.name ?? "").toLowerCase().includes(s) ||
-      (r.guests?.mobile ?? "").toLowerCase().includes(s)
-    );
-  });
 
   if (propLoading) return <AppShell title="Bookings"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
   if (!current) return <AppShell title="Bookings"><EmptyPropertyState /></AppShell>;
@@ -129,7 +201,7 @@ function BookingsPage() {
           <CardContent className="pt-6">
             {loading ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : filtered.length === 0 ? (
+            ) : rows.length === 0 ? (
               <p className="text-sm text-muted-foreground">No bookings.</p>
             ) : (
               <Table>
@@ -146,7 +218,7 @@ function BookingsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((r) => (
+                  {rows.map((r) => (
                     <TableRow key={r.id} className="cursor-pointer">
                       <TableCell className="font-medium">
                         <Link to="/front-desk/booking/$id" params={{ id: r.id }} className="text-primary hover:underline">
