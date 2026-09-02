@@ -41,7 +41,9 @@ import { loadPaymentTargets, mergeSegmentBillToFolio, type PaymentTarget } from 
 import { ArrowLeft, Plus, Printer, Trash2, CheckCircle2, Ban, Hotel, Download, Mail, MessageCircle, Percent, Pencil, CalendarPlus } from "lucide-react";
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { verifyManagerPassword } from "@/lib/manager-verify";
-import { isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
+import { isValidGSTIN, isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
+import { gstinLookup } from "@/lib/gstinLookup.functions";
+import { parseGstinProfile } from "@/lib/gstinProfile";
 import { resolveGstRate, resolveStateCode, resolveTaxType, splitGst } from "@/lib/gst";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
