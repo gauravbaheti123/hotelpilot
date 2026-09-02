@@ -23,6 +23,8 @@ import {
 } from "@/lib/kotPrint";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
+import { SettleFoodBillDialog } from "@/components/SettleFoodBillDialog";
+
 
 export type SegmentKind = "food" | "laundry";
 
