@@ -130,6 +130,7 @@ interface BookingCtx {
   } | null;
   booking_rooms: {
     id: string; rate: number; check_in: string; check_out: string;
+    status?: string | null;
     actual_check_in?: string | null; actual_check_out?: string | null;
     rooms: { room_number: string } | null;
     room_categories: { name: string; gst_rate: number | null } | null;
@@ -345,7 +346,7 @@ function FolioPage() {
       .from("bookings")
       .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,checked_out_at,source,ota_partner_name,
         guests(name,mobile,gst_number,company,address,city,state,state_code,country,id_proof_type,id_proof_number,nationality),
-        booking_rooms!booking_rooms_booking_id_fkey(id,rate,check_in,check_out,actual_check_in,actual_check_out,rooms!booking_rooms_room_id_fkey(room_number),room_categories(name,gst_rate))`)
+        booking_rooms!booking_rooms_booking_id_fkey(id,rate,status,check_in,check_out,actual_check_in,actual_check_out,rooms!booking_rooms_room_id_fkey(room_number),room_categories(name,gst_rate))`)
       .eq("id", bookingId).single();
     if (be) { toastError(be); setLoading(false); return; }
     const bk = b as unknown as BookingCtx;
@@ -2645,16 +2646,34 @@ function FolioPage() {
             </div>
             <div className="px-8 py-4">
               <div className="mb-1 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Stay Details</div>
-              {booking.booking_rooms[0] && (
-                <>
-                  <div className="text-xs">Room: <span className="font-semibold">{booking.booking_rooms[0].rooms?.room_number ?? "—"}</span></div>
-                  <div className="text-xs">Category: <span className="font-semibold">{booking.booking_rooms[0].room_categories?.name ?? "—"}</span></div>
-                </>
-              )}
-              {/* Who actually stayed — always shown, regardless of who the bill is addressed to. */}
-              <div className="text-xs">Guest: <span className="font-semibold">{booking.guests?.name ?? "—"}</span>{booking.guests?.mobile ? ` · ${booking.guests.mobile}` : ""}</div>
-              <div className="text-xs">Check-in: <span className="font-semibold">{fmtDateTime(booking.booking_rooms[0]?.actual_check_in ?? booking.check_in, property?.default_checkin_time)}</span></div>
-              <div className="text-xs">Check-out: <span className="font-semibold">{fmtDateTime(booking.booking_rooms[0]?.actual_check_out ?? booking.check_out, property?.default_checkout_time)}</span></div>
+              {(() => {
+                // Pick the room the guest actually stayed in last: prefer status='active',
+                // else the non-shifted row with the latest actual_check_out, else first row.
+                // Never surface a 'shifted' (moved-out) room's dates in the header.
+                const rows = booking.booking_rooms ?? [];
+                const active = rows.filter((r) => r.status !== "shifted");
+                const pool = active.length > 0 ? active : rows;
+                const displayRoom =
+                  pool.find((r) => r.status === "active") ??
+                  [...pool].sort((a, b) =>
+                    String(b.actual_check_out ?? "").localeCompare(String(a.actual_check_out ?? "")),
+                  )[0] ??
+                  rows[0];
+                return (
+                  <>
+                    {displayRoom && (
+                      <>
+                        <div className="text-xs">Room: <span className="font-semibold">{displayRoom.rooms?.room_number ?? "—"}</span></div>
+                        <div className="text-xs">Category: <span className="font-semibold">{displayRoom.room_categories?.name ?? "—"}</span></div>
+                      </>
+                    )}
+                    {/* Who actually stayed — always shown, regardless of who the bill is addressed to. */}
+                    <div className="text-xs">Guest: <span className="font-semibold">{booking.guests?.name ?? "—"}</span>{booking.guests?.mobile ? ` · ${booking.guests.mobile}` : ""}</div>
+                    <div className="text-xs">Check-in: <span className="font-semibold">{fmtDateTime(displayRoom?.actual_check_in ?? booking.check_in, property?.default_checkin_time)}</span></div>
+                    <div className="text-xs">Check-out: <span className="font-semibold">{fmtDateTime(displayRoom?.actual_check_out ?? booking.check_out, property?.default_checkout_time)}</span></div>
+                  </>
+                );
+              })()}
               <div className="text-xs">Duration: <span className="font-semibold">{nights} Night{nights > 1 ? "s" : ""}</span> · {booking.adults ?? 1} Adult{(booking.adults ?? 1) > 1 ? "s" : ""}{booking.children ? ` · ${booking.children} Child` : ""}</div>
             </div>
           </div>
