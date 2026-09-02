@@ -339,12 +339,12 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   /** Charges grouped per destination bill — index 0..billCount-1. */
   const billCharges = useMemo(() => {
     const buckets: Charge[][] = Array.from({ length: billCount }, () => []);
-    for (const c of charges) {
-      const idx = Math.min(Math.max(0, assign[c.id] ?? 0), billCount - 1);
-      buckets[idx].push(c);
+    for (const u of units) {
+      const idx = Math.min(Math.max(0, assign[u.id] ?? 0), billCount - 1);
+      for (const m of u.members) buckets[idx].push(m);
     }
     return buckets;
-  }, [charges, assign, billCount]);
+  }, [units, assign, billCount]);
   const bill1Charges = billCharges[0] ?? [];
   const bill2Charges = billCharges[1] ?? [];
 
