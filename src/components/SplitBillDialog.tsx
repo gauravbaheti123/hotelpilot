@@ -602,12 +602,12 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   function autoGroupBySegment() {
     setAssign(() => {
       const next: Record<string, number> = {};
-      for (const c of charges) {
-        const t = c.charge_type;
+      for (const u of units) {
+        const t = u.members[0]?.charge_type ?? "";
         let idx = 0;
         if (t === "food") idx = Math.min(1, billCount - 1);
         else if (t === "laundry" || t === "sundry") idx = Math.min(2, billCount - 1);
-        next[c.id] = idx;
+        next[u.id] = idx;
       }
       return next;
     });
@@ -618,7 +618,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     setBillCount(count);
     setAssign((prev) => {
       const next = { ...prev };
-      for (const c of charges) next[c.id] = Math.min(next[c.id] ?? 0, count - 1);
+      for (const u of units) next[u.id] = Math.min(next[u.id] ?? 0, count - 1);
       return next;
     });
   }
