@@ -130,6 +130,7 @@ interface BookingCtx {
   } | null;
   booking_rooms: {
     id: string; rate: number; check_in: string; check_out: string;
+    status?: string | null;
     actual_check_in?: string | null; actual_check_out?: string | null;
     rooms: { room_number: string } | null;
     room_categories: { name: string; gst_rate: number | null } | null;
