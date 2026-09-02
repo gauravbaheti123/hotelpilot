@@ -40,18 +40,25 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge" }: Props) {
   const banquet = variant === "banquet";
-  const [term, setTerm] = useState("");
   const [matches, setMatches] = useState<GuestSearchDetail[]>([]);
   const [searching, setSearching] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
   const [dupe, setDupe] = useState<GuestIdLookupResult | null>(null);
   const dismissedRef = useRef<string | null>(null);
+  // Suppress the search once after programmatic fills (guest picked from list).
+  const skipSearchRef = useRef(false);
+  // Name at the moment a guest was picked — manual edits that diverge unlink guestId.
+  const selectedNameRef = useRef<string | null>(null);
+  const nameWrapRef = useRef<HTMLDivElement>(null);
 
   const foreign = isForeign(guest.nation);
 
-  // Debounced "find existing guest" search (consolidated Part 1 helper).
+  // Live typeahead on the Name field — typing a repeat guest's name searches
+  // existing guests by name / mobile / email (most recently active first).
   useEffect(() => {
-    const q = term.trim();
-    if (q.length < 2) { setMatches([]); return; }
+    if (skipSearchRef.current) { skipSearchRef.current = false; return; }
+    const q = guest.name.trim();
+    if (q.length < 2 || !listOpen) { setMatches([]); return; }
     setSearching(true);
     const t = window.setTimeout(async () => {
       const rows = await searchGuestsDetailed(propertyId, q, 8);
@@ -59,7 +66,28 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
       setSearching(false);
     }, 350);
     return () => { window.clearTimeout(t); setSearching(false); };
-  }, [term, propertyId]);
+  }, [guest.name, propertyId, listOpen]);
+
+  // Close the dropdown on outside click.
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (nameWrapRef.current && !nameWrapRef.current.contains(e.target as Node)) setListOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  /** Manual name typing: open suggestions; unlink guestId if it no longer matches the picked guest. */
+  function handleNameChange(v: string) {
+    const picked = selectedNameRef.current;
+    if (guest.guestId && picked && v.trim().toLowerCase() !== picked.trim().toLowerCase()) {
+      selectedNameRef.current = null;
+      onChange({ name: v, guestId: null });
+    } else {
+      onChange({ name: v });
+    }
+    setListOpen(true);
+  }
 
   // Duplicate detection once a full mobile number is typed.
   useEffect(() => {
