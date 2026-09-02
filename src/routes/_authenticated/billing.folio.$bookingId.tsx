@@ -713,7 +713,7 @@ function FolioPage() {
    *  so the checkout dialog reflects the latest choice, clears the manual
    *  guest GSTIN when a company takes over (company GSTIN drives place of
    *  supply), and writes an audit trail. */
-  async function updateBillTo(selection: string) {
+  async function updateBillTo(selection: string, companyOverride?: (typeof billingCompanies)[number]) {
     if (!folio) return;
     if (!isOpen && !canEditBillToLocked) return;
     const prevCompanyId = folio.billing_company_id ?? null;
@@ -721,7 +721,9 @@ function FolioPage() {
     const companyId = selection.startsWith("co:") ? selection.slice(3) : null;
     const guestId = selection.startsWith("gu:") ? selection.slice(3) : null;
     if (prevCompanyId === companyId && prevGuestId === guestId) return;
-    const co = companyId ? billingCompanies.find((c) => c.id === companyId) ?? null : null;
+    const co = companyId
+      ? billingCompanies.find((c) => c.id === companyId) ?? companyOverride ?? null
+      : null;
     const gu = guestId
       ? (guestHits.find((g) => g.id === guestId) ?? (billToGuest?.id === guestId ? billToGuest : null))
       : null;
