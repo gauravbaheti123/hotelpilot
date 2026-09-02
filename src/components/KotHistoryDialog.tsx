@@ -442,9 +442,27 @@ export function KotHistoryDialog({
             })}
           </div>
 
+          {openBill && (
+            <div className="rounded-md border p-3 flex flex-wrap items-center gap-2">
+              <div className="text-sm">
+                <div className="font-medium">Running bill {openBill.bill_number}</div>
+                <div className="text-xs text-muted-foreground">
+                  Collect payment now — room stays open.
+                </div>
+              </div>
+              <div className="ml-auto flex items-center gap-3">
+                <span className="text-sm font-semibold">{inr(openBill.total)}</span>
+                <Button size="sm" onClick={() => setSettleOpen(true)}>
+                  Settle {segment === "food" ? "food" : "laundry"} bill
+                </Button>
+              </div>
+            </div>
+          )}
+
           <DialogFooter>
             <Button variant="outline" onClick={onClose}>Close</Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
 
