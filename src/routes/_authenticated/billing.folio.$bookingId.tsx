@@ -824,6 +824,64 @@ function FolioPage() {
     load();
   }
 
+  /** Forward-only auto-switch: a valid GSTIN typed into "Guest GSTIN" that
+   *  matches a billing company flips Bill-To to that company. No match →
+   *  fetch details from the GST portal and create the company. Clearing the
+   *  field never reverts a manually chosen Bill-To. */
+  async function autoBillToFromGstin() {
+    if (!folio) return;
+    // Don't fight the staff member when a company/other guest is already Bill-To.
+    if (folio.billing_company_id || folio.billing_guest_id) return;
+    const gstin = (folio.guest_gstin ?? "").trim().toUpperCase();
+    if (!isValidGSTIN(gstin)) return;
+
+    let co = billingCompanies.find((c) => (c.gstin ?? "").trim().toUpperCase() === gstin) ?? null;
+
+    if (!co) {
+      // Create a billing company from the GST portal profile when possible.
+      const t = toast.loading("GSTIN not on file — fetching company details…");
+      try {
+        const res = await gstinLookup({ data: { gstin } });
+        toast.dismiss(t);
+        if (res.status < 200 || res.status >= 300) {
+          toast.warning(
+            "No billing company matches this GSTIN. Create it under Billing → Companies, then pick it in Bill To.",
+          );
+          return;
+        }
+        const profile = parseGstinProfile(res.body);
+        const { data: inserted, error } = await supabase
+          .from("billing_companies")
+          .insert({
+            property_id: folio.property_id,
+            name: profile.name || `GSTIN ${gstin}`,
+            gstin,
+            address: profile.address || null,
+            state: profile.state || null,
+            gst_status: profile.gstStatus || null,
+            is_active: true,
+          } as any)
+          .select("id,name,gstin,address,phone,email,city,state,state_code,nation")
+          .single();
+        if (error || !inserted) {
+          toastError(error ?? new Error("insert failed"));
+          return;
+        }
+        co = inserted as unknown as (typeof billingCompanies)[number];
+        setBillingCompanies((prev) => [...prev, co!]);
+        toast.success(`Billing company "${co.name}" created from GSTIN.`);
+      } catch {
+        toast.dismiss(t);
+        toast.warning(
+          "No billing company matches this GSTIN and the GST lookup service is unreachable. Create it under Billing → Companies.",
+        );
+        return;
+      }
+    }
+
+    if (co) await updateBillTo(`co:${co.id}`);
+  }
+
   async function addCharge() {
     if (!folio) return;
     if (!addDesc.trim()) return toast.error("Description required");
