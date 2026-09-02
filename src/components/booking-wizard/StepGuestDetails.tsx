@@ -120,7 +120,6 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
       company: g.company ?? "",
       gstNumber: g.gst_number ?? "",
     });
-    setTerm("");
     setMatches([]);
     void attachExistingDoc(g.mobile ?? "", g.id_proof_number ?? "");
   }
