@@ -151,6 +151,7 @@ function WhatsAppInboxPage() {
       booking_id: lastWithBooking?.booking_id ?? null,
     });
     setSending(false);
+    if (res?.skipped) { toast.info("WhatsApp not yet integrated — message was not sent"); return; }
     if (!res?.ok) { toast.error(res?.error ?? "Send failed"); return; }
     setReply("");
     load();
