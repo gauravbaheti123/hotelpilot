@@ -41,7 +41,25 @@ async function dispatch(supabase: any, input: SendInput) {
     .eq("id", input.property_id)
     .maybeSingle();
   if (pErr || !property) return { ok: false, error: `Property not found: ${pErr?.message ?? ""}` };
-  if (!property.aisensy_api_key) return { ok: false, error: "AiSensy API key not configured for this property" };
+
+  // Central guard: WhatsApp/AiSensy not yet integrated for this property.
+  // Skip cleanly (no 502, no 'failed' log) — a temporary pause, not a rollback.
+  if (!property.aisensy_api_key) {
+    await supabase.from("whatsapp_messages").insert({
+      property_id: input.property_id,
+      guest_id: input.guest_id ?? null,
+      booking_id: input.booking_id ?? null,
+      wa_number: input.destination,
+      direction: "outbound",
+      content: input.body_preview ?? input.template_event ?? input.campaign_name ?? null,
+      template_name: input.template_event ?? null,
+      campaign_name: input.campaign_name ?? input.template_event ?? null,
+      media_url: input.media?.url ?? null,
+      status: "skipped",
+      error_message: "WhatsApp not yet integrated",
+    });
+    return { ok: true, skipped: true, reason: "whatsapp_not_configured" };
+  }
 
   // Optional template lookup
   let templateBody = "";
