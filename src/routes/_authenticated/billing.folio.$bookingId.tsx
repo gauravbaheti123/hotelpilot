@@ -348,7 +348,7 @@ function FolioPage() {
     const { data: b, error: be } = await supabase
       .from("bookings")
       .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,checked_out_at,source,ota_partner_name,
-        guests(name,mobile,gst_number,company,address,city,state,state_code,country,id_proof_type,id_proof_number,nationality),
+        guests(id,name,mobile,gst_number,company,address,city,state,state_code,country,id_proof_type,id_proof_number,nationality),
         booking_rooms!booking_rooms_booking_id_fkey(id,rate,status,check_in,check_out,actual_check_in,actual_check_out,rooms!booking_rooms_room_id_fkey(room_number),room_categories(name,gst_rate))`)
       .eq("id", bookingId).single();
     if (be) { toastError(be); setLoading(false); return; }
