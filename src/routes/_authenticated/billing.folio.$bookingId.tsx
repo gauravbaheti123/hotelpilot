@@ -2360,6 +2360,21 @@ function FolioPage() {
           </div>
         </div>
 
+        {canOwnerInlineEdit && (
+          <OwnerInlineEditCard
+            propertyId={booking.property_id}
+            guestId={booking.guests?.id ?? null}
+            guestName={booking.guests?.name ?? ""}
+            stayRow={ownerStayRow}
+            folioId={folio.id}
+            guestCompany={folio.guest_company}
+            guestGstin={folio.guest_gstin}
+            folioNotes={folio.notes}
+            onSaved={load}
+          />
+        )}
+
+
         {isOpen && hasPending && (
           <Card className="border-destructive/60 bg-destructive/5">
             <CardHeader className="pb-2">
