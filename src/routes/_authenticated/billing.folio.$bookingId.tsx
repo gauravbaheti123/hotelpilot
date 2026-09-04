@@ -60,6 +60,7 @@ import { invoiceDateLabel } from "@/lib/invoiceDate";
 import { printIsolated, withPrintStyles } from "@/lib/printStyles";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { OwnerInlineEditCard } from "@/components/OwnerInlineEditCard";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 import { withinGraceWindow } from "@/lib/graceWindow";
@@ -126,6 +127,7 @@ interface BookingCtx {
   ota_partner_name?: string | null;
   ota_channels?: { name: string | null } | null;
   guests: {
+    id?: string | null;
     name: string; mobile: string | null; gst_number: string | null; company: string | null; address: string | null;
     city?: string | null; state?: string | null; state_code?: string | null; country?: string | null;
     id_proof_type: string | null; id_proof_number: string | null; nationality: string | null;
@@ -347,7 +349,7 @@ function FolioPage() {
     const { data: b, error: be } = await supabase
       .from("bookings")
       .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,checked_out_at,source,ota_partner_name,
-        guests(name,mobile,gst_number,company,address,city,state,state_code,country,id_proof_type,id_proof_number,nationality),
+        guests(id,name,mobile,gst_number,company,address,city,state,state_code,country,id_proof_type,id_proof_number,nationality),
         booking_rooms!booking_rooms_booking_id_fkey(id,rate,status,check_in,check_out,actual_check_in,actual_check_out,rooms!booking_rooms_room_id_fkey(room_number),room_categories(name,gst_rate))`)
       .eq("id", bookingId).single();
     if (be) { toastError(be); setLoading(false); return; }
@@ -1811,6 +1813,22 @@ function FolioPage() {
   const canDeletePayment = canDeletePaymentPerm || inGraceWindow;
   // Extend stay on a finalised bill: Owner/Manager only.
   const canExtendStay = can("bookings", "extend_stay_locked");
+  // Owner/Superadmin-only inline record correction (works on settled bills too).
+  const canOwnerInlineEdit = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const ownerStayRow = (() => {
+    const rows = booking.booking_rooms ?? [];
+    const active = rows.filter((r) => r.status !== "shifted");
+    const pool = active.length > 0 ? active : rows;
+    return (
+      pool.find((r) => r.status === "active") ??
+      [...pool].sort((a, b) =>
+        String(b.actual_check_out ?? "").localeCompare(String(a.actual_check_out ?? "")),
+      )[0] ??
+      rows[0] ??
+      null
+    );
+  })();
+
 
   function openExtendStay() {
     if (!booking) return;
@@ -2342,6 +2360,21 @@ function FolioPage() {
             )}
           </div>
         </div>
+
+        {canOwnerInlineEdit && (
+          <OwnerInlineEditCard
+            propertyId={booking.property_id}
+            guestId={booking.guests?.id ?? null}
+            guestName={booking.guests?.name ?? ""}
+            stayRow={ownerStayRow}
+            folioId={folio.id}
+            guestCompany={folio.guest_company}
+            guestGstin={folio.guest_gstin}
+            folioNotes={folio.notes}
+            onSaved={load}
+          />
+        )}
+
 
         {isOpen && hasPending && (
           <Card className="border-destructive/60 bg-destructive/5">
