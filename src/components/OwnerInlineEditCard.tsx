@@ -62,6 +62,7 @@ export function OwnerInlineEditCard({
   const [actualOut, setActualOut] = useState<string>("");
   const [company, setCompany] = useState(guestCompany ?? "");
   const [gstin, setGstin] = useState(guestGstin ?? "");
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [rooms, setRooms] = useState<{ id: string; room_number: string; category_id: string | null }[]>([]);
   const [cats, setCats] = useState<{ id: string; name: string }[]>([]);
@@ -83,6 +84,7 @@ export function OwnerInlineEditCard({
     setCheckIn(String(stayRow?.check_in ?? "").slice(0, 10));
     setCheckOut(String(stayRow?.check_out ?? "").slice(0, 10));
     setReason("");
+    setShowAdvanced(false);
     if (!stayRow) return;
     const { data, error } = await supabase
       .from("booking_rooms")
@@ -246,23 +248,38 @@ export function OwnerInlineEditCard({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Check-in (date)</Label>
-              <Input type="date" className="h-9" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Check-out (date)</Label>
-              <Input type="date" className="h-9" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Check-in (actual date &amp; time)</Label>
+              <Label className="text-xs">Check-in</Label>
               <Input type="datetime-local" className="h-9" value={actualIn} onChange={(e) => setActualIn(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Check-out (actual date &amp; time)</Label>
+              <Label className="text-xs">Check-out</Label>
               <Input type="datetime-local" className="h-9" value={actualOut} onChange={(e) => setActualOut(e.target.value)} />
             </div>
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <button
+              type="button"
+              className="text-xs font-medium text-amber-800 underline-offset-2 hover:underline"
+              onClick={() => setShowAdvanced((v) => !v)}
+            >
+              {showAdvanced ? "Hide" : "Advanced: adjust nominal stay range"}
+            </button>
+            {showAdvanced && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Check-in (nominal date)</Label>
+                  <Input type="date" className="h-9" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Check-out (nominal date)</Label>
+                  <Input type="date" className="h-9" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
+                </div>
+                <p className="col-span-2 text-[11px] text-amber-800/80">
+                  This is the underlying reservation date range (affects night-count context),
+                  separate from the actual arrival/departure time above.
+                </p>
+              </div>
+            )}
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Bill-To company</Label>
@@ -281,10 +298,8 @@ export function OwnerInlineEditCard({
         </div>
 
         <p className="rounded-md border border-amber-300 bg-amber-100/60 px-3 py-2 text-[12px] text-amber-900">
-          This corrects the stay record only — it does not change already-posted charges or the
-          invoice amount, and does not affect night-count billing. The date fields set the nominal
-          stay range; the actual date &amp; time fields are what the invoice header shows as the
-          real arrival/departure moment. Use the pencil edit on a charge line to change amounts.
+          This corrects the stay record only — it does not change already-posted charges, the
+          invoice amount, or night-count billing.
         </p>
 
         <div className="space-y-1">
