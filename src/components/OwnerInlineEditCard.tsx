@@ -56,12 +56,23 @@ export function OwnerInlineEditCard({
   const [categoryId, setCategoryId] = useState<string>("");
   const [checkIn, setCheckIn] = useState<string>("");
   const [checkOut, setCheckOut] = useState<string>("");
+  const [actualIn, setActualIn] = useState<string>("");
+  const [actualOut, setActualOut] = useState<string>("");
   const [company, setCompany] = useState(guestCompany ?? "");
   const [gstin, setGstin] = useState(guestGstin ?? "");
 
   const [rooms, setRooms] = useState<{ id: string; room_number: string; category_id: string | null }[]>([]);
   const [cats, setCats] = useState<{ id: string; name: string }[]>([]);
   const [origin, setOrigin] = useState<{ roomId: string; categoryId: string }>({ roomId: "", categoryId: "" });
+  const [originActual, setOriginActual] = useState<{ in: string; out: string }>({ in: "", out: "" });
+
+  const toLocalInput = (iso: string | null | undefined) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
 
   const resetFromProps = useCallback(async () => {
     setName(guestName);
@@ -73,14 +84,22 @@ export function OwnerInlineEditCard({
     if (!stayRow) return;
     const { data, error } = await supabase
       .from("booking_rooms")
-      .select("room_id,category_id")
+      .select("room_id,category_id,actual_check_in,actual_check_out")
       .eq("id", stayRow.id)
       .maybeSingle();
     if (error) reportQueryError("booking room", error);
-    const r = (data ?? {}) as { room_id?: string | null; category_id?: string | null };
+    const r = (data ?? {}) as {
+      room_id?: string | null;
+      category_id?: string | null;
+      actual_check_in?: string | null;
+      actual_check_out?: string | null;
+    };
     setRoomId(r.room_id ?? "");
     setCategoryId(r.category_id ?? "");
     setOrigin({ roomId: r.room_id ?? "", categoryId: r.category_id ?? "" });
+    setActualIn(toLocalInput(r.actual_check_in));
+    setActualOut(toLocalInput(r.actual_check_out));
+    setOriginActual({ in: toLocalInput(r.actual_check_in), out: toLocalInput(r.actual_check_out) });
   }, [guestName, guestCompany, guestGstin, stayRow]);
 
   useEffect(() => {
@@ -105,8 +124,10 @@ export function OwnerInlineEditCard({
       (roomId !== origin.roomId ||
         categoryId !== origin.categoryId ||
         checkIn !== String(stayRow.check_in ?? "").slice(0, 10) ||
-        checkOut !== String(stayRow.check_out ?? "").slice(0, 10)),
-    [stayRow, roomId, categoryId, checkIn, checkOut, origin],
+        checkOut !== String(stayRow.check_out ?? "").slice(0, 10) ||
+        actualIn !== originActual.in ||
+        actualOut !== originActual.out),
+    [stayRow, roomId, categoryId, checkIn, checkOut, origin, actualIn, actualOut, originActual],
   );
   const dirtyHeader =
     (company ?? "").trim() !== (guestCompany ?? "").trim() ||
@@ -132,6 +153,8 @@ export function OwnerInlineEditCard({
           _category_id: categoryId || null,
           _check_in: checkIn || null,
           _check_out: checkOut || null,
+          _actual_check_in: actualIn ? new Date(actualIn).toISOString() : null,
+          _actual_check_out: actualOut ? new Date(actualOut).toISOString() : null,
           _reason: reason.trim(),
         } as any);
         if (error) throw error;
@@ -205,12 +228,22 @@ export function OwnerInlineEditCard({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Check-in</Label>
+              <Label className="text-xs">Check-in (date)</Label>
               <Input type="date" className="h-9" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Check-out</Label>
+              <Label className="text-xs">Check-out (date)</Label>
               <Input type="date" className="h-9" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Check-in (actual date &amp; time)</Label>
+              <Input type="datetime-local" className="h-9" value={actualIn} onChange={(e) => setActualIn(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Check-out (actual date &amp; time)</Label>
+              <Input type="datetime-local" className="h-9" value={actualOut} onChange={(e) => setActualOut(e.target.value)} />
             </div>
           </div>
           <div className="space-y-1">
@@ -231,7 +264,9 @@ export function OwnerInlineEditCard({
 
         <p className="rounded-md border border-amber-300 bg-amber-100/60 px-3 py-2 text-[12px] text-amber-900">
           This corrects the stay record only — it does not change already-posted charges or the
-          invoice amount. Use the pencil edit on a charge line to change amounts.
+          invoice amount, and does not affect night-count billing. The date fields set the nominal
+          stay range; the actual date &amp; time fields are what the invoice header shows as the
+          real arrival/departure moment. Use the pencil edit on a charge line to change amounts.
         </p>
 
         <div className="space-y-1">
