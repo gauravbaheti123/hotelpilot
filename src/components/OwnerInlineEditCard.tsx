@@ -162,18 +162,33 @@ export function OwnerInlineEditCard({
         if (error) throw error;
       }
       if (dirtyStay && stayRow) {
+        const isoIn = actualIn ? new Date(actualIn).toISOString() : null;
+        const isoOut = actualOut ? new Date(actualOut).toISOString() : null;
+        if (actualIn && !isoIn) throw new Error("Check-in date & time is not a valid value");
+        if (actualOut && !isoOut) throw new Error("Check-out date & time is not a valid value");
+        // Guard against the "silently resubmits the original value" class of bug:
+        // if the field was edited but the payload equals what we loaded, warn loudly.
+        const sameIn = actualIn !== originActual.in && isoIn === (originActual.in ? new Date(originActual.in).toISOString() : null);
+        const sameOut = actualOut !== originActual.out && isoOut === (originActual.out ? new Date(originActual.out).toISOString() : null);
+        if (sameIn || sameOut) {
+          console.warn("[OwnerInlineEdit] edited timestamp resolved to the original value", {
+            actualIn, actualOut, originActual, isoIn, isoOut,
+          });
+          throw new Error("The edited check-in/check-out time did not change — please re-enter it");
+        }
         const { error } = await supabase.rpc("owner_update_booking_room_details" as any, {
           _booking_room_id: stayRow.id,
           _room_id: roomId || null,
           _category_id: categoryId || null,
           _check_in: checkIn || null,
           _check_out: checkOut || null,
-          _actual_check_in: actualIn ? new Date(actualIn).toISOString() : null,
-          _actual_check_out: actualOut ? new Date(actualOut).toISOString() : null,
+          _actual_check_in: isoIn,
+          _actual_check_out: isoOut,
           _reason: reason.trim(),
         } as any);
         if (error) throw error;
       }
+
       if (dirtyHeader) {
         const { error } = await supabase.rpc("owner_update_folio_header" as any, {
           _folio_id: folioId,
