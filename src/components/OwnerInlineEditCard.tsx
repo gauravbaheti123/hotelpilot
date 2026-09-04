@@ -77,19 +77,26 @@ export function OwnerInlineEditCard({
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
+  // The parent rebuilds `stayRow` (and other props) on every render, so we read
+  // them through a ref: otherwise the reset effect below re-runs on each parent
+  // render and silently overwrites whatever the owner has typed.
+  const propsRef = useRef({ guestName, guestCompany, guestGstin, stayRow });
+  propsRef.current = { guestName, guestCompany, guestGstin, stayRow };
+
   const resetFromProps = useCallback(async () => {
-    setName(guestName);
-    setCompany(guestCompany ?? "");
-    setGstin(guestGstin ?? "");
-    setCheckIn(String(stayRow?.check_in ?? "").slice(0, 10));
-    setCheckOut(String(stayRow?.check_out ?? "").slice(0, 10));
+    const { guestName: gn, guestCompany: gc, guestGstin: gg, stayRow: row } = propsRef.current;
+    setName(gn);
+    setCompany(gc ?? "");
+    setGstin(gg ?? "");
+    setCheckIn(String(row?.check_in ?? "").slice(0, 10));
+    setCheckOut(String(row?.check_out ?? "").slice(0, 10));
     setReason("");
     setShowAdvanced(false);
-    if (!stayRow) return;
+    if (!row) return;
     const { data, error } = await supabase
       .from("booking_rooms")
       .select("room_id,category_id,actual_check_in,actual_check_out")
-      .eq("id", stayRow.id)
+      .eq("id", row.id)
       .maybeSingle();
     if (error) reportQueryError("booking room", error);
     const r = (data ?? {}) as {
@@ -104,8 +111,11 @@ export function OwnerInlineEditCard({
     setActualIn(toLocalInput(r.actual_check_in));
     setActualOut(toLocalInput(r.actual_check_out));
     setOriginActual({ in: toLocalInput(r.actual_check_in), out: toLocalInput(r.actual_check_out) });
-  }, [guestName, guestCompany, guestGstin, stayRow]);
+  }, []);
 
+  const stayRowId = stayRow?.id ?? null;
+  // Reset only when the form is opened (or the underlying stay row changes) —
+  // never on an incidental parent re-render.
   useEffect(() => {
     if (!open) return;
     void resetFromProps();
@@ -119,7 +129,8 @@ export function OwnerInlineEditCard({
       setRooms((rs ?? []) as any);
       setCats((cs ?? []) as any);
     })();
-  }, [open, propertyId, resetFromProps]);
+  }, [open, propertyId, stayRowId, resetFromProps]);
+
 
   const dirtyName = name.trim() !== (guestName ?? "").trim();
   const dirtyStay = useMemo(
