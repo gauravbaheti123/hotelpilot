@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import { Pencil, ShieldAlert } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { toastError } from "@/lib/errorMessage";
 import { reportQueryError } from "@/lib/queryError";
