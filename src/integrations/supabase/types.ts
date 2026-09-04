@@ -6611,31 +6611,19 @@ export type Database = {
         }
         Returns: Json
       }
-      owner_update_booking_room_details:
-        | {
-            Args: {
-              _actual_check_in?: string
-              _actual_check_out?: string
-              _booking_room_id: string
-              _category_id?: string
-              _check_in?: string
-              _check_out?: string
-              _reason?: string
-              _room_id?: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              _booking_room_id: string
-              _category_id: string
-              _check_in: string
-              _check_out: string
-              _reason: string
-              _room_id: string
-            }
-            Returns: Json
-          }
+      owner_update_booking_room_details: {
+        Args: {
+          _actual_check_in?: string
+          _actual_check_out?: string
+          _booking_room_id: string
+          _category_id?: string
+          _check_in?: string
+          _check_out?: string
+          _reason?: string
+          _room_id?: string
+        }
+        Returns: Json
+      }
       owner_update_folio_charge: {
         Args: {
           _charge_id: string
