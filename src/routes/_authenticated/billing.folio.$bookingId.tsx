@@ -126,6 +126,7 @@ interface BookingCtx {
   ota_partner_name?: string | null;
   ota_channels?: { name: string | null } | null;
   guests: {
+    id?: string | null;
     name: string; mobile: string | null; gst_number: string | null; company: string | null; address: string | null;
     city?: string | null; state?: string | null; state_code?: string | null; country?: string | null;
     id_proof_type: string | null; id_proof_number: string | null; nationality: string | null;
