@@ -48,6 +48,7 @@ export function OwnerInlineEditCard({
   folioNotes: string | null;
   onSaved: () => void | Promise<void>;
 }) {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [reason, setReason] = useState("");
