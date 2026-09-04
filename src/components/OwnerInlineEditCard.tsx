@@ -228,12 +228,22 @@ export function OwnerInlineEditCard({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">Check-in</Label>
+              <Label className="text-xs">Check-in (date)</Label>
               <Input type="date" className="h-9" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Check-out</Label>
+              <Label className="text-xs">Check-out (date)</Label>
               <Input type="date" className="h-9" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Check-in (actual date &amp; time)</Label>
+              <Input type="datetime-local" className="h-9" value={actualIn} onChange={(e) => setActualIn(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Check-out (actual date &amp; time)</Label>
+              <Input type="datetime-local" className="h-9" value={actualOut} onChange={(e) => setActualOut(e.target.value)} />
             </div>
           </div>
           <div className="space-y-1">
@@ -254,7 +264,9 @@ export function OwnerInlineEditCard({
 
         <p className="rounded-md border border-amber-300 bg-amber-100/60 px-3 py-2 text-[12px] text-amber-900">
           This corrects the stay record only — it does not change already-posted charges or the
-          invoice amount. Use the pencil edit on a charge line to change amounts.
+          invoice amount, and does not affect night-count billing. The date fields set the nominal
+          stay range; the actual date &amp; time fields are what the invoice header shows as the
+          real arrival/departure moment. Use the pencil edit on a charge line to change amounts.
         </p>
 
         <div className="space-y-1">
