@@ -172,8 +172,8 @@ export function OwnerInlineEditCard({
         if (actualOut && !isoOut) throw new Error("Check-out date & time is not a valid value");
         // Guard against the "silently resubmits the original value" class of bug:
         // if the field was edited but the payload equals what we loaded, warn loudly.
-        const sameIn = actualIn !== originActual.in && isoIn === (originActual.in ? new Date(originActual.in).toISOString() : null);
-        const sameOut = actualOut !== originActual.out && isoOut === (originActual.out ? new Date(originActual.out).toISOString() : null);
+        const sameIn = actualIn !== originActual.in && isoIn === (originActual.in ? toIso(originActual.in) : null);
+        const sameOut = actualOut !== originActual.out && isoOut === (originActual.out ? toIso(originActual.out) : null);
         if (sameIn || sameOut) {
           console.warn("[OwnerInlineEdit] edited timestamp resolved to the original value", {
             actualIn, actualOut, originActual, isoIn, isoOut,
