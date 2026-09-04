@@ -68,6 +68,8 @@ export function OwnerInlineEditCard({
   const [cats, setCats] = useState<{ id: string; name: string }[]>([]);
   const [origin, setOrigin] = useState<{ roomId: string; categoryId: string }>({ roomId: "", categoryId: "" });
   const [originActual, setOriginActual] = useState<{ in: string; out: string }>({ in: "", out: "" });
+  const actualInRef = useRef<HTMLInputElement>(null);
+  const actualOutRef = useRef<HTMLInputElement>(null);
 
   const toLocalInput = (iso: string | null | undefined) => {
     if (!iso) return "";
@@ -162,25 +164,29 @@ export function OwnerInlineEditCard({
         if (error) throw error;
       }
       if (dirtyStay && stayRow) {
+        // Read the live input values at submit time. This avoids relying on a
+        // possibly batched React state update when Save follows a time edit.
+        const submittedActualIn = actualInRef.current?.value ?? actualIn;
+        const submittedActualOut = actualOutRef.current?.value ?? actualOut;
         const toIso = (v: string) => {
           const d = new Date(v);
           return Number.isNaN(d.getTime()) ? null : d.toISOString();
         };
-        const isoIn = actualIn ? toIso(actualIn) : null;
-        const isoOut = actualOut ? toIso(actualOut) : null;
-        if (actualIn && !isoIn) throw new Error("Check-in date & time is not a valid value");
-        if (actualOut && !isoOut) throw new Error("Check-out date & time is not a valid value");
+        const isoIn = submittedActualIn ? toIso(submittedActualIn) : null;
+        const isoOut = submittedActualOut ? toIso(submittedActualOut) : null;
+        if (submittedActualIn && !isoIn) throw new Error("Check-in date & time is not a valid value");
+        if (submittedActualOut && !isoOut) throw new Error("Check-out date & time is not a valid value");
         // Guard against the "silently resubmits the original value" class of bug:
         // if the field was edited but the payload equals what we loaded, warn loudly.
-        const sameIn = actualIn !== originActual.in && isoIn === (originActual.in ? toIso(originActual.in) : null);
-        const sameOut = actualOut !== originActual.out && isoOut === (originActual.out ? toIso(originActual.out) : null);
+        const sameIn = submittedActualIn !== originActual.in && isoIn === (originActual.in ? toIso(originActual.in) : null);
+        const sameOut = submittedActualOut !== originActual.out && isoOut === (originActual.out ? toIso(originActual.out) : null);
         if (sameIn || sameOut) {
           console.warn("[OwnerInlineEdit] edited timestamp resolved to the original value", {
-            actualIn, actualOut, originActual, isoIn, isoOut,
+            submittedActualIn, submittedActualOut, originActual, isoIn, isoOut,
           });
           throw new Error("The edited check-in/check-out time did not change — please re-enter it");
         }
-        const { error } = await supabase.rpc("owner_update_booking_room_details" as any, {
+        const { data, error } = await supabase.rpc("owner_update_booking_room_details" as any, {
           _booking_room_id: stayRow.id,
           _room_id: roomId || null,
           _category_id: categoryId || null,
@@ -191,6 +197,12 @@ export function OwnerInlineEditCard({
           _reason: reason.trim(),
         } as any);
         if (error) throw error;
+        const saved = data as { actual_check_in?: string | null; actual_check_out?: string | null } | null;
+        const savedIn = saved?.actual_check_in ? new Date(saved.actual_check_in).toISOString() : null;
+        const savedOut = saved?.actual_check_out ? new Date(saved.actual_check_out).toISOString() : null;
+        if ((isoIn && savedIn !== isoIn) || (isoOut && savedOut !== isoOut)) {
+          throw new Error("The stay time was not saved as entered. Please retry; no success was reported.");
+        }
       }
 
       if (dirtyHeader) {
@@ -279,11 +291,25 @@ export function OwnerInlineEditCard({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Check-in</Label>
-              <Input type="datetime-local" className="h-9" value={actualIn} onChange={(e) => setActualIn(e.target.value)} />
+              <Input
+                ref={actualInRef}
+                type="datetime-local"
+                className="h-9"
+                value={actualIn}
+                onInput={(e) => setActualIn(e.currentTarget.value)}
+                onChange={(e) => setActualIn(e.target.value)}
+              />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Check-out</Label>
-              <Input type="datetime-local" className="h-9" value={actualOut} onChange={(e) => setActualOut(e.target.value)} />
+              <Input
+                ref={actualOutRef}
+                type="datetime-local"
+                className="h-9"
+                value={actualOut}
+                onInput={(e) => setActualOut(e.currentTarget.value)}
+                onChange={(e) => setActualOut(e.target.value)}
+              />
             </div>
           </div>
           <div className="space-y-1 sm:col-span-2">
