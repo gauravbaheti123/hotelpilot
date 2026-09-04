@@ -60,6 +60,7 @@ import { invoiceDateLabel } from "@/lib/invoiceDate";
 import { printIsolated, withPrintStyles } from "@/lib/printStyles";
 
 import { RequirePermission } from "@/components/RequirePermission";
+import { OwnerInlineEditCard } from "@/components/OwnerInlineEditCard";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 import { withinGraceWindow } from "@/lib/graceWindow";
