@@ -56,12 +56,22 @@ export function OwnerInlineEditCard({
   const [categoryId, setCategoryId] = useState<string>("");
   const [checkIn, setCheckIn] = useState<string>("");
   const [checkOut, setCheckOut] = useState<string>("");
+  const [actualIn, setActualIn] = useState<string>("");
+  const [actualOut, setActualOut] = useState<string>("");
   const [company, setCompany] = useState(guestCompany ?? "");
   const [gstin, setGstin] = useState(guestGstin ?? "");
 
   const [rooms, setRooms] = useState<{ id: string; room_number: string; category_id: string | null }[]>([]);
   const [cats, setCats] = useState<{ id: string; name: string }[]>([]);
   const [origin, setOrigin] = useState<{ roomId: string; categoryId: string }>({ roomId: "", categoryId: "" });
+
+  const toLocalInput = (iso: string | null | undefined) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
 
   const resetFromProps = useCallback(async () => {
     setName(guestName);
@@ -73,14 +83,22 @@ export function OwnerInlineEditCard({
     if (!stayRow) return;
     const { data, error } = await supabase
       .from("booking_rooms")
-      .select("room_id,category_id")
+      .select("room_id,category_id,actual_check_in,actual_check_out")
       .eq("id", stayRow.id)
       .maybeSingle();
     if (error) reportQueryError("booking room", error);
-    const r = (data ?? {}) as { room_id?: string | null; category_id?: string | null };
+    const r = (data ?? {}) as {
+      room_id?: string | null;
+      category_id?: string | null;
+      actual_check_in?: string | null;
+      actual_check_out?: string | null;
+    };
     setRoomId(r.room_id ?? "");
     setCategoryId(r.category_id ?? "");
     setOrigin({ roomId: r.room_id ?? "", categoryId: r.category_id ?? "" });
+    setActualIn(toLocalInput(r.actual_check_in));
+    setActualOut(toLocalInput(r.actual_check_out));
+    setOriginActual({ in: toLocalInput(r.actual_check_in), out: toLocalInput(r.actual_check_out) });
   }, [guestName, guestCompany, guestGstin, stayRow]);
 
   useEffect(() => {
