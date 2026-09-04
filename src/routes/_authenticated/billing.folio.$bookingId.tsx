@@ -1812,6 +1812,22 @@ function FolioPage() {
   const canDeletePayment = canDeletePaymentPerm || inGraceWindow;
   // Extend stay on a finalised bill: Owner/Manager only.
   const canExtendStay = can("bookings", "extend_stay_locked");
+  // Owner/Superadmin-only inline record correction (works on settled bills too).
+  const canOwnerInlineEdit = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const ownerStayRow = (() => {
+    const rows = booking.booking_rooms ?? [];
+    const active = rows.filter((r) => r.status !== "shifted");
+    const pool = active.length > 0 ? active : rows;
+    return (
+      pool.find((r) => r.status === "active") ??
+      [...pool].sort((a, b) =>
+        String(b.actual_check_out ?? "").localeCompare(String(a.actual_check_out ?? "")),
+      )[0] ??
+      rows[0] ??
+      null
+    );
+  })();
+
 
   function openExtendStay() {
     if (!booking) return;
