@@ -64,6 +64,7 @@ export function OwnerInlineEditCard({
   const [rooms, setRooms] = useState<{ id: string; room_number: string; category_id: string | null }[]>([]);
   const [cats, setCats] = useState<{ id: string; name: string }[]>([]);
   const [origin, setOrigin] = useState<{ roomId: string; categoryId: string }>({ roomId: "", categoryId: "" });
+  const [originActual, setOriginActual] = useState<{ in: string; out: string }>({ in: "", out: "" });
 
   const toLocalInput = (iso: string | null | undefined) => {
     if (!iso) return "";
@@ -123,8 +124,10 @@ export function OwnerInlineEditCard({
       (roomId !== origin.roomId ||
         categoryId !== origin.categoryId ||
         checkIn !== String(stayRow.check_in ?? "").slice(0, 10) ||
-        checkOut !== String(stayRow.check_out ?? "").slice(0, 10)),
-    [stayRow, roomId, categoryId, checkIn, checkOut, origin],
+        checkOut !== String(stayRow.check_out ?? "").slice(0, 10) ||
+        actualIn !== originActual.in ||
+        actualOut !== originActual.out),
+    [stayRow, roomId, categoryId, checkIn, checkOut, origin, actualIn, actualOut, originActual],
   );
   const dirtyHeader =
     (company ?? "").trim() !== (guestCompany ?? "").trim() ||
@@ -150,6 +153,8 @@ export function OwnerInlineEditCard({
           _category_id: categoryId || null,
           _check_in: checkIn || null,
           _check_out: checkOut || null,
+          _actual_check_in: actualIn ? new Date(actualIn).toISOString() : null,
+          _actual_check_out: actualOut ? new Date(actualOut).toISOString() : null,
           _reason: reason.trim(),
         } as any);
         if (error) throw error;
