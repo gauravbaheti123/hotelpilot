@@ -162,8 +162,12 @@ export function OwnerInlineEditCard({
         if (error) throw error;
       }
       if (dirtyStay && stayRow) {
-        const isoIn = actualIn ? new Date(actualIn).toISOString() : null;
-        const isoOut = actualOut ? new Date(actualOut).toISOString() : null;
+        const toIso = (v: string) => {
+          const d = new Date(v);
+          return Number.isNaN(d.getTime()) ? null : d.toISOString();
+        };
+        const isoIn = actualIn ? toIso(actualIn) : null;
+        const isoOut = actualOut ? toIso(actualOut) : null;
         if (actualIn && !isoIn) throw new Error("Check-in date & time is not a valid value");
         if (actualOut && !isoOut) throw new Error("Check-out date & time is not a valid value");
         // Guard against the "silently resubmits the original value" class of bug:
