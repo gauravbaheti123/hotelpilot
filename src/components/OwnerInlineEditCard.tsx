@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import { Pencil, ShieldAlert } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { toastError } from "@/lib/errorMessage";
 import { reportQueryError } from "@/lib/queryError";
@@ -47,6 +48,7 @@ export function OwnerInlineEditCard({
   folioNotes: string | null;
   onSaved: () => void | Promise<void>;
 }) {
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [reason, setReason] = useState("");
@@ -169,9 +171,25 @@ export function OwnerInlineEditCard({
         } as any);
         if (error) throw error;
       }
-      toast.success("Record corrected — charges and invoice amount unchanged");
+      // Refresh BEFORE closing the form so the invoice header (Stay Details,
+      // Bill To, GSTIN) shows the saved values immediately — and so any
+      // refresh failure surfaces while the form is still open instead of
+      // being mistaken for a failed save.
+      let refreshed = true;
+      try {
+        await onSaved();
+      } catch {
+        refreshed = false;
+      }
+      // Bust React Query caches so other screens (bookings list, invoices,
+      // dashboard) don't keep showing the pre-edit record either.
+      await queryClient.invalidateQueries();
+      if (refreshed) {
+        toast.success("Record corrected — charges and invoice amount unchanged");
+      } else {
+        toast.success("Saved — reload the page if the header doesn't update");
+      }
       setOpen(false);
-      await onSaved();
     } catch (e) {
       toastError(e);
     } finally {
