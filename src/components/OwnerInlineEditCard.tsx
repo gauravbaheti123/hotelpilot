@@ -171,9 +171,25 @@ export function OwnerInlineEditCard({
         } as any);
         if (error) throw error;
       }
-      toast.success("Record corrected — charges and invoice amount unchanged");
+      // Refresh BEFORE closing the form so the invoice header (Stay Details,
+      // Bill To, GSTIN) shows the saved values immediately — and so any
+      // refresh failure surfaces while the form is still open instead of
+      // being mistaken for a failed save.
+      let refreshed = true;
+      try {
+        await onSaved();
+      } catch {
+        refreshed = false;
+      }
+      // Bust React Query caches so other screens (bookings list, invoices,
+      // dashboard) don't keep showing the pre-edit record either.
+      await queryClient.invalidateQueries();
+      if (refreshed) {
+        toast.success("Record corrected — charges and invoice amount unchanged");
+      } else {
+        toast.success("Saved — reload the page if the header doesn't update");
+      }
       setOpen(false);
-      await onSaved();
     } catch (e) {
       toastError(e);
     } finally {
