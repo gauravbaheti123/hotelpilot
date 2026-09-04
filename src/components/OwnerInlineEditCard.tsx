@@ -62,6 +62,7 @@ export function OwnerInlineEditCard({
   const [actualOut, setActualOut] = useState<string>("");
   const [company, setCompany] = useState(guestCompany ?? "");
   const [gstin, setGstin] = useState(guestGstin ?? "");
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [rooms, setRooms] = useState<{ id: string; room_number: string; category_id: string | null }[]>([]);
   const [cats, setCats] = useState<{ id: string; name: string }[]>([]);
