@@ -6691,6 +6691,10 @@ export type Database = {
         Args: { _audit_date: string; _property_id: string }
         Returns: number
       }
+      post_segment_bill_to_folio: {
+        Args: { _actor?: string; _bill_id: string; _folio_id?: string }
+        Returns: Json
+      }
       recompute_folio_totals: {
         Args: { _folio_id: string }
         Returns: undefined
