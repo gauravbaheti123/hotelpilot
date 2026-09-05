@@ -301,9 +301,10 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
           </div>
           <div className="grid gap-2">
             <Label htmlFor="wiz-pincode">Pincode</Label>
-            <Input
-              id="wiz-pincode" inputMode="numeric" maxLength={12}
-              value={guest.pincode} onChange={(e) => onChange({ pincode: e.target.value })}
+            <PincodeInput
+              id="wiz-pincode"
+              city={guest.city}
+              value={guest.pincode} onChange={(v) => onChange({ pincode: v })}
             />
           </div>
           <div className="grid gap-2 sm:col-span-2">
