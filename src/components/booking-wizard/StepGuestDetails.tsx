@@ -27,6 +27,11 @@ interface Props {
    * since no one is checking in against this record.
    */
   variant?: "lodge" | "banquet";
+  /**
+   * Fired after an existing guest is picked from the typeahead — the shell
+   * uses it to prefill Bill-To / tariff defaults from the last booking.
+   */
+  onGuestSelected?: (guestId: string) => void;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
