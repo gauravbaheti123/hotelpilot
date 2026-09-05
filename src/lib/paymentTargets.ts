@@ -86,8 +86,9 @@ export async function loadPaymentTargets(
 
 /**
  * Merge an open segment bill's items into a folio as `folio_charges` and mark
- * the bill settled. Idempotent: a bill already copied onto a folio is only
- * re-pointed, never double-charged.
+ * the bill settled. Delegates to `post_segment_bill_to_folio`, which locks the
+ * bill row and re-posts its current lines — so concurrent/repeat calls can
+ * never leave duplicate charges behind.
  */
 export async function mergeSegmentBillToFolio(args: {
   billId: string;
@@ -96,50 +97,21 @@ export async function mergeSegmentBillToFolio(args: {
   folioId: string;
   userId?: string | null;
 }): Promise<void> {
-  const { billId, segment, billNumber, folioId, userId } = args;
+  const { billId, folioId, userId } = args;
 
-  const { data: existing, error: exErr } = await supabase
-    .from("folio_charges")
-    .select("id")
-    .eq("source_table", "segment_bills")
-    .eq("source_id", billId)
-    .limit(1);
-  if (exErr) throw exErr;
-
-  if (!existing || existing.length === 0) {
-    const { data: items, error: iErr } = await supabase
-      .from("segment_bill_items" as any)
-      .select("description,qty,rate,amount,gst_rate,gst_amount")
-      .eq("segment_bill_id", billId);
-    if (iErr) throw iErr;
-    if (!items || items.length === 0) throw new Error("Segment bill has no items");
-
-    const chargeType = segment === "food" ? "food" : "laundry";
-    const rows = (items as any[]).map((it) => ({
-      folio_id: folioId,
-      charge_type: chargeType,
-      description: `${it.description} (${billNumber})`,
-      qty: Number(it.qty),
-      rate: Number(it.rate),
-      amount: Number(it.amount),
-      gst_rate: Number(it.gst_rate),
-      gst_amount: Number(it.gst_amount),
-      source_table: "segment_bills",
-      source_id: billId,
-      segment_bill_ref: billNumber,
-      created_by: userId ?? null,
-    }));
-    const { error: cErr } = await supabase.from("folio_charges").insert(rows as any);
-    if (cErr) throw cErr;
+  const { data, error } = await supabase.rpc("post_segment_bill_to_folio" as any, {
+    _bill_id: billId,
+    _folio_id: folioId,
+    _actor: userId ?? null,
+  } as any);
+  if (error) throw error;
+  const res = data as any;
+  if (!res?.ok) {
+    throw new Error(
+      res?.reason === "no_items" ? "Segment bill has no items"
+        : res?.reason === "not_found" ? "Segment bill not found"
+        : "Could not add this bill to the room bill",
+    );
   }
-
-  const { error: uErr } = await supabase
-    .from("segment_bills" as any)
-    .update({
-      status: "settled",
-      settled_at: new Date().toISOString(),
-      folio_id: folioId,
-    } as any)
-    .eq("id", billId);
-  if (uErr) throw uErr;
 }
+
