@@ -27,6 +27,11 @@ interface Props {
    * since no one is checking in against this record.
    */
   variant?: "lodge" | "banquet";
+  /**
+   * Fired after an existing guest is picked from the typeahead — the shell
+   * uses it to prefill Bill-To / tariff defaults from the last booking.
+   */
+  onGuestSelected?: (guestId: string) => void;
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -38,7 +43,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge" }: Props) {
+export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge", onGuestSelected }: Props) {
   const banquet = variant === "banquet";
   const [matches, setMatches] = useState<GuestSearchDetail[]>([]);
   const [searching, setSearching] = useState(false);
@@ -122,6 +127,7 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
     });
     setMatches([]);
     void attachExistingDoc(g.mobile ?? "", g.id_proof_number ?? "");
+    onGuestSelected?.(g.id);
   }
 
   async function attachExistingDoc(mobile: string, idNumber: string) {

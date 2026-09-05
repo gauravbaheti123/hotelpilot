@@ -124,6 +124,63 @@ export async function searchGuests(
   return (data ?? []) as GuestSearchHit[];
 }
 
+/**
+ * Convenience defaults from a repeat guest's most recent booking, used to
+ * prefill Bill-To / tariff / meal plan in the New Booking wizard. Returns
+ * null when the guest has no past bookings.
+ */
+export interface LastBookingDefaults {
+  billingCompanyId: string | null;
+  /** Tariff plan id from the last booking room, plus its display name. */
+  tariffId: string | null;
+  planName: string | null;
+  rate: number | null;
+  mealPlan: string | null;
+}
+
+export async function fetchLastBookingDefaults(
+  propertyId: string,
+  guestId: string,
+): Promise<LastBookingDefaults | null> {
+  const { data: bk, error } = await supabase
+    .from("bookings")
+    .select("id,billing_company_id")
+    .eq("property_id", propertyId)
+    .eq("guest_id", guestId)
+    .order("check_in", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !bk) return null;
+  const booking = bk as any;
+
+  const { data: room } = await supabase
+    .from("booking_rooms")
+    .select("tariff_id,rate,meal_plan")
+    .eq("booking_id", booking.id)
+    .order("check_in", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const br = room as any;
+
+  let planName: string | null = null;
+  if (br?.tariff_id) {
+    const { data: plan } = await supabase
+      .from("tariff_plans")
+      .select("name")
+      .eq("id", br.tariff_id)
+      .maybeSingle();
+    planName = (plan as any)?.name ?? null;
+  }
+
+  return {
+    billingCompanyId: booking.billing_company_id ?? null,
+    tariffId: br?.tariff_id ?? null,
+    planName,
+    rate: br?.rate != null ? Number(br.rate) : null,
+    mealPlan: br?.meal_plan ?? null,
+  };
+}
+
 /** Create a guest inline from a name + mobile pair. */
 export async function createGuestQuick(
   propertyId: string,

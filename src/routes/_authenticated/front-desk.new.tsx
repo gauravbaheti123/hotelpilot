@@ -43,6 +43,7 @@ import {
   type WizardBillTo, type WizardPayment,
 } from "@/lib/bookingWizard";
 import { toastError } from "@/lib/errorMessage";
+import { fetchLastBookingDefaults } from "@/lib/guestIdLookup";
 
 export const Route = createFileRoute("/_authenticated/front-desk/new")({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -182,6 +183,70 @@ function NewBookingWizardPage() {
   const patchEvent = useCallback((patch: Partial<WizardEvent>) => {
     setState((s) => ({ ...s, event: { ...s.event, ...patch } }));
   }, []);
+
+  // Repeat-guest convenience: prefill Bill-To company + tariff/meal plan/rate
+  // from the guest's most recent booking. Everything stays editable; fields
+  // already filled in (or guests with no history) are left untouched.
+  const handleGuestSelected = useCallback(async (guestId: string) => {
+    const propertyId = current?.id;
+    if (!propertyId) return;
+    try {
+      const d = await fetchLastBookingDefaults(propertyId, guestId);
+      if (!d) return;
+
+      let company: {
+        id: string; name: string | null; gstin: string | null; gst_status: string | null;
+        address: string | null; email: string | null; city: string | null;
+        state: string | null; nation: string | null;
+      } | null = null;
+      if (d.billingCompanyId) {
+        const { data } = await supabase
+          .from("billing_companies")
+          .select("id,name,gstin,gst_status,address,email,city,state,nation")
+          .eq("id", d.billingCompanyId)
+          .maybeSingle();
+        company = (data as any) ?? null;
+      }
+
+      const hasRoomDefaults = !!(d.planName || d.mealPlan || d.tariffId || d.rate != null);
+      if (!company && !hasRoomDefaults) return;
+
+      setState((s) => ({
+        ...s,
+        billTo:
+          company && !s.billTo.enabled
+            ? {
+                enabled: true,
+                companyId: company.id,
+                name: company.name ?? "",
+                gstin: company.gstin ?? "",
+                gstStatus: company.gst_status ?? "",
+                address: company.address ?? "",
+                email: company.email ?? "",
+                city: company.city ?? "",
+                state: company.state ?? "",
+                nation: company.nation ?? "India",
+              }
+            : s.billTo,
+        rooms: hasRoomDefaults
+          ? s.rooms.map((r) =>
+              r.planName
+                ? r
+                : {
+                    ...r,
+                    ...(d.planName ? { planName: d.planName } : {}),
+                    ...(d.mealPlan ? { mealPlan: d.mealPlan } : {}),
+                    ...(d.tariffId ? { tariffId: d.tariffId } : {}),
+                    ...(d.rate != null ? { rate: d.rate } : {}),
+                  },
+            )
+          : s.rooms,
+      }));
+      toast.message("Repeat guest — Bill-To and tariff prefilled from their last stay");
+    } catch {
+      // Convenience lookup only — never block the wizard on it.
+    }
+  }, [current?.id]);
 
   // Label lookups for the read-only Review step — derived from the shared
   // rooms / categories caches instead of a per-mount fetch.
@@ -463,6 +528,7 @@ function NewBookingWizardPage() {
               guest={state.guest}
               onChange={patchGuest}
               variant={banquet ? "banquet" : "lodge"}
+              onGuestSelected={handleGuestSelected}
             />
           )}
 
