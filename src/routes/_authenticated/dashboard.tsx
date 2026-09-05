@@ -598,45 +598,20 @@ function OwnerDashboard({
         .eq("status", "open");
       if (kErr) throw kErr;
       if (!bills || bills.length === 0) { toast.info("No pending food bills"); return; }
-      const { data: existingCharges, error: __qe4 } = await supabase
-        .from("folio_charges")
-        .select("source_id")
-        .eq("folio_id", folioId as any)
-        .eq("source_table", "segment_bills");
-      if (__qe4) reportQueryError("folio charges", __qe4);
-      const existing = new Set((existingCharges ?? []).map((c: any) => c.source_id));
+      // One locked, idempotent server call per bill — repeat taps can never
+      // create duplicate folio charge lines.
       for (const b of bills as any[]) {
-        if (!existing.has(b.id)) {
-          const { data: items, error: iErrS } = await supabase
-            .from("segment_bill_items" as any)
-            .select("description,qty,rate,amount,gst_rate,gst_amount")
-            .eq("segment_bill_id", b.id);
-          if (iErrS) throw iErrS;
-          const rows = (items ?? []).map((it: any) => ({
-            folio_id: folioId,
-            charge_type: "food",
-            description: `${it.description} (${b.bill_number})`,
-            qty: Number(it.qty),
-            rate: Number(it.rate),
-            amount: Number(it.amount),
-            gst_rate: Number(it.gst_rate),
-            gst_amount: Number(it.gst_amount),
-            source_table: "segment_bills",
-            source_id: b.id,
-            segment_bill_ref: b.bill_number,
-            created_by: userId || null,
-          }));
-          if (rows.length > 0) {
-            const { error: iErr } = await supabase.from("folio_charges").insert(rows as any);
-            if (iErr) throw iErr;
-          }
+        const { data: res, error: pErr } = await supabase.rpc("post_segment_bill_to_folio" as any, {
+          _bill_id: b.id,
+          _folio_id: folioId,
+          _actor: userId || null,
+        } as any);
+        if (pErr) throw pErr;
+        if (!(res as any)?.ok && (res as any)?.reason !== "no_items") {
+          throw new Error(`Could not add ${b.bill_number} to the room bill`);
         }
-        const { error: uErr } = await supabase
-          .from("segment_bills" as any)
-          .update({ status: "settled", settled_at: new Date().toISOString(), folio_id: folioId } as any)
-          .eq("id", b.id);
-        if (uErr) throw uErr;
       }
+
       toast.success(`Added ${bills.length} food bill(s) to room bill`);
       reload();
     } catch (e: any) {
