@@ -2,7 +2,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { AppShell } from "@/components/AppShell";
-import { CityInput, StateSelect, NationInput } from "@/components/AddressFields";
+import { CityInput, StateSelect, NationInput, PincodeInput } from "@/components/AddressFields";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BackButton } from "@/components/BackButton";
@@ -420,7 +420,7 @@ function GuestDetail() {
             ) : (
               <Field label="Nation"><NationInput value={g.country ?? ""} onChange={(v) => patch("country", v)} /></Field>
             )}
-            <Field label="Pincode"><Input readOnly={ro} value={g.pincode ?? ""} onChange={(e) => patch("pincode", e.target.value)} maxLength={12} /></Field>
+            <Field label="Pincode"><PincodeInput readOnly={ro} city={g.city} value={g.pincode ?? ""} onChange={(v) => patch("pincode", v)} /></Field>
             <div className="md:col-span-2"><Field label="Address Line"><Textarea readOnly={ro} rows={2} value={g.address ?? ""} onChange={(e) => patch("address", e.target.value)} maxLength={500} /></Field></div>
             <Field label="Guest Type">
               {ro ? (

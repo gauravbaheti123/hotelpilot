@@ -14,6 +14,7 @@ import {
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { INDIAN_STATES, NATIONS, DEFAULT_NATION, titleCase } from "@/lib/indiaGeo";
 import { useCities } from "@/hooks/use-cities";
+import { usePincodeSuggestions } from "@/hooks/use-pincodes";
 
 interface Ctl {
   value: string;
@@ -112,6 +113,65 @@ export function StateSelect({ value, onChange, className }: Ctl) {
       searchThreshold={0}
       className={className}
     />
+  );
+}
+
+interface PincodeCtl extends Ctl {
+  /** City used to look up suggested pincodes. */
+  city?: string | null;
+  id?: string;
+  readOnly?: boolean;
+}
+
+/**
+ * Pincode input with city-driven suggestions from the pincode directory.
+ * When the city resolves to pincodes, the most common one is prefilled if the
+ * field is empty, and all matches are offered as quick-pick chips. The field
+ * always stays fully editable.
+ */
+export function PincodeInput({ value, onChange, city, className, id, readOnly }: PincodeCtl) {
+  const { data: suggestions = [] } = usePincodeSuggestions(readOnly ? null : city);
+
+  // Prefill the most common pincode only while the field is untouched/empty.
+  useEffect(() => {
+    if (!readOnly && !value.trim() && suggestions.length > 0) {
+      onChange(suggestions[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestions, readOnly]);
+
+  return (
+    <div className="space-y-1">
+      <Input
+        id={id}
+        inputMode="numeric"
+        maxLength={12}
+        readOnly={readOnly}
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/[^\dA-Za-z -]/g, ""))}
+        className={className}
+      />
+      {!readOnly && suggestions.length > 1 && (
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-[11px] text-muted-foreground">Suggested:</span>
+          {suggestions.slice(0, 8).map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onChange(p)}
+              className={cn(
+                "rounded border px-1.5 py-0.5 text-[11px] leading-none transition-colors",
+                p === value
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground",
+              )}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { CityInput, StateSelect } from "@/components/AddressFields";
+import { CityInput, StateSelect, PincodeInput } from "@/components/AddressFields";
 import { IdDocUploadPair } from "@/components/booking-wizard/IdDocUploadPair";
 import { NATIONS, DEFAULT_NATION, titleCase } from "@/lib/indiaGeo";
 import { ID_PROOF_TYPES, ID_PROOF_LABELS } from "@/lib/guests";
@@ -301,9 +301,10 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
           </div>
           <div className="grid gap-2">
             <Label htmlFor="wiz-pincode">Pincode</Label>
-            <Input
-              id="wiz-pincode" inputMode="numeric" maxLength={12}
-              value={guest.pincode} onChange={(e) => onChange({ pincode: e.target.value })}
+            <PincodeInput
+              id="wiz-pincode"
+              city={guest.city}
+              value={guest.pincode} onChange={(v) => onChange({ pincode: v })}
             />
           </div>
           <div className="grid gap-2 sm:col-span-2">
