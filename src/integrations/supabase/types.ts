@@ -4009,6 +4009,36 @@ export type Database = {
           },
         ]
       }
+      pincode_directory: {
+        Row: {
+          city: string | null
+          created_at: string
+          district: string | null
+          id: string
+          office_name: string | null
+          pincode: string
+          state: string | null
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          district?: string | null
+          id?: string
+          office_name?: string | null
+          pincode: string
+          state?: string | null
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          district?: string | null
+          id?: string
+          office_name?: string | null
+          pincode?: string
+          state?: string | null
+        }
+        Relationships: []
+      }
       pos_categories: {
         Row: {
           created_at: string
