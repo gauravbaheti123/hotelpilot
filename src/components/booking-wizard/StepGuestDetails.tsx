@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { CityInput, StateSelect } from "@/components/AddressFields";
+import { CityInput, StateSelect, PincodeInput } from "@/components/AddressFields";
 import { IdDocUploadPair } from "@/components/booking-wizard/IdDocUploadPair";
 import { NATIONS, DEFAULT_NATION, titleCase } from "@/lib/indiaGeo";
 import { ID_PROOF_TYPES, ID_PROOF_LABELS } from "@/lib/guests";

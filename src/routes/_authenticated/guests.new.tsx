@@ -1,7 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { CityInput, StateSelect, NationInput } from "@/components/AddressFields";
+import { CityInput, StateSelect, NationInput, PincodeInput } from "@/components/AddressFields";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,7 @@ function NewGuestPage() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [nation, setNation] = useState("India");
+  const [pincode, setPincode] = useState("");
   const [company, setCompany] = useState("");
   const [gstNumber, setGstNumber] = useState("");
   const [guestType, setGuestType] = useState<"regular" | "corporate">("regular");
@@ -77,6 +78,7 @@ function NewGuestPage() {
       city: city.trim() || null,
       state: state.trim() || null,
       country: nation.trim() || "India",
+      pincode: pincode.trim() || null,
       company: company.trim() || null,
       gst_number: gstNumber.trim().toUpperCase() || null,
       notes: notes.trim() || null,
@@ -181,6 +183,7 @@ function NewGuestPage() {
               <p className="mt-1 text-[11px] text-muted-foreground">Decides CGST+SGST vs IGST on invoices.</p>
             </Field>
             <Field label="Nation"><NationInput value={nation} onChange={setNation} /></Field>
+            <Field label="Pincode"><PincodeInput city={city} value={pincode} onChange={setPincode} /></Field>
             <div className="md:col-span-2"><Field label="Notes"><Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={1000} /></Field></div>
           </div>
           <div className="flex justify-end gap-2">
