@@ -12,6 +12,7 @@ import { IdDocUploadPair } from "@/components/booking-wizard/IdDocUploadPair";
 import { NATIONS, DEFAULT_NATION, titleCase } from "@/lib/indiaGeo";
 import { ID_PROOF_TYPES, ID_PROOF_LABELS } from "@/lib/guests";
 import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
+import { isAadhaarType, formatAadhaar, AADHAAR_MAX_LENGTH } from "@/lib/aadhaar";
 import {
   searchGuestsDetailed, lookupExistingGuestId,
   type GuestSearchDetail, type GuestIdLookupResult,
