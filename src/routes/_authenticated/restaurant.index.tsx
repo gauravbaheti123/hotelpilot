@@ -786,7 +786,7 @@ function RestaurantPage() {
             <OutletBreakdown parts={outletOutstanding} className="mt-1" />
           </CardContent></Card>
         </div>
-        <Tabs defaultValue="active">
+        <Tabs defaultValue="direct">
           <TabsList>
             <TabsTrigger value="active">Active Credits</TabsTrigger>
             <TabsTrigger value="direct">Direct Charges</TabsTrigger>
