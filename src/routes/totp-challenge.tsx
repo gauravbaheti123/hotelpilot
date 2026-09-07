@@ -46,7 +46,7 @@ function TotpChallengePage() {
       }
       if (res.locked && res.lockedUntil) setLockedUntil(res.lockedUntil);
       const msg = res.locked
-        ? `Locked until ${new Date(res.lockedUntil!).toLocaleTimeString()}`
+        ? `Locked until ${new Date(res.lockedUntil!).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false })}`
         : res.attemptsRemaining !== undefined
           ? `Invalid code — ${res.attemptsRemaining} attempts remaining`
           : (res.error ?? "Invalid code");
@@ -102,7 +102,7 @@ function TotpChallengePage() {
           />
           {locked && (
             <p className="text-sm text-destructive text-center">
-              Account locked until {new Date(lockedUntil!).toLocaleTimeString()}.
+              Account locked until {new Date(lockedUntil!).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false })}.
               Contact a superadmin to unlock.
             </p>
           )}
