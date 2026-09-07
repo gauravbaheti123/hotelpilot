@@ -10,6 +10,7 @@ import { IdDocUploadPair } from "@/components/booking-wizard/IdDocUploadPair";
 import { NATIONS, titleCase } from "@/lib/indiaGeo";
 import { ID_PROOF_TYPES, ID_PROOF_LABELS } from "@/lib/guests";
 import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
+import { isAadhaarType, formatAadhaar, AADHAAR_MAX_LENGTH } from "@/lib/aadhaar";
 import { lookupExistingGuestId } from "@/lib/guestIdLookup";
 import {
   emptyExtraGuest, isForeign, RELATION_OPTIONS,
@@ -268,10 +269,19 @@ function ExtraGuestCard({
         ) : (
           <div className="grid gap-2">
             <Label>ID Number</Label>
-            <Input
-              value={guest.idProofNumber} maxLength={40}
-              onChange={(e) => onChange({ idProofNumber: e.target.value })}
-            />
+            {isAadhaarType(guest.idProofType) ? (
+              <Input
+                value={guest.idProofNumber}
+                inputMode="numeric" maxLength={AADHAAR_MAX_LENGTH}
+                placeholder="4444 8888 9999"
+                onChange={(e) => onChange({ idProofNumber: formatAadhaar(e.target.value) })}
+              />
+            ) : (
+              <Input
+                value={guest.idProofNumber} maxLength={40}
+                onChange={(e) => onChange({ idProofNumber: e.target.value })}
+              />
+            )}
           </div>
         )}
 

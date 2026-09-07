@@ -12,6 +12,7 @@ import { IdDocUploadPair } from "@/components/booking-wizard/IdDocUploadPair";
 import { NATIONS, DEFAULT_NATION, titleCase } from "@/lib/indiaGeo";
 import { ID_PROOF_TYPES, ID_PROOF_LABELS } from "@/lib/guests";
 import { isValidMobile, sanitizeMobile, MOBILE_ERROR } from "@/lib/mobile";
+import { isAadhaarType, formatAadhaar, AADHAAR_MAX_LENGTH } from "@/lib/aadhaar";
 import {
   searchGuestsDetailed, lookupExistingGuestId,
   type GuestSearchDetail, type GuestIdLookupResult,
@@ -359,10 +360,19 @@ export function StepGuestDetails({ propertyId, guest, onChange, variant = "lodge
           ) : (
             <div className="grid gap-2">
               <Label htmlFor="wiz-idnum">ID Number</Label>
-              <Input
-                id="wiz-idnum" value={guest.idProofNumber} maxLength={40}
-                onChange={(e) => onChange({ idProofNumber: e.target.value })}
-              />
+              {isAadhaarType(guest.idProofType) ? (
+                <Input
+                  id="wiz-idnum" value={guest.idProofNumber}
+                  inputMode="numeric" maxLength={AADHAAR_MAX_LENGTH}
+                  placeholder="4444 8888 9999"
+                  onChange={(e) => onChange({ idProofNumber: formatAadhaar(e.target.value) })}
+                />
+              ) : (
+                <Input
+                  id="wiz-idnum" value={guest.idProofNumber} maxLength={40}
+                  onChange={(e) => onChange({ idProofNumber: e.target.value })}
+                />
+              )}
             </div>
           )}
 
