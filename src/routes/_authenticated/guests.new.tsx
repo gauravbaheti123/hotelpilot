@@ -155,7 +155,13 @@ function NewGuestPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="ID proof number"><Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} maxLength={40} /></Field>
+            <Field label="ID proof number">
+              {isAadhaarType(idType) ? (
+                <Input value={idNumber} inputMode="numeric" maxLength={AADHAAR_MAX_LENGTH} placeholder="4444 8888 9999" onChange={(e) => setIdNumber(formatAadhaar(e.target.value))} />
+              ) : (
+                <Input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} maxLength={40} />
+              )}
+            </Field>
             <div className="md:col-span-2">
               <Field label="Company Name">
                 <Input autoTitleCase value={company} onChange={(e) => setCompany(e.target.value)} maxLength={200} placeholder="e.g. Growth Story Pvt Ltd" />
