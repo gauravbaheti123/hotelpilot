@@ -268,10 +268,19 @@ function ExtraGuestCard({
         ) : (
           <div className="grid gap-2">
             <Label>ID Number</Label>
-            <Input
-              value={guest.idProofNumber} maxLength={40}
-              onChange={(e) => onChange({ idProofNumber: e.target.value })}
-            />
+            {isAadhaarType(guest.idProofType) ? (
+              <Input
+                value={guest.idProofNumber}
+                inputMode="numeric" maxLength={AADHAAR_MAX_LENGTH}
+                placeholder="4444 8888 9999"
+                onChange={(e) => onChange({ idProofNumber: formatAadhaar(e.target.value) })}
+              />
+            ) : (
+              <Input
+                value={guest.idProofNumber} maxLength={40}
+                onChange={(e) => onChange({ idProofNumber: e.target.value })}
+              />
+            )}
           </div>
         )}
 
