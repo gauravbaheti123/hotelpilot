@@ -384,7 +384,13 @@ function GuestDetail() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="ID number"><Input readOnly={ro} value={g.id_proof_number ?? ""} onChange={(e) => patch("id_proof_number", e.target.value)} maxLength={40} /></Field>
+            <Field label="ID number">
+              {isAadhaarType(g.id_proof_type) ? (
+                <Input readOnly={ro} value={g.id_proof_number ?? ""} inputMode="numeric" maxLength={AADHAAR_MAX_LENGTH} placeholder="4444 8888 9999" onChange={(e) => patch("id_proof_number", formatAadhaar(e.target.value))} />
+              ) : (
+                <Input readOnly={ro} value={g.id_proof_number ?? ""} onChange={(e) => patch("id_proof_number", e.target.value)} maxLength={40} />
+              )}
+            </Field>
             <Field label="Company Name">
               <Input autoTitleCase readOnly={ro} value={g.company ?? ""} onChange={(e) => patch("company", e.target.value)} maxLength={200} placeholder="e.g. Growth Story Pvt Ltd" />
               <p className="mt-1 text-[11px] text-muted-foreground">Optional — useful for corporate / business travelers</p>
