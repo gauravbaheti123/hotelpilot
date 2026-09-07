@@ -897,7 +897,7 @@ function renderSegmentBill(opts: {
   // moment of printing/reprinting. Only brand-new, unsaved tickets use now.
   const stamp = opts.billDate ? new Date(opts.billDate) : new Date();
   const dt = (isNaN(stamp.getTime()) ? new Date() : stamp).toLocaleString("en-IN", {
-    day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true,
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
     timeZone: "Asia/Kolkata",
   });
   const heading = opts.segment === "food" ? "Food Bill" : "Laundry Bill";
