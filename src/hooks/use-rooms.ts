@@ -42,6 +42,15 @@ const ROOMS_STALE = 2 * 60_000;
 const MASTER_STALE = 5 * 60_000;
 const GC = 30 * 60_000;
 
+/**
+ * Stable empty fallbacks. Returning a fresh `[]` on every render made
+ * `useEffect([rooms])` consumers loop forever (React error #185 on
+ * /banquet/new), because the array identity changed each render.
+ */
+const EMPTY_ROOMS: SharedRoom[] = [];
+const EMPTY_CATEGORIES: SharedRoomCategory[] = [];
+const EMPTY_PLANS: TariffPlan[] = [];
+
 export const roomsQueryKey = (propertyId: string | null | undefined) =>
   ["rooms", propertyId ?? null] as const;
 export const roomCategoriesQueryKey = (propertyId: string | null | undefined) =>
