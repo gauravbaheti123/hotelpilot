@@ -82,7 +82,7 @@ export async function fetchUnreconciledCashExpenses(
     .from("expenses")
     .select("id,amount,paid_at,paid_at_approx,description,reference")
     .eq("property_id", propertyId)
-    .eq("payment_mode", CASH_MODE)
+    .ilike("payment_mode", CASH_MODE)
     .is("handover_id", null)
     .gte("paid_at", windowStart)
     .order("paid_at", { ascending: true });
