@@ -364,7 +364,7 @@ export function PunchChargeDialog({
     const scoped = walkin
       ? (tableId
           ? q.is("booking_id", null).eq("table_id", tableId)
-          : q.is("booking_id", null).is("table_id", null).eq("guest_name", walkinGuest.trim()))
+          : q.is("booking_id", null).is("table_id", null).eq("guest_name", walkinLabel))
       : q.eq("booking_id", bookingId!);
     const { data, error } = await scoped
       .order("created_at", { ascending: false })
