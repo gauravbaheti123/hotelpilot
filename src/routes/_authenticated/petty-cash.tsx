@@ -68,7 +68,7 @@ function PettyCashPage() {
       .eq("property_id", propertyId)
       .eq("is_deleted", false)
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(1000);
     setLoading(false);
     if (error) { toastError(error); return; }
     const mapped = ((data ?? []) as unknown[]).map((r) => {

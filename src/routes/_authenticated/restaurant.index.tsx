@@ -22,7 +22,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 
 import { RequirePermission } from "@/components/RequirePermission";
 import { useRegisterRefresh } from "@/components/PullToRefresh";
-import { istToday } from "@/lib/date";
+import { istToday, istDateTime } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 export const Route = createFileRoute("/_authenticated/restaurant/")({
@@ -722,7 +722,7 @@ function RestaurantPage() {
     doc.text(`Restaurant Statement — ${MONTHS[month - 1]} ${year}`, 14, 18);
     doc.setFontSize(10);
     doc.text(`${current?.name ?? ""}`, 14, 25);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 31);
+    doc.text(`Generated: ${istDateTime(new Date())}`, 14, 31);
     autoTable(doc, {
       startY: 38,
       head: [["Date", "Room", "Guest", "KOT", "Items", "Amount"]],

@@ -12,6 +12,7 @@ import {
 import { Download, Filter, RotateCcw, Printer } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { useAuth, hasRole } from "@/hooks/use-auth";
@@ -103,16 +104,16 @@ function KotActivityReport() {
     if (!current) return;
     setLoading(true);
     try {
-      let q = supabase.from("activity_log" as any)
-        .select("id,created_at,user_name,action_type,reference_label,details")
-        .eq("property_id", current.id)
-        .in("action_type", action === ALL ? ACTIONS : [action])
-        .gte("created_at", `${from}T00:00:00`)
-        .lte("created_at", `${to}T23:59:59.999`)
-        .order("created_at", { ascending: false })
-        .limit(1000);
-      const { data } = await q;
-      setRows((data ?? []) as unknown as Row[]);
+      const rows = await fetchAllRows<Row>((f, t) =>
+        supabase.from("activity_log" as any)
+          .select("id,created_at,user_name,action_type,reference_label,details")
+          .eq("property_id", current.id)
+          .in("action_type", action === ALL ? ACTIONS : [action])
+          .gte("created_at", `${from}T00:00:00`)
+          .lte("created_at", `${to}T23:59:59.999`)
+          .order("created_at", { ascending: false })
+          .range(f, t) as any);
+      setRows(rows);
     } finally { setLoading(false); }
   }, [current, from, to, action]);
 

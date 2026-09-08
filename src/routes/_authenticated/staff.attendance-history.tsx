@@ -11,6 +11,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { RequirePermission } from "@/components/RequirePermission";
@@ -46,16 +47,18 @@ function AttHistoryPage() {
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    let qy = supabase.from("attendance")
-      .select("id,attendance_date,status,hours_worked,notes,staff(name,designation)")
-      .eq("property_id", propertyId)
-      .gte("attendance_date", from)
-      .lte("attendance_date", to)
-      .order("attendance_date", { ascending: false })
-      .limit(500);
-    if (staffId !== "all") qy = qy.eq("staff_id", staffId);
-    const { data } = await qy;
-    setRows((data ?? []) as unknown as Row[]);
+    const build = (f: number, t: number) => {
+      let qy = supabase.from("attendance")
+        .select("id,attendance_date,status,hours_worked,notes,staff(name,designation)")
+        .eq("property_id", propertyId)
+        .gte("attendance_date", from)
+        .lte("attendance_date", to)
+        .order("attendance_date", { ascending: false })
+        .range(f, t);
+      if (staffId !== "all") qy = qy.eq("staff_id", staffId);
+      return qy;
+    };
+    setRows(await fetchAllRows<Row>(build));
   }, [propertyId, from, to, staffId]);
 
   const loadStaff = useCallback(async () => {
