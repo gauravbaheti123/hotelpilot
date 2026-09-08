@@ -59,18 +59,19 @@ function ExpensesPage() {
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    let qy = supabase.from("expenses")
+    let qyBase = supabase.from("expenses")
       .select("id,expense_date,amount,payment_mode,reference,description,expense_categories(name),vendors(name),staff(name)")
       .eq("property_id", propertyId)
       .gte("expense_date", from)
       .lte("expense_date", to)
       .order("expense_date", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(500);
-    if (mode !== "all") qy = qy.eq("payment_mode", mode);
-    const { data, error } = await qy;
-    if (error) toastError(error);
-    setRows((data ?? []) as unknown as ExpenseRow[]);
+      ;
+    if (mode !== "all") qyBase = qyBase.eq("payment_mode", mode);
+    try {
+      const rows = await fetchAllRows<ExpenseRow>((f, t) => (qyBase as any).range(f, t));
+      setRows(rows);
+    } catch (e) { toastError(e); }
   }, [propertyId, from, to, mode]);
 
   useEffect(() => { load(); }, [load]);
