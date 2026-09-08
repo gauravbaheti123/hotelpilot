@@ -653,7 +653,7 @@ function BookingDetailPage() {
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground mt-1">
-                      {new Date(s.shifted_at).toLocaleString()} · by {s.shifted_by_name ?? "staff"}
+                      {istDateTime(s.shifted_at)} · by {s.shifted_by_name ?? "staff"}
                     </div>
                     {s.reason && <div className="text-xs mt-1"><span className="text-muted-foreground">Reason:</span> {s.reason}</div>}
                   </div>
@@ -687,7 +687,7 @@ function BookingDetailPage() {
                             <span>₹{Number(k.total_amount).toLocaleString("en-IN")}</span>
                           </div>
                           <div className="text-xs text-muted-foreground mt-0.5">
-                            {new Date(k.created_at).toLocaleString()}
+                            {istDateTime(k.created_at)}
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">
                             {(k.kot_items ?? []).map((i) => `${i.qty}× ${i.item_name}`).join(", ") || "—"}

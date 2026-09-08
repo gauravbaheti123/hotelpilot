@@ -15,6 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { istDateTime } from "@/lib/date";
 import { toast } from "sonner";
 import { Ban, ShieldCheck, Pencil, Printer, FileText } from "lucide-react";
 import { ID_PROOF_TYPES, guestSchema, emptyToNull } from "@/lib/guests";
@@ -749,7 +750,7 @@ function IdSideCard({
           <div className="space-y-2">
             <div className="text-xs text-muted-foreground">
               {name ?? "Document"}
-              {uploadedAt && <> · uploaded {new Date(uploadedAt).toLocaleString()}</>}
+              {uploadedAt && <> · uploaded {istDateTime(uploadedAt)}</>}
             </div>
             <DrivePreview url={url} name={name ?? "Document"} />
           </div>
