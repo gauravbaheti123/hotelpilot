@@ -978,21 +978,21 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
   async function saveSplitBillDiscount({ type, value, rupees }: { type: DiscType; value: number; rupees: number }) {
     const target = createdBills[discBillIdx];
     if (!target) return;
-    // Re-fetch this folio's charges to recompute totals with the new bill discount
-    const { data: chargeRows, error: __qe6 } = await supabase.from("folio_charges")
-      .select("*").eq("folio_id", target.folio_id);
-    if (__qe6) reportQueryError("folio charges", __qe6);
-    const rows = (chargeRows ?? []) as any[];
-    const gstMode = target.party.bill_type === "gst_invoice" ? "gst" : "cash";
-    const billDisc: BillDiscount | null = value > 0 ? { type, value } : null;
-    const totals = recomputeFolio(rows, gstMode, billDisc);
+    // Store the discount, then let the database recompute the totals so the
+    // app and the database can never disagree (round-off, day lock, comp food).
     const { error } = await supabase.from("folios").update({
       discount_type: value > 0 ? type : null,
       discount_value: value > 0 ? value : 0,
-      ...totals,
-      balance_amount: totals.total_amount,
     } as any).eq("id", target.folio_id);
     if (error) { toastError(error); return; }
+    const { error: __qeRecalc } = await supabase.rpc("recompute_folio_totals" as never, {
+      _folio_id: target.folio_id,
+    } as never);
+    if (__qeRecalc) reportQueryError("recompute folio totals", __qeRecalc);
+    const { data: fresh, error: __qe6 } = await supabase.from("folios")
+      .select("total_amount").eq("id", target.folio_id).maybeSingle();
+    if (__qe6) reportQueryError("folio totals", __qe6);
+    const totals = { total_amount: Number((fresh as any)?.total_amount ?? 0) };
     // Update local state so the summary reflects the new total
     setCreatedBills((arr) => arr.map((cb, idx) => idx === discBillIdx
       ? { ...cb, total: Number(totals.total_amount) } : cb));

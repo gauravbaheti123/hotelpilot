@@ -310,50 +310,20 @@ export function PunchChargeDialog({
    * Day-scoped on purpose: a new day always starts a fresh bill number.
    */
   async function getOrCreateTodayBill(): Promise<{ id: string; bill_number: string; folio_id: string | null }> {
-    const q = supabase
-      .from("segment_bills" as any)
-      .select("id,bill_number,folio_id")
-      .eq("property_id", propertyId)
-      .eq("segment", segment)
-      .eq("status", "open")
-      .eq("is_walkin", walkin)
-      .gte("created_at", istDayStartIso());
-    const scoped = walkin
-      ? (tableId
-          ? q.is("booking_id", null).eq("table_id", tableId)
-          : q.is("booking_id", null).is("table_id", null).eq("guest_name", walkinGuest.trim()))
-      : q.eq("booking_id", bookingId!);
-    const { data: existing, error: exErr } = await scoped
-      .order("created_at", { ascending: false })
-      .limit(1);
-    if (exErr) throw exErr;
-    if (existing && existing.length > 0) return existing[0] as any;
-
-    const folioId = walkin ? null : await ensureFolio();
-    const { data: bill, error: bErr } = await supabase
-      .from("segment_bills" as any)
-      .insert({
-        property_id: propertyId,
-        segment,
-        booking_id: walkin ? null : bookingId,
-        folio_id: folioId,
-        room_id: walkin ? null : roomId,
-        table_id: walkin ? tableId : null,
-        is_walkin: walkin,
-        event_booking_id: walkin && segment === "food" ? eventId : null,
-        guest_name: walkin
-          ? (walkinLabel || null)
-          : (guestName ?? null),
-        total_amount: 0,
-        gst_amount: 0,
-        paid_amount: 0,
-        status: "open",
-        created_by: user?.id ?? null,
-      } as any)
-      .select("id,bill_number,folio_id")
-      .single();
-    if (bErr) throw bErr;
-    return bill as any;
+    // Single locked DB call — the old client-side "look, then insert" could
+    // create two open bills for the same room/table on a double tap.
+    const { data, error } = await supabase.rpc("get_or_create_open_segment_bill" as never, {
+      _property_id: propertyId,
+      _segment: segment,
+      _booking_id: walkin ? null : bookingId,
+      _room_id: walkin ? null : roomId,
+      _table_id: walkin ? tableId : null,
+      _guest_name: walkin ? (walkinLabel || null) : (guestName ?? null),
+      _event_booking_id: walkin && segment === "food" ? eventId : null,
+      _is_walkin: walkin,
+    } as never);
+    if (error) throw error;
+    return data as unknown as { id: string; bill_number: string; folio_id: string | null };
   }
 
   async function recalcBillTotals(billId: string) {
@@ -394,7 +364,7 @@ export function PunchChargeDialog({
     const scoped = walkin
       ? (tableId
           ? q.is("booking_id", null).eq("table_id", tableId)
-          : q.is("booking_id", null).is("table_id", null).eq("guest_name", walkinGuest.trim()))
+          : q.is("booking_id", null).is("table_id", null).eq("guest_name", walkinLabel))
       : q.eq("booking_id", bookingId!);
     const { data, error } = await scoped
       .order("created_at", { ascending: false })

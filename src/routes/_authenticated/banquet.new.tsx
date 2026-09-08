@@ -71,9 +71,8 @@ function NewBanquetPage() {
   const { plans: sharedPlans } = useTariffPlans(propertyId);
   const { rooms: sharedRooms } = useRooms(propertyId);
   const [halls, setHalls] = useState<Hall[]>([]);
-  const [cats, setCats] = useState<Cat[]>([]);
-  const [tariffPlans, setTariffPlans] = useState<TariffPlan[]>([]);
-  const [allRooms, setAllRooms] = useState<RoomOpt[]>([]);
+  // Derived straight from the shared caches below — copying them into local
+  // state caused an endless render loop (blank Banquet screen).
   const [saving, setSaving] = useState(false);
   const { limit: discountLimit } = useDiscountLimit();
 
@@ -129,14 +128,10 @@ function NewBanquetPage() {
 
   // Categories, tariff plans and rooms come from the shared caches
   // (see use-rooms.ts) instead of three per-mount queries.
-  useEffect(() => {
-    setCats(sharedCats as unknown as Cat[]);
-  }, [sharedCats]);
-  useEffect(() => {
-    setTariffPlans(sharedPlans);
-  }, [sharedPlans]);
-  useEffect(() => {
-    setAllRooms(
+  const cats = sharedCats as unknown as Cat[];
+  const tariffPlans = sharedPlans;
+  const allRooms = useMemo<RoomOpt[]>(
+    () =>
       sharedRooms
         .filter((r) => r.status === "vacant")
         .map((r) => ({
@@ -145,8 +140,8 @@ function NewBanquetPage() {
           category_id: r.category_id,
           category_name: r.category_name,
         })) as RoomOpt[],
-    );
-  }, [sharedRooms]);
+    [sharedRooms],
+  );
 
   const extrasTotal = useMemo(
     () => extras.reduce((s, x) => s + (Number(x.amount) || 0), 0),

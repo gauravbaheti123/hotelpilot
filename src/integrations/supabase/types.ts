@@ -6540,6 +6540,19 @@ export type Database = {
         Returns: string
       }
       get_or_create_folio: { Args: { _booking_id: string }; Returns: string }
+      get_or_create_open_segment_bill: {
+        Args: {
+          _booking_id?: string
+          _event_booking_id?: string
+          _guest_name?: string
+          _is_walkin?: boolean
+          _property_id: string
+          _room_id?: string
+          _segment: string
+          _table_id?: string
+        }
+        Returns: Json
+      }
       get_property_secrets: {
         Args: { _property_id: string }
         Returns: {

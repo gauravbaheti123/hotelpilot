@@ -42,6 +42,15 @@ const ROOMS_STALE = 2 * 60_000;
 const MASTER_STALE = 5 * 60_000;
 const GC = 30 * 60_000;
 
+/**
+ * Stable empty fallbacks. Returning a fresh `[]` on every render made
+ * `useEffect([rooms])` consumers loop forever (React error #185 on
+ * /banquet/new), because the array identity changed each render.
+ */
+const EMPTY_ROOMS: SharedRoom[] = [];
+const EMPTY_CATEGORIES: SharedRoomCategory[] = [];
+const EMPTY_PLANS: TariffPlan[] = [];
+
 export const roomsQueryKey = (propertyId: string | null | undefined) =>
   ["rooms", propertyId ?? null] as const;
 export const roomCategoriesQueryKey = (propertyId: string | null | undefined) =>
@@ -82,7 +91,7 @@ export function useRooms(propertyId: string | null | undefined) {
     await qc.invalidateQueries({ queryKey: roomsQueryKey(propertyId) });
   }, [qc, propertyId]);
 
-  return { rooms: data ?? [], loading: isLoading, fetching: isFetching, refetch, reload };
+  return { rooms: data ?? EMPTY_ROOMS, loading: isLoading, fetching: isFetching, refetch, reload };
 }
 
 /** Room categories master (id + name), ordered by name. */
@@ -107,7 +116,7 @@ export function useRoomCategories(propertyId: string | null | undefined) {
   const reload = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: roomCategoriesQueryKey(propertyId) });
   }, [qc, propertyId]);
-  return { categories: data ?? [], loading: isLoading, reload };
+  return { categories: data ?? EMPTY_CATEGORIES, loading: isLoading, reload };
 }
 
 /** Active tariff plans — fetched alongside rooms on most of the same screens. */
@@ -127,5 +136,5 @@ export function useTariffPlans(propertyId: string | null | undefined) {
       }
     },
   });
-  return { plans: data ?? [], loading: isLoading };
+  return { plans: data ?? EMPTY_PLANS, loading: isLoading };
 }
