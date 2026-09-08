@@ -2895,7 +2895,7 @@ function FolioPage() {
 </ResponsiveTable>
 
             {/* GST breakup */}
-            {isGst && Number(folio.gst_amount) > 0 && (
+            {isGst && (Number(folio.gst_amount) > 0 || charges.length > 0) && (
               <div className="mt-5">
                 <div className="mb-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>GST Breakup</div>
                 <ResponsiveTable minWidth={480}>
@@ -2915,7 +2915,7 @@ function FolioPage() {
                       const arr = (groups as any)[key] as Charge[];
                       const taxable = arr.reduce((s, c) => s + Number(c.amount), 0);
                       const gst = arr.reduce((s, c) => s + Number(c.gst_amount || 0), 0);
-                      if (gst <= 0) return null;
+                      if (gst <= 0 && Math.abs(taxable) < 0.005) return null;
                       const label = key === "room" ? "Accommodation" : key === "food" ? "Food & Beverage" : key === "sundry" ? "Sundry / POS" : "Others";
                       return (
                         <tr key={key}>
