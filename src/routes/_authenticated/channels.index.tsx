@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { istDateTime } from "@/lib/date";
 import { useEffect, useState, useCallback } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,7 +98,7 @@ function ChannelManagerPage() {
       <div className="grid gap-4 md:grid-cols-3 mb-4">
         <Kpi title="Active channels" value={String(activeCount)} hint={`${channels.length} total`} icon={<Cloud className="h-4 w-4" />} />
         <Kpi title="Mappings" value={String(mappings.length)} hint="Room ↔ OTA links" icon={<Radio className="h-4 w-4" />} />
-        <Kpi title="Last sync" value={lastSync ? new Date(lastSync).toLocaleString() : "Never"} hint={logs[0]?.status ? SYNC_STATUS_LABEL[logs[0].status] : ""} icon={<RefreshCw className="h-4 w-4" />} />
+        <Kpi title="Last sync" value={lastSync ? istDateTime(lastSync) : "Never"} hint={logs[0]?.status ? SYNC_STATUS_LABEL[logs[0].status] : ""} icon={<RefreshCw className="h-4 w-4" />} />
       </div>
 
       <Card className="mb-4">
@@ -206,7 +207,7 @@ function ChannelManagerPage() {
             <tbody>
               {logs.map((l) => (
                 <tr key={l.id} className="border-t">
-                  <td className="px-3 py-2 whitespace-nowrap">{new Date(l.started_at).toLocaleString()}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">{istDateTime(l.started_at)}</td>
                   <td className="px-3 py-2">{channels.find((c) => c.id === l.channel_id)?.name ?? "—"}</td>
                   <td className="px-3 py-2 capitalize">{l.sync_type}</td>
                   <td className="px-3 py-2">

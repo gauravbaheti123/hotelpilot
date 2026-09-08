@@ -1,6 +1,7 @@
 // Part 4 — turns the wizard state into a create_booking payload, then runs the
 // post-transaction side effects (ID document linking, WhatsApp triggers) that
 // deliberately live OUTSIDE the DB transaction.
+import { normalizeIdNumber } from "@/lib/aadhaar";
 import { supabase } from "@/integrations/supabase/client";
 import { createBooking, type CreateBookingPayload, type CreateBookingResult } from "@/lib/bookingCreate";
 import { roomsTotal, stayRange, type WizardBillTo, type WizardState } from "@/lib/bookingWizard";
@@ -125,7 +126,7 @@ export function buildBookingPayload(opts: {
       email: g.email.trim() || null,
       dob: g.dob || null,
       id_proof_type: g.idProofType || null,
-      id_proof_number: (g.idProofNumber || g.passportNumber).trim() || null,
+      id_proof_number: normalizeIdNumber(g.idProofNumber || g.passportNumber) || null,
       address: g.address.trim() || null,
       city: g.city.trim() || null,
       state: g.state.trim() || null,
@@ -183,7 +184,7 @@ export function buildBookingPayload(opts: {
         name: x.name.trim(),
         age: x.age || null,
         id_proof_type: x.idProofType || null,
-        id_proof_number: (x.idProofNumber || x.passportNumber).trim() || null,
+        id_proof_number: normalizeIdNumber(x.idProofNumber || x.passportNumber) || null,
         relation: x.relation || null,
       })),
     actor_name: actorName,

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { istDateTime } from "@/lib/date";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -317,7 +318,7 @@ export function SuperadminDashboard() {
                         </div>
                       </div>
                       <div className="text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(a.created_at).toLocaleString()}
+                        {istDateTime(a.created_at)}
                       </div>
                     </div>
                   ))}

@@ -16,7 +16,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 
 import { RequirePermission } from "@/components/RequirePermission";
-import { istDaysAgo, istToday } from "@/lib/date";
+import { istDateTime, istDaysAgo, istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { useReportBrand } from "@/hooks/use-report-brand";
 import {
@@ -284,7 +284,7 @@ function ActivityLogPage() {
                   {!loading && rows.map((r) => (
                     <tr key={r.id} className="hover:bg-accent/30">
                       <td className="p-3 whitespace-nowrap text-xs text-muted-foreground">
-                        {new Date(r.created_at).toLocaleString()}
+                        {istDateTime(r.created_at)}
                       </td>
                       <td className="p-3">{r.user_name ?? "—"}</td>
                       <td className="p-3"><Badge variant="outline" className="text-[10px]">{r.action_type}</Badge></td>

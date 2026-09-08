@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { istDateTime } from "@/lib/date";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,7 +105,7 @@ export function Manage2FADialog({ user, onClose }: { user: UserProps; onClose: (
           <div className="space-y-3">
             {locked && (
               <div className="rounded border border-destructive/40 bg-destructive/10 p-3 text-sm">
-                Locked until {new Date(user.lockedUntil!).toLocaleString()} after failed attempts.
+                Locked until {istDateTime(user.lockedUntil!)} after failed attempts.
                 <div className="pt-2">
                   <Button size="sm" variant="outline" onClick={unlock} disabled={busy}>
                     Unlock now

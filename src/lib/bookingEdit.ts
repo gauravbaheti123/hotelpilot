@@ -12,6 +12,7 @@ import {
   emptyBillTo, emptyExtraGuest, emptyGuest,
   type WizardBillTo, type WizardExtraGuest, type WizardGuest,
 } from "@/lib/bookingWizard";
+import { normalizeIdNumber } from "@/lib/aadhaar";
 import { DEFAULT_NATION } from "@/lib/indiaGeo";
 import { syncBillingCompanyRecord, upsertBillingCompany } from "@/lib/bookingWizardSubmit";
 import { reportQueryError } from "@/lib/queryError";
@@ -293,7 +294,7 @@ export async function saveBookingEdit(s: BookingEditState, actorName: string | n
         email: g.email.trim() || null,
         dob: g.dob || null,
         id_proof_type: g.idProofType || null,
-        id_proof_number: (g.idProofNumber || g.passportNumber).trim() || null,
+        id_proof_number: normalizeIdNumber(g.idProofNumber || g.passportNumber) || null,
         address: g.address.trim() || null,
         city: g.city.trim() || null,
         state: g.state.trim() || null,
@@ -312,7 +313,7 @@ export async function saveBookingEdit(s: BookingEditState, actorName: string | n
           mobile: x.mobile.trim() || null,
           age: x.age || null,
           id_proof_type: x.idProofType || null,
-          id_proof_number: (x.idProofNumber || x.passportNumber).trim() || null,
+          id_proof_number: normalizeIdNumber(x.idProofNumber || x.passportNumber) || null,
           relation: x.relation || null,
         })),
       billing_company_id: billingCompanyId,
