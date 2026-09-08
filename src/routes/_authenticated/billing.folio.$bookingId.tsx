@@ -2895,7 +2895,7 @@ function FolioPage() {
 </ResponsiveTable>
 
             {/* GST breakup */}
-            {isGst && Number(folio.gst_amount) > 0 && (
+            {isGst && (Number(folio.gst_amount) > 0 || charges.length > 0) && (
               <div className="mt-5">
                 <div className="mb-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>GST Breakup</div>
                 <ResponsiveTable minWidth={480}>
