@@ -8,7 +8,12 @@ import { reportQueryError } from "@/lib/queryError";
  * exactly the same literal used by `expenses.payment_mode`, so the two join
  * safely on the raw string.
  */
-export const CASH_MODE = "cash";
+export const CASH_MODE = "CASH";
+
+/** Cash match is case-insensitive — older rows were saved as "cash". */
+export function isCashMode(mode: string | null | undefined): boolean {
+  return String(mode ?? "").trim().toUpperCase() === CASH_MODE;
+}
 
 export type PettyCashType = "opening" | "in" | "out";
 
@@ -77,7 +82,7 @@ export async function fetchUnreconciledCashExpenses(
     .from("expenses")
     .select("id,amount,paid_at,paid_at_approx,description,reference")
     .eq("property_id", propertyId)
-    .eq("payment_mode", CASH_MODE)
+    .ilike("payment_mode", CASH_MODE)
     .is("handover_id", null)
     .gte("paid_at", windowStart)
     .order("paid_at", { ascending: true });
