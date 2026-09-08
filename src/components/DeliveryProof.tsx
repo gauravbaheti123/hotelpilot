@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { istDateTime } from "@/lib/date";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -125,7 +126,7 @@ export function DeliveryProof({ kotId, propertyId, proofUrl, takenAt, takenBy, o
             <div className="h-24 w-24 rounded border bg-muted animate-pulse" />
           )}
           <div className="text-xs text-muted-foreground space-y-1">
-            {takenAt && <div>Captured: {new Date(takenAt).toLocaleString()}</div>}
+            {takenAt && <div>Captured: {istDateTime(takenAt)}</div>}
             {takenBy && <div className="truncate max-w-[220px]">By: {takenBy}</div>}
             <div className="flex gap-2 pt-1">
               <Button size="sm" variant="outline" className="h-7" onClick={() => setViewOpen(true)}>
@@ -159,7 +160,7 @@ function ProofDialog({ open, onOpenChange, signed, takenAt }: {
         ) : (
           <div className="h-64 bg-muted animate-pulse rounded" />
         )}
-        {takenAt && <div className="text-xs text-muted-foreground">Captured {new Date(takenAt).toLocaleString()}</div>}
+        {takenAt && <div className="text-xs text-muted-foreground">Captured {istDateTime(takenAt)}</div>}
       </DialogContent>
     </Dialog>
   );

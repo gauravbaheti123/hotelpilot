@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { istDateTime } from "@/lib/date";
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -219,7 +220,7 @@ function WhatsAppInboxPage() {
                 </div>
                 <div className="text-xs text-muted-foreground truncate">{c.last.content ?? "—"}</div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">
-                  {new Date(c.last.created_at).toLocaleString()}
+                  {istDateTime(c.last.created_at)}
                 </div>
               </button>
             ))}

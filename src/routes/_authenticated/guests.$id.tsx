@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BackButton } from "@/components/BackButton";
 import { Input } from "@/components/ui/input";
-import { isAadhaarType, formatAadhaar, AADHAAR_MAX_LENGTH } from "@/lib/aadhaar";
+import { isAadhaarType, formatAadhaar, normalizeIdNumber, AADHAAR_MAX_LENGTH } from "@/lib/aadhaar";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -134,7 +134,10 @@ function GuestDetail() {
     setBusy(true);
     try {
       const { name, ...rest } = parsed.data;
-      const payload = emptyToNull(rest);
+      const payload = emptyToNull({
+        ...rest,
+        id_proof_number: normalizeIdNumber((rest as any).id_proof_number ?? ""),
+      });
       const tags = tagsInput.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 10);
       const beforeMap: Record<string, unknown> = {
         name: g.name, mobile: g.mobile, email: g.email, gender: g.gender, dob: g.dob,

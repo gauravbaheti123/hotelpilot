@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { formatAadhaar, normalizeIdNumber } from "@/lib/aadhaar";
 import { reportQueryError } from "@/lib/queryError";
 
 export interface ExistingIdDoc {
@@ -208,9 +209,14 @@ export async function lookupExistingGuestId(
   const m = (mobile ?? "").trim();
   const n = (idNumber ?? "").trim();
 
-  const attempts: Array<{ col: "mobile" | "id_proof_number"; val: string; matchedOn: "mobile" | "id" }> = [];
-  if (m.length === 10) attempts.push({ col: "mobile", val: m, matchedOn: "mobile" });
-  if (n.length >= 6) attempts.push({ col: "id_proof_number", val: n, matchedOn: "id" });
+  // Aadhaar may be stored either as plain digits (older records) or with the
+  // display spacing, so match both representations.
+  const nPlain = normalizeIdNumber(n);
+  const idVariants = Array.from(new Set([n, nPlain, formatAadhaar(nPlain)].filter(Boolean)));
+
+  const attempts: Array<{ col: "mobile" | "id_proof_number"; vals: string[]; matchedOn: "mobile" | "id" }> = [];
+  if (m.length === 10) attempts.push({ col: "mobile", vals: [m], matchedOn: "mobile" });
+  if (n.length >= 6) attempts.push({ col: "id_proof_number", vals: idVariants, matchedOn: "id" });
   if (!attempts.length) return null;
 
   for (const a of attempts) {
@@ -218,7 +224,7 @@ export async function lookupExistingGuestId(
       .from("guests")
       .select("id,name,mobile,id_proof_number,tags,guest_type,id_document_url,id_document_name,id_document_uploaded_at,id_document_back_url,id_document_back_name,id_document_back_uploaded_at")
       .eq("property_id", propertyId)
-      .eq(a.col, a.val)
+      .in(a.col, a.vals)
       .order("updated_at", { ascending: false })
       .limit(1);
     if (__qe2) reportQueryError("guests", __qe2);

@@ -17,7 +17,7 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { useAuth, hasRole } from "@/hooks/use-auth";
 
 import { RequirePermission } from "@/components/RequirePermission";
-import { istDaysAgo, istToday } from "@/lib/date";
+import { istDateTime, istDaysAgo, istToday } from "@/lib/date";
 import { useReportBrand } from "@/hooks/use-report-brand";
 import {
   exportExcelSections, exportSectionsPdf,
@@ -129,7 +129,7 @@ function KotActivityReport() {
     const after = d.new_total != null ? Number(d.new_total) : null;
     const reason = String(d.reason ?? "");
     return {
-      when: new Date(r.created_at).toLocaleString(),
+      when: istDateTime(r.created_at),
       kotNumber, action: r.action_type,
       staff: r.user_name ?? "",
       loc: table ? `Table ${table}` : (room ? `Room ${room}` : "—"),

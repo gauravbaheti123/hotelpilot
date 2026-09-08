@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { isAadhaarType, formatAadhaar, AADHAAR_MAX_LENGTH } from "@/lib/aadhaar";
+import { isAadhaarType, formatAadhaar, normalizeIdNumber, AADHAAR_MAX_LENGTH } from "@/lib/aadhaar";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
@@ -74,7 +74,7 @@ function NewGuestPage() {
       email: email.trim() || null,
       dob: dob || null,
       id_proof_type: idType || null,
-      id_proof_number: idNumber.trim() || null,
+      id_proof_number: normalizeIdNumber(idNumber) || null,
       address: address.trim() || null,
       city: city.trim() || null,
       state: state.trim() || null,

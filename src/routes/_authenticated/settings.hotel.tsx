@@ -115,7 +115,7 @@ function HotelSettingsForm({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [logoSignedUrl, setLogoSignedUrl] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Array<{ id: string; name: string; rate_per_night: number | null; gst_rate: number | null }>>([]);
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; base_rate: number | null; gst_rate: number | null }>>([]);
   const [slabs, setSlabs] = useState<Array<{ id?: string; from_amount: number; to_amount: number; gst_rate: number }>>([]);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -135,7 +135,7 @@ function HotelSettingsForm({
 
       const { data: cats, error: __qe1 } = await supabase
         .from("room_categories")
-        .select("id,name,rate_per_night,gst_rate")
+        .select("id,name,base_rate,gst_rate")
         .eq("property_id", propertyId)
         .order("name");
       if (__qe1) reportQueryError("room categories", __qe1);
@@ -450,7 +450,7 @@ function HotelSettingsForm({
                 {categories.map((c, i) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell className="text-right">₹{(c.rate_per_night ?? 0).toLocaleString("en-IN")}</TableCell>
+                    <TableCell className="text-right">₹{(c.base_rate ?? 0).toLocaleString("en-IN")}</TableCell>
                     <TableCell className="text-right">
                       <Input type="number" min={0} max={28} step={0.5}
                         disabled={dis}

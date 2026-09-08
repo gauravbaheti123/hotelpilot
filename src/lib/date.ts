@@ -53,6 +53,22 @@ export function istMonthEnd(iso: string = istToday()): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** Date + 24-hour time in IST, e.g. "08 Sep 2026, 20:57". Empty string for invalid input. */
+export function istDateTime(d: Date | string | number | null | undefined): string {
+  if (d == null || d === "") return "";
+  const date = d instanceof Date ? d : new Date(d);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: IST_TZ,
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
 /** Current IST wall-clock time as HH:mm. */
 export function istTimeHHmm(d: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-GB", {

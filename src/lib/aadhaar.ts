@@ -19,3 +19,15 @@ export function formatAadhaar(value: string): string {
 
 /** Max visible length of a formatted Aadhaar (12 digits + 2 spaces). */
 export const AADHAAR_MAX_LENGTH = 14;
+
+/**
+ * Storage-safe ID number: display spacing ("4444 8888 9999") is stripped so the
+ * database keeps plain digits and existing guest matching (exact equality on
+ * id_proof_number) still finds returning guests. Non-numeric IDs (passport etc.)
+ * are only trimmed.
+ */
+export function normalizeIdNumber(value: string | null | undefined): string {
+  const v = (value ?? "").trim();
+  if (/^[\d\s]+$/.test(v)) return v.replace(/\s+/g, "");
+  return v;
+}
