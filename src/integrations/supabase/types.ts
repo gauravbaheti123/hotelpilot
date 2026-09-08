@@ -6482,6 +6482,10 @@ export type Database = {
         Returns: Json
       }
       check_login_allowed: { Args: { _email: string }; Returns: Json }
+      complete_checkout: {
+        Args: { _booking_id: string; _due_reason?: string; _mark_due?: boolean }
+        Returns: Json
+      }
       create_booking: { Args: { payload: Json }; Returns: Json }
       create_event_booking: { Args: { payload: Json }; Returns: Json }
       current_user_max_discount_pct: {
