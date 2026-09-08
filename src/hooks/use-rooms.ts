@@ -136,5 +136,5 @@ export function useTariffPlans(propertyId: string | null | undefined) {
       }
     },
   });
-  return { plans: data ?? [], loading: isLoading };
+  return { plans: data ?? EMPTY_PLANS, loading: isLoading };
 }
