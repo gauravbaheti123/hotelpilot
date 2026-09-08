@@ -36,7 +36,6 @@ import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 import { payableFolios } from "@/lib/folioSelect";
 import { mergeSegmentBillToFolio } from "@/lib/paymentTargets";
-import { finalizeBookingSettlement } from "@/lib/folioFinalize";
 
 interface Props {
   bookingId: string | null;
