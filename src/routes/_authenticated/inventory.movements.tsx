@@ -17,6 +17,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
@@ -74,15 +75,17 @@ function MovementsPage() {
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    let qy = supabase.from("stock_movements")
-      .select("id,movement_type,quantity,rate,amount,reference,reason,department,movement_date,inventory_items(name,unit),vendors(name)")
-      .eq("property_id", propertyId)
-      .order("movement_date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(300);
-    if (filterType !== "all") qy = qy.eq("movement_type", filterType);
-    const { data } = await qy;
-    setRows((data ?? []) as unknown as MovementRow[]);
+    const build = (f: number, t: number) => {
+      let qy = supabase.from("stock_movements")
+        .select("id,movement_type,quantity,rate,amount,reference,reason,department,movement_date,inventory_items(name,unit),vendors(name)")
+        .eq("property_id", propertyId)
+        .order("movement_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .range(f, t);
+      if (filterType !== "all") qy = qy.eq("movement_type", filterType);
+      return qy;
+    };
+    setRows(await fetchAllRows<MovementRow>(build));
   }, [propertyId, filterType]);
 
   const loadRefs = useCallback(async () => {

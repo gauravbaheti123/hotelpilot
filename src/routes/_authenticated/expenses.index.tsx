@@ -12,6 +12,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
@@ -59,18 +60,21 @@ function ExpensesPage() {
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    let qyBase = supabase.from("expenses")
-      .select("id,expense_date,amount,payment_mode,reference,description,expense_categories(name),vendors(name),staff(name)")
-      .eq("property_id", propertyId)
-      .gte("expense_date", from)
-      .lte("expense_date", to)
-      .order("expense_date", { ascending: false })
-      .order("created_at", { ascending: false })
-      ;
-    if (mode !== "all") qyBase = qyBase.eq("payment_mode", mode);
+    // Paged: a long date range used to stop silently at 500 rows.
+    const build = (f: number, t: number) => {
+      let qy = supabase.from("expenses")
+        .select("id,expense_date,amount,payment_mode,reference,description,expense_categories(name),vendors(name),staff(name)")
+        .eq("property_id", propertyId)
+        .gte("expense_date", from)
+        .lte("expense_date", to)
+        .order("expense_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .range(f, t);
+      if (mode !== "all") qy = qy.eq("payment_mode", mode);
+      return qy;
+    };
     try {
-      const rows = await fetchAllRows<ExpenseRow>((f, t) => (qyBase as any).range(f, t));
-      setRows(rows);
+      setRows(await fetchAllRows<ExpenseRow>(build));
     } catch (e) { toastError(e); }
   }, [propertyId, from, to, mode]);
 

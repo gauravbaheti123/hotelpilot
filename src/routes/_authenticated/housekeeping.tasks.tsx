@@ -9,6 +9,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/fetchAll";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { toast } from "sonner";
@@ -45,15 +46,17 @@ function TasksPage() {
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    let qy = supabase.from("housekeeping_tasks")
-      .select("id,task_type,status,priority,due_date,notes,created_at,rooms(room_number,floor),staff(name)")
-      .eq("property_id", propertyId)
-      .order("priority", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(300);
-    if (status !== "all") qy = qy.eq("status", status);
-    const { data } = await qy;
-    setRows((data ?? []) as unknown as TaskRow[]);
+    const build = (f: number, t: number) => {
+      let qy = supabase.from("housekeeping_tasks")
+        .select("id,task_type,status,priority,due_date,notes,created_at,rooms(room_number,floor),staff(name)")
+        .eq("property_id", propertyId)
+        .order("priority", { ascending: false })
+        .order("created_at", { ascending: false })
+        .range(f, t);
+      if (status !== "all") qy = qy.eq("status", status);
+      return qy;
+    };
+    setRows(await fetchAllRows<TaskRow>(build));
   }, [propertyId, status]);
 
   useEffect(() => { load(); }, [load]);
