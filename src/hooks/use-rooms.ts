@@ -116,7 +116,7 @@ export function useRoomCategories(propertyId: string | null | undefined) {
   const reload = useCallback(async () => {
     await qc.invalidateQueries({ queryKey: roomCategoriesQueryKey(propertyId) });
   }, [qc, propertyId]);
-  return { categories: data ?? [], loading: isLoading, reload };
+  return { categories: data ?? EMPTY_CATEGORIES, loading: isLoading, reload };
 }
 
 /** Active tariff plans — fetched alongside rooms on most of the same screens. */
