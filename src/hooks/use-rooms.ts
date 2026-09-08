@@ -91,7 +91,7 @@ export function useRooms(propertyId: string | null | undefined) {
     await qc.invalidateQueries({ queryKey: roomsQueryKey(propertyId) });
   }, [qc, propertyId]);
 
-  return { rooms: data ?? [], loading: isLoading, fetching: isFetching, refetch, reload };
+  return { rooms: data ?? EMPTY_ROOMS, loading: isLoading, fetching: isFetching, refetch, reload };
 }
 
 /** Room categories master (id + name), ordered by name. */
