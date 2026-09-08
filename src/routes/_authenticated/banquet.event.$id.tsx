@@ -505,7 +505,7 @@ function BanquetEventPage() {
         pax: Number(meta.pax) || 0,
         function_type: meta.function_type || b.function_type,
       });
-      await seedEventFolioCharges(ids.bookingId).catch(() => {});
+      await seedEventFolioCharges(ids.bookingId).catch((err) => toastError(err, "Event charges could not be updated on the bill"));
     } catch (e: any) {
       return toastError(e, "Update failed");
     }
@@ -557,10 +557,10 @@ function BanquetEventPage() {
     delete dbPatch.halls;
     try {
       await patchEventBooking(ids, dbPatch);
-      await seedEventFolioCharges(ids.bookingId).catch(() => {});
+      await seedEventFolioCharges(ids.bookingId).catch((err) => toastError(err, "Event charges could not be updated on the bill"));
       loadEventFinancials(ids.bookingId)
         .then(setFin)
-        .catch(() => {});
+        .catch((err) => toastError(err, "Could not refresh event totals"));
     } catch (e: any) {
       return toastError(e, "Update failed");
     }

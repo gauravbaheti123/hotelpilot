@@ -102,7 +102,11 @@ export function AddChargesDialog({ bookingId, open, onOpenChange, onDone }: Prop
         row?.category_id ?? null,
         (b as any).check_in,
         row?.meal_plan ?? null,
-      ).catch(() => null);
+      ).catch((err) => {
+        // Silently returning null used to price an extra bed at 0.
+        toastError(err, "Extra bed rate could not be loaded from the tariff plan");
+        return null;
+      });
       const rate = extraBedRateFor(plan);
       const arrivalRaw = row?.actual_check_in ?? (b as any).checked_in_at ?? null;
       const arrival = arrivalRaw
