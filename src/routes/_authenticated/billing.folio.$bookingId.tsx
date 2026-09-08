@@ -2915,7 +2915,7 @@ function FolioPage() {
                       const arr = (groups as any)[key] as Charge[];
                       const taxable = arr.reduce((s, c) => s + Number(c.amount), 0);
                       const gst = arr.reduce((s, c) => s + Number(c.gst_amount || 0), 0);
-                      if (gst <= 0) return null;
+                      if (gst <= 0 && Math.abs(taxable) < 0.005) return null;
                       const label = key === "room" ? "Accommodation" : key === "food" ? "Food & Beverage" : key === "sundry" ? "Sundry / POS" : "Others";
                       return (
                         <tr key={key}>
