@@ -8,7 +8,12 @@ import { reportQueryError } from "@/lib/queryError";
  * exactly the same literal used by `expenses.payment_mode`, so the two join
  * safely on the raw string.
  */
-export const CASH_MODE = "cash";
+export const CASH_MODE = "CASH";
+
+/** Cash match is case-insensitive — older rows were saved as "cash". */
+export function isCashMode(mode: string | null | undefined): boolean {
+  return String(mode ?? "").trim().toUpperCase() === CASH_MODE;
+}
 
 export type PettyCashType = "opening" | "in" | "out";
 
