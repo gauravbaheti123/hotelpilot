@@ -639,23 +639,12 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         .update({ status: "billed", folio_charge_id: (inserted as any).id, billed_at: new Date().toISOString() } as any)
         .eq("id", pc.id);
     }
-    // Recompute folio totals after inserting
-    const { data: allCharges, error: __qe6 } = await supabase.from("folio_charges").select("*").eq("folio_id", folio.id);
-    if (__qe6) reportQueryError("folio charges", __qe6);
-    const mode = (folio.gst_mode as "cash" | "gst") ?? "gst";
-    const posBillDisc: BillDiscount | null =
-      (folio as any)?.discount_type && Number((folio as any)?.discount_value) > 0
-        ? { type: (folio as any).discount_type as "percent" | "amount", value: Number((folio as any).discount_value) }
-        : null;
-    const t = recomputeFolio((allCharges ?? []) as any[], mode, posBillDisc);
-    const { data: pays, error: __qe7 } = await supabase.from("payments").select("amount,mode").eq("folio_id", folio.id);
-    if (__qe7) reportQueryError("payments", __qe7);
-    const paid = realPaidTotal((pays ?? []) as any[]);
-    await supabase.from("folios").update({
-      ...t,
-      paid_amount: paid,
-      balance_amount: Math.max(0, t.total_amount - paid),
-    } as any).eq("id", folio.id);
+    // Totals are owned by the database (round-off, complimentary food and the
+    // night-audit day lock all live there). Never overwrite them from here.
+    const { error: __qeRecalc } = await supabase.rpc("recompute_folio_totals" as never, {
+      _folio_id: folio.id,
+    } as never);
+    if (__qeRecalc) reportQueryError("recompute folio totals", __qeRecalc);
     toast.success(`${pendingPos.length} POS charge(s) added to bill`);
     setBusy(false);
     load();
