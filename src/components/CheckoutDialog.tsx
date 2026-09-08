@@ -36,7 +36,6 @@ import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 import { payableFolios } from "@/lib/folioSelect";
 import { mergeSegmentBillToFolio } from "@/lib/paymentTargets";
-import { finalizeBookingSettlement } from "@/lib/folioFinalize";
 
 interface Props {
   bookingId: string | null;
@@ -775,15 +774,29 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       return toast.error(`Pending balance ${inr(liveBalance)}. Collect payment first.`);
     }
 
+    // One atomic step: settle (or mark due) every live folio, stamp the
+    // booking as checked out, stamp each room's checkout time and free the
+    // rooms for housekeeping. Any failure rolls the whole thing back, so a
+    // dropped connection can never leave a half-finished checkout.
+    const priorStatuses = (booking.booking_rooms ?? [])
+      .filter((br: any) => br.rooms?.id)
+      .map((br: any) => ({
+        room_id: br.rooms.id,
+        room_number: br.rooms.room_number ?? null,
+        old_status: br.rooms.status ?? "occupied",
+      }));
+    const { error: coErr } = await supabase.rpc("complete_checkout" as any, {
+      _booking_id: booking.id,
+      _mark_due: liveBalance > 0.01,
+      _due_reason: dueReason.trim() || null,
+    } as any);
+    if (coErr) {
+      setBusy(false);
+      console.error("[CheckoutDialog] complete_checkout failed", coErr);
+      return toastError(coErr, "Checkout stopped — nothing was saved");
+    }
+
     if (liveBalance > 0.01) {
-      // Deliberate "Mark as Due": finalize the bill with a real outstanding
-      // balance. The RPC recomputes paid from real (non-hold) payments only,
-      // stamps status = 'due' and writes the audit entry.
-      const { error: dueErr } = await supabase.rpc("mark_folio_due" as any, {
-        _folio_id: folio.id,
-        _reason: dueReason.trim(),
-      } as any);
-      if (dueErr) { setBusy(false); return toastError(dueErr); }
       logActivity({
         property_id: booking.property_id,
         user_id: user?.id ?? "",
@@ -799,87 +812,27 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
           reason: dueReason.trim(),
         },
       });
-    } else {
-      // Balance is zero — explicitly finalize EVERY live folio of this booking
-      // (a split bill has one child per portion). Runs through a SECURITY
-      // DEFINER RPC so it can't be silently denied by RLS, and any failure
-      // aborts the checkout instead of freeing the room with an unsettled bill.
-      try {
-        await finalizeBookingSettlement(booking.id, folio.id);
-      } catch (e) {
-        setBusy(false);
-        console.error("[CheckoutDialog] settle failed", e);
-        return toastError(e, "Checkout stopped — the bill could not be settled");
-      }
     }
 
-    const now = new Date().toISOString();
-
-    if (booking.status !== "checked_out" && booking.status !== "cancelled") {
-      const { error: bkErr } = await supabase
-        .from("bookings")
-        .update({
-          status: "checked_out",
-          checked_out_at: now,
-          checked_out_by: user?.id ?? null,
-        } as any)
-        .eq("id", booking.id);
-      if (bkErr) {
-        setBusy(false);
-        console.error("[CheckoutDialog] booking status update failed", bkErr);
-        return toastError(bkErr, "Checkout failed");
-      }
+    for (const p of priorStatuses) {
+      logActivity({
+        property_id: booking.property_id,
+        user_id: user?.id ?? "",
+        user_name: userDisplayName(user as never),
+        action_type: "ROOM_STATUS_CHANGED",
+        module: "Rooms",
+        reference_id: p.room_id,
+        reference_label: p.room_number ? `Room ${p.room_number}` : null,
+        details: {
+          room_id: p.room_id,
+          room_number: p.room_number,
+          old_status: p.old_status,
+          new_status: "vacant",
+          booking_id: booking.id,
+        },
+      });
     }
 
-    const roomIds: string[] = [];
-    for (const br of booking.booking_rooms ?? []) {
-      const { error: brErr } = await supabase
-        .from("booking_rooms")
-        .update({ actual_check_out: now } as any)
-        .eq("id", br.id);
-      if (brErr) {
-        setBusy(false);
-        console.error("[CheckoutDialog] booking_rooms update failed", brErr);
-        return toast.error(`Checkout failed (room ${br.rooms?.room_number ?? ""}): ${brErr.message}`);
-      }
-      if (br.rooms?.id) roomIds.push(br.rooms.id);
-    }
-    if (roomIds.length > 0) {
-      const priorStatuses = (booking.booking_rooms ?? [])
-        .filter((br: any) => br.rooms?.id)
-        .map((br: any) => ({
-          room_id: br.rooms.id,
-          room_number: br.rooms.room_number ?? null,
-          old_status: br.rooms.status ?? "occupied",
-        }));
-      const { error: rmErr } = await supabase
-        .from("rooms")
-        .update({ status: "vacant", housekeeping_status: "dirty" } as any)
-        .in("id", roomIds);
-      if (rmErr) {
-        setBusy(false);
-        console.error("[CheckoutDialog] rooms status update failed", rmErr);
-        return toastError(rmErr, "Checkout partial: room status not updated —");
-      }
-      for (const p of priorStatuses) {
-        logActivity({
-          property_id: booking.property_id,
-          user_id: user?.id ?? "",
-          user_name: userDisplayName(user as never),
-          action_type: "ROOM_STATUS_CHANGED",
-          module: "Rooms",
-          reference_id: p.room_id,
-          reference_label: p.room_number ? `Room ${p.room_number}` : null,
-          details: {
-            room_id: p.room_id,
-            room_number: p.room_number,
-            old_status: p.old_status,
-            new_status: "vacant",
-            booking_id: booking.id,
-          },
-        });
-      }
-    }
 
     try {
       if (booking.guests?.mobile) {
