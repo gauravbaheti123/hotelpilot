@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { userDisplayName } from "@/lib/activityLog";
 import { fmtINR, fmtDateTime } from "@/lib/reportExports";
 import {
-  CASH_MODE, PETTY_TYPE_LABEL, buildCashBreakdown, fetchPreviousClosingCash,
+  CASH_MODE, isCashMode, PETTY_TYPE_LABEL, buildCashBreakdown, fetchPreviousClosingCash,
   fetchUnreconciledCashExpenses, fetchUnreconciledPetty, pettySign,
   type CashExpenseRow, type PettyCashEntry,
 } from "@/lib/pettyCash";
@@ -159,13 +159,13 @@ function StartHandoverPage() {
       if (error) { toastError(error); return; }
       const totals = new Map<string, number>();
       for (const p of ((data ?? []) as any[])) {
-        const m = (p.mode ?? "").toString();
+        const m = (p.mode ?? "").toString().trim().toUpperCase();
         totals.set(m, (totals.get(m) ?? 0) + Number(p.amount ?? 0));
       }
       const active = methods.filter((m) => m.is_active);
       setLines(active.map((m) => ({
         mode: m.name,
-        system_total: totals.get(m.name) ?? 0,
+        system_total: totals.get(m.name.trim().toUpperCase()) ?? 0,
         manual_entry: "",
         note: "",
       })));
@@ -174,7 +174,7 @@ function StartHandoverPage() {
   }, [propertyId, windowStart, methods]);
 
   const cashPayments = useMemo(
-    () => lines.find((l) => l.mode === CASH_MODE)?.system_total ?? 0,
+    () => lines.find((l) => isCashMode(l.mode))?.system_total ?? 0,
     [lines],
   );
 
@@ -185,14 +185,14 @@ function StartHandoverPage() {
 
   /** Expected figure for a line: cash uses the enriched formula, others unchanged. */
   const expectedFor = useCallback(
-    (l: LineRow) => (l.mode === CASH_MODE ? cashBreak.expected : l.system_total),
+    (l: LineRow) => (isCashMode(l.mode) ? cashBreak.expected : l.system_total),
     [cashBreak.expected],
   );
 
   const totals = useMemo(() => {
     let sys = 0, man = 0, diff = 0;
     for (const l of lines) {
-      const expected = l.mode === CASH_MODE ? cashBreak.expected : l.system_total;
+      const expected = isCashMode(l.mode) ? cashBreak.expected : l.system_total;
       sys += expected;
       const manual = Number(l.manual_entry || 0);
       man += manual;
@@ -375,7 +375,7 @@ function StartHandoverPage() {
                         <tr key={l.mode} className={mismatch ? "bg-rose-50/50" : ""}>
                           <td className="px-3 py-2 font-medium">
                             {formatPaymentMethodLabel(l.mode)}
-                            {l.mode === CASH_MODE && (
+                            {isCashMode(l.mode) && (
                               <div className="text-[10px] font-normal text-muted-foreground">
                                 incl. float, petty cash &amp; cash expenses
                               </div>
