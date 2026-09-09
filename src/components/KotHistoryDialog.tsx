@@ -461,9 +461,30 @@ export function KotHistoryDialog({
                     ))}
                   </ul>
                   <div className="mt-2 flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => reprint(p)}>
-                      <Printer className="h-3.5 w-3.5 mr-1" /> Reprint
-                    </Button>
+                    {segment === "food" ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <Printer className="h-3.5 w-3.5 mr-1" /> Reprint
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          <DropdownMenuItem onClick={() => reprint(p, "kitchen+counter")}>
+                            Reprint All
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => reprint(p, "kitchen")}>
+                            Reprint Kitchen Copy
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => reprint(p, "counter")}>
+                            Reprint Counter Copy
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => reprint(p)}>
+                        <Printer className="h-3.5 w-3.5 mr-1" /> Reprint
+                      </Button>
+                    )}
                     {canEditPunch(p) && (
                       <Button size="sm" variant="outline" onClick={() => startEdit(p)}>
                         <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
