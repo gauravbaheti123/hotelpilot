@@ -174,6 +174,10 @@ function BookingDetailPage() {
   const [shiftStep, setShiftStep] = useState<ShiftStep>(1);
   const [shiftMode, setShiftMode] = useState<"same_day" | "mid_stay">("same_day");
   const [shiftEffDate, setShiftEffDate] = useState<string>("");
+  /** Explicit acknowledgement when a same-day correction is chosen on a stay
+   *  that has already run past its first night (nights already stayed get
+   *  re-billed at the new room's rate). */
+  const [sameDayAck, setSameDayAck] = useState(false);
   const [tariffChoice, setTariffChoice] = useState<"keep" | "new_standard" | "custom">("keep");
   const [customRate, setCustomRate] = useState("");
   const [transferKots, setTransferKots] = useState(true);
