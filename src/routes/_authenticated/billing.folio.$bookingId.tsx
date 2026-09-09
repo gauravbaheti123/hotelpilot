@@ -2866,65 +2866,83 @@ function FolioPage() {
                     </td>
                     {canEditNow && (
                       <td className="print:hidden" style={{ textAlign: "right" }}>
-                        <div className="flex items-center justify-end gap-1">
-                          {c.is_night_split ? (
-                            c.charge_type === "room" && canEditTariff ? (
-                              <button
-                                type="button"
-                                onClick={() => openEditTariff(c as any)}
-                                className="text-sky-700"
-                                title="Edit this night's tariff"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground">Night</span>
-                            )
-                          ) : c.is_consolidated ? (
-                            <span className="text-[10px] text-muted-foreground">Bill</span>
-                          ) : (<>
-                          {c.charge_type !== "discount" && c.charge_type !== "tax" && (
-                            <button
-                              type="button"
-                              onClick={() => openLineDiscount(c as any)}
-                              className="text-emerald-700"
-                              title="Apply line-item discount"
-                            >
-                              <Percent className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                          {c.charge_type !== "room" && c.charge_type !== "tax" && c.charge_type !== "discount" && (
-                            <button
-                              type="button"
-                              onClick={() => openEditCharge(c as any)}
-                              className="text-sky-700"
-                              title="Edit charge"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                          {c.charge_type === "room" && canEditTariff && (
-                            <button
-                              type="button"
-                              onClick={() => openEditTariff(c as any)}
-                              className="text-sky-700"
-                              title="Edit tariff"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                          {canVoid && (
-                            <button
-                              type="button"
-                              onClick={() => removeCharge(String(c.id))}
-                              className="text-destructive"
-                              title="Delete charge (manager/owner)"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                          </>)}
-                        </div>
+                         <div className="flex items-center justify-end gap-1">
+                           {c.is_night_split ? (
+                             c.charge_type === "room" && canEditTariff ? (
+                               <button
+                                 type="button"
+                                 onClick={() => openEditTariff(c as any)}
+                                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sky-700 hover:bg-muted"
+                                 title="Edit this night's tariff"
+                               >
+                                 <Pencil className="h-4 w-4" />
+                               </button>
+                             ) : (
+                               <span className="text-[10px] text-muted-foreground">Night</span>
+                             )
+                           ) : c.is_consolidated ? (<>
+                             <span className="text-[10px] text-muted-foreground">Bill</span>
+                             <button
+                               type="button"
+                               onClick={() => openEditCharge(c as any)}
+                               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sky-700 hover:bg-muted"
+                               title="Edit this bill line (corrects the total across its items)"
+                             >
+                               <Pencil className="h-4 w-4" />
+                             </button>
+                             {canVoid && (
+                               <button
+                                 type="button"
+                                 onClick={() => removeCharges((((c as any).source_charge_ids as string[] | undefined) ?? [String(c.id)]))}
+                                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-muted"
+                                 title="Remove this bill line (manager/owner)"
+                               >
+                                 <Trash2 className="h-4 w-4" />
+                               </button>
+                             )}
+                           </>) : (<>
+                           {c.charge_type !== "discount" && c.charge_type !== "tax" && (
+                             <button
+                               type="button"
+                               onClick={() => openLineDiscount(c as any)}
+                               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-emerald-700 hover:bg-muted"
+                               title="Apply line-item discount"
+                             >
+                               <Percent className="h-4 w-4" />
+                             </button>
+                           )}
+                           {c.charge_type !== "room" && c.charge_type !== "tax" && c.charge_type !== "discount" && (
+                             <button
+                               type="button"
+                               onClick={() => openEditCharge(c as any)}
+                               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sky-700 hover:bg-muted"
+                               title="Edit charge"
+                             >
+                               <Pencil className="h-4 w-4" />
+                             </button>
+                           )}
+                           {c.charge_type === "room" && canEditTariff && (
+                             <button
+                               type="button"
+                               onClick={() => openEditTariff(c as any)}
+                               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sky-700 hover:bg-muted"
+                               title="Edit tariff"
+                             >
+                               <Pencil className="h-4 w-4" />
+                             </button>
+                           )}
+                           {canVoid && (
+                             <button
+                               type="button"
+                               onClick={() => removeCharge(String(c.id))}
+                               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-muted"
+                               title="Delete charge (manager/owner)"
+                             >
+                               <Trash2 className="h-4 w-4" />
+                             </button>
+                           )}
+                           </>)}
+                         </div>
                       </td>
                     )}
                   </tr>
