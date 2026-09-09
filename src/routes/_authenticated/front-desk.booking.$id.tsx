@@ -416,6 +416,19 @@ function BookingDetailPage() {
     return Number(br.rate);
   }
 
+  /** True when a "same-day correction" would re-bill nights the guest has
+   *  already stayed in the old room (stay started before today, more than one
+   *  night, and today is still inside the stay). */
+  function isSameDayRisky(br: BookingRoomRow | undefined): boolean {
+    if (!br?.check_in || !br?.check_out) return false;
+    const today = istToday();
+    const nights = Math.round(
+      (new Date(`${br.check_out}T00:00:00Z`).getTime() -
+        new Date(`${br.check_in}T00:00:00Z`).getTime()) / 86400000,
+    );
+    return br.check_in < today && today < br.check_out && nights > 1;
+  }
+
   async function doShift() {
     if (!b || !shiftBrId || !shiftToRoom) return toast.error("Pick a target room");
     const br = b.booking_rooms.find((x) => x.id === shiftBrId);
