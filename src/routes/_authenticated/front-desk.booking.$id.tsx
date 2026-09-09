@@ -451,7 +451,7 @@ function BookingDetailPage() {
     setShiftBusy(true);
 
     // Atomic shift + folio recompute + KOT transfer — see src/lib/roomOps.ts.
-    let moved = { movedKots: 0, toRoomNumber: null as string | null };
+    let moved = { movedKots: 0, toRoomNumber: null as string | null, bookingRoomId: "" };
     try {
       moved = await shiftRoomOp({
         bookingId: b.id,
@@ -487,10 +487,18 @@ function BookingDetailPage() {
       }
     } catch { /* ignore */ }
 
+    // Refresh before closing/reporting success so a repeat shift can only use
+    // the new current row returned and verified by the database.
+    try {
+      await load();
+    } catch (e) {
+      setShiftBusy(false);
+      return toastError(e);
+    }
+    setShiftBrId(moved.bookingRoomId);
     setShiftBusy(false);
-    toast.success("Room shifted");
     setShiftOpen(false);
-    load();
+    toast.success("Room shifted");
   }
 
   async function modifyDate() {
