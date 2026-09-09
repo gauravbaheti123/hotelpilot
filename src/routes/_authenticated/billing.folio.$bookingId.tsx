@@ -2806,6 +2806,31 @@ function FolioPage() {
                     <div className="text-xs">Guest: <span className="font-semibold">{booking.guests?.name ?? "—"}</span>{booking.guests?.mobile ? ` · ${booking.guests.mobile}` : ""}</div>
                     <div className="text-xs">Check-in: <span className="font-semibold">{fmtDateTime(displayRoom?.actual_check_in ?? booking.check_in, property?.default_checkin_time)}</span></div>
                     <div className="text-xs">Check-out: <span className="font-semibold">{fmtDateTime(displayRoom?.actual_check_out ?? booking.check_out, property?.default_checkout_time)}</span></div>
+                    {/* Stay spread across more than one room (mid-stay shift):
+                        list every room with its own dates and nights. */}
+                    {rows.length > 1 && (
+                      <div className="text-xs mt-1">
+                        <span>Rooms occupied:</span>
+                        <div className="mt-0.5 space-y-0.5">
+                          {[...rows]
+                            .sort((a, b) => String(a.check_in ?? "").localeCompare(String(b.check_in ?? "")))
+                            .map((r) => {
+                              const ci = String(r.check_in ?? "").slice(0, 10);
+                              const co = String(r.check_out ?? "").slice(0, 10);
+                              const n = ci && co
+                                ? Math.max(1, Math.round(
+                                    (new Date(`${co}T00:00:00Z`).getTime() -
+                                      new Date(`${ci}T00:00:00Z`).getTime()) / 86400000))
+                                : 1;
+                              return (
+                                <div key={r.id} className="font-semibold">
+                                  Room {r.rooms?.room_number ?? "—"} · {ci || "—"} → {co || "—"} · {n} Night{n > 1 ? "s" : ""}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    )}
                   </>
                 );
               })()}

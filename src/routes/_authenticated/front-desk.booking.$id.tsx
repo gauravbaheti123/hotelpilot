@@ -65,6 +65,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { istDateTime, istToday } from "@/lib/date";
+import { Checkbox } from "@/components/ui/checkbox";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 
@@ -173,6 +174,10 @@ function BookingDetailPage() {
   const [shiftStep, setShiftStep] = useState<ShiftStep>(1);
   const [shiftMode, setShiftMode] = useState<"same_day" | "mid_stay">("same_day");
   const [shiftEffDate, setShiftEffDate] = useState<string>("");
+  /** Explicit acknowledgement when a same-day correction is chosen on a stay
+   *  that has already run past its first night (nights already stayed get
+   *  re-billed at the new room's rate). */
+  const [sameDayAck, setSameDayAck] = useState(false);
   const [tariffChoice, setTariffChoice] = useState<"keep" | "new_standard" | "custom">("keep");
   const [customRate, setCustomRate] = useState("");
   const [transferKots, setTransferKots] = useState(true);
@@ -326,14 +331,30 @@ function BookingDetailPage() {
     setShiftToRoom("");
     setShiftReason("");
     setShiftStep(1);
-    setShiftMode("same_day");
-    setShiftEffDate(istToday());
+    // A stay that already ran past its first night is almost always a genuine
+    // mid-stay move: defaulting it to "same-day correction" silently re-prices
+    // the nights already stayed onto the new room's rate. Open on mid-stay.
+    const brNow = b?.booking_rooms.find((x) => x.id === brId);
+    const today = istToday();
+    const startedEarlier = !!brNow?.check_in && brNow.check_in < today;
+    const multiNight =
+      !!brNow?.check_in && !!brNow?.check_out && brNow.check_out > brNow.check_in
+        ? Math.round(
+            (new Date(`${brNow.check_out}T00:00:00Z`).getTime() -
+              new Date(`${brNow.check_in}T00:00:00Z`).getTime()) / 86400000,
+          ) > 1
+        : false;
+    const suggestMid =
+      startedEarlier && multiNight && !!brNow?.check_out && today < brNow.check_out;
+    setShiftMode(suggestMid ? "mid_stay" : "same_day");
+    setShiftEffDate(today);
     setTariffChoice("keep");
     setCustomRate("");
     setTransferKots(true);
     setPendingKots([]);
     setPendingFoodBills([]);
     setMgrEmail(""); setMgrPass(""); setMgrApproved(false);
+    setSameDayAck(false);
     setShiftOpen(true);
   }
 
@@ -395,6 +416,19 @@ function BookingDetailPage() {
     return Number(br.rate);
   }
 
+  /** True when a "same-day correction" would re-bill nights the guest has
+   *  already stayed in the old room (stay started before today, more than one
+   *  night, and today is still inside the stay). */
+  function isSameDayRisky(br: BookingRoomRow | undefined): boolean {
+    if (!br?.check_in || !br?.check_out) return false;
+    const today = istToday();
+    const nights = Math.round(
+      (new Date(`${br.check_out}T00:00:00Z`).getTime() -
+        new Date(`${br.check_in}T00:00:00Z`).getTime()) / 86400000,
+    );
+    return br.check_in < today && today < br.check_out && nights > 1;
+  }
+
   async function doShift() {
     if (!b || !shiftBrId || !shiftToRoom) return toast.error("Pick a target room");
     const br = b.booking_rooms.find((x) => x.id === shiftBrId);
@@ -406,6 +440,11 @@ function BookingDetailPage() {
       if (br.check_out && shiftEffDate >= br.check_out) return toast.error("Shift date must be before the check-out date");
     }
     if (tariffChoice === "custom" && !mgrApproved) return toast.error("Manager authorisation required for custom rate");
+    if (shiftMode === "same_day" && isSameDayRisky(br) && !sameDayAck) {
+      return toast.error(
+        "This stay has already run past its first night — tick the confirmation, or switch to a mid-stay shift.",
+      );
+    }
     const target = rooms.find((r) => r.id === shiftToRoom);
     const newRate = resolveNewRate(br, target);
     const fromRoomId = br.room_id;
@@ -1016,6 +1055,25 @@ function BookingDetailPage() {
                           <div><span className="text-muted-foreground">Open food bills moved:</span> {pendingFoodBills.length}</div>
                         )}
                       </div>
+                      {shiftMode === "same_day" && isSameDayRisky(br) && (
+                        <div className="rounded-md border border-amber-400 bg-amber-50 p-3 space-y-2">
+                          <div className="text-xs text-amber-800">
+                            This stay started on {br.check_in} and is still running. A same-day
+                            correction keeps one room line, so the nights already stayed in Room{" "}
+                            {br.rooms?.room_number} will be re-billed at Room {target.room_number}'s
+                            rate (₹{newRate}/night). Use a mid-stay shift if the guest is actually
+                            moving now.
+                          </div>
+                          <label className="flex items-start gap-2 text-xs text-amber-900">
+                            <Checkbox
+                              checked={sameDayAck}
+                              onCheckedChange={(v) => setSameDayAck(v === true)}
+                              className="mt-0.5"
+                            />
+                            <span>I understand and want the whole stay billed on the new room.</span>
+                          </label>
+                        </div>
+                      )}
                       <div className="space-y-1.5">
                         <Label className="text-xs">Reason *</Label>
                         <Textarea rows={2} value={shiftReason}
