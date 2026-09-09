@@ -28,12 +28,17 @@ interface Props {
   segment: "food" | "laundry";
   /** Counter/table walk-in bill — no room folio involved. */
   walkin?: boolean;
+  /** Printed on the counter receipt when settling a walk-in bill. */
+  propertyName?: string | null;
+  guestLabel?: string | null;
   onSettled?: () => void;
 }
 
 export function SettleFoodBillDialog({
-  open, onClose, propertyId, billId, billNumber, amount, segment, walkin, onSettled,
+  open, onClose, propertyId, billId, billNumber, amount, segment, walkin,
+  propertyName, guestLabel, onSettled,
 }: Props) {
+
 
   const { user } = useAuth();
   const { methods } = usePaymentMethods(propertyId);
