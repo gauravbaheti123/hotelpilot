@@ -14,7 +14,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { AlertTriangle, Plus, Minus, Trash2 } from "lucide-react";
 import { reportQueryError } from "@/lib/queryError";
-import { renderKotHtml, printThermalHtml } from "@/lib/kotPrint";
+import {
+  buildKotPrintPlan,
+  runKotPrintJobs,
+  type KotItemForPrint,
+  type PrinterInfo,
+} from "@/lib/kotPrint";
 
 interface MenuItem {
   id: string; name: string; price: number; gst_rate: number;
