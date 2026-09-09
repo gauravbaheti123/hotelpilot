@@ -991,7 +991,11 @@ function FolioPage() {
 
   function openEditCharge(c: Charge) {
     if (!isOpen && !canEditAnyStatus) { toast.error("Only manager/owner can edit a settled bill"); return; }
+    // Consolidated Food/Laundry bill lines carry the underlying charge ids;
+    // the save distributes the corrected total across them.
+    const ids = ((c as any).source_charge_ids as string[] | undefined)?.filter(Boolean);
     setEditId(c.id);
+    setEditIds(ids && ids.length > 0 ? ids : [String(c.id)]);
     setEditDesc(c.description ?? "");
     setEditQty(String(c.qty ?? 1));
     setEditRate(String(c.rate ?? 0));
