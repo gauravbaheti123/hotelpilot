@@ -120,6 +120,30 @@ export function PunchChargeDialog({
     return () => { cancelled = true; };
   }, [open, propertyId, segment]);
 
+  // Today's running counter bills — shown so a second bill isn't opened for the
+  // same customer when the name is typed slightly differently.
+  useEffect(() => {
+    if (!open || !propertyId || !walkin) { setOpenWalkins([]); return; }
+    let cancelled = false;
+    supabase.from("segment_bills" as any)
+      .select("id,bill_number,guest_name,table_id,total_amount")
+      .eq("property_id", propertyId)
+      .eq("segment", segment)
+      .eq("status", "open")
+      .is("booking_id", null)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .then(guardQuery("open counter bills")).then(({ data }) => {
+        if (cancelled) return;
+        setOpenWalkins(((data ?? []) as any[]).map((b) => ({
+          id: b.id, bill_number: b.bill_number, guest_name: b.guest_name ?? null,
+          table_id: b.table_id ?? null,
+        })));
+      });
+    return () => { cancelled = true; };
+  }, [open, propertyId, segment, walkin]);
+
+
   useEffect(() => {
     if (!open || !propertyId || segment !== "food") { setEvents([]); return; }
     let cancelled = false;
