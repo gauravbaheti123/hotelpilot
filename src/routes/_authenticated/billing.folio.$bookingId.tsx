@@ -35,6 +35,7 @@ import {
   realPaidTotal,
   isHoldPayment,
   overpaymentError,
+  distributeWithRemainder,
 } from "@/lib/billing";
 import { searchGuests } from "@/lib/guestIdLookup";
 import { loadPaymentTargets, mergeSegmentBillToFolio, type PaymentTarget } from "@/lib/paymentTargets";
@@ -262,6 +263,9 @@ function FolioPage() {
   // Edit line-item dialog (for sundry/extra "Other Charges")
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  // All underlying charge rows being edited (1 for normal lines, N for a
+  // consolidated Food/Laundry bill line).
+  const [editIds, setEditIds] = useState<string[]>([]);
 
   // Edit payment mode — dynamic RBAC key, granted to all roles by default.
   const canEditPaymentMode = can("payments", "edit_mode");
@@ -950,14 +954,19 @@ function FolioPage() {
   }
 
   async function removeCharge(id: string) {
+    return removeCharges([id]);
+  }
+
+  async function removeCharges(ids: string[]) {
     if (!folio) return;
     if (!isOpen && !canEditAnyStatus) return toast.error("Only manager/owner can edit a settled bill");
     if (!canVoid) return toast.error("Only manager or owner can delete charges");
-    if (!confirm("Remove this charge? This cannot be undone.")) return;
+    if (ids.length === 0) return;
+    if (!confirm(ids.length > 1 ? `Remove this whole bill line (${ids.length} items)? This cannot be undone.` : "Remove this charge? This cannot be undone.")) return;
     const { error } = await supabase
       .from("folio_charges")
       .update({ is_wiped: true, wiped_at: new Date().toISOString() } as any)
-      .eq("id", id);
+      .in("id", ids);
     if (error) return toastError(error);
     const next = await refetchCharges();
     const prevTotal = Number(folio.total_amount);
@@ -986,7 +995,11 @@ function FolioPage() {
 
   function openEditCharge(c: Charge) {
     if (!isOpen && !canEditAnyStatus) { toast.error("Only manager/owner can edit a settled bill"); return; }
+    // Consolidated Food/Laundry bill lines carry the underlying charge ids;
+    // the save distributes the corrected total across them.
+    const ids = ((c as any).source_charge_ids as string[] | undefined)?.filter(Boolean);
     setEditId(c.id);
+    setEditIds(ids && ids.length > 0 ? ids : [String(c.id)]);
     setEditDesc(c.description ?? "");
     setEditQty(String(c.qty ?? 1));
     setEditRate(String(c.rate ?? 0));
@@ -1013,12 +1026,38 @@ function FolioPage() {
       });
       if (!chk.allowed) return toast.error(chk.reason ?? describeLimit(discountLimit));
     }
-    const { error } = await supabase
-      .from("folio_charges")
-      .update({ description: desc, qty, rate, amount: amt, gst_rate: gstR, gst_amount: gstAmt } as any)
-      .eq("id", editId);
-    if (error) return toastError(error);
-    setEditOpen(false); setEditId(null);
+    const ids = editIds.length > 0 ? editIds : [editId];
+    if (ids.length === 1) {
+      const { error } = await supabase
+        .from("folio_charges")
+        .update({ description: desc, qty, rate, amount: amt, gst_rate: gstR, gst_amount: gstAmt } as any)
+        .eq("id", ids[0]!);
+      if (error) return toastError(error);
+    } else {
+      // Consolidated bill line: distribute the corrected total across the
+      // underlying charge rows (weighted by their current amounts, with the
+      // paise remainder on the last row) so the group sums exactly to `amt`.
+      const rows = charges.filter((c) => ids.includes(String(c.id)));
+      const weights = rows.map((c) => Math.max(0, Number(c.amount ?? 0)));
+      const amounts = distributeWithRemainder(amt, weights);
+      const gsts = distributeWithRemainder(gstAmt, weights);
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i]!;
+        const lineAmt = amounts[i] ?? 0;
+        const lineQty = Number(r.qty ?? 1) || 1;
+        const { error } = await supabase
+          .from("folio_charges")
+          .update({
+            amount: lineAmt,
+            rate: Math.round((lineAmt / lineQty) * 100) / 100,
+            gst_rate: gstR,
+            gst_amount: gsts[i] ?? 0,
+          } as any)
+          .eq("id", r.id);
+        if (error) return toastError(error);
+      }
+    }
+    setEditOpen(false); setEditId(null); setEditIds([]);
     const next = await refetchCharges();
     const prevTotal = Number(folio.total_amount);
     await persistTotals(next, payments);
@@ -2827,65 +2866,83 @@ function FolioPage() {
                     </td>
                     {canEditNow && (
                       <td className="print:hidden" style={{ textAlign: "right" }}>
-                        <div className="flex items-center justify-end gap-1">
-                          {c.is_night_split ? (
-                            c.charge_type === "room" && canEditTariff ? (
-                              <button
-                                type="button"
-                                onClick={() => openEditTariff(c as any)}
-                                className="text-sky-700"
-                                title="Edit this night's tariff"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground">Night</span>
-                            )
-                          ) : c.is_consolidated ? (
-                            <span className="text-[10px] text-muted-foreground">Bill</span>
-                          ) : (<>
-                          {c.charge_type !== "discount" && c.charge_type !== "tax" && (
-                            <button
-                              type="button"
-                              onClick={() => openLineDiscount(c as any)}
-                              className="text-emerald-700"
-                              title="Apply line-item discount"
-                            >
-                              <Percent className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                          {c.charge_type !== "room" && c.charge_type !== "tax" && c.charge_type !== "discount" && (
-                            <button
-                              type="button"
-                              onClick={() => openEditCharge(c as any)}
-                              className="text-sky-700"
-                              title="Edit charge"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                          {c.charge_type === "room" && canEditTariff && (
-                            <button
-                              type="button"
-                              onClick={() => openEditTariff(c as any)}
-                              className="text-sky-700"
-                              title="Edit tariff"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                          {canVoid && (
-                            <button
-                              type="button"
-                              onClick={() => removeCharge(String(c.id))}
-                              className="text-destructive"
-                              title="Delete charge (manager/owner)"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          )}
-                          </>)}
-                        </div>
+                         <div className="flex items-center justify-end gap-1">
+                           {c.is_night_split ? (
+                             c.charge_type === "room" && canEditTariff ? (
+                               <button
+                                 type="button"
+                                 onClick={() => openEditTariff(c as any)}
+                                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sky-700 hover:bg-muted"
+                                 title="Edit this night's tariff"
+                               >
+                                 <Pencil className="h-4 w-4" />
+                               </button>
+                             ) : (
+                               <span className="text-[10px] text-muted-foreground">Night</span>
+                             )
+                           ) : c.is_consolidated ? (<>
+                             <span className="text-[10px] text-muted-foreground">Bill</span>
+                             <button
+                               type="button"
+                               onClick={() => openEditCharge(c as any)}
+                               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sky-700 hover:bg-muted"
+                               title="Edit this bill line (corrects the total across its items)"
+                             >
+                               <Pencil className="h-4 w-4" />
+                             </button>
+                             {canVoid && (
+                               <button
+                                 type="button"
+                                 onClick={() => removeCharges((((c as any).source_charge_ids as string[] | undefined) ?? [String(c.id)]))}
+                                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-muted"
+                                 title="Remove this bill line (manager/owner)"
+                               >
+                                 <Trash2 className="h-4 w-4" />
+                               </button>
+                             )}
+                           </>) : (<>
+                           {c.charge_type !== "discount" && c.charge_type !== "tax" && (
+                             <button
+                               type="button"
+                               onClick={() => openLineDiscount(c as any)}
+                               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-emerald-700 hover:bg-muted"
+                               title="Apply line-item discount"
+                             >
+                               <Percent className="h-4 w-4" />
+                             </button>
+                           )}
+                           {c.charge_type !== "room" && c.charge_type !== "tax" && c.charge_type !== "discount" && (
+                             <button
+                               type="button"
+                               onClick={() => openEditCharge(c as any)}
+                               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sky-700 hover:bg-muted"
+                               title="Edit charge"
+                             >
+                               <Pencil className="h-4 w-4" />
+                             </button>
+                           )}
+                           {c.charge_type === "room" && canEditTariff && (
+                             <button
+                               type="button"
+                               onClick={() => openEditTariff(c as any)}
+                               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sky-700 hover:bg-muted"
+                               title="Edit tariff"
+                             >
+                               <Pencil className="h-4 w-4" />
+                             </button>
+                           )}
+                           {canVoid && (
+                             <button
+                               type="button"
+                               onClick={() => removeCharge(String(c.id))}
+                               className="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-muted"
+                               title="Delete charge (manager/owner)"
+                             >
+                               <Trash2 className="h-4 w-4" />
+                             </button>
+                           )}
+                           </>)}
+                         </div>
                       </td>
                     )}
                   </tr>
@@ -3414,9 +3471,14 @@ function FolioPage() {
         </Dialog>
 
         {/* EDIT CHARGE */}
-        <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (!o) setEditId(null); }}>
+        <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (!o) { setEditId(null); setEditIds([]); } }}>
           <DialogContent>
             <DialogHeader><DialogTitle>Edit charge</DialogTitle></DialogHeader>
+            {editIds.length > 1 && (
+              <p className="text-xs text-muted-foreground">
+                This line combines {editIds.length} food-bill items. The new Qty × Rate total is distributed across those items proportionally so the bill stays exact.
+              </p>
+            )}
             <div className="space-y-3">
               <div className="space-y-1">
                 <Label className="text-xs">Description *</Label>
@@ -3438,7 +3500,7 @@ function FolioPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setEditOpen(false); setEditId(null); }}>Cancel</Button>
+              <Button variant="outline" onClick={() => { setEditOpen(false); setEditId(null); setEditIds([]); }}>Cancel</Button>
               <Button onClick={saveEditCharge}>Save</Button>
             </DialogFooter>
           </DialogContent>
