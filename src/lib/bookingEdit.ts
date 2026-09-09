@@ -482,16 +482,40 @@ export async function saveStayEdits(
     }
 
     if (rateChanged || roomChanged) {
+      // Never start before the stay itself — a backdated check-in would
+      // otherwise skip every night and silently save nothing.
+      const today = istToday();
+      const from = today < stay.checkIn ? stay.checkIn : today;
       await changeRoomRateOp({
         bookingId: s.bookingId,
         bookingRoomId: r.bookingRoomId,
         roomId: r.roomId,
         newRate: r.rate,
-        fromDate: checkedIn ? istToday() : null,
+        fromDate: checkedIn ? from : null,
         checkOut: stay.checkOut,
       });
+
+      if (rateChanged) {
+        // Confirm the change actually landed; a silent no-op must be an error,
+        // never a success toast.
+        const { data: after, error: vErr } = await supabase
+          .from("booking_rooms")
+          .select("rate,status")
+          .eq("booking_id", s.bookingId)
+          .eq("room_id", r.roomId ?? "")
+          .neq("status", "shifted");
+        if (vErr) throw vErr;
+        const hit = ((after ?? []) as Array<{ rate: number | string | null }>)
+          .some((row) => Math.abs(Number(row.rate ?? 0) - r.rate) <= 0.009);
+        if (!hit) {
+          throw new Error(
+            `The nightly tariff for Room ${r.roomNumber ?? r.origRoomNumber ?? "—"} did not save. No change was made.`,
+          );
+        }
+      }
     }
   }
+
 
   // 3. A changed GST basis re-prices every room line, including the ones the
   //    user did not touch — refresh their charges and the folio totals.

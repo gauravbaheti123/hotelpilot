@@ -232,8 +232,14 @@ export async function changeRoomRateOp(p: ChangeRateParams): Promise<void> {
 
   // Forward-only. Walk night by night; each split_room_night() call slices the
   // segment, so the row owning the NEXT night must be re-resolved every pass.
-  let night = p.fromDate;
+  //
+  // The start night is clamped into the stay: on a same-day / last-night stay
+  // `today` can already be >= check-out, in which case the loop used to run
+  // zero times and the caller reported a false "saved" with nothing written.
+  const lastNight = addDays(p.checkOut, -1);
+  let night = p.fromDate > lastNight ? lastNight : p.fromDate;
   let guard = 0;
+  let applied = 0;
   while (night < p.checkOut && guard < 120) {
     guard += 1;
     const { data: rows, error: rErr } = await supabase
@@ -254,8 +260,17 @@ export async function changeRoomRateOp(p: ChangeRateParams): Promise<void> {
         _new_rate: p.newRate,
       } as never);
       if (error) throw error;
+      applied += 1;
+    } else {
+      applied += 1; // already at the requested tariff
     }
     night = addDays(night, 1);
   }
+  if (applied === 0) {
+    throw new Error(
+      "The nightly tariff was not changed — no night of this stay could be re-priced. Nothing was saved.",
+    );
+  }
   await recomputeBookingFolioTotals(p.bookingId);
 }
+
