@@ -1025,12 +1025,38 @@ function FolioPage() {
       });
       if (!chk.allowed) return toast.error(chk.reason ?? describeLimit(discountLimit));
     }
-    const { error } = await supabase
-      .from("folio_charges")
-      .update({ description: desc, qty, rate, amount: amt, gst_rate: gstR, gst_amount: gstAmt } as any)
-      .eq("id", editId);
-    if (error) return toastError(error);
-    setEditOpen(false); setEditId(null);
+    const ids = editIds.length > 0 ? editIds : [editId];
+    if (ids.length === 1) {
+      const { error } = await supabase
+        .from("folio_charges")
+        .update({ description: desc, qty, rate, amount: amt, gst_rate: gstR, gst_amount: gstAmt } as any)
+        .eq("id", ids[0]!);
+      if (error) return toastError(error);
+    } else {
+      // Consolidated bill line: distribute the corrected total across the
+      // underlying charge rows (weighted by their current amounts, with the
+      // paise remainder on the last row) so the group sums exactly to `amt`.
+      const rows = charges.filter((c) => ids.includes(String(c.id)));
+      const weights = rows.map((c) => Math.max(0, Number(c.amount ?? 0)));
+      const amounts = distributeWithRemainder(amt, weights);
+      const gsts = distributeWithRemainder(gstAmt, weights);
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i]!;
+        const lineAmt = amounts[i] ?? 0;
+        const lineQty = Number(r.qty ?? 1) || 1;
+        const { error } = await supabase
+          .from("folio_charges")
+          .update({
+            amount: lineAmt,
+            rate: Math.round((lineAmt / lineQty) * 100) / 100,
+            gst_rate: gstR,
+            gst_amount: gsts[i] ?? 0,
+          } as any)
+          .eq("id", r.id);
+        if (error) return toastError(error);
+      }
+    }
+    setEditOpen(false); setEditId(null); setEditIds([]);
     const next = await refetchCharges();
     const prevTotal = Number(folio.total_amount);
     await persistTotals(next, payments);
