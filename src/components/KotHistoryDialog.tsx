@@ -467,8 +467,11 @@ export function KotHistoryDialog({
               <div className="text-sm">
                 <div className="font-medium">Running bill {openBill.bill_number}</div>
                 <div className="text-xs text-muted-foreground">
-                  Collect payment now — room stays open.
+                  {tableId && !bookingId
+                    ? `Collect payment now — frees ${tableName ?? "this table"}.`
+                    : "Collect payment now — room stays open."}
                 </div>
+
               </div>
               <div className="ml-auto flex items-center gap-3">
                 <span className="text-sm font-semibold">{inr(openBill.total)}</span>
