@@ -17,6 +17,8 @@ import { inr } from "@/lib/billing";
 import { useAuth } from "@/hooks/use-auth";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { toastError } from "@/lib/errorMessage";
+import { printSegmentBill } from "@/components/PunchChargeDialog";
+
 
 interface Props {
   open: boolean;
