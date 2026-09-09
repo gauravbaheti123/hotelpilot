@@ -354,6 +354,7 @@ function BookingDetailPage() {
     setPendingKots([]);
     setPendingFoodBills([]);
     setMgrEmail(""); setMgrPass(""); setMgrApproved(false);
+    setSameDayAck(false);
     setShiftOpen(true);
   }
 
@@ -426,6 +427,11 @@ function BookingDetailPage() {
       if (br.check_out && shiftEffDate >= br.check_out) return toast.error("Shift date must be before the check-out date");
     }
     if (tariffChoice === "custom" && !mgrApproved) return toast.error("Manager authorisation required for custom rate");
+    if (shiftMode === "same_day" && isSameDayRisky(br) && !sameDayAck) {
+      return toast.error(
+        "This stay has already run past its first night — tick the confirmation, or switch to a mid-stay shift.",
+      );
+    }
     const target = rooms.find((r) => r.id === shiftToRoom);
     const newRate = resolveNewRate(br, target);
     const fromRoomId = br.room_id;
