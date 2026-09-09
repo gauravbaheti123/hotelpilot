@@ -3355,7 +3355,7 @@ function FolioPage() {
             id: folio.id,
             invoice_number: folio.invoice_number ?? null,
             property_id: folio.property_id,
-            booking_id: folio.booking_id ?? null,
+            booking_id: (folio as any).booking_id ?? booking?.id ?? null,
             status: folio.status,
             is_deleted: (folio as any).is_deleted ?? false,
             settled_at: folio.settled_at ?? null,
