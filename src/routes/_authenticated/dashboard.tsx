@@ -1509,21 +1509,19 @@ function fmtShort(dateStr: string | null) {
   return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
 }
 
-// Phase 34.2 — compact "02 Aug, 8:00 PM" for room cards. Time is optional;
-// falls back to the date alone when the stay has no stored time.
-function fmtTime12(t: string | null | undefined) {
+// Phase 34.2 — compact "02 Aug, 20:00" for room cards (24-hour). Time is
+// optional; falls back to the date alone when the stay has no stored time.
+function fmtTime24(t: string | null | undefined) {
   if (!t) return "";
   const [hStr, mStr] = t.split(":");
   const h = Number(hStr);
   if (isNaN(h)) return "";
-  const suffix = h >= 12 ? "PM" : "AM";
-  const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${mStr ?? "00"} ${suffix}`;
+  return `${String(h).padStart(2, "0")}:${(mStr ?? "00").padStart(2, "0")}`;
 }
 
 function fmtShortDT(dateStr: string | null, time?: string | null) {
   const d = fmtShort(dateStr);
-  const t = fmtTime12(time);
+  const t = fmtTime24(time);
   return t ? `${d}, ${t}` : d;
 }
 
