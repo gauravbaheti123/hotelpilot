@@ -26,12 +26,15 @@ interface Props {
   billNumber: string | null;
   amount: number;
   segment: "food" | "laundry";
+  /** Counter/table walk-in bill — no room folio involved. */
+  walkin?: boolean;
   onSettled?: () => void;
 }
 
 export function SettleFoodBillDialog({
-  open, onClose, propertyId, billId, billNumber, amount, segment, onSettled,
+  open, onClose, propertyId, billId, billNumber, amount, segment, walkin, onSettled,
 }: Props) {
+
   const { user } = useAuth();
   const { methods } = usePaymentMethods(propertyId);
   const [mode, setMode] = useState<string>("");
