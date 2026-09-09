@@ -2253,8 +2253,7 @@ function TableGroups({
                   </div>
                 );
               }
-              // Occupied table — same 3-option popup menu as an occupied room:
-              // View KOT / New KOT / View Invoice.
+              // Occupied table — View KOT / New KOT / Settle & free / View Invoice.
               return (
                 <DropdownMenu key={t.id}>
                   <DropdownMenuTrigger asChild>
@@ -2267,12 +2266,16 @@ function TableGroups({
                     <DropdownMenuItem onSelect={() => onPick(t)}>
                       New KOT
                     </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => onSettle(t)}>
+                      Print bill &amp; settle
+                    </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => onViewInvoice(t)}>
                       View Invoice
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               );
+
             })}
           </div>
         </section>
