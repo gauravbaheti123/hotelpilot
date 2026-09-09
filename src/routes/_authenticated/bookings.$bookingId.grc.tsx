@@ -349,6 +349,13 @@ function GrcPage() {
       .filter(Boolean)
       .join(", ") || "—";
   const room0 = booking.booking_rooms?.[0] ?? {};
+  // Bulk / multi-room bookings: show every distinct room number and category.
+  const allRoomNos = Array.from(
+    new Set((booking.booking_rooms ?? []).map((r: any) => r.rooms?.room_number).filter(Boolean)),
+  ).join(", ");
+  const allRoomCats = Array.from(
+    new Set((booking.booking_rooms ?? []).map((r: any) => r.room_categories?.name).filter(Boolean)),
+  ).join(", ");
   const terms = property?.grc_terms || DEFAULT_TERMS;
   const propAddress = [property?.address_line1, property?.address_line2, property?.city, property?.state, property?.pin_code].filter(Boolean).join(", ");
 
