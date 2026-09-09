@@ -326,8 +326,23 @@ function BookingDetailPage() {
     setShiftToRoom("");
     setShiftReason("");
     setShiftStep(1);
-    setShiftMode("same_day");
-    setShiftEffDate(istToday());
+    // A stay that already ran past its first night is almost always a genuine
+    // mid-stay move: defaulting it to "same-day correction" silently re-prices
+    // the nights already stayed onto the new room's rate. Open on mid-stay.
+    const brNow = b?.booking_rooms.find((x) => x.id === brId);
+    const today = istToday();
+    const startedEarlier = !!brNow?.check_in && brNow.check_in < today;
+    const multiNight =
+      !!brNow?.check_in && !!brNow?.check_out && brNow.check_out > brNow.check_in
+        ? Math.round(
+            (new Date(`${brNow.check_out}T00:00:00Z`).getTime() -
+              new Date(`${brNow.check_in}T00:00:00Z`).getTime()) / 86400000,
+          ) > 1
+        : false;
+    const suggestMid =
+      startedEarlier && multiNight && !!brNow?.check_out && today < brNow.check_out;
+    setShiftMode(suggestMid ? "mid_stay" : "same_day");
+    setShiftEffDate(today);
     setTariffChoice("keep");
     setCustomRate("");
     setTransferKots(true);
