@@ -3477,7 +3477,7 @@ function FolioPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setEditOpen(false); setEditId(null); }}>Cancel</Button>
+              <Button variant="outline" onClick={() => { setEditOpen(false); setEditId(null); setEditIds([]); }}>Cancel</Button>
               <Button onClick={saveEditCharge}>Save</Button>
             </DialogFooter>
           </DialogContent>
