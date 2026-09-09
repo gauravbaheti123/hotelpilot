@@ -59,8 +59,8 @@ export interface ShiftRoomParams {
 
 /** Atomic room shift. Throws the raw Postgres error so callers can surface the
  *  RPC's own blocking messages (missing reason, same room, overlap, …). */
-export async function shiftRoomOp(p: ShiftRoomParams): Promise<{ movedKots: number; toRoomNumber: string | null }> {
-  const { error: shiftErr } = await supabase.rpc("shift_room" as never, {
+export async function shiftRoomOp(p: ShiftRoomParams): Promise<{ movedKots: number; toRoomNumber: string | null; bookingRoomId: string }> {
+  const { data: shiftedRoomId, error: shiftErr } = await supabase.rpc("shift_room" as never, {
     _booking_room_id: p.bookingRoomId,
     _to_room_id: p.toRoomId,
     _new_rate: p.newRate,
@@ -71,6 +71,27 @@ export async function shiftRoomOp(p: ShiftRoomParams): Promise<{ movedKots: numb
     _effective_date: p.mode === "mid_stay" ? (p.effectiveDate ?? null) : null,
   } as never);
   if (shiftErr) throw shiftErr;
+  const bookingRoomId = shiftedRoomId as unknown as string | null;
+  if (!bookingRoomId) throw new Error("Room shift completed without a current room assignment. Refresh and try again.");
+
+  // Do not allow the UI to report success until the database confirms the
+  // newly returned row is the booking's one live assignment on the target.
+  const { data: verifiedRows, error: verifyErr } = await supabase
+    .from("booking_rooms")
+    .select("id,booking_id,room_id,status")
+    .eq("booking_id", p.bookingId)
+    .eq("room_id", p.toRoomId)
+    .in("status", ["active", "checked_in"]);
+  if (verifyErr) throw verifyErr;
+  const verified = (verifiedRows ?? []) as Array<{
+    id: string;
+    booking_id: string;
+    room_id: string | null;
+    status: string;
+  }>;
+  if (verified.length !== 1 || verified[0]?.id !== bookingRoomId) {
+    throw new Error("Room shift could not be verified. Refresh to see the current room assignment.");
+  }
 
   try { await recomputeBookingFolioTotals(p.bookingId); }
   catch (e) { console.warn("folio rate update failed", e); }
@@ -118,7 +139,7 @@ export async function shiftRoomOp(p: ShiftRoomParams): Promise<{ movedKots: numb
       }
     } catch (e) { console.warn("KOT transfer failed", e); }
   }
-  return { movedKots, toRoomNumber };
+  return { movedKots, toRoomNumber, bookingRoomId };
 }
 
 export interface ModifyDatesParams {
