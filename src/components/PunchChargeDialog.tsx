@@ -75,6 +75,8 @@ export function PunchChargeDialog({
   const [walkinGuest, setWalkinGuest] = useState("");
   /** Dine-in table for walk-in orders (food only). */
   const [tables, setTables] = useState<{ id: string; name: string; area: string | null }[]>([]);
+  const [openWalkins, setOpenWalkins] = useState<{ id: string; bill_number: string; guest_name: string | null; table_id: string | null }[]>([]);
+
   const [tableId, setTableId] = useState<string | null>(tableIdProp ?? null);
   const [payMode, setPayMode] = useState<string>("cash");
   // Per-action busy state so one button's click never renders/locks the other's label.
