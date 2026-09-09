@@ -2184,12 +2184,15 @@ function TableGroups({
   onPick,
   onView,
   onViewInvoice,
+  onSettle,
 }: {
   tables: RestaurantTable[];
   bills: Map<string, TableBill>;
   onPick: (t: RestaurantTable) => void;
   onView: (t: RestaurantTable) => void;
   onViewInvoice: (t: RestaurantTable) => void;
+  onSettle: (t: RestaurantTable) => void;
+
 }) {
   const groups = new Map<string, RestaurantTable[]>();
   tables.forEach((t) => {
