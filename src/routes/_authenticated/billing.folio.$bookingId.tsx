@@ -278,6 +278,9 @@ function FolioPage() {
   const [payDateOpen, setPayDateOpen] = useState(false);
   const [payDateTarget, setPayDateTarget] = useState<Payment | null>(null);
   const [payDateValue, setPayDateValue] = useState<string>("");
+  // Full payment correction (amount / mode / reference / delete) in one dialog.
+  const canEditPaymentAmount = can("payments", "edit_amount");
+  const [payFullOpen, setPayFullOpen] = useState(false);
   const [payDateSaving, setPayDateSaving] = useState(false);
   const [payModeHistory, setPayModeHistory] = useState<Record<string, Array<{ old_mode: string; new_mode: string; user_name: string; created_at: string }>>>({});
   const [editDesc, setEditDesc] = useState("");
