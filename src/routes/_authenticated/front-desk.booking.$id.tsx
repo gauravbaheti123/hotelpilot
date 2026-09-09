@@ -65,6 +65,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { istDateTime, istToday } from "@/lib/date";
+import { Checkbox } from "@/components/ui/checkbox";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 
