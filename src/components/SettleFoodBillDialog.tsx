@@ -60,10 +60,11 @@ export function SettleFoodBillDialog({
         throw new Error(
           reason === "no_items" ? "This bill has no items yet"
             : reason === "not_open" ? "This bill is already settled"
-            : reason === "walkin_not_supported" ? "Walk-in bills use the counter settlement flow"
+            : reason === "mode_required" ? "Select a payment mode"
             : "Could not settle this bill",
         );
       }
+
       toast.success(`${res.bill_number} settled — ${inr(Number(res.total_amount))} collected`);
       onSettled?.();
       onClose();
