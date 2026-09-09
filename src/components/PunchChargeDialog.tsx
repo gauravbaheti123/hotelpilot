@@ -631,6 +631,25 @@ export function PunchChargeDialog({
             <div>
               <Label>Customer name</Label>
               <Input value={walkinGuest} onChange={(e) => setWalkinGuest(e.target.value)} placeholder="Walk-in customer" />
+              {openWalkins.length > 0 && (
+                <div className="mt-1 flex flex-wrap items-center gap-1">
+                  <span className="text-[11px] text-muted-foreground">Running:</span>
+                  {openWalkins.map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      className="rounded border px-1.5 py-0.5 text-[11px] hover:bg-muted"
+                      onClick={() => {
+                        setWalkinGuest(b.guest_name ?? "");
+                        if (b.table_id) setTableId(b.table_id);
+                      }}
+                    >
+                      {b.bill_number}{b.guest_name ? ` · ${b.guest_name}` : ""}
+                    </button>
+                  ))}
+                </div>
+              )}
+
             </div>
             {segment === "food" && (
               <div>
