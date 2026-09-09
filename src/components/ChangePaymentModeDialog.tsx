@@ -47,13 +47,20 @@ interface Props {
 }
 
 export function ChangePaymentModeDialog({ folio, open, onOpenChange, onSaved }: Props) {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const { can } = usePermissions();
   // 60-minute post-settlement grace window: any role may correct payments.
   const inGrace = withinGraceWindow(folio?.settled_at ?? null);
   const canEditAmount = can("payments", "edit_amount") || inGrace;
-  const canDeletePayment = can("payments", "delete") || inGrace;
+  // Deleting a payment is free on an OPEN bill for any role holding
+  // payments/delete; once the bill is finalised it is Owner/Superadmin only
+  // (or inside the grace window).
+  const billOpen = !!folio && folio.status === "open" && folio.is_deleted !== true;
+  const isOwnerRole = roles.includes("owner") || roles.includes("superadmin");
+  const canDeletePayment =
+    (can("payments", "delete") && (billOpen || isOwnerRole)) || inGrace;
   const viaGrace = inGrace && !can("payments", "edit_amount");
+
   const { methods } = usePaymentMethods(folio?.property_id ?? null);
   const activeMethods = methods.filter((m) => m.is_active);
 
