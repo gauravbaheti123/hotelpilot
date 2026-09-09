@@ -580,7 +580,9 @@ export function KotHistoryDialog({
         billNumber={openBill?.bill_number ?? null}
         amount={openBill?.total ?? 0}
         segment={segment}
+        walkin={!!tableId && !bookingId}
         onSettled={() => { void load(); onChanged?.(); }}
+
       />
     </>
 
