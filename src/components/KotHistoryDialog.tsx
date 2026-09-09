@@ -20,7 +20,11 @@ import {
   printThermalHtml,
   type KotItemForPrint,
   type PrinterInfo,
+  type PrintMode,
 } from "@/lib/kotPrint";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 import { SettleFoodBillDialog } from "@/components/SettleFoodBillDialog";
