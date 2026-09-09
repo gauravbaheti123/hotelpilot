@@ -3337,6 +3337,22 @@ function FolioPage() {
           </DialogContent>
         </Dialog>
 
+        {/* FULL PAYMENT CORRECTION — amount / mode / reference / delete */}
+        <ChangePaymentModeDialog
+          folio={{
+            id: folio.id,
+            invoice_number: folio.invoice_number ?? null,
+            property_id: folio.property_id,
+            booking_id: folio.booking_id ?? null,
+            status: folio.status,
+            is_deleted: (folio as any).is_deleted ?? false,
+            settled_at: folio.settled_at ?? null,
+          }}
+          open={payFullOpen}
+          onOpenChange={setPayFullOpen}
+          onSaved={() => void load()}
+        />
+
         {/* EDIT PAYMENT DATE (Owner/Manager) */}
         <Dialog open={payDateOpen} onOpenChange={setPayDateOpen}>
           <DialogContent>
