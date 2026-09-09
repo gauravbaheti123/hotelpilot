@@ -124,11 +124,11 @@ export function KotHistoryDialog({
   const [settleOpen, setSettleOpen] = useState(false);
 
   /**
-   * Standalone settlement target: the running (open) in-house bill for this
-   * room. Walk-in / table bills keep their existing counter flow.
+   * Standalone settlement target: the running (open) bill for this room, or —
+   * for counter walk-ins — the open bill running on this table.
    */
   const openBill = (() => {
-    if (!roomId || !bookingId) return null;
+    if (!(roomId && bookingId) && !tableId) return null;
     const rows = punches.filter((p) => p.bill.status === "open");
     if (rows.length === 0) return null;
     const id = rows[0].bill.id;
@@ -137,6 +137,7 @@ export function KotHistoryDialog({
     if (total <= 0) return null;
     return { id, bill_number: rows[0].bill.bill_number, total: Math.round(total * 100) / 100 };
   })();
+
 
 
   /**
@@ -466,8 +467,11 @@ export function KotHistoryDialog({
               <div className="text-sm">
                 <div className="font-medium">Running bill {openBill.bill_number}</div>
                 <div className="text-xs text-muted-foreground">
-                  Collect payment now — room stays open.
+                  {tableId && !bookingId
+                    ? `Collect payment now — frees ${tableName ?? "this table"}.`
+                    : "Collect payment now — room stays open."}
                 </div>
+
               </div>
               <div className="ml-auto flex items-center gap-3">
                 <span className="text-sm font-semibold">{inr(openBill.total)}</span>
@@ -576,7 +580,9 @@ export function KotHistoryDialog({
         billNumber={openBill?.bill_number ?? null}
         amount={openBill?.total ?? 0}
         segment={segment}
+        walkin={!!tableId && !bookingId}
         onSettled={() => { void load(); onChanged?.(); }}
+
       />
     </>
 

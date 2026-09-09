@@ -75,6 +75,8 @@ export function PunchChargeDialog({
   const [walkinGuest, setWalkinGuest] = useState("");
   /** Dine-in table for walk-in orders (food only). */
   const [tables, setTables] = useState<{ id: string; name: string; area: string | null }[]>([]);
+  const [openWalkins, setOpenWalkins] = useState<{ id: string; bill_number: string; guest_name: string | null; table_id: string | null }[]>([]);
+
   const [tableId, setTableId] = useState<string | null>(tableIdProp ?? null);
   const [payMode, setPayMode] = useState<string>("cash");
   // Per-action busy state so one button's click never renders/locks the other's label.
@@ -119,6 +121,30 @@ export function PunchChargeDialog({
       });
     return () => { cancelled = true; };
   }, [open, propertyId, segment]);
+
+  // Today's running counter bills — shown so a second bill isn't opened for the
+  // same customer when the name is typed slightly differently.
+  useEffect(() => {
+    if (!open || !propertyId || !walkin) { setOpenWalkins([]); return; }
+    let cancelled = false;
+    supabase.from("segment_bills" as any)
+      .select("id,bill_number,guest_name,table_id,total_amount")
+      .eq("property_id", propertyId)
+      .eq("segment", segment)
+      .eq("status", "open")
+      .is("booking_id", null)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .then(guardQuery("open counter bills")).then(({ data }) => {
+        if (cancelled) return;
+        setOpenWalkins(((data ?? []) as any[]).map((b) => ({
+          id: b.id, bill_number: b.bill_number, guest_name: b.guest_name ?? null,
+          table_id: b.table_id ?? null,
+        })));
+      });
+    return () => { cancelled = true; };
+  }, [open, propertyId, segment, walkin]);
+
 
   useEffect(() => {
     if (!open || !propertyId || segment !== "food") { setEvents([]); return; }
@@ -605,6 +631,25 @@ export function PunchChargeDialog({
             <div>
               <Label>Customer name</Label>
               <Input value={walkinGuest} onChange={(e) => setWalkinGuest(e.target.value)} placeholder="Walk-in customer" />
+              {openWalkins.length > 0 && (
+                <div className="mt-1 flex flex-wrap items-center gap-1">
+                  <span className="text-[11px] text-muted-foreground">Running:</span>
+                  {openWalkins.map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      className="rounded border px-1.5 py-0.5 text-[11px] hover:bg-muted"
+                      onClick={() => {
+                        setWalkinGuest(b.guest_name ?? "");
+                        if (b.table_id) setTableId(b.table_id);
+                      }}
+                    >
+                      {b.bill_number}{b.guest_name ? ` · ${b.guest_name}` : ""}
+                    </button>
+                  ))}
+                </div>
+              )}
+
             </div>
             {segment === "food" && (
               <div>

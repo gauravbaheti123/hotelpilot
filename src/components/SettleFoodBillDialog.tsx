@@ -17,6 +17,8 @@ import { inr } from "@/lib/billing";
 import { useAuth } from "@/hooks/use-auth";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { toastError } from "@/lib/errorMessage";
+import { printSegmentBill } from "@/components/PunchChargeDialog";
+
 
 interface Props {
   open: boolean;
@@ -26,12 +28,20 @@ interface Props {
   billNumber: string | null;
   amount: number;
   segment: "food" | "laundry";
+  /** Counter/table walk-in bill — no room folio involved. */
+  walkin?: boolean;
+  /** Printed on the counter receipt when settling a walk-in bill. */
+  propertyName?: string | null;
+  guestLabel?: string | null;
   onSettled?: () => void;
 }
 
 export function SettleFoodBillDialog({
-  open, onClose, propertyId, billId, billNumber, amount, segment, onSettled,
+  open, onClose, propertyId, billId, billNumber, amount, segment, walkin,
+  propertyName, guestLabel, onSettled,
 }: Props) {
+
+
   const { user } = useAuth();
   const { methods } = usePaymentMethods(propertyId);
   const [mode, setMode] = useState<string>("");
@@ -60,13 +70,52 @@ export function SettleFoodBillDialog({
         throw new Error(
           reason === "no_items" ? "This bill has no items yet"
             : reason === "not_open" ? "This bill is already settled"
-            : reason === "walkin_not_supported" ? "Walk-in bills use the counter settlement flow"
+            : reason === "mode_required" ? "Select a payment mode"
             : "Could not settle this bill",
         );
       }
+
+      // Counter bills get their customer receipt printed on settlement.
+      if (walkin) {
+        try {
+          const [{ data: items }, { data: billRow }] = await Promise.all([
+            supabase.from("segment_bill_items" as any)
+              .select("description,qty,rate,amount,gst_rate,gst_amount")
+              .eq("segment_bill_id", billId).order("id"),
+            supabase.from("segment_bills" as any)
+              .select("settled_at,created_at,guest_name")
+              .eq("id", billId).maybeSingle(),
+          ]);
+          const rows = (items ?? []) as any[];
+          const sub = rows.reduce((s, i) => s + Number(i.amount || 0), 0);
+          const gst = rows.reduce((s, i) => s + Number(i.gst_amount || 0), 0);
+          printSegmentBill({
+            billNumber: res.bill_number,
+            segment,
+            propertyName: propertyName ?? "",
+            propertyId,
+            guestName: guestLabel || (billRow as any)?.guest_name || "Walk-in Guest",
+            roomNumber: null,
+            items: rows.map((i) => ({
+              description: i.description, qty: Number(i.qty), rate: Number(i.rate),
+              amount: Number(i.amount), gst_rate: Number(i.gst_rate),
+            })),
+            sub: Math.round(sub * 100) / 100,
+            gst: Math.round(gst * 100) / 100,
+            total: Math.round((sub + gst) * 100) / 100,
+            isWalkin: true,
+            paymentMode: mode,
+            billDate: (billRow as any)?.settled_at ?? (billRow as any)?.created_at ?? null,
+          });
+        } catch (pe: any) {
+          toastError(pe, "Bill printed failed — settlement is saved");
+        }
+      }
+
       toast.success(`${res.bill_number} settled — ${inr(Number(res.total_amount))} collected`);
       onSettled?.();
       onClose();
+
     } catch (e: any) {
       toastError(e, "Failed to settle bill");
     } finally {
@@ -82,8 +131,11 @@ export function SettleFoodBillDialog({
         <DialogHeader>
           <DialogTitle>Settle {label} bill{billNumber ? ` — ${billNumber}` : ""}</DialogTitle>
           <DialogDescription>
-            Collects payment now. The room stays open and checkout is unaffected.
+            {walkin
+              ? "Collects payment at the counter and closes this bill, freeing the table."
+              : "Collects payment now. The room stays open and checkout is unaffected."}
           </DialogDescription>
+
         </DialogHeader>
 
         <div className="space-y-3">

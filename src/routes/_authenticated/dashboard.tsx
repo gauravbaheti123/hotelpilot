@@ -20,6 +20,8 @@ import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { AddChargesDialog } from "@/components/AddChargesDialog";
 import { PunchChargeDialog } from "@/components/PunchChargeDialog";
 import { KotHistoryDialog } from "@/components/KotHistoryDialog";
+import { SettleFoodBillDialog } from "@/components/SettleFoodBillDialog";
+
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -268,6 +270,9 @@ function OwnerDashboard({
   } | null>(null);
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [tableBills, setTableBills] = useState<Map<string, TableBill>>(new Map());
+  /** Counter settlement target for an occupied dine-in table. */
+  const [settleTable, setSettleTable] = useState<{ billId: string; billNumber: string; amount: number; guestLabel: string | null } | null>(null);
+
   const [kotHistoryTarget, setKotHistoryTarget] = useState<{
     segment: "food" | "laundry";
     bookingId: string | null;
@@ -898,8 +903,14 @@ function OwnerDashboard({
                   const latest = tableBills.get(t.id)?.bill_number ?? undefined;
                   navigate({ to: "/billing/invoices", search: { seg: "food", bill: latest } });
                 }}
+                onSettle={(t) => {
+                  const bill = tableBills.get(t.id);
+                  if (!bill) return;
+                  setSettleTable({ billId: bill.id, billNumber: bill.bill_number, amount: Number(bill.amount || 0), guestLabel: bill.guest_name ?? t.name });
+                }}
               />
             )}
+
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
               <LegendDot style={{ backgroundColor: ROOM_STATUS_COLORS.vacant.bg, border: `1px solid ${ROOM_STATUS_COLORS.vacant.border}` }} label="Vacant" />
               <LegendDot style={{ backgroundColor: ROOM_STATUS_COLORS.occupied.bg }} label="Occupied" />
@@ -1283,6 +1294,23 @@ function OwnerDashboard({
           onChanged={() => { setSegmentReloadTick((t) => t + 1); reload(); }}
         />
       )}
+      {settleTable && propertyId && (
+        <SettleFoodBillDialog
+          open={!!settleTable}
+          onClose={() => setSettleTable(null)}
+          propertyId={propertyId}
+          billId={settleTable.billId}
+          billNumber={settleTable.billNumber}
+          amount={settleTable.amount}
+          segment="food"
+          walkin
+          propertyName={propertyName}
+          guestLabel={settleTable.guestLabel}
+          onSettled={() => { setSettleTable(null); setSegmentReloadTick((n) => n + 1); }}
+
+        />
+      )}
+
     </AppShell>
   );
 }
@@ -2159,12 +2187,15 @@ function TableGroups({
   onPick,
   onView,
   onViewInvoice,
+  onSettle,
 }: {
   tables: RestaurantTable[];
   bills: Map<string, TableBill>;
   onPick: (t: RestaurantTable) => void;
   onView: (t: RestaurantTable) => void;
   onViewInvoice: (t: RestaurantTable) => void;
+  onSettle: (t: RestaurantTable) => void;
+
 }) {
   const groups = new Map<string, RestaurantTable[]>();
   tables.forEach((t) => {
@@ -2225,8 +2256,7 @@ function TableGroups({
                   </div>
                 );
               }
-              // Occupied table — same 3-option popup menu as an occupied room:
-              // View KOT / New KOT / View Invoice.
+              // Occupied table — View KOT / New KOT / Settle & free / View Invoice.
               return (
                 <DropdownMenu key={t.id}>
                   <DropdownMenuTrigger asChild>
@@ -2239,12 +2269,16 @@ function TableGroups({
                     <DropdownMenuItem onSelect={() => onPick(t)}>
                       New KOT
                     </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => onSettle(t)}>
+                      Print bill &amp; settle
+                    </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => onViewInvoice(t)}>
                       View Invoice
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               );
+
             })}
           </div>
         </section>

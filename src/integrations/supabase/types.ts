@@ -3746,7 +3746,7 @@ export type Database = {
           booking_id: string | null
           created_at: string
           created_by: string | null
-          folio_id: string
+          folio_id: string | null
           id: string
           is_wiped: boolean
           mode: string
@@ -3763,7 +3763,7 @@ export type Database = {
           booking_id?: string | null
           created_at?: string
           created_by?: string | null
-          folio_id: string
+          folio_id?: string | null
           id?: string
           is_wiped?: boolean
           mode: string
@@ -3780,7 +3780,7 @@ export type Database = {
           booking_id?: string | null
           created_at?: string
           created_by?: string | null
-          folio_id?: string
+          folio_id?: string | null
           id?: string
           is_wiped?: boolean
           mode?: string
