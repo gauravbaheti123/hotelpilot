@@ -33,7 +33,6 @@ import {
   expandRoomNights,
   type DisplayCharge,
   settlementPaidTotal,
-  isHoldPayment,
   overpaymentError,
   distributeWithRemainder,
 } from "@/lib/billing";
@@ -1849,11 +1848,16 @@ function FolioPage() {
   const canEditTariff = (isOpen && can("invoices", "edit")) || canEditRoomRateLocked;
   // True when this user only has access because the grace window is still open.
   const viaGrace = inGraceWindow;
-  const canDeletePayment = canDeletePaymentPerm || inGraceWindow;
+  // Delete a recorded payment: allowed on an OPEN bill for any role holding
+  // payments/delete (Reception included). Once the bill is finalised it is
+  // Owner/Superadmin only, or inside the post-settlement grace window.
+  const isOwnerRole = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const canDeletePayment =
+    (canDeletePaymentPerm && (isOpen || isOwnerRole)) || inGraceWindow;
   // Extend stay on a finalised bill: Owner/Manager only.
   const canExtendStay = can("bookings", "extend_stay_locked");
   // Owner/Superadmin-only inline record correction (works on settled bills too).
-  const canOwnerInlineEdit = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const canOwnerInlineEdit = isOwnerRole;
   const ownerStayRow = (() => {
     const rows = booking.booking_rooms ?? [];
     const active = rows.filter((r) => r.status !== "shifted");
