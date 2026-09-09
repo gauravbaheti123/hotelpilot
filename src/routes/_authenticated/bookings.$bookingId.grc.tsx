@@ -469,8 +469,8 @@ function GrcPage() {
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4">
             <PrintRow k="GRC No." v={grc.grc_number ?? "— (save to generate)"} />
             <PrintRow k="Booking No." v={booking.booking_number} />
-            <PrintRow k="Room No." v={room0.rooms?.room_number ?? "—"} />
-            <PrintRow k="Room Type" v={room0.room_categories?.name ?? "—"} />
+            <PrintRow k="Room No." v={allRoomNos || room0.rooms?.room_number || "—"} />
+            <PrintRow k="Room Type" v={allRoomCats || room0.room_categories?.name || "—"} />
             <PrintRow k="Check-in" v={fmtDateTime((booking.booking_rooms?.[0] as any)?.actual_check_in ?? booking.check_in, property?.default_checkin_time)} />
             <PrintRow k="Check-out" v={fmtDateTime((booking.booking_rooms?.[0] as any)?.actual_check_out ?? booking.check_out, property?.default_checkout_time)} />
             <PrintRow k="Adults / Children" v={`${booking.adults} / ${booking.children ?? 0}`} />
