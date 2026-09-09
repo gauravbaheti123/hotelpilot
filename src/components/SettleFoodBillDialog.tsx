@@ -73,9 +73,47 @@ export function SettleFoodBillDialog({
         );
       }
 
+      // Counter bills get their customer receipt printed on settlement.
+      if (walkin) {
+        try {
+          const [{ data: items }, { data: billRow }] = await Promise.all([
+            supabase.from("segment_bill_items" as any)
+              .select("description,qty,rate,amount,gst_rate,gst_amount")
+              .eq("segment_bill_id", billId).order("id"),
+            supabase.from("segment_bills" as any)
+              .select("settled_at,created_at,guest_name")
+              .eq("id", billId).maybeSingle(),
+          ]);
+          const rows = (items ?? []) as any[];
+          const sub = rows.reduce((s, i) => s + Number(i.amount || 0), 0);
+          const gst = rows.reduce((s, i) => s + Number(i.gst_amount || 0), 0);
+          printSegmentBill({
+            billNumber: res.bill_number,
+            segment,
+            propertyName: propertyName ?? "",
+            propertyId,
+            guestName: guestLabel || (billRow as any)?.guest_name || "Walk-in Guest",
+            roomNumber: null,
+            items: rows.map((i) => ({
+              description: i.description, qty: Number(i.qty), rate: Number(i.rate),
+              amount: Number(i.amount), gst_rate: Number(i.gst_rate),
+            })),
+            sub: Math.round(sub * 100) / 100,
+            gst: Math.round(gst * 100) / 100,
+            total: Math.round((sub + gst) * 100) / 100,
+            isWalkin: true,
+            paymentMode: mode,
+            billDate: (billRow as any)?.settled_at ?? (billRow as any)?.created_at ?? null,
+          });
+        } catch (pe: any) {
+          toastError(pe, "Bill printed failed — settlement is saved");
+        }
+      }
+
       toast.success(`${res.bill_number} settled — ${inr(Number(res.total_amount))} collected`);
       onSettled?.();
       onClose();
+
     } catch (e: any) {
       toastError(e, "Failed to settle bill");
     } finally {
