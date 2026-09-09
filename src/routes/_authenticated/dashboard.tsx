@@ -903,8 +903,14 @@ function OwnerDashboard({
                   const latest = tableBills.get(t.id)?.bill_number ?? undefined;
                   navigate({ to: "/billing/invoices", search: { seg: "food", bill: latest } });
                 }}
+                onSettle={(t) => {
+                  const bill = tableBills.get(t.id);
+                  if (!bill) return;
+                  setSettleTable({ billId: bill.id, billNumber: bill.bill_number, amount: Number(bill.amount || 0) });
+                }}
               />
             )}
+
             <div className="mt-4 flex flex-wrap gap-3 text-xs text-muted-foreground">
               <LegendDot style={{ backgroundColor: ROOM_STATUS_COLORS.vacant.bg, border: `1px solid ${ROOM_STATUS_COLORS.vacant.border}` }} label="Vacant" />
               <LegendDot style={{ backgroundColor: ROOM_STATUS_COLORS.occupied.bg }} label="Occupied" />
