@@ -2882,8 +2882,8 @@ function FolioPage() {
                     {canEditNow && (
                       <td className="print:hidden" style={{ textAlign: "right" }}>
                          <div className="flex items-center justify-end gap-1">
-                           {c.is_night_split ? (
-                             c.charge_type === "room" && canEditTariff ? (
+                           {c.is_night_split ? (<>
+                             {c.charge_type === "room" && canEditTariff && (
                                <button
                                  type="button"
                                  onClick={() => openEditTariff(c as any)}
@@ -2892,10 +2892,21 @@ function FolioPage() {
                                >
                                  <Pencil className="h-4 w-4" />
                                </button>
-                             ) : (
+                             )}
+                             {canVoid && (
+                               <button
+                                 type="button"
+                                 onClick={() => removeCharges((((c as any).source_charge_ids as string[] | undefined) ?? [String(c.id)]))}
+                                 className="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-muted"
+                                 title="Delete this night's charge"
+                               >
+                                 <Trash2 className="h-4 w-4" />
+                               </button>
+                             )}
+                             {!canEditTariff && !canVoid && (
                                <span className="text-[10px] text-muted-foreground">Night</span>
-                             )
-                           ) : c.is_consolidated ? (<>
+                             )}
+                           </>) : c.is_consolidated ? (<>
                              <span className="text-[10px] text-muted-foreground">Bill</span>
                              <button
                                type="button"
