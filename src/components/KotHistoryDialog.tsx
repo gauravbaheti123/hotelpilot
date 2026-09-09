@@ -20,7 +20,11 @@ import {
   printThermalHtml,
   type KotItemForPrint,
   type PrinterInfo,
+  type PrintMode,
 } from "@/lib/kotPrint";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 import { SettleFoodBillDialog } from "@/components/SettleFoodBillDialog";
@@ -201,15 +205,22 @@ export function KotHistoryDialog({
 
   useEffect(() => { void load(); }, [load]);
 
-  async function reprint(p: Punch) {
+  async function reprint(p: Punch, mode: PrintMode = "kitchen+counter") {
     try {
       const itemNames = [...new Set(p.items.map((i) => i.description.trim()).filter(Boolean))];
-      const [printerResult, menuResult] = await Promise.all([
+      const [printerResult, counterResult, menuResult] = await Promise.all([
         supabase
           .from("printers")
           .select("id,name,paper_size,printer_role")
           .eq("property_id", propertyId)
           .eq("is_active", true),
+        supabase
+          .from("printers")
+          .select("id,name,paper_size,printer_role")
+          .eq("property_id", propertyId)
+          .eq("is_active", true)
+          .eq("printer_role", "Counter Copy")
+          .limit(1),
         segment === "food" && itemNames.length > 0
           ? supabase
               .from("menu_items")
@@ -219,9 +230,11 @@ export function KotHistoryDialog({
           : Promise.resolve({ data: [], error: null }),
       ]);
       if (printerResult.error) throw printerResult.error;
+      if (counterResult.error) throw counterResult.error;
       if (menuResult.error) throw menuResult.error;
 
       const printers = (printerResult.data ?? []) as PrinterInfo[];
+      const counterPrinter = ((counterResult.data ?? [])[0] ?? null) as PrinterInfo | null;
       const printerByName = new Map(
         (menuResult.data ?? []).map((m: any) => [
           String(m.name),
@@ -245,15 +258,19 @@ export function KotHistoryDialog({
       };
 
       if (segment === "food") {
-        const { jobs, warnings, unroutedItems } = buildKotPrintPlan(items, printers, null, "kitchen");
+        const { jobs, warnings, unroutedItems } = buildKotPrintPlan(items, printers, counterPrinter, mode);
         warnings.forEach((warning) =>
           unroutedItems.length > 0 && warning.includes("no kitchen printer")
             ? toast.error(warning, { duration: 15000 })
-            : toast.warning(warning),
+            : toast.warning(warning, { duration: 12000 }),
         );
-        if (jobs.length === 0) throw new Error("No assigned station printer found for this KOT");
+        if (jobs.length === 0) throw new Error("No printer found for this KOT");
         await runKotPrintJobs(header, jobs);
-        toast.success(`${ticketWord} reprint sent to ${jobs.map((job) => job.printer.name).join(", ")}`);
+        toast.success(
+          `${ticketWord} reprint sent to ${jobs
+            .map((job) => `${job.printer.name} (${job.badge === "COUNTER COPY" ? "counter" : "kitchen"})`)
+            .join(", ")}`,
+        );
         return;
       }
 
@@ -276,6 +293,7 @@ export function KotHistoryDialog({
       toastError(e, "Reprint failed");
     }
   }
+
 
   function startEdit(p: Punch) {
     setEditing(p);
@@ -443,9 +461,30 @@ export function KotHistoryDialog({
                     ))}
                   </ul>
                   <div className="mt-2 flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => reprint(p)}>
-                      <Printer className="h-3.5 w-3.5 mr-1" /> Reprint
-                    </Button>
+                    {segment === "food" ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <Printer className="h-3.5 w-3.5 mr-1" /> Reprint
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          <DropdownMenuItem onClick={() => reprint(p, "kitchen+counter")}>
+                            Reprint All
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => reprint(p, "kitchen")}>
+                            Reprint Kitchen Copy
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => reprint(p, "counter")}>
+                            Reprint Counter Copy
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => reprint(p)}>
+                        <Printer className="h-3.5 w-3.5 mr-1" /> Reprint
+                      </Button>
+                    )}
                     {canEditPunch(p) && (
                       <Button size="sm" variant="outline" onClick={() => startEdit(p)}>
                         <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
