@@ -35,6 +35,7 @@ import {
   realPaidTotal,
   isHoldPayment,
   overpaymentError,
+  distributeWithRemainder,
 } from "@/lib/billing";
 import { searchGuests } from "@/lib/guestIdLookup";
 import { loadPaymentTargets, mergeSegmentBillToFolio, type PaymentTarget } from "@/lib/paymentTargets";
@@ -3452,7 +3453,7 @@ function FolioPage() {
         </Dialog>
 
         {/* EDIT CHARGE */}
-        <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (!o) setEditId(null); }}>
+        <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (!o) { setEditId(null); setEditIds([]); } }}>
           <DialogContent>
             <DialogHeader><DialogTitle>Edit charge</DialogTitle></DialogHeader>
             <div className="space-y-3">
