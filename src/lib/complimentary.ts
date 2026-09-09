@@ -18,11 +18,11 @@ export const COMPLIMENTARY_PRESETS = [
 export const COMPLIMENTARY_OTHER = "Other (specify)";
 
 /**
- * Roles allowed to settle a bill as complimentary.
+ * Roles allowed to settle a bill as complimentary: every staff role.
  *
  * MAP/AP plan-inclusive settlement is routine daily food service, not an
- * exceptional approval, so every food-service role can do it. Accountability
- * lives in the mandatory reason + activity_log audit entry, not in gating.
+ * exceptional approval. Accountability lives in the mandatory reason +
+ * activity_log audit entry, not in role gating.
  */
 export const COMPLIMENTARY_ROLES = [
   "owner",
@@ -30,11 +30,14 @@ export const COMPLIMENTARY_ROLES = [
   "superadmin",
   "receptionist",
   "kitchen",
+  "housekeeping",
 ] as const;
 
+/** Any signed-in staff member may mark a bill complimentary. */
 export function canMarkComplimentary(roles: string[] | undefined | null): boolean {
-  return (roles ?? []).some((r) => (COMPLIMENTARY_ROLES as readonly string[]).includes(r));
+  return (roles ?? []).length > 0;
 }
+
 
 /** Line shown on the receipt / badge tooltip. */
 export function complimentaryLabel(reason?: string | null): string {
