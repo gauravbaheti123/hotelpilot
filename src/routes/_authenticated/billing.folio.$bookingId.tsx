@@ -32,8 +32,7 @@ import {
   consolidateSegmentCharges,
   expandRoomNights,
   type DisplayCharge,
-  realPaidTotal,
-  isHoldPayment,
+  settlementPaidTotal,
   overpaymentError,
   distributeWithRemainder,
 } from "@/lib/billing";
@@ -676,8 +675,8 @@ function FolioPage() {
       ? { type: nextDiscType, value: Number(nextDiscValue) }
       : null;
     const t = recomputeFolio(nextCharges, mode, billDisc);
-    // "Bill On Hold" rows are staff markers, not collected money.
-    const paid = realPaidTotal(nextPayments as any[]);
+    // "Bill On Hold" rows count toward the bill's balance.
+    const paid = settlementPaidTotal(nextPayments as any[]);
     const balance = Math.max(0, t.total_amount - paid);
     // A finalised bill (settled / due) that no longer balances must stay
     // finalised and show up in the Dues report — never silently re-open.
@@ -1437,17 +1436,17 @@ function FolioPage() {
     }
 
     // Hard-block collecting more than the outstanding balance of the chosen
-    // bill. A "Bill On Hold" marker never counts as money, so it is exempt.
-    if (!isHoldPayment(payMode)) {
+    // bill. A "Bill On Hold" entry counts toward the balance too.
+    {
       let due: number;
       if (targetFolioId === folio.id && selected?.kind !== "segment") {
-        due = Number(folio.total_amount ?? 0) - realPaidTotal(payments as any[]);
+        due = Number(folio.total_amount ?? 0) - settlementPaidTotal(payments as any[]);
       } else {
         const { data: fRow } = await supabase
           .from("folios").select("total_amount").eq("id", targetFolioId).maybeSingle();
         const { data: pRows } = await supabase
           .from("payments").select("*").eq("folio_id", targetFolioId);
-        due = Number((fRow as any)?.total_amount ?? 0) - realPaidTotal((pRows ?? []) as any[]);
+        due = Number((fRow as any)?.total_amount ?? 0) - settlementPaidTotal((pRows ?? []) as any[]);
       }
       const overErr = overpaymentError(amt, due);
       if (overErr) return toast.error(overErr);
@@ -1849,11 +1848,16 @@ function FolioPage() {
   const canEditTariff = (isOpen && can("invoices", "edit")) || canEditRoomRateLocked;
   // True when this user only has access because the grace window is still open.
   const viaGrace = inGraceWindow;
-  const canDeletePayment = canDeletePaymentPerm || inGraceWindow;
+  // Delete a recorded payment: allowed on an OPEN bill for any role holding
+  // payments/delete (Reception included). Once the bill is finalised it is
+  // Owner/Superadmin only, or inside the post-settlement grace window.
+  const isOwnerRole = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const canDeletePayment =
+    (canDeletePaymentPerm && (isOpen || isOwnerRole)) || inGraceWindow;
   // Extend stay on a finalised bill: Owner/Manager only.
   const canExtendStay = can("bookings", "extend_stay_locked");
   // Owner/Superadmin-only inline record correction (works on settled bills too).
-  const canOwnerInlineEdit = hasRole(roles, "owner") || hasRole(roles, "superadmin");
+  const canOwnerInlineEdit = isOwnerRole;
   const ownerStayRow = (() => {
     const rows = booking.booking_rooms ?? [];
     const active = rows.filter((r) => r.status !== "shifted");

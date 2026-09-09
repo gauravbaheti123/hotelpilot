@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import {
   inr, inrRound, recomputeFolio, computeBillDiscountAmount,
   distributeWithRemainder, weightedGstRate, netSubtotalOf,
-  realPaidTotal, isHoldPayment, overpaymentError, expandRoomNights,
+  settlementPaidTotal, isHoldPayment, overpaymentError, expandRoomNights,
   type BillDiscount,
 } from "@/lib/billing";
 import { DiscountDialog, type DiscType } from "@/components/DiscountDialog";
@@ -895,8 +895,8 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
             .from("payments")
             .select("amount,mode")
             .eq("folio_id", b.folio_id);
-          const due = Number(b.total ?? 0) - realPaidTotal((prevPays ?? []) as any[]);
-          const overErr = isHoldPayment(row.mode) ? null : overpaymentError(amt, due);
+          const due = Number(b.total ?? 0) - settlementPaidTotal((prevPays ?? []) as any[]);
+          const overErr = overpaymentError(amt, due);
           if (overErr) {
             setBusy(false);
             return toast.error(`Bill ${i + 1}: ${overErr}`);

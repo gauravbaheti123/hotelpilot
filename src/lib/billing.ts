@@ -14,9 +14,9 @@ export function isHoldPayment(mode: string | null | undefined): boolean {
 }
 
 /**
- * Sum of REAL money collected — "Bill On Hold" rows are excluded so they can
- * never bring a folio's balance to zero or mark it settled. Mirrors the
- * database's recompute_folio_totals().
+ * Sum of REAL money collected — "Bill On Hold" rows are excluded.
+ * Use this ONLY for revenue / cash-collection reporting (dashboard, daily
+ * report, dues, hand-over). It must NOT be used to decide a bill's balance.
  */
 export function realPaidTotal(
   payments: { amount: number | string; mode?: string | null }[],
@@ -28,6 +28,20 @@ export function realPaidTotal(
     ),
   );
 }
+
+/**
+ * Sum of everything recorded against the bill, INCLUDING "Bill On Hold"
+ * markers. This is the settlement view: it decides balance, check-out and the
+ * overpayment guard, and mirrors the database's recompute_folio_totals().
+ */
+export function settlementPaidTotal(
+  payments: { amount: number | string; mode?: string | null }[],
+): number {
+  return round2(
+    (payments ?? []).reduce((s, p) => s + Number(p.amount ?? 0), 0),
+  );
+}
+
 
 /**
  * Guard against collecting more than the outstanding balance.
