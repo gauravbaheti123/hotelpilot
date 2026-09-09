@@ -906,7 +906,7 @@ function OwnerDashboard({
                 onSettle={(t) => {
                   const bill = tableBills.get(t.id);
                   if (!bill) return;
-                  setSettleTable({ billId: bill.id, billNumber: bill.bill_number, amount: Number(bill.amount || 0) });
+                  setSettleTable({ billId: bill.id, billNumber: bill.bill_number, amount: Number(bill.amount || 0), guestLabel: bill.guest_name ?? t.name });
                 }}
               />
             )}
