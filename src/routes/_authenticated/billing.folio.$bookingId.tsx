@@ -3474,6 +3474,11 @@ function FolioPage() {
         <Dialog open={editOpen} onOpenChange={(o) => { setEditOpen(o); if (!o) { setEditId(null); setEditIds([]); } }}>
           <DialogContent>
             <DialogHeader><DialogTitle>Edit charge</DialogTitle></DialogHeader>
+            {editIds.length > 1 && (
+              <p className="text-xs text-muted-foreground">
+                This line combines {editIds.length} food-bill items. The new Qty × Rate total is distributed across those items proportionally so the bill stays exact.
+              </p>
+            )}
             <div className="space-y-3">
               <div className="space-y-1">
                 <Label className="text-xs">Description *</Label>
