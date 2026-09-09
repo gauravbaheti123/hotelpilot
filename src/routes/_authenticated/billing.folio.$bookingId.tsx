@@ -48,6 +48,7 @@ import { resolveGstRate, resolveStateCode, resolveTaxType, splitGst } from "@/li
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";
 import { CheckoutDialog } from "@/components/CheckoutDialog";
+import { ChangePaymentModeDialog } from "@/components/ChangePaymentModeDialog";
 import { ACTIVITY, logActivity, userDisplayName } from "@/lib/activityLog";
 import { SearchableSelect, type SearchableOption } from "@/components/ui/searchable-select";
 import {
