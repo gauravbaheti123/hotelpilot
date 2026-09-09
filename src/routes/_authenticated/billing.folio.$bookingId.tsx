@@ -950,14 +950,19 @@ function FolioPage() {
   }
 
   async function removeCharge(id: string) {
+    return removeCharges([id]);
+  }
+
+  async function removeCharges(ids: string[]) {
     if (!folio) return;
     if (!isOpen && !canEditAnyStatus) return toast.error("Only manager/owner can edit a settled bill");
     if (!canVoid) return toast.error("Only manager or owner can delete charges");
-    if (!confirm("Remove this charge? This cannot be undone.")) return;
+    if (ids.length === 0) return;
+    if (!confirm(ids.length > 1 ? `Remove this whole bill line (${ids.length} items)? This cannot be undone.` : "Remove this charge? This cannot be undone.")) return;
     const { error } = await supabase
       .from("folio_charges")
       .update({ is_wiped: true, wiped_at: new Date().toISOString() } as any)
-      .eq("id", id);
+      .in("id", ids);
     if (error) return toastError(error);
     const next = await refetchCharges();
     const prevTotal = Number(folio.total_amount);
