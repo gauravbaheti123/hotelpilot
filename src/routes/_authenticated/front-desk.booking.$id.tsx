@@ -1055,6 +1055,25 @@ function BookingDetailPage() {
                           <div><span className="text-muted-foreground">Open food bills moved:</span> {pendingFoodBills.length}</div>
                         )}
                       </div>
+                      {shiftMode === "same_day" && isSameDayRisky(br) && (
+                        <div className="rounded-md border border-amber-400 bg-amber-50 p-3 space-y-2">
+                          <div className="text-xs text-amber-800">
+                            This stay started on {br.check_in} and is still running. A same-day
+                            correction keeps one room line, so the nights already stayed in Room{" "}
+                            {br.rooms?.room_number} will be re-billed at Room {target.room_number}'s
+                            rate (₹{newRate}/night). Use a mid-stay shift if the guest is actually
+                            moving now.
+                          </div>
+                          <label className="flex items-start gap-2 text-xs text-amber-900">
+                            <Checkbox
+                              checked={sameDayAck}
+                              onCheckedChange={(v) => setSameDayAck(v === true)}
+                              className="mt-0.5"
+                            />
+                            <span>I understand and want the whole stay billed on the new room.</span>
+                          </label>
+                        </div>
+                      )}
                       <div className="space-y-1.5">
                         <Label className="text-xs">Reason *</Label>
                         <Textarea rows={2} value={shiftReason}
