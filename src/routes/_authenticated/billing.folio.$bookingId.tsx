@@ -262,6 +262,9 @@ function FolioPage() {
   // Edit line-item dialog (for sundry/extra "Other Charges")
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  // All underlying charge rows being edited (1 for normal lines, N for a
+  // consolidated Food/Laundry bill line).
+  const [editIds, setEditIds] = useState<string[]>([]);
 
   // Edit payment mode — dynamic RBAC key, granted to all roles by default.
   const canEditPaymentMode = can("payments", "edit_mode");
