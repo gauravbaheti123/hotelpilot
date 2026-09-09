@@ -20,6 +20,8 @@ import { CheckoutDialog } from "@/components/CheckoutDialog";
 import { AddChargesDialog } from "@/components/AddChargesDialog";
 import { PunchChargeDialog } from "@/components/PunchChargeDialog";
 import { KotHistoryDialog } from "@/components/KotHistoryDialog";
+import { SettleFoodBillDialog } from "@/components/SettleFoodBillDialog";
+
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
