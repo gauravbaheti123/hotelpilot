@@ -4,7 +4,7 @@ import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { AppShell } from "@/components/AppShell";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { supabase } from "@/integrations/supabase/client";
-import { realPaidTotal } from "@/lib/billing";
+import { settlementPaidTotal } from "@/lib/billing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FolioOpenButton } from "@/components/FolioOpenButton";
@@ -133,8 +133,8 @@ function RoomDetailPage() {
         if (__qp1) reportQueryError("folio charges", __qp1);
         if (__qp2) reportQueryError("payments", __qp2);
         setCharges((ch ?? []) as any);
-        // "Bill On Hold" rows are markers, not collected money.
-        setPaid(realPaidTotal((pays ?? []) as any[]));
+        // "Bill On Hold" rows count toward the bill's balance.
+        setPaid(settlementPaidTotal((pays ?? []) as any[]));
       } else {
         setCharges([]); setPaid(Number(b.advance_amount || 0));
       }
