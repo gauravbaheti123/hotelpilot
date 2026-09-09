@@ -3100,34 +3100,44 @@ function FolioPage() {
                           <td style={{ fontSize: 11, color: "#666" }}>{p.reference_no ?? ""}</td>
                           <td style={{ textAlign: "right" }}>
                             <span>{inr(p.amount)}</span>
+                            {(canEditPaymentAmount || inGraceWindow) && (
+                              <button
+                                type="button"
+                                onClick={() => setPayFullOpen(true)}
+                                className="print:hidden ml-2 inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-gray-300 px-2 text-[11px] text-gray-700 hover:bg-muted"
+                                title="Edit amount / mode / reference"
+                              >
+                                <Pencil className="mr-1 h-4 w-4" /> Edit
+                              </button>
+                            )}
                             {canEditPaymentMode && (
                               <button
                                 type="button"
                                 onClick={() => openEditPaymentMode(p)}
-                                className="print:hidden ml-2 inline-flex items-center rounded border border-gray-300 px-1.5 py-0.5 text-[10px] text-gray-600 hover:bg-gray-50"
+                                className="print:hidden ml-2 inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-gray-300 px-2 text-[11px] text-gray-700 hover:bg-muted"
                                 title="Edit payment mode"
                               >
-                                <Pencil className="h-3 w-3 mr-0.5" /> Mode
+                                <Pencil className="mr-1 h-4 w-4" /> Mode
                               </button>
                             )}
                             {canEditPaymentDate && (
                               <button
                                 type="button"
                                 onClick={() => openEditPaymentDate(p)}
-                                className="print:hidden ml-2 inline-flex items-center rounded border border-gray-300 px-1.5 py-0.5 text-[10px] text-gray-600 hover:bg-gray-50"
+                                className="print:hidden ml-2 inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-gray-300 px-2 text-[11px] text-gray-700 hover:bg-muted"
                                 title="Edit payment date"
                               >
-                                <Pencil className="h-3 w-3 mr-0.5" /> Date
+                                <CalendarPlus className="mr-1 h-4 w-4" /> Date
                               </button>
                             )}
                             {canDeletePayment && (
                               <button
                                 type="button"
                                 onClick={() => deletePaymentRow(p)}
-                                className="print:hidden ml-2 inline-flex items-center rounded border border-red-300 px-1.5 py-0.5 text-[10px] text-red-600 hover:bg-red-50"
+                                className="print:hidden ml-2 inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-red-300 px-2 text-[11px] text-red-600 hover:bg-red-50"
                                 title="Delete this payment"
                               >
-                                <Trash2 className="h-3 w-3 mr-0.5" /> Delete
+                                <Trash2 className="mr-1 h-4 w-4" /> Delete
                               </button>
                             )}
                           </td>
