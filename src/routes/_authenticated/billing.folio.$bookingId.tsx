@@ -865,6 +865,7 @@ function FolioPage() {
             gstin,
             address: profile.address || null,
             state: profile.state || null,
+            city: profile.city || null,
             gst_status: profile.gstStatus || null,
             is_active: true,
           } as any)

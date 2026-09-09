@@ -90,7 +90,7 @@ export function StepBillTo({ propertyId, value, onChange }: Props) {
       const patch: Partial<WizardBillTo> = {};
       const changed: string[] = [];
       const consider = (
-        key: "name" | "address" | "state" | "gstStatus",
+        key: "name" | "address" | "state" | "city" | "gstStatus",
         label: string,
         next: string,
       ) => {
@@ -102,6 +102,7 @@ export function StepBillTo({ propertyId, value, onChange }: Props) {
       consider("name", "Name", profile.name);
       consider("address", "Address", profile.address);
       consider("state", "State", profile.state);
+      consider("city", "City", profile.city);
       consider("gstStatus", "GST status", profile.gstStatus);
 
       if (Object.keys(patch).length === 0) {
