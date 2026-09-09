@@ -1304,7 +1304,10 @@ function OwnerDashboard({
           amount={settleTable.amount}
           segment="food"
           walkin
+          propertyName={propertyName}
+          guestLabel={settleTable.guestLabel}
           onSettled={() => { setSettleTable(null); setSegmentReloadTick((n) => n + 1); }}
+
         />
       )}
 
