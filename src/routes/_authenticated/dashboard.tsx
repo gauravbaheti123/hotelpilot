@@ -1294,6 +1294,20 @@ function OwnerDashboard({
           onChanged={() => { setSegmentReloadTick((t) => t + 1); reload(); }}
         />
       )}
+      {settleTable && propertyId && (
+        <SettleFoodBillDialog
+          open={!!settleTable}
+          onClose={() => setSettleTable(null)}
+          propertyId={propertyId}
+          billId={settleTable.billId}
+          billNumber={settleTable.billNumber}
+          amount={settleTable.amount}
+          segment="food"
+          walkin
+          onSettled={() => { setSettleTable(null); setSegmentReloadTick((n) => n + 1); }}
+        />
+      )}
+
     </AppShell>
   );
 }
