@@ -2794,12 +2794,19 @@ function FolioPage() {
                     String(b.actual_check_out ?? "").localeCompare(String(a.actual_check_out ?? "")),
                   )[0] ??
                   rows[0];
+                // Multi-room (bulk) bookings: list every distinct room / category.
+                const allRoomNos = Array.from(
+                  new Set(rows.map((r) => r.rooms?.room_number).filter(Boolean) as string[]),
+                ).join(", ");
+                const allCats = Array.from(
+                  new Set(rows.map((r) => r.room_categories?.name).filter(Boolean) as string[]),
+                ).join(", ");
                 return (
                   <>
                     {displayRoom && (
                       <>
-                        <div className="text-xs">Room: <span className="font-semibold">{displayRoom.rooms?.room_number ?? "—"}</span></div>
-                        <div className="text-xs">Category: <span className="font-semibold">{displayRoom.room_categories?.name ?? "—"}</span></div>
+                        <div className="text-xs">Room: <span className="font-semibold">{allRoomNos || displayRoom.rooms?.room_number || "—"}</span></div>
+                        <div className="text-xs">Category: <span className="font-semibold">{allCats || displayRoom.room_categories?.name || "—"}</span></div>
                       </>
                     )}
                     {/* Who actually stayed — always shown, regardless of who the bill is addressed to. */}
