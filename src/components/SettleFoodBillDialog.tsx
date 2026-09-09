@@ -86,8 +86,11 @@ export function SettleFoodBillDialog({
         <DialogHeader>
           <DialogTitle>Settle {label} bill{billNumber ? ` — ${billNumber}` : ""}</DialogTitle>
           <DialogDescription>
-            Collects payment now. The room stays open and checkout is unaffected.
+            {walkin
+              ? "Collects payment at the counter and closes this bill, freeing the table."
+              : "Collects payment now. The room stays open and checkout is unaffected."}
           </DialogDescription>
+
         </DialogHeader>
 
         <div className="space-y-3">
