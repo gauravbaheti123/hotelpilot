@@ -200,27 +200,50 @@ export function EditKotDialog({
 
   async function reprint() {
     if (!kot) return;
-    // Fetch fresh items and open print window
+    // Fetch fresh items with their station routing.
     const { data, error: __qe4 } = await supabase.from("kot_orders")
-      .select("kot_number,kot_type,table_no,created_at,total_amount,notes,rooms(room_number),kot_items(item_name,qty,rate,notes)")
+      .select(`kot_number,kot_type,table_no,created_at,total_amount,notes,rooms(room_number),
+        kot_items(item_name,qty,rate,notes,menu_items(kitchen_printer_id,menu_categories(kot_printer_id)))`)
       .eq("id", kot.id).maybeSingle();
     if (__qe4) reportQueryError("kot orders", __qe4);
     const k = data as any;
     if (!k) return;
-    // Use the shared thermal KOT template (proper @page size/margins + QZ
-    // silent print) instead of the old raw-HTML window.print() ticket.
-    const { data: pData, error: __qe5 } = await supabase
-      .from("printers")
-      .select("name,paper_size,type,is_default")
-      .eq("property_id", kot.property_id)
-      .eq("is_active", true)
-      .in("type", ["kot", "both"])
-      .order("is_default", { ascending: false })
-      .limit(1);
-    if (__qe5) reportQueryError("printers", __qe5);
-    const printer = (pData?.[0] ?? null) as { name?: string; paper_size?: string | null } | null;
-    const paperSize = printer?.paper_size ?? "80mm";
-    const html = renderKotHtml(
+
+    const [pr, cc] = await Promise.all([
+      supabase.from("printers").select("id,name,paper_size,printer_role")
+        .eq("property_id", kot.property_id).eq("is_active", true),
+      supabase.from("printers").select("id,name,paper_size,printer_role")
+        .eq("property_id", kot.property_id).eq("is_active", true)
+        .eq("printer_role", "Counter Copy").limit(1),
+    ]);
+    if (pr.error) reportQueryError("printers", pr.error);
+    if (cc.error) reportQueryError("printers", cc.error);
+    const printers = (pr.data ?? []) as unknown as PrinterInfo[];
+    const counterPrinter = ((cc.data ?? [])[0] ?? null) as unknown as PrinterInfo | null;
+
+    const items: KotItemForPrint[] = (k.kot_items ?? []).map((i: any) => ({
+      item_name: i.item_name,
+      qty: Number(i.qty),
+      rate: Number(i.rate),
+      notes: i.notes ?? null,
+      printer_id:
+        i.menu_items?.kitchen_printer_id ??
+        i.menu_items?.menu_categories?.kot_printer_id ??
+        null,
+    }));
+
+    const { jobs, warnings, unroutedItems } = buildKotPrintPlan(
+      items, printers, counterPrinter, "kitchen+counter",
+    );
+    for (const w of warnings) {
+      if (unroutedItems.length > 0 && w.includes("no kitchen printer")) toast.error(w, { duration: 15000 });
+      else toast.warning(w, { duration: 12000 });
+    }
+    if (jobs.length === 0) {
+      toast.error("No printer configured for this KOT.");
+      return;
+    }
+    await runKotPrintJobs(
       {
         kot_number: `${k.kot_number} (RE-PRINT)`,
         kot_type: k.kot_type,
@@ -229,24 +252,10 @@ export function EditKotDialog({
         notes: k.notes,
         created_at: k.created_at,
       },
-      (k.kot_items ?? []).map((i: any) => ({
-        item_name: i.item_name,
-        qty: Number(i.qty),
-        rate: Number(i.rate),
-        notes: i.notes ?? null,
-        printer_id: null,
-      })),
-      paperSize,
-      "KITCHEN COPY",
-      printer?.name ?? "KITCHEN",
+      jobs,
     );
-    await printThermalHtml({
-      printerName: printer?.name ?? null,
-      html,
-      paperSize,
-      label: "KOT reprint",
-    });
   }
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
