@@ -136,6 +136,7 @@ export function SettleFoodBillDialog({
               gst: Math.round(gst * 100) / 100,
               total: Math.round((sub + gst) * 100) / 100,
               isWalkin: true,
+              paymentMode: "complimentary",
               complimentaryReason: reason,
               billDate: (billRow as any)?.settled_at ?? (billRow as any)?.created_at ?? null,
             });
