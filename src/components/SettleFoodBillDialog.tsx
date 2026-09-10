@@ -39,9 +39,10 @@ interface Props {
 }
 
 export function SettleFoodBillDialog({
-  open, onClose, propertyId, billId, billNumber, amount, segment, walkin,
+  open, onClose, propertyId, billId, billIds, billNumber, amount, segment, walkin,
   propertyName, guestLabel, onSettled,
 }: Props) {
+
 
 
   const { user } = useAuth();
