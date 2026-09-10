@@ -485,6 +485,14 @@ function FolioPage() {
     setCharges(correctedCharges);
     setPayments(((p ?? []) as unknown as Payment[]));
 
+    // Nights of the stay that carry no live room charge on any portion of the bill.
+    {
+      const { data: mn } = await supabase.rpc("missing_room_nights" as any, { _booking_id: bookingId });
+      setMissingNights(((mn ?? []) as any[]).map((r) => String(typeof r === "string" ? r : r.night)).filter(Boolean));
+    }
+
+
+
     // Load the linked Food Bill number (FB-XXXX) if any food charge exists.
     // Load restaurant direct charges for this booking (display-only bill no).
     {
