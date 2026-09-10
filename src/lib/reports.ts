@@ -86,6 +86,8 @@ export async function fetchDailySummary(propertyId: string, date: string): Promi
     payment_count: pays?.length ?? 0,
     payments_total: 0,
     by_mode: {},
+    mode_labels: {},
+    hold_total: 0,
     gst_invoice_total: 0,
     gst_invoice_count: 0,
   };
