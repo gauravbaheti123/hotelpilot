@@ -119,8 +119,7 @@ function Page() {
 
   const meta = { reportName: "Cash Collection Report", propertyName: current?.name ?? "Property", from, to,
     totals: [
-      ["Cash Total", fmtINR(totals.cash)], ["Card Total", fmtINR(totals.card)],
-      ["UPI Total", fmtINR(totals.upi)], ["Other", fmtINR(totals.other)],
+      ...totals.modes.map((m) => [`${m.label} Total`, fmtINR(m.amount)] as [string, string | number]),
       ["Grand Total", fmtINR(totals.grand)],
     ] as [string, string|number][] };
 
