@@ -14,12 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { recomputeFolio } from "@/lib/billing";
 import { reportQueryError } from "@/lib/queryError";
 
-/** Recomputes and persists folio totals for a booking. Mirrors the block that
- *  lived inline in both doShift() and modifyDate(). */
-export async function recomputeBookingFolioTotals(bookingId: string): Promise<void> {
-  const { data: folioId, error: fErr } = await supabase.rpc("get_or_create_folio", { _booking_id: bookingId });
-  if (fErr) { reportQueryError("get or create folio", fErr); return; }
-  const fId = folioId as unknown as string;
+/** Recomputes and persists totals for one folio id. */
+export async function recomputeFolioById(fId: string): Promise<void> {
   if (!fId) return;
   const { data: allCharges, error: cErr } = await supabase.from("folio_charges").select("*").eq("folio_id", fId);
   if (cErr) reportQueryError("folio charges", cErr);
@@ -37,6 +33,33 @@ export async function recomputeBookingFolioTotals(bookingId: string): Promise<vo
     ...t, balance_amount: Math.max(0, t.total_amount - paid),
   } as never).eq("id", fId);
 }
+
+/** Recomputes EVERY live bill of a booking. Split stays have more than one live
+ *  portion; recomputing only the one get_or_create_folio picks leaves the other
+ *  portion stale (missing/duplicated room nights). */
+export async function recomputeAllBookingFolios(bookingId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from("folios").select("id,status,is_deleted,parent_folio_id")
+    .eq("booking_id", bookingId);
+  if (error) { reportQueryError("folios", error); return; }
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  const live = rows.filter((r) => !r.is_deleted && !["void", "refunded"].includes(String(r.status)));
+  const parentsWithChildren = new Set(live.map((r) => r.parent_folio_id).filter(Boolean) as string[]);
+  const targets = live.filter((r) => !parentsWithChildren.has(String(r.id)));
+  for (const r of targets) await recomputeFolioById(String(r.id));
+}
+
+/** Recomputes and persists folio totals for a booking. Mirrors the block that
+ *  lived inline in both doShift() and modifyDate(). */
+export async function recomputeBookingFolioTotals(bookingId: string): Promise<void> {
+  const { data: folioId, error: fErr } = await supabase.rpc("get_or_create_folio", { _booking_id: bookingId });
+  if (fErr) { reportQueryError("get or create folio", fErr); return; }
+  const fId = folioId as unknown as string;
+  if (!fId) return;
+  await recomputeFolioById(fId);
+  await recomputeAllBookingFolios(bookingId);
+}
+
 
 export interface ShiftRoomParams {
   bookingId: string;
