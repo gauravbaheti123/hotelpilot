@@ -2887,6 +2887,23 @@ function FolioPage() {
           {/* Charges */}
           <div className="px-8 py-5">
             <div className="mb-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Charges</div>
+            {missingNights.length > 0 && (
+              <div className="print:hidden mb-2 flex flex-wrap items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <span>
+                  {missingNights.length} night{missingNights.length > 1 ? "s" : ""} of this stay {missingNights.length > 1 ? "are" : "is"} not billed: {missingNights.join(", ")}
+                </span>
+                {canEditNow && (
+                  <button
+                    type="button"
+                    onClick={restoreMissingNights}
+                    className="rounded-md border border-amber-400 bg-white px-2 py-1 font-semibold hover:bg-amber-100"
+                  >
+                    Restore nights
+                  </button>
+                )}
+              </div>
+            )}
+
             <ResponsiveTable minWidth={560}>
 <table data-print-table="charges" data-print-has-hsn={isGst ? "1" : "0"}>
               <thead>
