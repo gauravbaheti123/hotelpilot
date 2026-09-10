@@ -142,10 +142,9 @@ function Page() {
             <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
-              <SelectItem value="cash">Cash</SelectItem>
-              <SelectItem value="card">Card</SelectItem>
-              <SelectItem value="upi">UPI</SelectItem>
-              <SelectItem value="complimentary">Comp</SelectItem>
+              {methods.map((m) => (
+                <SelectItem key={m.id ?? m.name} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
