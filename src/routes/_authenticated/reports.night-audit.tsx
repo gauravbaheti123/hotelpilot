@@ -406,7 +406,11 @@ function NightAuditPage() {
         card_total: byMode.card || 0,
         upi_total: byMode.upi || 0,
         bank_total: byMode.bank || 0,
-        other_total: (byMode.wallet || 0) + (byMode.other || 0),
+        // Everything that is not cash/card/upi/bank, incl. travel-agent modes.
+        other_total: Object.entries(byMode).reduce(
+          (a, [k, v]) => (["cash", "card", "upi", "bank"].includes(k) || isHoldPayment(k) ? a : a + Number(v || 0)),
+          0,
+        ),
         opening_cash: openingCash,
         closing_cash_expected: expectedClosing,
         closing_cash_actual: Number(actualCash),
