@@ -291,6 +291,10 @@ function FolioPage() {
   const [editRate, setEditRate] = useState("0");
   const [editGst, setEditGst] = useState("0");
   const [editBaseAmount, setEditBaseAmount] = useState(0);
+  // Full-row correction fields (date / HSN / reason) available on every line.
+  const [editDate, setEditDate] = useState("");
+  const [editHsn, setEditHsn] = useState("");
+  const [editReason, setEditReason] = useState("");
   const { limit: discountLimit } = useDiscountLimit();
 
   // Edit Tariff dialog — nightly room rate on an OPEN folio. Targets ONE
