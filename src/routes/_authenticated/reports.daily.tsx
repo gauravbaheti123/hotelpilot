@@ -128,8 +128,8 @@ function DailyReportPage() {
         <Card>
           <CardHeader><CardTitle className="text-base">Collections by mode</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {Object.keys(PAYMENT_MODE_LABELS).map((m) => (
-              <Row key={m} label={PAYMENT_MODE_LABELS[m]} value={inr(sum?.by_mode[m] ?? 0)} />
+            {modeRows.map((m) => (
+              <Row key={m.key} label={m.label} value={inr(m.amount)} />
             ))}
             <Row label="Total collected" value={inr(sum?.payments_total ?? 0)} bold />
           </CardContent>
