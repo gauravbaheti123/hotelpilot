@@ -32,6 +32,7 @@ import {
 } from "@/lib/reportExports";
 import { toastError } from "@/lib/errorMessage";
 import { pagedSelect, pagedIn } from "@/lib/reportPaging";
+import { categoriseCharge, buildOutletMap, categoryKeyOrder } from "@/lib/chargeCategory";
 export const Route = createFileRoute("/_authenticated/reports/night-audit")({
   head: () => ({ meta: [{ title: "Night Audit — HotelPilot" }] }),
   component: () => (<RequirePermission module="day_close"><NightAuditPage /></RequirePermission>),
@@ -129,6 +130,7 @@ function NightAuditPage() {
   const [revenueFood, setRevenueFood] = useState(0);
   const [revenueBanquet, setRevenueBanquet] = useState(0);
   const [revenueOther, setRevenueOther] = useState(0);
+  const [revenueCats, setRevenueCats] = useState<Array<{ key: string; label: string; amount: number }>>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalCollections, setTotalCollections] = useState(0);
   const [openingCash, setOpeningCash] = useState(0);
@@ -265,15 +267,30 @@ function NightAuditPage() {
     let roomRev = 0, foodRev = 0, otherRev = 0;
     if (folioIds.length) {
       const ch = await pagedIn<any>("folio charges", folioIds as string[], (chunk, pf, pt) => supabase
-        .from("folio_charges").select("folio_id, charge_type, amount, gst_amount")
+        .from("folio_charges").select("id, folio_id, charge_type, description, amount, gst_amount")
         .in("folio_id", chunk).range(pf, pt));
+      const extraIds = ch
+        .filter((c: any) => String(c.charge_type ?? "").toLowerCase() === "extra")
+        .map((c: any) => String(c.id));
+      const directRows = await pagedIn<any>("restaurant charges", extraIds, (chunk, pf, pt) =>
+        supabase.from("restaurant_direct_charges" as any)
+          .select("folio_charge_id,description,restaurant_outlets(name)")
+          .in("folio_charge_id", chunk).range(pf, pt));
+      const outletMap = buildOutletMap(directRows);
+      const cats = new Map<string, { key: string; label: string; amount: number }>();
       ch.forEach((c: any) => {
-        const t = (c.charge_type ?? "").toLowerCase();
         const v = Number(c.amount || 0) + Number(c.gst_amount || 0);
-        if (t.includes("room")) roomRev += v;
-        else if (t.includes("food") || t.includes("kot")) foodRev += v;
+        const cat = categoriseCharge(c as any, outletMap);
+        const bucket = cats.get(cat.key) ?? { key: cat.key, label: cat.label, amount: 0 };
+        bucket.amount += v;
+        cats.set(cat.key, bucket);
+        if (cat.key === "room" || cat.key === "early_checkin" || cat.key === "extra_bed") roomRev += v;
+        else if (cat.key === "food") foodRev += v;
         else otherRev += v;
       });
+      setRevenueCats(Array.from(cats.values())
+        .filter((c) => Math.abs(c.amount) >= 0.005)
+        .sort((a, b) => categoryKeyOrder(a.key) - categoryKeyOrder(b.key) || a.label.localeCompare(b.label)));
     }
     setRevenueRoom(roomRev);
     setRevenueFood(foodRev);
@@ -407,6 +424,7 @@ function NightAuditPage() {
     { label: "Food revenue", value: inr(revenueFood) },
     { label: "Banquet revenue", value: inr(revenueBanquet) },
     { label: "Other revenue", value: inr(revenueOther) },
+    ...revenueCats.map((c) => ({ label: "Category - " + c.label, value: inr(c.amount) })),
     { label: "Total revenue", value: inr(totalRevenue) },
     ...Object.keys(PAYMENT_MODE_LABELS).map((m) => ({
       label: `Collected — ${PAYMENT_MODE_LABELS[m]}`, value: inr(byMode[m] || 0),
@@ -416,7 +434,7 @@ function NightAuditPage() {
     { label: "Expenses", value: inr(expenses) },
     { label: "Expected closing cash", value: inr(expectedClosing) },
   ], [date, existing, occupied, dueToday, openKots, unsettled, revenueRoom, revenueFood,
-      revenueBanquet, revenueOther, totalRevenue, byMode, totalCollections, openingCash,
+      revenueBanquet, revenueOther, revenueCats, totalRevenue, byMode, totalCollections, openingCash,
       expenses, expectedClosing]);
 
   const exportMeta = { reportName: "Night Audit / Day Close", propertyName: current?.name ?? "", from: date, to: date };
