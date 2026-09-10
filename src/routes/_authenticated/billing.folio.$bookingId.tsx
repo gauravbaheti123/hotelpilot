@@ -291,6 +291,10 @@ function FolioPage() {
   const [editRate, setEditRate] = useState("0");
   const [editGst, setEditGst] = useState("0");
   const [editBaseAmount, setEditBaseAmount] = useState(0);
+  // Full-row correction fields (date / HSN / reason) available on every line.
+  const [editDate, setEditDate] = useState("");
+  const [editHsn, setEditHsn] = useState("");
+  const [editReason, setEditReason] = useState("");
   const { limit: discountLimit } = useDiscountLimit();
 
   // Edit Tariff dialog — nightly room rate on an OPEN folio. Targets ONE
@@ -300,6 +304,9 @@ function FolioPage() {
   const [tariffTarget, setTariffTarget] = useState<Charge | null>(null);
   const [tariffRate, setTariffRate] = useState("0");
   const [tariffSaving, setTariffSaving] = useState(false);
+  const [tariffDesc, setTariffDesc] = useState("");
+  const [tariffDate, setTariffDate] = useState("");
+  const [tariffReason, setTariffReason] = useState("");
 
   const [payOpen, setPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState("");
@@ -1053,7 +1060,7 @@ function FolioPage() {
 
 
   function openEditCharge(c: Charge) {
-    if (!isOpen && !canEditAnyStatus) { toast.error("Only manager/owner can edit a settled bill"); return; }
+    if (!canEditLine) { toast.error("Only manager/owner can edit a settled bill"); return; }
     // Consolidated Food/Laundry bill lines carry the underlying charge ids;
     // the save distributes the corrected total across them.
     const ids = ((c as any).source_charge_ids as string[] | undefined)?.filter(Boolean);
@@ -1063,13 +1070,38 @@ function FolioPage() {
     setEditQty(String(c.qty ?? 1));
     setEditRate(String(c.rate ?? 0));
     setEditGst(String(c.gst_rate ?? 0));
+    setEditDate(String(c.charged_on ?? "").slice(0, 10));
+    setEditHsn(String((c as any).hsn_code ?? ""));
+    setEditReason("");
     setEditBaseAmount(Number(c.amount ?? (Number(c.qty ?? 1) * Number(c.rate ?? 0))) || 0);
     setEditOpen(true);
   }
 
+  /** Single write path for a charge line. Goes through the server RPC so an
+   *  open bill can be corrected by any staff member with access to the
+   *  property, while a finalised bill stays Manager/Owner-only (enforced
+   *  server-side too, not just in the UI). */
+  async function writeChargeRow(
+    id: string,
+    patch: { description?: string | null; qty?: number | null; rate?: number | null; gst_rate?: number | null; charged_on?: string | null; hsn_code?: string | null },
+    reason: string,
+  ) {
+    const { error } = await supabase.rpc("owner_update_folio_charge" as any, {
+      _charge_id: id,
+      _description: patch.description ?? null,
+      _qty: patch.qty ?? null,
+      _rate: patch.rate ?? null,
+      _gst_rate: patch.gst_rate ?? null,
+      _reason: reason,
+      _charged_on: patch.charged_on || null,
+      _hsn_code: patch.hsn_code || null,
+    } as any);
+    return error;
+  }
+
   async function saveEditCharge() {
     if (!folio || !editId) return;
-    if (!isOpen && !canEditAnyStatus) return toast.error("Only manager/owner can edit a settled bill");
+    if (!canEditLine) return toast.error("Only manager/owner can edit a settled bill");
     const desc = editDesc.trim();
     if (!desc) return toast.error("Description required");
     const qty = Number(editQty) || 1;
@@ -1077,6 +1109,7 @@ function FolioPage() {
     const gstR = Number(editGst) || 0;
     const amt = Math.round(qty * rate * 100) / 100;
     const gstAmt = Math.round(amt * gstR) / 100;
+    const reason = editReason.trim() || "Bill line corrected";
     // Per-role discount limit: any reduction from the original charge amount counts as a discount.
     if (amt < editBaseAmount - 0.01) {
       const chk = canApplyDiscount(discountLimit, {
@@ -1087,11 +1120,11 @@ function FolioPage() {
     }
     const ids = editIds.length > 0 ? editIds : [editId];
     if (ids.length === 1) {
-      const { error } = await supabase
-        .from("folio_charges")
-        .update({ description: desc, qty, rate, amount: amt, gst_rate: gstR, gst_amount: gstAmt } as any)
-        .eq("id", ids[0]!);
-      if (error) return toastError(error);
+      const err = await writeChargeRow(ids[0]!, {
+        description: desc, qty, rate, gst_rate: gstR,
+        charged_on: editDate || null, hsn_code: editHsn.trim() || null,
+      }, reason);
+      if (err) return toastError(err);
     } else {
       // Consolidated bill line: distribute the corrected total across the
       // underlying charge rows (weighted by their current amounts, with the
@@ -1099,21 +1132,18 @@ function FolioPage() {
       const rows = charges.filter((c) => ids.includes(String(c.id)));
       const weights = rows.map((c) => Math.max(0, Number(c.amount ?? 0)));
       const amounts = distributeWithRemainder(amt, weights);
-      const gsts = distributeWithRemainder(gstAmt, weights);
       for (let i = 0; i < rows.length; i++) {
         const r = rows[i]!;
         const lineAmt = amounts[i] ?? 0;
         const lineQty = Number(r.qty ?? 1) || 1;
-        const { error } = await supabase
-          .from("folio_charges")
-          .update({
-            amount: lineAmt,
-            rate: Math.round((lineAmt / lineQty) * 100) / 100,
-            gst_rate: gstR,
-            gst_amount: gsts[i] ?? 0,
-          } as any)
-          .eq("id", r.id);
-        if (error) return toastError(error);
+        const err = await writeChargeRow(String(r.id), {
+          qty: lineQty,
+          rate: Math.round((lineAmt / lineQty) * 100) / 100,
+          gst_rate: gstR,
+          charged_on: editDate || null,
+          hsn_code: editHsn.trim() || null,
+        }, reason);
+        if (err) return toastError(err);
       }
     }
     setEditOpen(false); setEditId(null); setEditIds([]);
@@ -1163,6 +1193,9 @@ function FolioPage() {
     }
     setTariffTarget(c);
     setTariffRate(String(Number(c.rate ?? 0)));
+    setTariffDesc(c.description ?? "");
+    setTariffDate(String(c.charged_on ?? "").slice(0, 10));
+    setTariffReason("");
     setTariffOpen(true);
   }
 
@@ -1233,8 +1266,13 @@ function FolioPage() {
     const newRate = Number(tariffRate);
     if (!Number.isFinite(newRate) || newRate < 0) return toast.error("Enter a valid tariff");
     const oldRate = Number(tariffTarget.rate ?? 0);
-    if (Math.abs(newRate - oldRate) < 0.005) { setTariffOpen(false); setTariffTarget(null); return; }
-    if ((tariffTarget as any).is_night_split) return saveEditNightTariff();
+    const isNightRow = !!(tariffTarget as any).is_night_split;
+    const descChanged = !isNightRow && tariffDesc.trim() !== (tariffTarget.description ?? "").trim();
+    const dateChanged = !isNightRow && tariffDate !== String(tariffTarget.charged_on ?? "").slice(0, 10);
+    if (Math.abs(newRate - oldRate) < 0.005 && !descChanged && !dateChanged) {
+      setTariffOpen(false); setTariffTarget(null); return;
+    }
+    if (isNightRow) return saveEditNightTariff();
     const nights = Number(tariffTarget.qty ?? 1) || 1;
     const oldAmount = Number(tariffTarget.amount ?? 0);
     const newAmount = Math.round(nights * newRate * 100) / 100;
@@ -1250,13 +1288,15 @@ function FolioPage() {
     if (gstR == null) {
       return toast.error("No GST slab configured for this tariff — add a room slab in Master Data › GST Slabs");
     }
-    const gstAmt = Math.round(newAmount * gstR) / 100;
     setTariffSaving(true);
     try {
-      const { error } = await supabase
-        .from("folio_charges")
-        .update({ rate: newRate, amount: newAmount, gst_rate: gstR, gst_amount: gstAmt } as any)
-        .eq("id", tariffTarget.id);
+      const error = await writeChargeRow(String(tariffTarget.id), {
+        description: tariffDesc.trim() || tariffTarget.description,
+        qty: nights,
+        rate: newRate,
+        gst_rate: gstR,
+        charged_on: tariffDate || null,
+      }, tariffReason.trim() || "Room tariff corrected");
       if (error) { toastError(error); return; }
       // Keep the source segment in sync so the seed/self-heal path in load()
       // doesn't re-post the old rate.
@@ -1894,6 +1934,9 @@ function FolioPage() {
   // correct a freshly settled bill (mirrored server-side by RLS + RPC guards).
   const inGraceWindow = withinGraceWindow(folio.settled_at ?? null, nowTick);
   const canEditNow = isOpen || canEditAnyStatus || can("invoices", "edit_room_rate_locked") || inGraceWindow;
+  // Before checkout every staff member on this property may correct a line;
+  // once the bill is finalised it is Manager/Owner (or the grace window) only.
+  const canEditLine = isOpen || canEditAnyStatus || can("invoices", "edit_room_rate_locked") || inGraceWindow;
   // Bill-To identity corrections on a finalised bill: Owner/Manager only.
   // Everyone else keeps seeing "Locked — the bill is finalised."
   const canEditBillToPerm = can("invoices", "edit_billto_locked");
@@ -1905,7 +1948,7 @@ function FolioPage() {
   // (Owner, Manager) — the totals/GST/balance are re-derived on save.
   const canEditRoomRatePerm = can("invoices", "edit_room_rate_locked");
   const canEditRoomRateLocked = canEditRoomRatePerm || inGraceWindow;
-  const canEditTariff = (isOpen && can("invoices", "edit")) || canEditRoomRateLocked;
+  const canEditTariff = isOpen || canEditRoomRateLocked;
   // True when this user only has access because the grace window is still open.
   const viaGrace = inGraceWindow;
   // Delete a recorded payment: allowed on an OPEN bill for any role holding
@@ -1917,7 +1960,9 @@ function FolioPage() {
   // Extend stay on a finalised bill: Owner/Manager only.
   const canExtendStay = can("bookings", "extend_stay_locked");
   // Owner/Superadmin-only inline record correction (works on settled bills too).
-  const canOwnerInlineEdit = isOwnerRole;
+  // Guest / stay / Bill-To corrections: open bill → any staff on the property;
+  // finalised bill → Owner/Manager (or inside the grace window).
+  const canOwnerInlineEdit = isOpen || isOwnerRole || canEditRoomRatePerm || inGraceWindow;
   const ownerStayRow = (() => {
     const rows = booking.booking_rooms ?? [];
     const active = rows.filter((r) => r.status !== "shifted");
@@ -3623,6 +3668,20 @@ function FolioPage() {
                   <Input type="number" value={editGst} onChange={(e) => setEditGst(e.target.value)} />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Date</Label>
+                  <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">HSN / SAC</Label>
+                  <Input value={editHsn} onChange={(e) => setEditHsn(e.target.value)} placeholder="e.g. 996331" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Reason</Label>
+                <Input value={editReason} onChange={(e) => setEditReason(e.target.value)} placeholder="Why is this line being corrected?" />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => { setEditOpen(false); setEditId(null); setEditIds([]); }}>Cancel</Button>
@@ -3663,6 +3722,23 @@ function FolioPage() {
                     ? " · GST recalculated from the master slabs. Applies to this night only — the other nights keep their rate."
                     : " · GST recalculated from the master slabs. Applies to every night of this room segment."}
                 </div>
+              </div>
+              {!(tariffTarget as any)?.is_night_split && (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Description</Label>
+                    <Input value={tariffDesc} onChange={(e) => setTariffDesc(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Date on bill</Label>
+                    <Input type="date" value={tariffDate} onChange={(e) => setTariffDate(e.target.value)} />
+                    <p className="text-[11px] text-muted-foreground">Changes only how this line is dated on the bill.</p>
+                  </div>
+                </div>
+              )}
+              <div className="space-y-1">
+                <Label className="text-xs">Reason</Label>
+                <Input value={tariffReason} onChange={(e) => setTariffReason(e.target.value)} placeholder="Why is this being corrected?" />
               </div>
             </div>
             <DialogFooter>
