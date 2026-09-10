@@ -19,6 +19,7 @@ import {
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { pagedSelect, pagedIn } from "@/lib/reportPaging";
+import { categoriseCharge, buildOutletMap } from "@/lib/chargeCategory";
 
 export const Route = createFileRoute("/_authenticated/reports/bill-wise")({
   head: () => ({ meta: [{ title: "Bill-Wise Report — HotelPilot" }] }),
@@ -27,7 +28,8 @@ export const Route = createFileRoute("/_authenticated/reports/bill-wise")({
 
 interface Row {
   bill_no: string; date: string; guest_name: string; room_no: string;
-  room_charges: number; food_charges: number; other_charges: number;
+  room_charges: number; food_charges: number; restaurant_charges: number;
+  laundry_charges: number; other_charges: number;
   total_amount: number; discount: number; net_amount: number;
   payment_mode: string; bill_type: string; status: string;
   gst_amount: number; sub_total: number;
@@ -72,16 +74,30 @@ function Page() {
       const ids = folios.map((f: any) => f.id);
       const [charges, pays] = await Promise.all([
         pagedIn<any>("charges", ids, (chunk, f, t) =>
-          supabase.from("folio_charges").select("folio_id,charge_type,amount").in("folio_id", chunk).range(f, t)),
+          supabase.from("folio_charges").select("id,folio_id,charge_type,description,amount").in("folio_id", chunk).range(f, t)),
         pagedIn<any>("payments", ids, (chunk, f, t) =>
           supabase.from("payments").select("folio_id,mode,paid_at").in("folio_id", chunk).range(f, t)),
       ]);
-      const chargeMap = new Map<string, { room: number; food: number; other: number }>();
+      // Direct restaurant postings live as `extra`; resolve their outlet so they
+      // are reported as restaurant revenue instead of "Other".
+      const extraIds = charges
+        .filter((c: any) => String(c.charge_type ?? "").toLowerCase() === "extra")
+        .map((c: any) => String(c.id));
+      const directRows = await pagedIn<any>("restaurant charges", extraIds, (chunk, f, t) =>
+        supabase.from("restaurant_direct_charges" as any)
+          .select("folio_charge_id,description,restaurant_outlets(name)")
+          .in("folio_charge_id", chunk).range(f, t));
+      const outletMap = buildOutletMap(directRows);
+      const emptyBuckets = () => ({ room: 0, food: 0, restaurant: 0, laundry: 0, other: 0 });
+      const chargeMap = new Map<string, ReturnType<typeof emptyBuckets>>();
       for (const c of charges) {
-        const m = chargeMap.get(c.folio_id) ?? { room: 0, food: 0, other: 0 };
+        const m = chargeMap.get(c.folio_id) ?? emptyBuckets();
         const a = Number(c.amount || 0);
-        if (c.charge_type === "room") m.room += a;
-        else if (c.charge_type === "food" || c.charge_type === "laundry") m.food += a;
+        const cat = categoriseCharge(c as any, outletMap);
+        if (cat.key === "room" || cat.key === "early_checkin" || cat.key === "extra_bed") m.room += a;
+        else if (cat.key === "food") m.food += a;
+        else if (cat.key === "laundry") m.laundry += a;
+        else if (cat.key.startsWith("outlet:")) m.restaurant += a;
         else m.other += a;
         chargeMap.set(c.folio_id, m);
       }
@@ -97,13 +113,14 @@ function Page() {
             .filter(Boolean),
         )).join(", ");
         const guest = f.bookings?.guests?.name ?? "";
-        const m = chargeMap.get(f.id) ?? { room: 0, food: 0, other: 0 };
+        const m = chargeMap.get(f.id) ?? emptyBuckets();
         return {
           _id: f.id,
           bill_no: f.invoice_number ?? f.id.slice(0, 8),
           date: f.created_at,
           guest_name: guest, room_no: room,
-          room_charges: m.room, food_charges: m.food, other_charges: m.other,
+          room_charges: m.room, food_charges: m.food, restaurant_charges: m.restaurant,
+          laundry_charges: m.laundry, other_charges: m.other,
           total_amount: Number(f.sub_total ?? 0), discount: Number(f.discount_amount ?? 0),
           net_amount: Number(f.total_amount ?? 0),
           payment_mode: payMap.get(f.id) ?? "",
@@ -132,6 +149,8 @@ function Page() {
     { key: "room_no", header: "Room", get: (r) => r.room_no, type: "text" },
     { key: "room_charges", header: "Room Charges", get: (r) => r.room_charges, currency: true, sortValue: (r) => r.room_charges },
     { key: "food_charges", header: "Food Charges", get: (r) => r.food_charges, currency: true, sortValue: (r) => r.food_charges },
+    { key: "restaurant_charges", header: "Restaurant Charges", get: (r) => r.restaurant_charges, currency: true, sortValue: (r) => r.restaurant_charges },
+    { key: "laundry_charges", header: "Laundry Charges", get: (r) => r.laundry_charges, currency: true, sortValue: (r) => r.laundry_charges },
     { key: "other_charges", header: "Other Charges", get: (r) => r.other_charges, currency: true, sortValue: (r) => r.other_charges },
     { key: "total_amount", header: "Total Amount", get: (r) => r.total_amount, currency: true, sortValue: (r) => r.total_amount },
     { key: "discount", header: "Discount", get: (r) => r.discount, currency: true, sortValue: (r) => r.discount },
