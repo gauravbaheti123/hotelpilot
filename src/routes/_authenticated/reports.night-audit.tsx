@@ -795,7 +795,18 @@ function ReportView({
   report, propertyName, onPrint, onDelete, isOwner,
 }: { report: AuditReport; propertyName: string; onPrint: () => void; onDelete?: () => void; isOwner?: boolean }) {
   const data = (report.report_data ?? {}) as any;
-  const byMode = (data.by_mode ?? {}) as Record<string, number>;
+  const byModeRaw = (data.by_mode ?? {}) as Record<string, number>;
+  // Older closures stored the mode exactly as typed ("CASH"); merge on the key.
+  const modeRows = (() => {
+    const acc = new Map<string, { key: string; label: string; amount: number }>();
+    for (const [raw, amt] of Object.entries(byModeRaw)) {
+      const key = normaliseModeKey(raw);
+      const row = acc.get(key) ?? { key, label: formatPaymentMethodLabel(raw), amount: 0 };
+      row.amount += Number(amt || 0);
+      acc.set(key, row);
+    }
+    return Array.from(acc.values());
+  })();
   const occPct = report.rooms_total > 0 ? Math.round((report.occupancy_count / report.rooms_total) * 1000) / 10 : 0;
 
   return (
