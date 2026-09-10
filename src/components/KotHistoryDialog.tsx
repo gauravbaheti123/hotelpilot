@@ -649,7 +649,33 @@ export function KotHistoryDialog({
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:justify-between">
+            {punches.length > 0 ? (
+              segment === "food" ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" disabled={busy}>
+                      <Printer className="h-4 w-4 mr-1" /> Print all {ticketWord}s ({punches.length})
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => void printAllPunches("kitchen+counter")}>
+                      Print All (kitchen + counter)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => void printAllPunches("kitchen")}>
+                      Kitchen Copy only
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => void printAllPunches("counter")}>
+                      Counter Copy only
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button variant="secondary" disabled={busy} onClick={() => void printAllPunches()}>
+                  <Printer className="h-4 w-4 mr-1" /> Print all {ticketWord}s ({punches.length})
+                </Button>
+              )
+            ) : <span />}
             <Button variant="outline" onClick={onClose}>Close</Button>
           </DialogFooter>
 
