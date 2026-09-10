@@ -46,6 +46,26 @@ function DailyReportPage() {
     return () => { cancel = true; };
   }, [propertyId, date]);
 
+  // Mode lines come from the property's configured methods plus anything
+  // actually collected that day, so real modes never read zero.
+  const { methods } = usePaymentMethods(propertyId);
+  const modeRows = useMemo(() => {
+    const rows: Array<{ key: string; label: string; amount: number }> = [];
+    const seen = new Set<string>();
+    for (const m of methods) {
+      const key = normaliseModeKey(m.name);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ key, label: formatPaymentMethodLabel(m.name), amount: sum?.by_mode[key] ?? 0 });
+    }
+    for (const key of Object.keys(sum?.by_mode ?? {})) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ key, label: sum?.mode_labels[key] ?? formatPaymentMethodLabel(key), amount: sum?.by_mode[key] ?? 0 });
+    }
+    return rows;
+  }, [methods, sum]);
+
   const kpis: KpiEntry[] = useMemo(() => [
     { label: "Occupancy", value: occ ? `${occ.occupancy_pct}%` : "—", hint: occ ? `${occ.rooms_occupied}/${occ.rooms_total} rooms` : "" },
     { label: "Revenue (invoiced)", value: inr(sum?.total_amount ?? 0), hint: sum ? `${sum.folios_created} folios · ${sum.folios_settled} settled` : "" },
