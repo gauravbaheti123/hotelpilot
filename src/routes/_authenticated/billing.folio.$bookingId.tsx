@@ -65,6 +65,7 @@ import { OwnerInlineEditCard } from "@/components/OwnerInlineEditCard";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 import { withinGraceWindow } from "@/lib/graceWindow";
+import { categoriseCharge, buildOutletMap, categoryKeyOrder } from "@/lib/chargeCategory";
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
   head: () => ({ meta: [{ title: "Folio — HotelPilot" }] }),
   validateSearch: (search: Record<string, unknown>): { folio?: string } => {
