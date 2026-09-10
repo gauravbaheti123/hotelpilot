@@ -17,6 +17,10 @@ export interface DailySummary {
   payment_count: number;
   payments_total: number;
   by_mode: Record<string, number>;
+  /** Display label for each key in `by_mode`, as configured by the property. */
+  mode_labels: Record<string, string>;
+  /** "Bill on hold" amounts — shown separately, never counted as collected. */
+  hold_total: number;
   gst_invoice_total: number;
   gst_invoice_count: number;
 }
