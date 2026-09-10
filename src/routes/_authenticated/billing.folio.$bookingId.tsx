@@ -1960,7 +1960,9 @@ function FolioPage() {
   // Extend stay on a finalised bill: Owner/Manager only.
   const canExtendStay = can("bookings", "extend_stay_locked");
   // Owner/Superadmin-only inline record correction (works on settled bills too).
-  const canOwnerInlineEdit = isOwnerRole;
+  // Guest / stay / Bill-To corrections: open bill → any staff on the property;
+  // finalised bill → Owner/Manager (or inside the grace window).
+  const canOwnerInlineEdit = isOpen || isOwnerRole || canEditRoomRatePerm || inGraceWindow;
   const ownerStayRow = (() => {
     const rows = booking.booking_rooms ?? [];
     const active = rows.filter((r) => r.status !== "shifted");
