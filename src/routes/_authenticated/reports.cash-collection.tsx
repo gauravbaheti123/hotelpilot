@@ -156,10 +156,10 @@ function Page() {
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
       <Card><CardContent className="pt-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          {(["cash","card","upi"] as const).map((k) => (
-            <div key={k} className="rounded border p-3">
-              <div className="text-xs uppercase text-muted-foreground">{k}</div>
-              <div className="text-lg font-semibold">{fmtINR((totals as any)[k])}</div>
+          {totals.modes.map((m) => (
+            <div key={m.key} className="rounded border p-3">
+              <div className="text-xs uppercase text-muted-foreground">{m.label}</div>
+              <div className="text-lg font-semibold">{fmtINR(m.amount)}</div>
             </div>
           ))}
           <div className="rounded border p-3 bg-emerald-50">
