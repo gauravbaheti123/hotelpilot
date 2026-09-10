@@ -7,10 +7,10 @@ import { Label } from "@/components/ui/label";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import {
-  fetchDailySummary, fetchOccupancy, todayIso,
-  PAYMENT_MODE_LABELS,
+  fetchDailySummary, fetchOccupancy, todayIso, normaliseModeKey,
   type DailySummary, type OccupancySnapshot,
 } from "@/lib/reports";
+import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { inr } from "@/lib/billing";
 import { Button } from "@/components/ui/button";
 import { FileSpreadsheet, Printer } from "lucide-react";
