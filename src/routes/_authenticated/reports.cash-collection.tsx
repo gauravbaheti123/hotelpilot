@@ -82,17 +82,30 @@ function Page() {
 
   useEffect(() => { setLoading(true); void Promise.resolve(load()).finally(() => setLoading(false)); }, [load]);
 
+  // Modes are the property's own method names ("CASH", "MAKE MY TRIP"), so the
+  // breakup is built from the data, matched case-insensitively.
   const totals = useMemo(() => {
-    const t = { cash: 0, card: 0, upi: 0, other: 0, grand: 0 };
-    for (const r of derived) {
-      t.grand += r.amount;
-      if (r.mode === "cash") t.cash += r.amount;
-      else if (r.mode === "card") t.card += r.amount;
-      else if (r.mode === "upi") t.upi += r.amount;
-      else t.other += r.amount;
+    const byKey = new Map<string, { key: string; label: string; amount: number }>();
+    let grand = 0;
+    let hold = 0;
+    for (const m of methods) {
+      const key = normaliseModeKey(m.name);
+      if (!byKey.has(key)) byKey.set(key, { key, label: formatPaymentMethodLabel(m.name), amount: 0 });
     }
-    return t;
-  }, [derived]);
+    for (const r of derived) {
+      const key = normaliseModeKey(r.mode);
+      const isHold = isHoldPayment(r.mode);
+      if (isHold) hold += r.amount; else grand += r.amount;
+      const entry = byKey.get(key) ?? {
+        key,
+        label: isHold ? `${HOLD_PAYMENT_MODE} (not collected)` : formatPaymentMethodLabel(r.mode || "Other"),
+        amount: 0,
+      };
+      entry.amount += r.amount;
+      byKey.set(key, entry);
+    }
+    return { modes: Array.from(byKey.values()), grand, hold };
+  }, [derived, methods]);
 
   const columns: ReportColumn<Row>[] = [
     { key: "date", header: "Date", get: (r) => fmtDate(r.date), type: "date", sortValue: (r) => r.date, dateValue: (r) => r.date },
