@@ -1060,7 +1060,7 @@ function FolioPage() {
 
 
   function openEditCharge(c: Charge) {
-    if (!isOpen && !canEditAnyStatus) { toast.error("Only manager/owner can edit a settled bill"); return; }
+    if (!canEditLine) { toast.error("Only manager/owner can edit a settled bill"); return; }
     // Consolidated Food/Laundry bill lines carry the underlying charge ids;
     // the save distributes the corrected total across them.
     const ids = ((c as any).source_charge_ids as string[] | undefined)?.filter(Boolean);
@@ -1070,8 +1070,33 @@ function FolioPage() {
     setEditQty(String(c.qty ?? 1));
     setEditRate(String(c.rate ?? 0));
     setEditGst(String(c.gst_rate ?? 0));
+    setEditDate(String(c.charged_on ?? "").slice(0, 10));
+    setEditHsn(String((c as any).hsn_code ?? ""));
+    setEditReason("");
     setEditBaseAmount(Number(c.amount ?? (Number(c.qty ?? 1) * Number(c.rate ?? 0))) || 0);
     setEditOpen(true);
+  }
+
+  /** Single write path for a charge line. Goes through the server RPC so an
+   *  open bill can be corrected by any staff member with access to the
+   *  property, while a finalised bill stays Manager/Owner-only (enforced
+   *  server-side too, not just in the UI). */
+  async function writeChargeRow(
+    id: string,
+    patch: { description?: string | null; qty?: number | null; rate?: number | null; gst_rate?: number | null; charged_on?: string | null; hsn_code?: string | null },
+    reason: string,
+  ) {
+    const { error } = await supabase.rpc("owner_update_folio_charge" as any, {
+      _charge_id: id,
+      _description: patch.description ?? null,
+      _qty: patch.qty ?? null,
+      _rate: patch.rate ?? null,
+      _gst_rate: patch.gst_rate ?? null,
+      _reason: reason,
+      _charged_on: patch.charged_on || null,
+      _hsn_code: patch.hsn_code || null,
+    } as any);
+    return error;
   }
 
   async function saveEditCharge() {
