@@ -18,7 +18,9 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { supabase } from "@/integrations/supabase/client";
 import { billNo } from "@/lib/billNumber";
 import { toast } from "sonner";
-import { fetchDailySummary, fetchOccupancy, todayIso, PAYMENT_MODE_LABELS } from "@/lib/reports";
+import { fetchDailySummary, fetchOccupancy, todayIso, normaliseModeKey } from "@/lib/reports";
+import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
+import { isHoldPayment } from "@/lib/billing";
 import { inr } from "@/lib/billing";
 import { AlertTriangle, CheckCircle2, Lock, Printer, FileText, FileSpreadsheet } from "lucide-react";
 
