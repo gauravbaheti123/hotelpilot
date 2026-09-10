@@ -195,6 +195,8 @@ function FolioPage() {
   const [folio, setFolio] = useState<Folio | null>(null);
   const [charges, setCharges] = useState<Charge[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [missingNights, setMissingNights] = useState<string[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [foodBillNumber, setFoodBillNumber] = useState<string | null>(null);
   // Display-only: restaurant direct charges for this booking, used to append
@@ -484,6 +486,14 @@ function FolioPage() {
     }
     setCharges(correctedCharges);
     setPayments(((p ?? []) as unknown as Payment[]));
+
+    // Nights of the stay that carry no live room charge on any portion of the bill.
+    {
+      const { data: mn } = await supabase.rpc("missing_room_nights" as any, { _booking_id: bookingId });
+      setMissingNights(((mn ?? []) as any[]).map((r) => String(typeof r === "string" ? r : r.night)).filter(Boolean));
+    }
+
+
 
     // Load the linked Food Bill number (FB-XXXX) if any food charge exists.
     // Load restaurant direct charges for this booking (display-only bill no).
@@ -996,6 +1006,51 @@ function FolioPage() {
     }
     load();
   }
+
+  /** Delete ONE night of a stay. The clicked row is a derived night row whose
+   *  source_charge_ids point at the multi-night parent charge — wiping that
+   *  parent used to erase every other night of the stay too. remove_room_night()
+   *  slices the stay so only the clicked night is dropped. */
+  async function removeNight(c: Charge) {
+    if (!folio) return;
+    if (!isOpen && !canEditAnyStatus) return toast.error("Only manager/owner can edit a settled bill");
+    if (!canVoid) return toast.error("Only manager or owner can delete charges");
+    const brId = c.source_table === "booking_rooms" ? String(c.source_id ?? "") : "";
+    const night = String(c.charged_on ?? "").slice(0, 10);
+    if (!brId || !night) return toast.error("This night can't be removed");
+    if (!confirm(`Remove the night of ${night} from this bill? The other nights stay as they are.`)) return;
+    const { error } = await supabase.rpc("remove_room_night" as any, { _booking_room_id: brId, _night: night });
+    if (error) return toastError(error);
+    logActivity({
+      property_id: booking?.property_id ?? "",
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      action_type: "ROOM_NIGHT_REMOVED",
+      module: "Billing",
+      reference_id: folio.id,
+      reference_label: billNo(folio.invoice_number),
+      details: { bill_number: billNo(folio.invoice_number), night_date: night, booking_room_id: brId, description: c.description },
+    });
+    toast.success(`Night of ${night} removed`);
+    load();
+  }
+
+  /** Restores any stay night that has no live room charge (day locks, failed
+   *  re-seeds after a date change, or a bill split can leave a hole). */
+  async function restoreMissingNights() {
+    if (!booking) return;
+    const { data: rows, error } = await supabase
+      .from("booking_rooms").select("id,status").eq("booking_id", booking.id);
+    if (error) return toastError(error);
+    const live = (rows ?? []).filter((r: any) => ["active", "reserved", "checked_in"].includes(String(r.status ?? "active")));
+    for (const r of live) {
+      const { error: sErr } = await supabase.rpc("seed_room_charge_for_booking_room" as any, { _booking_room_id: (r as any).id });
+      if (sErr) return toastError(sErr);
+    }
+    toast.success("Missing nights restored");
+    load();
+  }
+
 
   function openEditCharge(c: Charge) {
     if (!isOpen && !canEditAnyStatus) { toast.error("Only manager/owner can edit a settled bill"); return; }
@@ -2832,6 +2887,23 @@ function FolioPage() {
           {/* Charges */}
           <div className="px-8 py-5">
             <div className="mb-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: TEAL_DARK }}>Charges</div>
+            {missingNights.length > 0 && (
+              <div className="print:hidden mb-2 flex flex-wrap items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <span>
+                  {missingNights.length} night{missingNights.length > 1 ? "s" : ""} of this stay {missingNights.length > 1 ? "are" : "is"} not billed: {missingNights.join(", ")}
+                </span>
+                {canEditNow && (
+                  <button
+                    type="button"
+                    onClick={restoreMissingNights}
+                    className="rounded-md border border-amber-400 bg-white px-2 py-1 font-semibold hover:bg-amber-100"
+                  >
+                    Restore nights
+                  </button>
+                )}
+              </div>
+            )}
+
             <ResponsiveTable minWidth={560}>
 <table data-print-table="charges" data-print-has-hsn={isGst ? "1" : "0"}>
               <thead>
@@ -2897,7 +2969,7 @@ function FolioPage() {
                              {canVoid && (
                                <button
                                  type="button"
-                                 onClick={() => removeCharges((((c as any).source_charge_ids as string[] | undefined) ?? [String(c.id)]))}
+                                 onClick={() => removeNight(c as any)}
                                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-muted"
                                  title="Delete this night's charge"
                                >

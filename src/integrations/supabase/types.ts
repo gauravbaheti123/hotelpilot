@@ -6646,6 +6646,12 @@ export type Database = {
         Args: { _folio_id: string; _reason: string }
         Returns: Json
       }
+      missing_room_nights: {
+        Args: { _booking_id: string }
+        Returns: {
+          night: string
+        }[]
+      }
       my_property_ids: { Args: { _uid: string }; Returns: string[] }
       owner_update_bill_item: {
         Args: {
@@ -6724,6 +6730,10 @@ export type Database = {
           _success: boolean
           _user_agent?: string
         }
+        Returns: Json
+      }
+      remove_room_night: {
+        Args: { _booking_room_id: string; _night: string }
         Returns: Json
       }
       resolve_event_ids: { Args: { _id: string }; Returns: Json }
