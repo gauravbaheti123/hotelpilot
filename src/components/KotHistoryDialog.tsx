@@ -16,6 +16,7 @@ import { logActivity, userDisplayName } from "@/lib/activityLog";
 import {
   buildKotPrintPlan,
   renderKotHtml,
+  renderConsolidatedKotHtml,
   runKotPrintJobs,
   printThermalHtml,
   type KotItemForPrint,
@@ -295,6 +296,133 @@ export function KotHistoryDialog({
   }
 
 
+  /** Print every punch of this room/table in one go. */
+  async function printAllPunches(mode: PrintMode = "kitchen+counter") {
+    if (punches.length === 0) return;
+    setBusy(true);
+    try {
+      const ordered = [...punches].sort((a, b) => a.at.localeCompare(b.at));
+      const allItems = ordered.flatMap((p) => p.items);
+      const itemNames = [...new Set(allItems.map((i) => i.description.trim()).filter(Boolean))];
+
+      const [printerResult, counterResult, menuResult] = await Promise.all([
+        supabase
+          .from("printers")
+          .select("id,name,paper_size,printer_role")
+          .eq("property_id", propertyId)
+          .eq("is_active", true),
+        supabase
+          .from("printers")
+          .select("id,name,paper_size,printer_role")
+          .eq("property_id", propertyId)
+          .eq("is_active", true)
+          .eq("printer_role", "Counter Copy")
+          .limit(1),
+        segment === "food" && itemNames.length > 0
+          ? supabase
+              .from("menu_items")
+              .select("name,kitchen_printer_id,menu_categories(kot_printer_id)")
+              .eq("property_id", propertyId)
+              .in("name", itemNames)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (printerResult.error) throw printerResult.error;
+      if (counterResult.error) throw counterResult.error;
+      if (menuResult.error) throw menuResult.error;
+
+      const printers = (printerResult.data ?? []) as PrinterInfo[];
+      const counterPrinter = ((counterResult.data ?? [])[0] ?? null) as PrinterInfo | null;
+      const printerByName = new Map(
+        (menuResult.data ?? []).map((m: any) => [
+          String(m.name),
+          (m.kitchen_printer_id ?? m.menu_categories?.kot_printer_id ?? null) as string | null,
+        ]),
+      );
+      const toPrintItem = (i: ItemRow): KotItemForPrint => ({
+        item_name: i.description,
+        qty: Number(i.qty),
+        rate: Number(i.rate),
+        printer_id: printerByName.get(i.description.trim()) ?? null,
+        notes: i.note,
+      });
+
+      const groups = ordered.map((p) => ({
+        kot_number: p.bill.bill_number,
+        status: p.bill.status,
+        at: p.at,
+        items: p.items.map(toPrintItem),
+      }));
+      const header = {
+        kot_number: `ALL ${ticketWord}S`,
+        kot_type: roomNumber ? "room" : "table",
+        room_number: roomNumber,
+        table_no: tableName ?? null,
+        guest_name: guestName,
+        notes: null,
+        created_at: new Date().toISOString(),
+      };
+
+      if (segment !== "food") {
+        const printer = await fetchKotPrinter(propertyId);
+        const html = renderConsolidatedKotHtml(
+          header,
+          groups,
+          printer?.paper_size ?? "80mm",
+          printer?.name ?? "LAUNDRY",
+        );
+        await printThermalHtml({
+          printerName: printer?.name ?? null,
+          html,
+          paperSize: printer?.paper_size ?? "80mm",
+          label: `All ${ticketWord}s`,
+        });
+        toast.success(`All ${ticketWord}s sent${printer?.name ? ` to ${printer.name}` : ""}`);
+        return;
+      }
+
+      const sentTo: string[] = [];
+
+      if (mode !== "counter") {
+        const { jobs, warnings } = buildKotPrintPlan(
+          allItems.map(toPrintItem),
+          printers,
+          null,
+          "kitchen",
+        );
+        warnings.forEach((w) => toast.warning(w, { duration: 12000 }));
+        if (jobs.length > 0) {
+          await runKotPrintJobs({ ...header, kot_number: `${header.kot_number} (RE-PRINT)` }, jobs);
+          sentTo.push(...jobs.map((j) => `${j.printer.name} (kitchen)`));
+        }
+      }
+
+      if (mode !== "kitchen") {
+        if (!counterPrinter) {
+          toast.warning("No Counter Copy printer configured. Set up in Master Data → Printers.", {
+            duration: 12000,
+          });
+        } else {
+          const paper = counterPrinter.paper_size ?? "80mm";
+          const html = renderConsolidatedKotHtml(header, groups, paper, counterPrinter.name);
+          await printThermalHtml({
+            printerName: counterPrinter.name,
+            html,
+            paperSize: paper,
+            label: `All ${ticketWord}s`,
+          });
+          sentTo.push(`${counterPrinter.name} (counter)`);
+        }
+      }
+
+      if (sentTo.length === 0) throw new Error(`No printer found for all ${ticketWord}s`);
+      toast.success(`All ${ticketWord}s (${groups.length}) sent to ${sentTo.join(", ")}`);
+    } catch (e: any) {
+      toastError(e, `Print all ${ticketWord}s failed`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function startEdit(p: Punch) {
     setEditing(p);
     setDraft(p.items.map((i) => ({ ...i })));
@@ -521,7 +649,33 @@ export function KotHistoryDialog({
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:justify-between">
+            {punches.length > 0 ? (
+              segment === "food" ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" disabled={busy}>
+                      <Printer className="h-4 w-4 mr-1" /> Print all {ticketWord}s ({punches.length})
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => void printAllPunches("kitchen+counter")}>
+                      Print All (kitchen + counter)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => void printAllPunches("kitchen")}>
+                      Kitchen Copy only
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => void printAllPunches("counter")}>
+                      Counter Copy only
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button variant="secondary" disabled={busy} onClick={() => void printAllPunches()}>
+                  <Printer className="h-4 w-4 mr-1" /> Print all {ticketWord}s ({punches.length})
+                </Button>
+              )
+            ) : <span />}
             <Button variant="outline" onClick={onClose}>Close</Button>
           </DialogFooter>
 
