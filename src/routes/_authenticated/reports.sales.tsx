@@ -43,6 +43,7 @@ interface DayRow {
 
 function SalesReportPage() {
   const { current, currentId: propertyId } = useCurrentProperty();
+  const { methods } = usePaymentMethods(propertyId);
   const brand = useReportBrand(propertyId);
   const [from, setFrom] = useState<string>(firstOfMonth());
   const [to, setTo] = useState<string>(todayIso());
@@ -189,7 +190,7 @@ function SalesReportPage() {
               </thead>
               <tbody className="divide-y">
                 {days.length === 0 && (
-                  <tr><td colSpan={11} className="px-3 py-4 text-muted-foreground">No data in range.</td></tr>
+                  <tr><td colSpan={5 + modeKeys.length} className="px-3 py-4 text-muted-foreground">No data in range.</td></tr>
                 )}
                 {days.map((d) => (
                   <tr key={d.date}>
