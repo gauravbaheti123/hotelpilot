@@ -1934,6 +1934,9 @@ function FolioPage() {
   // correct a freshly settled bill (mirrored server-side by RLS + RPC guards).
   const inGraceWindow = withinGraceWindow(folio.settled_at ?? null, nowTick);
   const canEditNow = isOpen || canEditAnyStatus || can("invoices", "edit_room_rate_locked") || inGraceWindow;
+  // Before checkout every staff member on this property may correct a line;
+  // once the bill is finalised it is Manager/Owner (or the grace window) only.
+  const canEditLine = isOpen || canEditAnyStatus || can("invoices", "edit_room_rate_locked") || inGraceWindow;
   // Bill-To identity corrections on a finalised bill: Owner/Manager only.
   // Everyone else keeps seeing "Locked — the bill is finalised."
   const canEditBillToPerm = can("invoices", "edit_billto_locked");
