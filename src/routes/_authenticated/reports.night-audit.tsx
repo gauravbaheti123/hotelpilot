@@ -315,6 +315,26 @@ function NightAuditPage() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // Modes are property-defined names; list configured methods plus anything
+  // actually collected, matched on the normalised key.
+  const { methods } = usePaymentMethods(propertyId);
+  const modeRows = useMemo(() => {
+    const rows: Array<{ key: string; label: string; amount: number }> = [];
+    const seen = new Set<string>();
+    for (const m of methods) {
+      const key = normaliseModeKey(m.name);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ key, label: formatPaymentMethodLabel(m.name), amount: byMode[key] ?? 0 });
+    }
+    for (const key of Object.keys(byMode)) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ key, label: modeLabels[key] ?? formatPaymentMethodLabel(key), amount: byMode[key] ?? 0 });
+    }
+    return rows;
+  }, [methods, byMode, modeLabels]);
+
   const cashCollected = Number(byMode.cash || 0);
   const expectedClosing = openingCash + cashCollected - expenses;
   const difference = (Number(actualCash) || 0) - expectedClosing;
