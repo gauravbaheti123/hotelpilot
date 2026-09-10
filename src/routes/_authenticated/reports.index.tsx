@@ -6,6 +6,7 @@ import {
   Sunrise, UtensilsCrossed, Store, PartyPopper, Coins, BedDouble,
 } from "lucide-react";
 import { useAuth, hasRole } from "@/hooks/use-auth";
+import { usePermissions } from "@/hooks/use-permissions";
 
 import { RequirePermission } from "@/components/RequirePermission";
 export const Route = createFileRoute("/_authenticated/reports/")({
@@ -27,7 +28,7 @@ const ITEMS = [
   { to: "/reports/bill-wise", label: "Bill-Wise", icon: FileSpreadsheet, desc: "Per-invoice details" },
   { to: "/reports/dues", label: "Dues / Pending Payments", icon: AlertCircle, desc: "Unpaid bills, oldest first" },
   { to: "/reports/cash-collection", label: "Cash Collection", icon: FileSpreadsheet, desc: "Cash receipts" },
-  { to: "/reports/cash-handover", label: "Cash Handover", icon: Wallet, desc: "Shift handover & mismatches" },
+  { to: "/reports/cash-handover", label: "Cash Handover", icon: Wallet, desc: "Shift handover & mismatches", module: "shift_handover" },
   { to: "/reports/date-wise-revenue", label: "Date-Wise Revenue", icon: BarChart3, desc: "Revenue by date" },
   { to: "/reports/room-wise", label: "Room-Wise", icon: FileSpreadsheet, desc: "Occupancy & revenue per room" },
   { to: "/reports/plan-wise", label: "Plan-Wise (EP/CP/MAP/AP)", icon: BedDouble, desc: "Room revenue by meal plan, with period grouping" },
@@ -35,9 +36,9 @@ const ITEMS = [
   { to: "/reports/food-kot", label: "Food / KOT", icon: FileSpreadsheet, desc: "Restaurant report" },
   { to: "/reports/banquet", label: "Banquet", icon: FileSpreadsheet, desc: "Events report" },
   { to: "/reports/guest-wise", label: "Guest-Wise", icon: FileSpreadsheet, desc: "By guest" },
-  { to: "/reports/expenses", label: "Expenses", icon: FileSpreadsheet, desc: "Expense report" },
+  { to: "/reports/expenses", label: "Expenses", icon: FileSpreadsheet, desc: "Expense report", module: "expenses" },
   { to: "/reports/activity", label: "Activity Log", icon: History, desc: "User activity" },
-  { to: "/reports/night-audit", label: "Day Close", icon: Moon, desc: "End-of-day close" },
+  { to: "/reports/night-audit", label: "Day Close", icon: Moon, desc: "End-of-day close", module: "day_close" },
 ];
 
 const OWNER_ITEMS = [
@@ -47,8 +48,15 @@ const OWNER_ITEMS = [
 
 function ReportsIndex() {
   const { roles } = useAuth();
+  const { can, isSuperadmin } = usePermissions();
   const isOwner = hasRole(roles, "owner") || hasRole(roles, "superadmin");
-  const items = isOwner ? [...ITEMS, ...OWNER_ITEMS] : ITEMS;
+  // Only show a report the signed-in user can actually open, so nobody lands
+  // on an "access denied" screen from this index.
+  const visible = ITEMS.filter((it) => {
+    const mod = (it as { module?: string }).module;
+    return !mod || isSuperadmin || can(mod, "view");
+  });
+  const items = isOwner ? [...visible, ...OWNER_ITEMS] : visible;
   return (
     <AppShell title="Reports">
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">

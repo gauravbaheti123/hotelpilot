@@ -15,6 +15,7 @@ import { ReportDataTable } from "@/components/ReportDataTable";
 import { Fragment } from "react";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { pagedSelect, pagedIn } from "@/lib/reportPaging";
 export const Route = createFileRoute("/_authenticated/reports/guest-wise")({
   head: () => ({ meta: [{ title: "Guest-Wise Report — HotelPilot" }] }),
   component: () => (<RequirePermission module="reports"><Page /></RequirePermission>),
@@ -41,17 +42,17 @@ function Page() {
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<GuestRow[]>([]);
   const [derived, setDerived] = useState<GuestRow[]>([]);
+  const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    const { data, error: __qe1 } = await supabase.from("bookings").select(`
+    const data = await pagedSelect<any>("bookings", (f, t) => supabase.from("bookings").select(`
       id,booking_number,check_in,check_out,total_amount,balance_amount,status,guest_id,source,
       checked_in_by,checked_out_by,
       guests(name,mobile)
     `).eq("property_id", propertyId)
-      .gte("check_in", from).lte("check_in", to);
-    if (__qe1) reportQueryError("bookings", __qe1);
+      .gte("check_in", from).lte("check_in", to).range(f, t));
 
     // Banquet event-block stays remain visible for 48h after the event ends.
     const scope = await fetchBanquetScope(propertyId);
@@ -65,10 +66,9 @@ function Page() {
     }
     const nameMap = new Map<string, string>();
     if (uids.size) {
-      const { data: profs, error: __qe2 } = await supabase.from("profiles")
-        .select("id,name,email").in("id", Array.from(uids));
-      if (__qe2) reportQueryError("profiles", __qe2);
-      for (const p of (profs ?? []) as any[]) nameMap.set(p.id, p.name || p.email || "");
+      const profs = await pagedIn<any>("profiles", Array.from(uids), (chunk, f, t) =>
+        supabase.from("profiles").select("id,name,email").in("id", chunk).range(f, t));
+      for (const p of profs) nameMap.set(p.id, p.name || p.email || "");
     }
 
     const m = new Map<string, GuestRow>();
@@ -101,7 +101,7 @@ function Page() {
     setRows(out);
   }, [propertyId, from, to, search]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setLoading(true); void Promise.resolve(load()).finally(() => setLoading(false)); }, [load]);
 
   const grandDerived = useMemo(() => derived.reduce((s, r) => ({
     spending: s.spending + r.spending, outstanding: s.outstanding + r.outstanding,
@@ -131,10 +131,11 @@ function Page() {
         <div><Label>To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" /></div>
         <div><Label>Search</Label><Input placeholder="Name or mobile" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56" /></div>
       </>}
-      onExcel={() => exportExcel(derived, columns, meta)}
-      onPdf={() => exportPdf(derived, columns, meta)}
-      disabled={rows.length === 0}
+      onExcel={() => exportExcel(derived.length ? derived : rows, columns, meta)}
+      onPdf={() => exportPdf(derived.length ? derived : rows, columns, meta)}
+      disabled={loading || rows.length === 0}
     >
+      {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
       <Card><CardContent className="pt-4">
         <ReportDataTable
           rows={rows}

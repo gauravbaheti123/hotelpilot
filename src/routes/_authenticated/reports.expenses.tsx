@@ -15,6 +15,7 @@ import {
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
 import { guardQuery } from "@/lib/queryError";
+import { pagedSelect } from "@/lib/reportPaging";
 
 export const Route = createFileRoute("/_authenticated/reports/expenses")({
   head: () => ({ meta: [{ title: "Expense Report — HotelPilot" }] }),
@@ -37,6 +38,7 @@ function Page() {
   const [cats, setCats] = useState<Array<{ id: string; name: string }>>([]);
   const [rows, setRows] = useState<Row[]>([]);
   const [derived, setDerived] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(false);
   const [profiles, setProfiles] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
@@ -51,16 +53,19 @@ function Page() {
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    let q = supabase.from("expenses").select(`
-      id,expense_date,amount,payment_mode,reference,description,created_by,category_id,vendor_id,
-      expense_categories(name),vendors(name)
-    `).eq("property_id", propertyId)
-      .gte("expense_date", from).lte("expense_date", to)
-      .order("expense_date", { ascending: false });
-    if (catId !== "all") q = q.eq("category_id", catId);
-    if (mode !== "all") q = q.eq("payment_mode", mode);
-    const { data } = await q;
-    const out: Row[] = ((data ?? []) as any[]).map((e) => ({
+    setLoading(true);
+    const data = await pagedSelect<any>("expenses", (f, t) => {
+      let q = supabase.from("expenses").select(`
+        id,expense_date,amount,payment_mode,reference,description,created_by,category_id,vendor_id,
+        expense_categories(name),vendors(name)
+      `).eq("property_id", propertyId)
+        .gte("expense_date", from).lte("expense_date", to)
+        .order("expense_date", { ascending: false });
+      if (catId !== "all") q = q.eq("category_id", catId);
+      if (mode !== "all") q = q.eq("payment_mode", mode);
+      return q.range(f, t);
+    });
+    const out: Row[] = data.map((e) => ({
       _id: e.id, date: e.expense_date,
       category: e.expense_categories?.name ?? "Uncategorized",
       description: e.description ?? "", vendor: e.vendors?.name ?? "",
@@ -68,9 +73,10 @@ function Page() {
       approved_by: profiles.get(e.created_by) ?? "",
     }));
     setRows(out);
+    setLoading(false);
   }, [propertyId, from, to, catId, mode, profiles]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setLoading(true); void Promise.resolve(load()).finally(() => setLoading(false)); }, [load]);
 
   const groupedDerived = useMemo(() => {
     const m = new Map<string, Row[]>();
@@ -134,12 +140,13 @@ function Page() {
           </Select>
         </div>
       </>}
-      onExcel={() => exportExcel(derived, columns, meta)}
-      onPdf={() => exportPdf(derived, columns, meta)}
+      onExcel={() => exportExcel(derived.length ? derived : rows, columns, meta)}
+      onPdf={() => exportPdf(derived.length ? derived : rows, columns, meta)}
       onTally={tallyXml}
       tallyLabel="Export for Tally"
-      disabled={rows.length === 0}
+      disabled={loading || rows.length === 0}
     >
+      {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
       <Card><CardContent className="pt-4">
         <ReportDataTable
           rows={rows}

@@ -16,6 +16,7 @@ import {
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
+import { pagedSelect } from "@/lib/reportPaging";
 
 export const Route = createFileRoute("/_authenticated/reports/room-shift")({
   head: () => ({ meta: [{ title: "Room Shift Report — HotelPilot" }] }),
@@ -61,7 +62,7 @@ function Page() {
     const fromIso = new Date(`${from}T00:00:00`).toISOString();
     const toD = new Date(`${to}T00:00:00`); toD.setDate(toD.getDate() + 1);
     const toIso = toD.toISOString();
-    const { data, error: __qe1 } = await supabase
+    const data = await pagedSelect<any>("room shifts", (pf, pt) => supabase
       .from("room_shifts")
       .select(`
         id, shifted_at, old_rate, new_rate, rate_applied, rate_type, tariff_choice,
@@ -75,9 +76,8 @@ function Page() {
       .eq("property_id", propertyId)
       .gte("shifted_at", fromIso)
       .lt("shifted_at", toIso)
-      .order("shifted_at", { ascending: false });
-    if (__qe1) reportQueryError("room shifts", __qe1);
-    const out: Row[] = ((data ?? []) as any[]).map((s) => {
+      .order("shifted_at", { ascending: false }).range(pf, pt));
+    const out: Row[] = data.map((s: any) => {
       const old = Number(s.old_rate ?? 0);
       const nw = Number(s.new_rate ?? 0);
       const applied = Number(s.rate_applied ?? s.new_rate ?? 0);

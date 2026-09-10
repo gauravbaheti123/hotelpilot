@@ -31,6 +31,7 @@ import {
   type ExportSection, type KpiEntry, type ReportColumn,
 } from "@/lib/reportExports";
 import { toastError } from "@/lib/errorMessage";
+import { pagedSelect, pagedIn } from "@/lib/reportPaging";
 export const Route = createFileRoute("/_authenticated/reports/night-audit")({
   head: () => ({ meta: [{ title: "Night Audit — HotelPilot" }] }),
   component: () => (<RequirePermission module="day_close"><NightAuditPage /></RequirePermission>),
@@ -155,15 +156,14 @@ function NightAuditPage() {
     setHistory((hist.data as AuditReport[] | null) ?? []);
 
     // Occupied rooms (spans selected date)
-    const occ = await supabase
+    const occData = await pagedSelect<any>("occupied rooms", (pf, pt) => supabase
       .from("booking_rooms")
       .select("booking_id, room_id, rate, rooms:room_id(room_number, category_id), bookings!booking_rooms_booking_id_fkey!inner(check_in, check_out, status, property_id, guests(name))")
       .eq("property_id", propertyId)
       .lte("bookings.check_in", date)
       .gt("bookings.check_out", date)
-      .in("bookings.status", ["checked_in", "reserved"]);
-    if (occ.error) console.error("[night-audit] occupied rooms load failed:", occ.error);
-    const occRows: OccupiedRow[] = (occ.data ?? []).map((r: any) => ({
+      .in("bookings.status", ["checked_in", "reserved"]).range(pf, pt));
+    const occRows: OccupiedRow[] = occData.map((r: any) => ({
       booking_id: r.booking_id,
       room_id: r.room_id,
       room_number: r.rooms?.room_number ?? "—",
@@ -177,18 +177,17 @@ function NightAuditPage() {
     // Build tariff post preview using booking_rooms.rate (fallback) — only for checked_in rooms
     const checkedIn = occRows.filter(() => true);
     const rateMap = new Map<string, number>();
-    (occ.data ?? []).forEach((r: any) => {
+    occData.forEach((r: any) => {
       rateMap.set(`${r.booking_id}|${r.room_id}`, Number(r.rate || 0));
     });
     // Folio lookup
     const bookingIds = Array.from(new Set(checkedIn.map((c) => c.booking_id)));
     const folioMap = new Map<string, string>();
     if (bookingIds.length) {
-      const { data: fs, error: __qe1 } = await supabase
+      const fs = await pagedIn<any>("folios", bookingIds as string[], (chunk, pf, pt) => supabase
         .from("folios").select("id, booking_id, status, is_deleted")
-        .eq("property_id", propertyId).in("booking_id", bookingIds);
-      if (__qe1) reportQueryError("folios", __qe1);
-      (fs ?? []).forEach((f: any) => {
+        .eq("property_id", propertyId).in("booking_id", chunk).range(pf, pt));
+      fs.forEach((f: any) => {
         if (f.is_deleted || f.status === "void") return;
         if (!folioMap.has(f.booking_id)) folioMap.set(f.booking_id, f.id);
       });
@@ -208,14 +207,13 @@ function NightAuditPage() {
     })));
 
     // Open (unsettled) food / laundry bills — live source is segment_bills.
-    const { data: kots, error: __qe2 } = await supabase
+    const kots = await pagedSelect<any>("open food bills", (pf, pt) => supabase
       .from("segment_bills")
       .select("id, bill_number, total_amount, status, rooms(room_number), segment_bill_items(description, qty)")
       .eq("property_id", propertyId)
       .in("segment", ["food", "laundry"])
-      .neq("status", "settled");
-    if (__qe2) reportQueryError("open food bills", __qe2);
-    setOpenKots(((kots ?? []) as any[]).map((k) => ({
+      .neq("status", "settled").range(pf, pt));
+    setOpenKots(kots.map((k: any) => ({
       id: k.id, kot_number: k.bill_number ?? "—",
       room_number: k.rooms?.room_number ?? null,
       total_amount: Number(k.total_amount || 0),
@@ -224,18 +222,17 @@ function NightAuditPage() {
     })));
 
     // Unsettled bills
-    const { data: uf, error: __qe3 } = await supabase
+    const uf = await pagedSelect<any>("unsettled folios", (pf, pt) => supabase
       .from("folios")
       .select("id, invoice_number, booking_id, balance_amount, status, bookings(source,guests(name))")
       .eq("property_id", propertyId)
       .neq("status", "void").eq("is_deleted", false)
-      .gt("balance_amount", 0);
-    if (__qe3) reportQueryError("folios", __qe3);
+      .gt("balance_amount", 0).range(pf, pt));
     // Banquet event-block folios count normally for 48h after the event ends.
     const bqScope = await fetchBanquetScope(propertyId);
-    setUnsettled(((uf ?? []) as any[]).filter(
+    setUnsettled(uf.filter(
       (f) => !isBanquetRecord(bqScope, { booking_id: f.booking_id, folio_id: f.id }),
-    ).map((f) => ({
+    ).map((f: any) => ({
       id: f.id, invoice_number: f.invoice_number, booking_id: f.booking_id,
       guest_name: f.bookings?.guests?.name ?? null,
       balance_amount: Number(f.balance_amount || 0),
@@ -258,20 +255,19 @@ function NightAuditPage() {
     setExpenses((exp ?? []).reduce((a, x: any) => a + Number(x.amount || 0), 0));
 
     // Split revenue by source (best-effort)
-    const { data: folioRows, error: __qe5 } = await supabase
+    const folioRows = await pagedSelect<any>("folios", (pf, pt) => supabase
       .from("folios").select("id, total_amount, bookings(source)")
       .eq("property_id", propertyId).neq("status", "void").eq("is_deleted", false)
-      .gte("created_at", startIso).lt("created_at", endIso);
-    if (__qe5) reportQueryError("folios", __qe5);
-    const folioIds = ((folioRows ?? []) as any[])
+      .gte("created_at", startIso).lt("created_at", endIso).range(pf, pt));
+    const folioIds = folioRows
       .filter((f) => !isBanquetRecord(bqScope, { folio_id: f.id }))
       .map((f) => f.id);
     let roomRev = 0, foodRev = 0, otherRev = 0;
     if (folioIds.length) {
-      const { data: ch, error: __qe6 } = await supabase
-        .from("folio_charges").select("folio_id, charge_type, amount, gst_amount").in("folio_id", folioIds);
-      if (__qe6) reportQueryError("folio charges", __qe6);
-      (ch ?? []).forEach((c: any) => {
+      const ch = await pagedIn<any>("folio charges", folioIds as string[], (chunk, pf, pt) => supabase
+        .from("folio_charges").select("folio_id, charge_type, amount, gst_amount")
+        .in("folio_id", chunk).range(pf, pt));
+      ch.forEach((c: any) => {
         const t = (c.charge_type ?? "").toLowerCase();
         const v = Number(c.amount || 0) + Number(c.gst_amount || 0);
         if (t.includes("room")) roomRev += v;

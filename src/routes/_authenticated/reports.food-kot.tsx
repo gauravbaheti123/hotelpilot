@@ -16,6 +16,7 @@ import {
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
+import { pagedSelect, pagedIn } from "@/lib/reportPaging";
 
 export const Route = createFileRoute("/_authenticated/reports/food-kot")({
   head: () => ({ meta: [{ title: "Food / KOT Report — HotelPilot" }] }),
@@ -43,6 +44,7 @@ function Page() {
   const [kots, setKots] = useState<KotRow[]>([]);
   const [items, setItems] = useState<ItemRow[]>([]);
   const [derivedKots, setDerivedKots] = useState<KotRow[]>([]);
+  const [loading, setLoading] = useState(false);
   const [derivedItems, setDerivedItems] = useState<ItemRow[]>([]);
 
   useEffect(() => {
@@ -56,26 +58,25 @@ function Page() {
     const fromIso = `${from}T00:00:00`;
     const toIso = `${to}T23:59:59`;
     // Live data source: segment_bills / segment_bill_items (kot_orders is retired).
-    const { data: kotData, error: __qe1 } = await supabase.from("segment_bills").select(`
+    const kotData = await pagedSelect<any>("food bills", (f, t) => supabase.from("segment_bills").select(`
       id,bill_number,created_at,total_amount,status,booking_id,segment,guest_name,
       rooms(room_number),bookings(guests(name)),
       segment_bill_items(id,description,qty,rate,amount)
     `).eq("property_id", propertyId)
       .in("segment", ["food", "laundry"])
       .gte("created_at", fromIso).lte("created_at", toIso)
-      .order("created_at", { ascending: false });
-    if (__qe1) reportQueryError("food bills", __qe1);
+      .order("created_at", { ascending: false }).range(f, t));
     // Bills raised against banquet event-block rooms are excluded from the
     // operational food report (Owner-only Banquet Billing report shows them).
     const scope = await fetchBanquetScope(propertyId);
-    const kotRows = ((kotData ?? []) as any[]).filter((k) => !isBanquetRecord(scope, { booking_id: k.booking_id }));
+    const kotRows = kotData.filter((k) => !isBanquetRecord(scope, { booking_id: k.booking_id }));
     // segment_bill_items carries no menu_item_id, so recover Kitchen/Category by
     // matching item description against the menu master (case-insensitive).
-    const { data: menuRows } = await supabase.from("menu_items")
+    const menuRows = await pagedSelect<any>("menu items", (f, t) => supabase.from("menu_items")
       .select("name,kitchen_type,menu_categories(id,name)")
-      .eq("property_id", propertyId).limit(2000);
+      .eq("property_id", propertyId).range(f, t));
     const menuMap = new Map<string, { kitchen: string; catId: string; catName: string }>();
-    for (const m of (menuRows ?? []) as any[]) {
+    for (const m of menuRows) {
       menuMap.set(String(m.name ?? "").trim().toLowerCase(), {
         kitchen: m.kitchen_type ?? "hotel",
         catId: m.menu_categories?.id ?? "",
@@ -86,12 +87,11 @@ function Page() {
     const bookingIds = Array.from(new Set(kotRows.map((k) => k.booking_id).filter(Boolean)));
     const fbMap = new Map<string, string>();
     if (bookingIds.length > 0) {
-      const { data: fbs, error: __qe2 } = await supabase
+      const fbs = await pagedIn<any>("food bills", bookingIds as string[], (chunk, f, t) => supabase
         .from("food_bills" as any)
         .select("booking_id,food_bill_number")
-        .in("booking_id", bookingIds);
-      if (__qe2) reportQueryError("food bills", __qe2);
-      for (const row of (fbs ?? []) as any[]) fbMap.set(row.booking_id, row.food_bill_number);
+        .in("booking_id", chunk).range(f, t));
+      for (const row of fbs) fbMap.set(row.booking_id, row.food_bill_number);
     }
     const kr: KotRow[] = []; const ir: ItemRow[] = [];
     const itemAgg = new Map<string, ItemRow>();
@@ -127,7 +127,7 @@ function Page() {
     setKots(kr); setItems(ir);
   }, [propertyId, from, to, kitchen, catId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setLoading(true); void Promise.resolve(load()).finally(() => setLoading(false)); }, [load]);
 
   const kotCols: ReportColumn<KotRow>[] = [
     { key: "kot_no", header: "KOT No", get: (r) => r.kot_no, type: "text" },
@@ -183,10 +183,11 @@ function Page() {
           </Select>
         </div>
       </>}
-      onExcel={() => tab === "summary" ? exportExcel(derivedKots, kotCols, meta("KOT Summary")) : exportExcel(derivedItems, itemCols, meta("Item-wise Sales"))}
-      onPdf={() => tab === "summary" ? exportPdf(derivedKots, kotCols, meta("KOT Summary")) : exportPdf(derivedItems, itemCols, meta("Item-wise Sales"))}
-      disabled={(tab === "summary" ? kots : items).length === 0}
+      onExcel={() => tab === "summary" ? exportExcel(derivedKots.length ? derivedKots : kots, kotCols, meta("KOT Summary")) : exportExcel(derivedItems.length ? derivedItems : items, itemCols, meta("Item-wise Sales"))}
+      onPdf={() => tab === "summary" ? exportPdf(derivedKots.length ? derivedKots : kots, kotCols, meta("KOT Summary")) : exportPdf(derivedItems.length ? derivedItems : items, itemCols, meta("Item-wise Sales"))}
+      disabled={loading || (tab === "summary" ? kots : items).length === 0}
     >
+      {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList><TabsTrigger value="summary">KOT Summary</TabsTrigger><TabsTrigger value="items">Item-wise Sales</TabsTrigger></TabsList>
         <TabsContent value="summary">

@@ -25,6 +25,7 @@ import {
   exportExcelSections, exportSectionsPdf, fmtINR, type ExportSection, type ReportColumn,
 } from "@/lib/reportExports";
 import { istDaysAgo, istMonthStart, istToday } from "@/lib/date";
+import { pagedSelect } from "@/lib/reportPaging";
 
 export const Route = createFileRoute("/_authenticated/reports/plan-wise")({
   head: () => ({ meta: [{ title: "Plan-Wise Report — HotelPilot" }] }),
@@ -284,15 +285,15 @@ function Page() {
     if (!propertyId) return;
     setLoading(true);
     try {
-      const [chargeRes, scope] = await Promise.all([
-        supabase.from("folio_charges")
+      const [chargeRows, scope] = await Promise.all([
+        pagedSelect<any>("room charges", (pf, pt) => supabase.from("folio_charges")
           .select("amount,gst_amount,qty,charged_on,folio_id,source_table,source_id,folios!inner(property_id,booking_id,status)")
           .eq("charge_type", "room")
           .eq("folios.property_id", propertyId)
-          .gte("charged_on", from).lte("charged_on", to),
+          .gte("charged_on", from).lte("charged_on", to).range(pf, pt)),
         fetchBanquetScope(propertyId),
       ]);
-      const charges = ((chargeRes.data ?? []) as any[]).filter(
+      const charges = chargeRows.filter(
         (c) => c.folios?.status !== "voided"
           && !isBanquetRecord(scope, { folio_id: c.folio_id, booking_id: c.folios?.booking_id }),
       );

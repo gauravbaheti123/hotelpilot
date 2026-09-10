@@ -20,6 +20,8 @@ import {
   exportExcelSections, exportSectionsPdf, fmtINR,
   type ExportSection, type ReportColumn,
 } from "@/lib/reportExports";
+import { pagedSelect } from "@/lib/reportPaging";
+
 export const Route = createFileRoute("/_authenticated/reports/sales")({
   head: () => ({ meta: [{ title: "Sales Report — HotelPilot" }] }),
   component: () => (<RequirePermission module="reports"><SalesReportPage /></RequirePermission>),
@@ -45,6 +47,7 @@ function SalesReportPage() {
   const [to, setTo] = useState<string>(todayIso());
   const [folios, setFolios] = useState<{ created_at: string; sub_total: number; gst_amount: number; total_amount: number; status: string }[]>([]);
   const [pays, setPays] = useState<{ paid_at: string; amount: number; mode: string }[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!propertyId) return;
@@ -52,20 +55,26 @@ function SalesReportPage() {
     const endD = new Date(`${to}T00:00:00`); endD.setDate(endD.getDate() + 1);
     const end = endD.toISOString();
     (async () => {
-      const [{ data: f, error: __qp1 }, { data: p, error: __qp2 }, scope] = await Promise.all([
-        supabase.from("folios").select("created_at,sub_total,gst_amount,total_amount,status,id,booking_id")
-          .eq("property_id", propertyId).neq("status", "void").gte("created_at", start).lt("created_at", end),
-        supabase.from("payments").select("paid_at,amount,mode,booking_id,folio_id")
-          .eq("property_id", propertyId).gte("paid_at", start).lt("paid_at", end),
-        fetchBanquetScope(propertyId),
-      ]);
-      if (__qp1) reportQueryError("folios", __qp1);
-      if (__qp2) reportQueryError("payments", __qp2);
-      // Banquet event-block folios/payments are excluded from operational sales.
-      setFolios(((f ?? []) as any[]).filter(
-        (row) => !isBanquetRecord(scope, { booking_id: row.booking_id, folio_id: row.id }),
-      ) as typeof folios);
-      setPays(((p ?? []) as any[]).filter((row) => !isBanquetRecord(scope, row)) as typeof pays);
+      setLoading(true);
+      try {
+        const [f, p, scope] = await Promise.all([
+          pagedSelect<any>("folios", (a, b) => supabase.from("folios")
+            .select("created_at,sub_total,gst_amount,total_amount,status,id,booking_id")
+            .eq("property_id", propertyId).neq("status", "void")
+            .gte("created_at", start).lt("created_at", end).range(a, b)),
+          pagedSelect<any>("payments", (a, b) => supabase.from("payments")
+            .select("paid_at,amount,mode,booking_id,folio_id")
+            .eq("property_id", propertyId).gte("paid_at", start).lt("paid_at", end).range(a, b)),
+          fetchBanquetScope(propertyId),
+        ]);
+        // Banquet event-block folios/payments are excluded from operational sales.
+        setFolios(f.filter(
+          (row) => !isBanquetRecord(scope, { booking_id: row.booking_id, folio_id: row.id }),
+        ) as typeof folios);
+        setPays(p.filter((row) => !isBanquetRecord(scope, row)) as typeof pays);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [propertyId, from, to]);
 
