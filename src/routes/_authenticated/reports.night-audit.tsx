@@ -835,8 +835,8 @@ function ReportView({
         <section>
           <h3 className="font-semibold mb-1">Collections By Mode</h3>
           <div className="text-xs space-y-0.5">
-            {Object.keys(PAYMENT_MODE_LABELS).map((m) => (
-              <div key={m} className="flex justify-between"><span>{PAYMENT_MODE_LABELS[m]}</span><span>{inr(byMode[m] || 0)}</span></div>
+            {modeRows.map((m) => (
+              <div key={m.key} className="flex justify-between"><span>{m.label}</span><span>{inr(m.amount)}</span></div>
             ))}
             <div className="flex justify-between border-t pt-0.5 font-semibold"><span>Total</span><span>{inr(report.total_collections)}</span></div>
           </div>
