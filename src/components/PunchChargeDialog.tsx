@@ -550,7 +550,7 @@ export function PunchChargeDialog({
       if (out && out.ok === false) {
         throw new Error(
           out.reason === "not_allowed"
-            ? "Only a Manager or Owner can mark a bill complimentary"
+            ? "You do not have access to this property"
             : out.reason === "no_items" ? "Nothing to bill yet" : "Could not mark complimentary",
         );
       }
