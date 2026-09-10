@@ -1948,7 +1948,7 @@ function FolioPage() {
   // (Owner, Manager) — the totals/GST/balance are re-derived on save.
   const canEditRoomRatePerm = can("invoices", "edit_room_rate_locked");
   const canEditRoomRateLocked = canEditRoomRatePerm || inGraceWindow;
-  const canEditTariff = (isOpen && can("invoices", "edit")) || canEditRoomRateLocked;
+  const canEditTariff = isOpen || canEditRoomRateLocked;
   // True when this user only has access because the grace window is still open.
   const viaGrace = inGraceWindow;
   // Delete a recorded payment: allowed on an OPEN bill for any role holding
