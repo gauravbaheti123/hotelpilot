@@ -246,6 +246,7 @@ function NightAuditPage() {
     // Daily summary (collections + revenue + counts)
     const sum = await fetchDailySummary(propertyId, date);
     setByMode(sum.by_mode || {});
+    setModeLabels(sum.mode_labels || {});
     setTotalCollections(sum.payments_total);
     setTotalRevenue(sum.total_amount);
 
