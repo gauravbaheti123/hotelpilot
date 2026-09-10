@@ -454,9 +454,7 @@ function NightAuditPage() {
     { label: "Other revenue", value: inr(revenueOther) },
     ...revenueCats.map((c) => ({ label: "Category - " + c.label, value: inr(c.amount) })),
     { label: "Total revenue", value: inr(totalRevenue) },
-    ...Object.keys(PAYMENT_MODE_LABELS).map((m) => ({
-      label: `Collected — ${PAYMENT_MODE_LABELS[m]}`, value: inr(byMode[m] || 0),
-    })),
+    ...modeRows.map((m) => ({ label: `Collected — ${m.label}`, value: inr(m.amount) })),
     { label: "Total collected", value: inr(totalCollections) },
     { label: "Opening cash", value: inr(openingCash) },
     { label: "Expenses", value: inr(expenses) },
