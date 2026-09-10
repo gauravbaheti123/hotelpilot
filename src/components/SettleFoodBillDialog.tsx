@@ -268,28 +268,73 @@ export function SettleFoodBillDialog({
             <span className="text-sm text-muted-foreground">Amount due</span>
             <span className="text-lg font-semibold">{inr(amount)}</span>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Payment mode</Label>
-            <Select value={mode} onValueChange={setMode}>
-              <SelectTrigger><SelectValue placeholder="Select mode" /></SelectTrigger>
-              <SelectContent>
-                {methods.map((m) => (
-                  <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Reference (optional)</Label>
-            <Input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="UPI / card ref" />
-          </div>
+          {compOpen ? (
+            <div className="space-y-2 rounded-md border p-3">
+              <Label className="text-xs">Reason (required)</Label>
+              <Select value={compPreset} onValueChange={setCompPreset}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {COMPLIMENTARY_PRESETS.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                  <SelectItem value={COMPLIMENTARY_OTHER}>{COMPLIMENTARY_OTHER}</SelectItem>
+                </SelectContent>
+              </Select>
+              {compPreset === COMPLIMENTARY_OTHER && (
+                <Textarea
+                  value={compOther}
+                  onChange={(e) => setCompOther(e.target.value)}
+                  placeholder="Type the reason"
+                  rows={2}
+                />
+              )}
+              <p className="text-xs text-muted-foreground">
+                No amount is collected and nothing is posted to the room bill.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Payment mode</Label>
+                <Select value={mode} onValueChange={setMode}>
+                  <SelectTrigger><SelectValue placeholder="Select mode" /></SelectTrigger>
+                  <SelectContent>
+                    {methods.map((m) => (
+                      <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Reference (optional)</Label>
+                <Input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="UPI / card ref" />
+              </div>
+            </>
+          )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
-          <Button onClick={submit} disabled={busy || amount <= 0}>
-            {busy ? "Settling…" : `Collect ${inr(amount)}`}
-          </Button>
+        <DialogFooter className="gap-2 sm:justify-between">
+          {mayComp ? (
+            <Button
+              variant="outline"
+              onClick={() => setCompOpen((v) => !v)}
+              disabled={busy}
+            >
+              {compOpen ? "Collect payment instead" : "Mark Complimentary"}
+            </Button>
+          ) : <span />}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} disabled={busy}>Cancel</Button>
+            {compOpen ? (
+              <Button onClick={markComplimentary} disabled={busy}>
+                {busy ? "Working…" : "Confirm Complimentary"}
+              </Button>
+            ) : (
+              <Button onClick={submit} disabled={busy || amount <= 0}>
+                {busy ? "Settling…" : `Collect ${inr(amount)}`}
+              </Button>
+            )}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
