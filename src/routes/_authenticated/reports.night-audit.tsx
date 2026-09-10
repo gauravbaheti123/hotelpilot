@@ -222,18 +222,17 @@ function NightAuditPage() {
     })));
 
     // Unsettled bills
-    const { data: uf, error: __qe3 } = await supabase
+    const uf = await pagedSelect<any>("unsettled folios", (pf, pt) => supabase
       .from("folios")
       .select("id, invoice_number, booking_id, balance_amount, status, bookings(source,guests(name))")
       .eq("property_id", propertyId)
       .neq("status", "void").eq("is_deleted", false)
-      .gt("balance_amount", 0);
-    if (__qe3) reportQueryError("folios", __qe3);
+      .gt("balance_amount", 0).range(pf, pt));
     // Banquet event-block folios count normally for 48h after the event ends.
     const bqScope = await fetchBanquetScope(propertyId);
-    setUnsettled(((uf ?? []) as any[]).filter(
+    setUnsettled(uf.filter(
       (f) => !isBanquetRecord(bqScope, { booking_id: f.booking_id, folio_id: f.id }),
-    ).map((f) => ({
+    ).map((f: any) => ({
       id: f.id, invoice_number: f.invoice_number, booking_id: f.booking_id,
       guest_name: f.bookings?.guests?.name ?? null,
       balance_amount: Number(f.balance_amount || 0),
