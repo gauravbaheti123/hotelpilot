@@ -116,6 +116,8 @@ type RestaurantTable = {
 /** The open walk-in food bill currently running on a table. */
 type TableBill = {
   id: string;
+  /** Every open bill on this table — the shown amount covers all of them. */
+  ids: string[];
   bill_number: string;
   guest_name: string | null;
   amount: number;
@@ -271,7 +273,7 @@ function OwnerDashboard({
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [tableBills, setTableBills] = useState<Map<string, TableBill>>(new Map());
   /** Counter settlement target for an occupied dine-in table. */
-  const [settleTable, setSettleTable] = useState<{ billId: string; billNumber: string; amount: number; guestLabel: string | null } | null>(null);
+  const [settleTable, setSettleTable] = useState<{ billId: string; billIds: string[]; billNumber: string; amount: number; guestLabel: string | null } | null>(null);
 
   const [kotHistoryTarget, setKotHistoryTarget] = useState<{
     segment: "food" | "laundry";
