@@ -213,7 +213,7 @@ function SalesReportPage() {
                     <td className="px-3 py-2 text-right">{inr(totals.gst_amount)}</td>
                     <td className="px-3 py-2 text-right">{inr(totals.total_amount)}</td>
                     <td className="px-3 py-2 text-right">{inr(totals.payments_total)}</td>
-                    <td className="px-3 py-2" colSpan={6}></td>
+                    <td className="px-3 py-2" colSpan={modeKeys.length}></td>
                   </tr>
                 </tfoot>
               )}

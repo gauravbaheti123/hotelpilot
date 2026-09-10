@@ -807,6 +807,7 @@ function ReportView({
     }
     return Array.from(acc.values());
   })();
+  const cashInModes = modeRows.find((r) => r.key === "cash")?.amount ?? 0;
   const occPct = report.rooms_total > 0 ? Math.round((report.occupancy_count / report.rooms_total) * 1000) / 10 : 0;
 
   return (
@@ -856,9 +857,9 @@ function ReportView({
           <h3 className="font-semibold mb-1">Cash Position</h3>
           <div className="text-xs space-y-0.5">
             <div className="flex justify-between"><span>Opening Balance</span><span>{inr(report.report_data?.opening_cash ?? data.opening_cash ?? 0)}</span></div>
-            <div className="flex justify-between"><span>Collections (Cash)</span><span>+{inr(byMode.cash || 0)}</span></div>
+            <div className="flex justify-between"><span>Collections (Cash)</span><span>+{inr(cashInModes)}</span></div>
             <div className="flex justify-between"><span>Expenses</span><span>-{inr(report.total_expenses)}</span></div>
-            <div className="flex justify-between"><span>Expected Closing</span><span>{inr((data.opening_cash ?? 0) + (byMode.cash || 0) - report.total_expenses)}</span></div>
+            <div className="flex justify-between"><span>Expected Closing</span><span>{inr((data.opening_cash ?? 0) + cashInModes - report.total_expenses)}</span></div>
             <div className="flex justify-between"><span>Actual Closing</span><span>{inr(report.closing_cash_actual)}</span></div>
             <div className={`flex justify-between font-semibold ${Math.abs(Number(report.cash_difference)) < 0.01 ? "text-emerald-700" : "text-red-700"}`}>
               <span>Difference</span><span>{inr(report.cash_difference)}</span>
