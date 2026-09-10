@@ -304,6 +304,9 @@ function FolioPage() {
   const [tariffTarget, setTariffTarget] = useState<Charge | null>(null);
   const [tariffRate, setTariffRate] = useState("0");
   const [tariffSaving, setTariffSaving] = useState(false);
+  const [tariffDesc, setTariffDesc] = useState("");
+  const [tariffDate, setTariffDate] = useState("");
+  const [tariffReason, setTariffReason] = useState("");
 
   const [payOpen, setPayOpen] = useState(false);
   const [payAmount, setPayAmount] = useState("");
