@@ -997,6 +997,51 @@ function FolioPage() {
     load();
   }
 
+  /** Delete ONE night of a stay. The clicked row is a derived night row whose
+   *  source_charge_ids point at the multi-night parent charge — wiping that
+   *  parent used to erase every other night of the stay too. remove_room_night()
+   *  slices the stay so only the clicked night is dropped. */
+  async function removeNight(c: Charge) {
+    if (!folio) return;
+    if (!isOpen && !canEditAnyStatus) return toast.error("Only manager/owner can edit a settled bill");
+    if (!canVoid) return toast.error("Only manager or owner can delete charges");
+    const brId = c.source_table === "booking_rooms" ? String(c.source_id ?? "") : "";
+    const night = String(c.charged_on ?? "").slice(0, 10);
+    if (!brId || !night) return toast.error("This night can't be removed");
+    if (!confirm(`Remove the night of ${night} from this bill? The other nights stay as they are.`)) return;
+    const { error } = await supabase.rpc("remove_room_night" as any, { _booking_room_id: brId, _night: night });
+    if (error) return toastError(error);
+    logActivity({
+      property_id: booking?.property_id ?? "",
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      action_type: "ROOM_NIGHT_REMOVED",
+      module: "Billing",
+      reference_id: folio.id,
+      reference_label: billNo(folio.invoice_number),
+      details: { bill_number: billNo(folio.invoice_number), night_date: night, booking_room_id: brId, description: c.description },
+    });
+    toast.success(`Night of ${night} removed`);
+    load();
+  }
+
+  /** Restores any stay night that has no live room charge (day locks, failed
+   *  re-seeds after a date change, or a bill split can leave a hole). */
+  async function restoreMissingNights() {
+    if (!booking) return;
+    const { data: rows, error } = await supabase
+      .from("booking_rooms").select("id,status").eq("booking_id", booking.id);
+    if (error) return toastError(error);
+    const live = (rows ?? []).filter((r: any) => ["active", "reserved", "checked_in"].includes(String(r.status ?? "active")));
+    for (const r of live) {
+      const { error: sErr } = await supabase.rpc("seed_room_charge_for_booking_room" as any, { _booking_room_id: (r as any).id });
+      if (sErr) return toastError(sErr);
+    }
+    toast.success("Missing nights restored");
+    load();
+  }
+
+
   function openEditCharge(c: Charge) {
     if (!isOpen && !canEditAnyStatus) { toast.error("Only manager/owner can edit a settled bill"); return; }
     // Consolidated Food/Laundry bill lines carry the underlying charge ids;
