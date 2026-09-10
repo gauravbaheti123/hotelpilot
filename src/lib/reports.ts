@@ -102,9 +102,15 @@ export async function fetchDailySummary(propertyId: string, date: string): Promi
   }
   for (const p of pays ?? []) {
     const amt = Number((p as { amount: number }).amount ?? 0);
-    const mode = (p as { mode: string }).mode ?? "other";
-    summary.payments_total += amt;
-    summary.by_mode[mode] = (summary.by_mode[mode] ?? 0) + amt;
+    const raw = String((p as { mode: string }).mode ?? "").trim() || "Other";
+    const key = normaliseModeKey(raw);
+    const hold = isHoldPayment(raw);
+    if (hold) summary.hold_total += amt;
+    else summary.payments_total += amt;
+    summary.by_mode[key] = (summary.by_mode[key] ?? 0) + amt;
+    if (!summary.mode_labels[key]) {
+      summary.mode_labels[key] = hold ? `${HOLD_PAYMENT_MODE} (not collected)` : formatPaymentMethodLabel(raw);
+    }
   }
   return summary;
 }
