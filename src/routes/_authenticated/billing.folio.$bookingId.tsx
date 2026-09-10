@@ -507,13 +507,15 @@ function FolioPage() {
     {
       const { data: rdc, error: __qe6 } = await supabase
         .from("restaurant_direct_charges" as any)
-        .select("folio_charge_id,bill_no,amount")
+        .select("folio_charge_id,bill_no,amount,description,restaurant_outlets(name)")
         .eq("booking_id", bookingId);
       if (__qe6) reportQueryError("restaurant direct charges", __qe6);
       setRestBills(((rdc ?? []) as any[]).map((r) => ({
         folio_charge_id: r.folio_charge_id ?? null,
         bill_no: r.bill_no ?? null,
         amount: Number(r.amount ?? 0),
+        description: r.description ?? null,
+        outlet_name: r.restaurant_outlets?.name ?? null,
       })));
     }
     const hasFood = correctedCharges.some((c) => c.charge_type === "food");
@@ -3112,12 +3114,7 @@ function FolioPage() {
                     </tr>
                   </thead>
                   <tbody className="zebra">
-                    {(["room", "food", "sundry", "extra"] as const).map((key) => {
-                      const arr = (groups as any)[key] as Charge[];
-                      const taxable = arr.reduce((s, c) => s + Number(c.amount), 0);
-                      const gst = arr.reduce((s, c) => s + Number(c.gst_amount || 0), 0);
-                      if (gst <= 0 && Math.abs(taxable) < 0.005) return null;
-                      const label = key === "room" ? "Accommodation" : key === "food" ? "Food & Beverage" : key === "sundry" ? "Sundry / POS" : "Others";
+                    {gstBreakupRows.map(({ key, label, taxable, gst }) => {
                       return (
                         <tr key={key}>
                           <td>{label}</td>
