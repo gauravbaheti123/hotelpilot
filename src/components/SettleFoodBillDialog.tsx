@@ -49,17 +49,115 @@ export function SettleFoodBillDialog({
 
 
 
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const { methods } = usePaymentMethods(propertyId);
   const [mode, setMode] = useState<string>("");
   const [ref, setRef] = useState("");
   const [busy, setBusy] = useState(false);
+  const [compOpen, setCompOpen] = useState(false);
+  const [compPreset, setCompPreset] = useState<string>(COMPLIMENTARY_PRESETS[0]);
+  const [compOther, setCompOther] = useState("");
+  const mayComp = canMarkComplimentary(roles as string[]);
 
   useEffect(() => {
     if (!open) return;
     setRef("");
+    setCompOpen(false);
+    setCompPreset(COMPLIMENTARY_PRESETS[0]);
+    setCompOther("");
     setMode((prev) => prev || methods[0]?.name || "cash");
   }, [open, methods]);
+
+  function targetBillIds(): string[] {
+    return (billIds && billIds.length > 0 ? billIds : billId ? [billId] : []).filter(
+      (v, i, a) => a.indexOf(v) === i,
+    );
+  }
+
+  /**
+   * Close the bill(s) as complimentary — nothing is collected and nothing is
+   * posted to the room folio. A reason is mandatory and audited server-side.
+   */
+  async function markComplimentary() {
+    const targets = targetBillIds();
+    if (targets.length === 0) return;
+    const reason = (compPreset === COMPLIMENTARY_OTHER ? compOther : compPreset).trim();
+    if (!reason) { toast.error("Enter a reason"); return; }
+    setBusy(true);
+    try {
+      const settled: { id: string; bill_number: string; total: number }[] = [];
+      for (const id of targets) {
+        const { data, error } = await supabase.rpc(
+          "settle_segment_bill_complimentary" as any,
+          { _bill_id: id, _reason: reason, _actor: user?.id ?? null } as any,
+        );
+        if (error) throw error;
+        const res = data as any;
+        if (!res?.ok) {
+          const r = res?.reason;
+          if (r === "no_items" && targets.length > 1) continue;
+          throw new Error(
+            r === "no_items" ? "This bill has no items yet"
+              : r === "reason_required" ? "Enter a reason"
+              : r === "not_allowed" ? "You do not have access to this property"
+              : "Could not mark this bill complimentary",
+          );
+        }
+        settled.push({ id, bill_number: res.bill_number, total: Number(res.total_amount || 0) });
+      }
+      if (settled.length === 0) throw new Error("This bill has no items yet");
+
+      if (walkin) {
+        for (const s of settled) {
+          try {
+            const [{ data: items }, { data: billRow }] = await Promise.all([
+              supabase.from("segment_bill_items" as any)
+                .select("description,qty,rate,amount,gst_rate,gst_amount")
+                .eq("segment_bill_id", s.id).order("id"),
+              supabase.from("segment_bills" as any)
+                .select("settled_at,created_at,guest_name")
+                .eq("id", s.id).maybeSingle(),
+            ]);
+            const rows = (items ?? []) as any[];
+            const sub = rows.reduce((acc, i) => acc + Number(i.amount || 0), 0);
+            const gst = rows.reduce((acc, i) => acc + Number(i.gst_amount || 0), 0);
+            printSegmentBill({
+              billNumber: s.bill_number,
+              segment,
+              propertyName: propertyName ?? "",
+              propertyId,
+              guestName: guestLabel || (billRow as any)?.guest_name || "Walk-in Guest",
+              roomNumber: null,
+              items: rows.map((i) => ({
+                description: i.description, qty: Number(i.qty), rate: Number(i.rate),
+                amount: Number(i.amount), gst_rate: Number(i.gst_rate),
+              })),
+              sub: Math.round(sub * 100) / 100,
+              gst: Math.round(gst * 100) / 100,
+              total: Math.round((sub + gst) * 100) / 100,
+              isWalkin: true,
+              complimentaryReason: reason,
+              billDate: (billRow as any)?.settled_at ?? (billRow as any)?.created_at ?? null,
+            });
+          } catch (pe: any) {
+            toastError(pe, "Bill printed failed — settlement is saved");
+          }
+        }
+      }
+
+      toast.success(
+        settled.length === 1
+          ? `${settled[0].bill_number} settled as complimentary`
+          : `${settled.length} bills settled as complimentary`,
+      );
+      onSettled?.();
+      onClose();
+    } catch (e: any) {
+      toastError(e, "Could not mark complimentary");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submit() {
     if (!billId) return;
