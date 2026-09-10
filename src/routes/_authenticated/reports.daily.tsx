@@ -73,12 +73,10 @@ function DailyReportPage() {
     { label: "Sub total", value: inr(sum?.sub_total ?? 0) },
     { label: "GST", value: inr(sum?.gst_amount ?? 0) },
     { label: "Grand total", value: inr(sum?.total_amount ?? 0) },
-    ...Object.keys(PAYMENT_MODE_LABELS).map((m) => ({
-      label: `Collected — ${PAYMENT_MODE_LABELS[m]}`, value: inr(sum?.by_mode[m] ?? 0),
-    })),
+    ...modeRows.map((m) => ({ label: `Collected — ${m.label}`, value: inr(m.amount) })),
     { label: "Total collected", value: inr(sum?.payments_total ?? 0) },
     { label: "GST invoice total", value: inr(sum?.gst_invoice_total ?? 0), hint: `${sum?.gst_invoice_count ?? 0} invoice(s)` },
-  ], [sum, occ]);
+  ], [sum, occ, modeRows]);
 
   const exportMeta = { reportName: "Daily Report", propertyName: current?.name ?? "", from: date, to: date };
   const buildSections = (): ExportSection[] => [kpiSection("Daily figures", kpis)];
