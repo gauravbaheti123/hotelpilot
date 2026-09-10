@@ -116,6 +116,8 @@ type RestaurantTable = {
 /** The open walk-in food bill currently running on a table. */
 type TableBill = {
   id: string;
+  /** Every open bill on this table — the shown amount covers all of them. */
+  ids: string[];
   bill_number: string;
   guest_name: string | null;
   amount: number;
@@ -271,7 +273,7 @@ function OwnerDashboard({
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [tableBills, setTableBills] = useState<Map<string, TableBill>>(new Map());
   /** Counter settlement target for an occupied dine-in table. */
-  const [settleTable, setSettleTable] = useState<{ billId: string; billNumber: string; amount: number; guestLabel: string | null } | null>(null);
+  const [settleTable, setSettleTable] = useState<{ billId: string; billIds: string[]; billNumber: string; amount: number; guestLabel: string | null } | null>(null);
 
   const [kotHistoryTarget, setKotHistoryTarget] = useState<{
     segment: "food" | "laundry";
@@ -567,6 +569,7 @@ function OwnerDashboard({
         const amount = Number(b.total_amount || 0) + (prev?.amount ?? 0);
         m.set(b.table_id, {
           id: b.id,
+          ids: [...(prev?.ids ?? []), b.id],
           bill_number: b.bill_number,
           guest_name: b.guest_name ?? null,
           amount,
@@ -906,7 +909,7 @@ function OwnerDashboard({
                 onSettle={(t) => {
                   const bill = tableBills.get(t.id);
                   if (!bill) return;
-                  setSettleTable({ billId: bill.id, billNumber: bill.bill_number, amount: Number(bill.amount || 0), guestLabel: bill.guest_name ?? t.name });
+                  setSettleTable({ billId: bill.id, billIds: bill.ids ?? [bill.id], billNumber: bill.bill_number, amount: Number(bill.amount || 0), guestLabel: bill.guest_name ?? t.name });
                 }}
               />
             )}
@@ -1300,6 +1303,7 @@ function OwnerDashboard({
           onClose={() => setSettleTable(null)}
           propertyId={propertyId}
           billId={settleTable.billId}
+          billIds={settleTable.billIds}
           billNumber={settleTable.billNumber}
           amount={settleTable.amount}
           segment="food"
