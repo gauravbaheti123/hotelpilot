@@ -569,6 +569,7 @@ function OwnerDashboard({
         const amount = Number(b.total_amount || 0) + (prev?.amount ?? 0);
         m.set(b.table_id, {
           id: b.id,
+          ids: [...(prev?.ids ?? []), b.id],
           bill_number: b.bill_number,
           guest_name: b.guest_name ?? null,
           amount,
@@ -908,7 +909,7 @@ function OwnerDashboard({
                 onSettle={(t) => {
                   const bill = tableBills.get(t.id);
                   if (!bill) return;
-                  setSettleTable({ billId: bill.id, billNumber: bill.bill_number, amount: Number(bill.amount || 0), guestLabel: bill.guest_name ?? t.name });
+                  setSettleTable({ billId: bill.id, billIds: bill.ids ?? [bill.id], billNumber: bill.bill_number, amount: Number(bill.amount || 0), guestLabel: bill.guest_name ?? t.name });
                 }}
               />
             )}
@@ -1302,6 +1303,7 @@ function OwnerDashboard({
           onClose={() => setSettleTable(null)}
           propertyId={propertyId}
           billId={settleTable.billId}
+          billIds={settleTable.billIds}
           billNumber={settleTable.billNumber}
           amount={settleTable.amount}
           segment="food"
