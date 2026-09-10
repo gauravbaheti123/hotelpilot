@@ -18,6 +18,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { toastError } from "@/lib/errorMessage";
 import { printSegmentBill } from "@/components/PunchChargeDialog";
+import {
+  COMPLIMENTARY_PRESETS, COMPLIMENTARY_OTHER, canMarkComplimentary,
+} from "@/lib/complimentary";
+import { Textarea } from "@/components/ui/textarea";
 
 
 interface Props {
