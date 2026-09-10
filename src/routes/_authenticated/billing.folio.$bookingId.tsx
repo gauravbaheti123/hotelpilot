@@ -3723,6 +3723,23 @@ function FolioPage() {
                     : " · GST recalculated from the master slabs. Applies to every night of this room segment."}
                 </div>
               </div>
+              {!(tariffTarget as any)?.is_night_split && (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Description</Label>
+                    <Input value={tariffDesc} onChange={(e) => setTariffDesc(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Date on bill</Label>
+                    <Input type="date" value={tariffDate} onChange={(e) => setTariffDate(e.target.value)} />
+                    <p className="text-[11px] text-muted-foreground">Changes only how this line is dated on the bill.</p>
+                  </div>
+                </div>
+              )}
+              <div className="space-y-1">
+                <Label className="text-xs">Reason</Label>
+                <Input value={tariffReason} onChange={(e) => setTariffReason(e.target.value)} placeholder="Why is this being corrected?" />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => { setTariffOpen(false); setTariffTarget(null); }}>Cancel</Button>
