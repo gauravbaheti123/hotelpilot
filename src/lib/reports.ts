@@ -21,6 +21,7 @@ export interface DailySummary {
   gst_invoice_count: number;
 }
 
+/** Fallback labels only — real modes come from the property's payment methods. */
 export const PAYMENT_MODE_LABELS: Record<string, string> = {
   cash: "Cash",
   card: "Card",
@@ -29,6 +30,16 @@ export const PAYMENT_MODE_LABELS: Record<string, string> = {
   wallet: "Wallet",
   other: "Other",
 };
+
+/**
+ * Payments store the property's configured method name verbatim ("CASH",
+ * "Make My Trip"), so every report groups on a normalised key instead of a
+ * hard-coded lowercase list — otherwise each mode line reads zero.
+ */
+export function normaliseModeKey(mode: string | null | undefined): string {
+  const t = String(mode ?? "").trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+  return t || "other";
+}
 
 function dayRange(date: string) {
   const start = new Date(`${date}T00:00:00`);
