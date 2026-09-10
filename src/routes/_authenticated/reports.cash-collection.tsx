@@ -16,6 +16,9 @@ import {
 import { istToday } from "@/lib/date";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
 import { pagedSelect } from "@/lib/reportPaging";
+import { normaliseModeKey } from "@/lib/reports";
+import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
+import { isHoldPayment, HOLD_PAYMENT_MODE } from "@/lib/billing";
 
 export const Route = createFileRoute("/_authenticated/reports/cash-collection")({
   head: () => ({ meta: [{ title: "Cash Collection — HotelPilot" }] }),
@@ -39,6 +42,7 @@ function Page() {
   const [derived, setDerived] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [staffList, setStaffList] = useState<Array<{ id: string; name: string }>>([]);
+  const { methods } = usePaymentMethods(propertyId);
 
   useEffect(() => {
     supabase.from("profiles").select("id,name,email").limit(500).then(guardQuery("profiles")).then(({ data }) => {
@@ -58,7 +62,7 @@ function Page() {
         `).eq("property_id", propertyId)
           .gte("paid_at", `${from}T00:00:00`).lte("paid_at", `${to}T23:59:59`)
           .order("paid_at", { ascending: true });
-        if (mode !== "all") q = q.eq("mode", mode);
+        if (mode !== "all") q = q.ilike("mode", mode);
         if (staff !== "all") q = q.eq("created_by", staff);
         return q.range(f, t);
       }),
@@ -82,17 +86,30 @@ function Page() {
 
   useEffect(() => { setLoading(true); void Promise.resolve(load()).finally(() => setLoading(false)); }, [load]);
 
+  // Modes are the property's own method names ("CASH", "MAKE MY TRIP"), so the
+  // breakup is built from the data, matched case-insensitively.
   const totals = useMemo(() => {
-    const t = { cash: 0, card: 0, upi: 0, other: 0, grand: 0 };
-    for (const r of derived) {
-      t.grand += r.amount;
-      if (r.mode === "cash") t.cash += r.amount;
-      else if (r.mode === "card") t.card += r.amount;
-      else if (r.mode === "upi") t.upi += r.amount;
-      else t.other += r.amount;
+    const byKey = new Map<string, { key: string; label: string; amount: number }>();
+    let grand = 0;
+    let hold = 0;
+    for (const m of methods) {
+      const key = normaliseModeKey(m.name);
+      if (!byKey.has(key)) byKey.set(key, { key, label: formatPaymentMethodLabel(m.name), amount: 0 });
     }
-    return t;
-  }, [derived]);
+    for (const r of derived) {
+      const key = normaliseModeKey(r.mode);
+      const isHold = isHoldPayment(r.mode);
+      if (isHold) hold += r.amount; else grand += r.amount;
+      const entry = byKey.get(key) ?? {
+        key,
+        label: isHold ? `${HOLD_PAYMENT_MODE} (not collected)` : formatPaymentMethodLabel(r.mode || "Other"),
+        amount: 0,
+      };
+      entry.amount += r.amount;
+      byKey.set(key, entry);
+    }
+    return { modes: Array.from(byKey.values()), grand, hold };
+  }, [derived, methods]);
 
   const columns: ReportColumn<Row>[] = [
     { key: "date", header: "Date", get: (r) => fmtDate(r.date), type: "date", sortValue: (r) => r.date, dateValue: (r) => r.date },
@@ -106,8 +123,7 @@ function Page() {
 
   const meta = { reportName: "Cash Collection Report", propertyName: current?.name ?? "Property", from, to,
     totals: [
-      ["Cash Total", fmtINR(totals.cash)], ["Card Total", fmtINR(totals.card)],
-      ["UPI Total", fmtINR(totals.upi)], ["Other", fmtINR(totals.other)],
+      ...totals.modes.map((m) => [`${m.label} Total`, fmtINR(m.amount)] as [string, string | number]),
       ["Grand Total", fmtINR(totals.grand)],
     ] as [string, string|number][] };
 
@@ -130,10 +146,9 @@ function Page() {
             <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
-              <SelectItem value="cash">Cash</SelectItem>
-              <SelectItem value="card">Card</SelectItem>
-              <SelectItem value="upi">UPI</SelectItem>
-              <SelectItem value="complimentary">Comp</SelectItem>
+              {methods.map((m) => (
+                <SelectItem key={m.id ?? m.name} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -145,10 +160,10 @@ function Page() {
       {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
       <Card><CardContent className="pt-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          {(["cash","card","upi"] as const).map((k) => (
-            <div key={k} className="rounded border p-3">
-              <div className="text-xs uppercase text-muted-foreground">{k}</div>
-              <div className="text-lg font-semibold">{fmtINR((totals as any)[k])}</div>
+          {totals.modes.map((m) => (
+            <div key={m.key} className="rounded border p-3">
+              <div className="text-xs uppercase text-muted-foreground">{m.label}</div>
+              <div className="text-lg font-semibold">{fmtINR(m.amount)}</div>
             </div>
           ))}
           <div className="rounded border p-3 bg-emerald-50">

@@ -6,6 +6,8 @@ import { istDateISO } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { resolveInvoiceDate } from "@/lib/invoiceDate";
 import { pagedSelect } from "@/lib/reportPaging";
+import { isHoldPayment, HOLD_PAYMENT_MODE } from "@/lib/billing";
+import { formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 
 export interface DailySummary {
   date: string;
@@ -17,10 +19,15 @@ export interface DailySummary {
   payment_count: number;
   payments_total: number;
   by_mode: Record<string, number>;
+  /** Display label for each key in `by_mode`, as configured by the property. */
+  mode_labels: Record<string, string>;
+  /** "Bill on hold" amounts — shown separately, never counted as collected. */
+  hold_total: number;
   gst_invoice_total: number;
   gst_invoice_count: number;
 }
 
+/** Fallback labels only — real modes come from the property's payment methods. */
 export const PAYMENT_MODE_LABELS: Record<string, string> = {
   cash: "Cash",
   card: "Card",
@@ -29,6 +36,16 @@ export const PAYMENT_MODE_LABELS: Record<string, string> = {
   wallet: "Wallet",
   other: "Other",
 };
+
+/**
+ * Payments store the property's configured method name verbatim ("CASH",
+ * "Make My Trip"), so every report groups on a normalised key instead of a
+ * hard-coded lowercase list — otherwise each mode line reads zero.
+ */
+export function normaliseModeKey(mode: string | null | undefined): string {
+  const t = String(mode ?? "").trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+  return t || "other";
+}
 
 function dayRange(date: string) {
   const start = new Date(`${date}T00:00:00`);
@@ -71,6 +88,8 @@ export async function fetchDailySummary(propertyId: string, date: string): Promi
     payment_count: pays?.length ?? 0,
     payments_total: 0,
     by_mode: {},
+    mode_labels: {},
+    hold_total: 0,
     gst_invoice_total: 0,
     gst_invoice_count: 0,
   };
@@ -85,9 +104,15 @@ export async function fetchDailySummary(propertyId: string, date: string): Promi
   }
   for (const p of pays ?? []) {
     const amt = Number((p as { amount: number }).amount ?? 0);
-    const mode = (p as { mode: string }).mode ?? "other";
-    summary.payments_total += amt;
-    summary.by_mode[mode] = (summary.by_mode[mode] ?? 0) + amt;
+    const raw = String((p as { mode: string }).mode ?? "").trim() || "Other";
+    const key = normaliseModeKey(raw);
+    const hold = isHoldPayment(raw);
+    if (hold) summary.hold_total += amt;
+    else summary.payments_total += amt;
+    summary.by_mode[key] = (summary.by_mode[key] ?? 0) + amt;
+    if (!summary.mode_labels[key]) {
+      summary.mode_labels[key] = hold ? `${HOLD_PAYMENT_MODE} (not collected)` : formatPaymentMethodLabel(raw);
+    }
   }
   return summary;
 }

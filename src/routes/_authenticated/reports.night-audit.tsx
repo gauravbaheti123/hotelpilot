@@ -18,7 +18,9 @@ import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { supabase } from "@/integrations/supabase/client";
 import { billNo } from "@/lib/billNumber";
 import { toast } from "sonner";
-import { fetchDailySummary, fetchOccupancy, todayIso, PAYMENT_MODE_LABELS } from "@/lib/reports";
+import { fetchDailySummary, fetchOccupancy, todayIso, normaliseModeKey } from "@/lib/reports";
+import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
+import { isHoldPayment } from "@/lib/billing";
 import { inr } from "@/lib/billing";
 import { AlertTriangle, CheckCircle2, Lock, Printer, FileText, FileSpreadsheet } from "lucide-react";
 
@@ -125,6 +127,7 @@ function NightAuditPage() {
   const [openKots, setOpenKots] = useState<OpenKotRow[]>([]);
   const [unsettled, setUnsettled] = useState<UnsettledRow[]>([]);
   const [byMode, setByMode] = useState<Record<string, number>>({});
+  const [modeLabels, setModeLabels] = useState<Record<string, string>>({});
   const [expenses, setExpenses] = useState(0);
   const [revenueRoom, setRevenueRoom] = useState(0);
   const [revenueFood, setRevenueFood] = useState(0);
@@ -243,6 +246,7 @@ function NightAuditPage() {
     // Daily summary (collections + revenue + counts)
     const sum = await fetchDailySummary(propertyId, date);
     setByMode(sum.by_mode || {});
+    setModeLabels(sum.mode_labels || {});
     setTotalCollections(sum.payments_total);
     setTotalRevenue(sum.total_amount);
 
@@ -310,6 +314,26 @@ function NightAuditPage() {
   }, [propertyId, date]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // Modes are property-defined names; list configured methods plus anything
+  // actually collected, matched on the normalised key.
+  const { methods } = usePaymentMethods(propertyId);
+  const modeRows = useMemo(() => {
+    const rows: Array<{ key: string; label: string; amount: number }> = [];
+    const seen = new Set<string>();
+    for (const m of methods) {
+      const key = normaliseModeKey(m.name);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ key, label: formatPaymentMethodLabel(m.name), amount: byMode[key] ?? 0 });
+    }
+    for (const key of Object.keys(byMode)) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ key, label: modeLabels[key] ?? formatPaymentMethodLabel(key), amount: byMode[key] ?? 0 });
+    }
+    return rows;
+  }, [methods, byMode, modeLabels]);
 
   const cashCollected = Number(byMode.cash || 0);
   const expectedClosing = openingCash + cashCollected - expenses;
@@ -382,7 +406,11 @@ function NightAuditPage() {
         card_total: byMode.card || 0,
         upi_total: byMode.upi || 0,
         bank_total: byMode.bank || 0,
-        other_total: (byMode.wallet || 0) + (byMode.other || 0),
+        // Everything that is not cash/card/upi/bank, incl. travel-agent modes.
+        other_total: Object.entries(byMode).reduce(
+          (a, [k, v]) => (["cash", "card", "upi", "bank"].includes(k) || isHoldPayment(k) ? a : a + Number(v || 0)),
+          0,
+        ),
         opening_cash: openingCash,
         closing_cash_expected: expectedClosing,
         closing_cash_actual: Number(actualCash),
@@ -426,15 +454,13 @@ function NightAuditPage() {
     { label: "Other revenue", value: inr(revenueOther) },
     ...revenueCats.map((c) => ({ label: "Category - " + c.label, value: inr(c.amount) })),
     { label: "Total revenue", value: inr(totalRevenue) },
-    ...Object.keys(PAYMENT_MODE_LABELS).map((m) => ({
-      label: `Collected — ${PAYMENT_MODE_LABELS[m]}`, value: inr(byMode[m] || 0),
-    })),
+    ...modeRows.map((m) => ({ label: `Collected — ${m.label}`, value: inr(m.amount) })),
     { label: "Total collected", value: inr(totalCollections) },
     { label: "Opening cash", value: inr(openingCash) },
     { label: "Expenses", value: inr(expenses) },
     { label: "Expected closing cash", value: inr(expectedClosing) },
   ], [date, existing, occupied, dueToday, openKots, unsettled, revenueRoom, revenueFood,
-      revenueBanquet, revenueOther, revenueCats, totalRevenue, byMode, totalCollections, openingCash,
+      revenueBanquet, revenueOther, revenueCats, totalRevenue, modeRows, totalCollections, openingCash,
       expenses, expectedClosing]);
 
   const exportMeta = { reportName: "Night Audit / Day Close", propertyName: current?.name ?? "", from: date, to: date };
@@ -598,10 +624,10 @@ function NightAuditPage() {
               <CardTitle className="text-sm font-medium">Cash Summary</CardTitle>
             </CardHeader>
             <CardContent className="text-xs space-y-1">
-              {Object.keys(PAYMENT_MODE_LABELS).map((m) => (
-                <div key={m} className="flex justify-between">
-                  <span>{PAYMENT_MODE_LABELS[m]}</span>
-                  <span className="font-medium">{inr(byMode[m] || 0)}</span>
+              {modeRows.map((m) => (
+                <div key={m.key} className="flex justify-between">
+                  <span>{m.label}</span>
+                  <span className="font-medium">{inr(m.amount)}</span>
                 </div>
               ))}
               <div className="flex justify-between border-t pt-1 mt-1">
@@ -769,7 +795,19 @@ function ReportView({
   report, propertyName, onPrint, onDelete, isOwner,
 }: { report: AuditReport; propertyName: string; onPrint: () => void; onDelete?: () => void; isOwner?: boolean }) {
   const data = (report.report_data ?? {}) as any;
-  const byMode = (data.by_mode ?? {}) as Record<string, number>;
+  const byModeRaw = (data.by_mode ?? {}) as Record<string, number>;
+  // Older closures stored the mode exactly as typed ("CASH"); merge on the key.
+  const modeRows = (() => {
+    const acc = new Map<string, { key: string; label: string; amount: number }>();
+    for (const [raw, amt] of Object.entries(byModeRaw)) {
+      const key = normaliseModeKey(raw);
+      const row = acc.get(key) ?? { key, label: formatPaymentMethodLabel(raw), amount: 0 };
+      row.amount += Number(amt || 0);
+      acc.set(key, row);
+    }
+    return Array.from(acc.values());
+  })();
+  const cashInModes = modeRows.find((r) => r.key === "cash")?.amount ?? 0;
   const occPct = report.rooms_total > 0 ? Math.round((report.occupancy_count / report.rooms_total) * 1000) / 10 : 0;
 
   return (
@@ -809,8 +847,8 @@ function ReportView({
         <section>
           <h3 className="font-semibold mb-1">Collections By Mode</h3>
           <div className="text-xs space-y-0.5">
-            {Object.keys(PAYMENT_MODE_LABELS).map((m) => (
-              <div key={m} className="flex justify-between"><span>{PAYMENT_MODE_LABELS[m]}</span><span>{inr(byMode[m] || 0)}</span></div>
+            {modeRows.map((m) => (
+              <div key={m.key} className="flex justify-between"><span>{m.label}</span><span>{inr(m.amount)}</span></div>
             ))}
             <div className="flex justify-between border-t pt-0.5 font-semibold"><span>Total</span><span>{inr(report.total_collections)}</span></div>
           </div>
@@ -819,9 +857,9 @@ function ReportView({
           <h3 className="font-semibold mb-1">Cash Position</h3>
           <div className="text-xs space-y-0.5">
             <div className="flex justify-between"><span>Opening Balance</span><span>{inr(report.report_data?.opening_cash ?? data.opening_cash ?? 0)}</span></div>
-            <div className="flex justify-between"><span>Collections (Cash)</span><span>+{inr(byMode.cash || 0)}</span></div>
+            <div className="flex justify-between"><span>Collections (Cash)</span><span>+{inr(cashInModes)}</span></div>
             <div className="flex justify-between"><span>Expenses</span><span>-{inr(report.total_expenses)}</span></div>
-            <div className="flex justify-between"><span>Expected Closing</span><span>{inr((data.opening_cash ?? 0) + (byMode.cash || 0) - report.total_expenses)}</span></div>
+            <div className="flex justify-between"><span>Expected Closing</span><span>{inr((data.opening_cash ?? 0) + cashInModes - report.total_expenses)}</span></div>
             <div className="flex justify-between"><span>Actual Closing</span><span>{inr(report.closing_cash_actual)}</span></div>
             <div className={`flex justify-between font-semibold ${Math.abs(Number(report.cash_difference)) < 0.01 ? "text-emerald-700" : "text-red-700"}`}>
               <span>Difference</span><span>{inr(report.cash_difference)}</span>

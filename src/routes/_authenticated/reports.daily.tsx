@@ -7,10 +7,10 @@ import { Label } from "@/components/ui/label";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import {
-  fetchDailySummary, fetchOccupancy, todayIso,
-  PAYMENT_MODE_LABELS,
+  fetchDailySummary, fetchOccupancy, todayIso, normaliseModeKey,
   type DailySummary, type OccupancySnapshot,
 } from "@/lib/reports";
+import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { inr } from "@/lib/billing";
 import { Button } from "@/components/ui/button";
 import { FileSpreadsheet, Printer } from "lucide-react";
@@ -46,6 +46,26 @@ function DailyReportPage() {
     return () => { cancel = true; };
   }, [propertyId, date]);
 
+  // Mode lines come from the property's configured methods plus anything
+  // actually collected that day, so real modes never read zero.
+  const { methods } = usePaymentMethods(propertyId);
+  const modeRows = useMemo(() => {
+    const rows: Array<{ key: string; label: string; amount: number }> = [];
+    const seen = new Set<string>();
+    for (const m of methods) {
+      const key = normaliseModeKey(m.name);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ key, label: formatPaymentMethodLabel(m.name), amount: sum?.by_mode[key] ?? 0 });
+    }
+    for (const key of Object.keys(sum?.by_mode ?? {})) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ key, label: sum?.mode_labels[key] ?? formatPaymentMethodLabel(key), amount: sum?.by_mode[key] ?? 0 });
+    }
+    return rows;
+  }, [methods, sum]);
+
   const kpis: KpiEntry[] = useMemo(() => [
     { label: "Occupancy", value: occ ? `${occ.occupancy_pct}%` : "—", hint: occ ? `${occ.rooms_occupied}/${occ.rooms_total} rooms` : "" },
     { label: "Revenue (invoiced)", value: inr(sum?.total_amount ?? 0), hint: sum ? `${sum.folios_created} folios · ${sum.folios_settled} settled` : "" },
@@ -53,12 +73,10 @@ function DailyReportPage() {
     { label: "Sub total", value: inr(sum?.sub_total ?? 0) },
     { label: "GST", value: inr(sum?.gst_amount ?? 0) },
     { label: "Grand total", value: inr(sum?.total_amount ?? 0) },
-    ...Object.keys(PAYMENT_MODE_LABELS).map((m) => ({
-      label: `Collected — ${PAYMENT_MODE_LABELS[m]}`, value: inr(sum?.by_mode[m] ?? 0),
-    })),
+    ...modeRows.map((m) => ({ label: `Collected — ${m.label}`, value: inr(m.amount) })),
     { label: "Total collected", value: inr(sum?.payments_total ?? 0) },
     { label: "GST invoice total", value: inr(sum?.gst_invoice_total ?? 0), hint: `${sum?.gst_invoice_count ?? 0} invoice(s)` },
-  ], [sum, occ]);
+  ], [sum, occ, modeRows]);
 
   const exportMeta = { reportName: "Daily Report", propertyName: current?.name ?? "", from: date, to: date };
   const buildSections = (): ExportSection[] => [kpiSection("Daily figures", kpis)];
@@ -110,8 +128,8 @@ function DailyReportPage() {
         <Card>
           <CardHeader><CardTitle className="text-base">Collections by mode</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {Object.keys(PAYMENT_MODE_LABELS).map((m) => (
-              <Row key={m} label={PAYMENT_MODE_LABELS[m]} value={inr(sum?.by_mode[m] ?? 0)} />
+            {modeRows.map((m) => (
+              <Row key={m.key} label={m.label} value={inr(m.amount)} />
             ))}
             <Row label="Total collected" value={inr(sum?.payments_total ?? 0)} bold />
           </CardContent>
