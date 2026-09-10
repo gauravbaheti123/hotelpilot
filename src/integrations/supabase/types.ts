@@ -6677,17 +6677,31 @@ export type Database = {
         }
         Returns: Json
       }
-      owner_update_folio_charge: {
-        Args: {
-          _charge_id: string
-          _description: string
-          _gst_rate: number
-          _qty: number
-          _rate: number
-          _reason: string
-        }
-        Returns: Json
-      }
+      owner_update_folio_charge:
+        | {
+            Args: {
+              _charge_id: string
+              _description: string
+              _gst_rate: number
+              _qty: number
+              _rate: number
+              _reason: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _charge_id: string
+              _charged_on?: string
+              _description: string
+              _gst_rate: number
+              _hsn_code?: string
+              _qty: number
+              _rate: number
+              _reason: string
+            }
+            Returns: Json
+          }
       owner_update_folio_header: {
         Args: {
           _folio_id: string
@@ -6804,6 +6818,7 @@ export type Database = {
         Args: { _booking_room_id: string; _new_rate: number; _night: string }
         Returns: string
       }
+      staff_can_correct: { Args: { _prop: string }; Returns: boolean }
       stay_ongoing: { Args: { _booking_id: string }; Returns: boolean }
       sync_booking_balance: {
         Args: { _booking_id: string }
