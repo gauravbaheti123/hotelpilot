@@ -42,6 +42,7 @@ function Page() {
   const [derived, setDerived] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [staffList, setStaffList] = useState<Array<{ id: string; name: string }>>([]);
+  const { methods } = usePaymentMethods(propertyId);
 
   useEffect(() => {
     supabase.from("profiles").select("id,name,email").limit(500).then(guardQuery("profiles")).then(({ data }) => {
