@@ -195,6 +195,8 @@ function FolioPage() {
   const [folio, setFolio] = useState<Folio | null>(null);
   const [charges, setCharges] = useState<Charge[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [missingNights, setMissingNights] = useState<string[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [foodBillNumber, setFoodBillNumber] = useState<string | null>(null);
   // Display-only: restaurant direct charges for this booking, used to append
