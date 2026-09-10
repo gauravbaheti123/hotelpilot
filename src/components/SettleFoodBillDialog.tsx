@@ -25,6 +25,8 @@ interface Props {
   onClose: () => void;
   propertyId: string;
   billId: string | null;
+  /** All open bills covered by `amount` (tables can carry more than one). */
+  billIds?: string[];
   billNumber: string | null;
   amount: number;
   segment: "food" | "laundry";
