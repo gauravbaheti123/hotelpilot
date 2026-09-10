@@ -65,6 +65,7 @@ import { OwnerInlineEditCard } from "@/components/OwnerInlineEditCard";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
 import { withinGraceWindow } from "@/lib/graceWindow";
+import { categoriseCharge, buildOutletMap, categoryKeyOrder } from "@/lib/chargeCategory";
 export const Route = createFileRoute("/_authenticated/billing/folio/$bookingId")({
   head: () => ({ meta: [{ title: "Folio — HotelPilot" }] }),
   validateSearch: (search: Record<string, unknown>): { folio?: string } => {
@@ -203,6 +204,7 @@ function FolioPage() {
   // their Bill No to the mirrored folio line item description.
   const [restBills, setRestBills] = useState<Array<{
     folio_charge_id: string | null; bill_no: string | null; amount: number;
+    description?: string | null; outlet_name?: string | null;
   }>>([]);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
   const [billingCompanies, setBillingCompanies] = useState<
@@ -507,13 +509,15 @@ function FolioPage() {
     {
       const { data: rdc, error: __qe6 } = await supabase
         .from("restaurant_direct_charges" as any)
-        .select("folio_charge_id,bill_no,amount")
+        .select("folio_charge_id,bill_no,amount,description,restaurant_outlets(name)")
         .eq("booking_id", bookingId);
       if (__qe6) reportQueryError("restaurant direct charges", __qe6);
       setRestBills(((rdc ?? []) as any[]).map((r) => ({
         folio_charge_id: r.folio_charge_id ?? null,
         bill_no: r.bill_no ?? null,
         amount: Number(r.amount ?? 0),
+        description: r.description ?? null,
+        outlet_name: r.restaurant_outlets?.name ?? null,
       })));
     }
     const hasFood = correctedCharges.some((c) => c.charge_type === "food");
@@ -2117,6 +2121,24 @@ function FolioPage() {
     const key = (groups as any)[c.charge_type] ? c.charge_type : "extra";
     (groups as any)[key].push(c);
   });
+
+  // GST breakup rows come from the real charge categories (direct restaurant
+  // postings show under their outlet instead of being dumped into "Others").
+  const outletByChargeId = buildOutletMap(restBills as any);
+  const gstBreakupRows = (() => {
+    const acc = new Map<string, { key: string; label: string; taxable: number; gst: number }>();
+    for (const c of charges) {
+      if (c.charge_type === "tax") continue;
+      const cat = categoriseCharge(c as any, outletByChargeId);
+      const row = acc.get(cat.key) ?? { key: cat.key, label: cat.label, taxable: 0, gst: 0 };
+      row.taxable += Number(c.amount || 0);
+      row.gst += Number(c.gst_amount || 0);
+      acc.set(cat.key, row);
+    }
+    return Array.from(acc.values())
+      .filter((r) => r.gst > 0 || Math.abs(r.taxable) >= 0.005)
+      .sort((a, b) => categoryKeyOrder(a.key) - categoryKeyOrder(b.key) || a.label.localeCompare(b.label));
+  })();
   const subtotalOf = (arr: Charge[]) => arr.reduce((s, c) => s + Number(c.amount), 0);
   const subRoom = subtotalOf(groups.room);
   const subFood = subtotalOf(groups.food);
@@ -3112,12 +3134,7 @@ function FolioPage() {
                     </tr>
                   </thead>
                   <tbody className="zebra">
-                    {(["room", "food", "sundry", "extra"] as const).map((key) => {
-                      const arr = (groups as any)[key] as Charge[];
-                      const taxable = arr.reduce((s, c) => s + Number(c.amount), 0);
-                      const gst = arr.reduce((s, c) => s + Number(c.gst_amount || 0), 0);
-                      if (gst <= 0 && Math.abs(taxable) < 0.005) return null;
-                      const label = key === "room" ? "Accommodation" : key === "food" ? "Food & Beverage" : key === "sundry" ? "Sundry / POS" : "Others";
+                    {gstBreakupRows.map(({ key, label, taxable, gst }) => {
                       return (
                         <tr key={key}>
                           <td>{label}</td>
