@@ -25,6 +25,7 @@ import { useReportBrand } from "@/hooks/use-report-brand";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { toastError } from "@/lib/errorMessage";
+import { pagedSelect, pagedIn } from "@/lib/reportPaging";
 
 export const Route = createFileRoute("/_authenticated/reports/banquet-billing")({
   ssr: false,
@@ -141,17 +142,14 @@ function Page() {
       const bookingIds = vis.map((v) => v.booking_id);
       const visByBooking = new Map(vis.map((v) => [v.booking_id, v]));
 
-      const [{ data: bks, error: __qp1 }, events] = await Promise.all([
-        bookingIds.length
-          ? supabase.from("bookings")
-              .select("id,booking_number,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number))")
-              .in("id", bookingIds)
-          : Promise.resolve({ data: [] as any[], error: null } as any),
+      const [bks, events] = await Promise.all([
+        pagedIn<any>("banquet bookings", bookingIds, (chunk, pf, pt) => supabase.from("bookings")
+          .select("id,booking_number,guests(name),booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number))")
+          .in("id", chunk).range(pf, pt)),
         listEventBookings(propertyId),
       ]);
-      if (__qp1) reportQueryError("banquet bookings", __qp1);
       const meta = new Map<string, { room: string; guest: string }>();
-      for (const b of (bks ?? []) as any[]) {
+      for (const b of bks) {
         meta.set(b.id, {
           room: (b.booking_rooms ?? []).map((br: any) => br.rooms?.room_number).filter(Boolean).join(", "),
           guest: b.guests?.name ?? "",
@@ -171,66 +169,50 @@ function Page() {
 
       // Event booking ids cover both id spaces so event-linked walk-in bills group correctly.
       const eventBookingIds = Array.from(new Set(events.flatMap((e) => [e.booking_id, e.legacy_id].filter(Boolean) as string[])));
-      const [{ data: folios, error: __qp2 }, { data: segsLinked, error: __qp3 }, { data: masters, error: __qp4 }, { data: segsEvent, error: __qp7 }] = await Promise.all([
-        bookingIds.length
-          ? supabase.from("folios")
-              .select("id,booking_id,invoice_number,created_at,status,guest_company,guest_gstin,notes,total_amount,paid_amount")
-              .in("booking_id", bookingIds)
-              .gte("created_at", fromIso).lte("created_at", toIso)
-              .order("created_at", { ascending: false })
-          : Promise.resolve({ data: [] as any[], error: null } as any),
-        bookingIds.length
-          ? supabase.from("segment_bills")
-              .select("id,booking_id,event_booking_id,bill_number,segment,created_at,status,total_amount,paid_amount,is_walkin,guest_name")
-              .in("booking_id", bookingIds)
-              .gte("created_at", fromIso).lte("created_at", toIso)
-              .order("created_at", { ascending: false })
-          : Promise.resolve({ data: [] as any[], error: null } as any),
-        supabase.from("banquet_master_bills")
+      const [folios, segsLinked, masters, segsEvent] = await Promise.all([
+        pagedIn<any>("folios", bookingIds, (chunk, pf, pt) => supabase.from("folios")
+          .select("id,booking_id,invoice_number,created_at,status,guest_company,guest_gstin,notes,total_amount,paid_amount")
+          .in("booking_id", chunk)
+          .gte("created_at", fromIso).lte("created_at", toIso)
+          .order("created_at", { ascending: false }).range(pf, pt)),
+        pagedIn<any>("segment bills", bookingIds, (chunk, pf, pt) => supabase.from("segment_bills")
+          .select("id,booking_id,event_booking_id,bill_number,segment,created_at,status,total_amount,paid_amount,is_walkin,guest_name")
+          .in("booking_id", chunk)
+          .gte("created_at", fromIso).lte("created_at", toIso)
+          .order("created_at", { ascending: false }).range(pf, pt)),
+        pagedSelect<any>("masters", (pf, pt) => supabase.from("banquet_master_bills")
           .select("id,booking_id,bill_number,created_at,status,total_amount")
           .eq("property_id", propertyId)
-          .gte("created_at", fromIso).lte("created_at", toIso),
-        eventBookingIds.length
-          ? supabase.from("segment_bills")
-              .select("id,booking_id,event_booking_id,bill_number,segment,created_at,status,total_amount,paid_amount,is_walkin,guest_name")
-              .in("event_booking_id", eventBookingIds)
-              .gte("created_at", fromIso).lte("created_at", toIso)
-              .order("created_at", { ascending: false })
-          : Promise.resolve({ data: [] as any[], error: null } as any),
+          .gte("created_at", fromIso).lte("created_at", toIso).range(pf, pt)),
+        pagedIn<any>("event walk-in bills", eventBookingIds, (chunk, pf, pt) => supabase.from("segment_bills")
+          .select("id,booking_id,event_booking_id,bill_number,segment,created_at,status,total_amount,paid_amount,is_walkin,guest_name")
+          .in("event_booking_id", chunk)
+          .gte("created_at", fromIso).lte("created_at", toIso)
+          .order("created_at", { ascending: false }).range(pf, pt)),
       ]);
-      if (__qp2) reportQueryError("folios", __qp2);
-      if (__qp3) reportQueryError("segment bills", __qp3);
-      if (__qp4) reportQueryError("masters", __qp4);
-      if (__qp7) reportQueryError("event walk-in bills", __qp7);
       const seenSeg = new Set<string>();
-      const segs = [...((segsLinked ?? []) as any[]), ...((segsEvent ?? []) as any[])]
+      const segs = [...segsLinked, ...segsEvent]
         .filter((s) => (seenSeg.has(s.id) ? false : (seenSeg.add(s.id), true)));
       if (bookingIds.length === 0 && segs.length === 0) { setGroups([]); return; }
 
-      const folioIds = ((folios ?? []) as any[]).map((f) => f.id as string);
-      const billIds = ((segs ?? []) as any[]).map((s) => s.id as string);
-      const [{ data: charges, error: __qp5 }, { data: items, error: __qp6 }] = await Promise.all([
-        folioIds.length
-          ? supabase.from("folio_charges")
-              .select("id,folio_id,description,qty,rate,amount,gst_rate,gst_amount,charged_on")
-              .in("folio_id", folioIds)
-          : Promise.resolve({ data: [] as any[] } as any),
-        billIds.length
-          ? supabase.from("segment_bill_items")
-              .select("id,segment_bill_id,description,qty,rate,amount,gst_rate,gst_amount")
-              .in("segment_bill_id", billIds)
-          : Promise.resolve({ data: [] as any[] } as any),
+      const folioIds = folios.map((f: any) => f.id as string);
+      const billIds = segs.map((s: any) => s.id as string);
+      const [charges, items] = await Promise.all([
+        pagedIn<any>("charges", folioIds, (chunk, pf, pt) => supabase.from("folio_charges")
+          .select("id,folio_id,description,qty,rate,amount,gst_rate,gst_amount,charged_on")
+          .in("folio_id", chunk).range(pf, pt)),
+        pagedIn<any>("bill items", billIds, (chunk, pf, pt) => supabase.from("segment_bill_items")
+          .select("id,segment_bill_id,description,qty,rate,amount,gst_rate,gst_amount")
+          .in("segment_bill_id", chunk).range(pf, pt)),
       ]);
-      if (__qp5) reportQueryError("charges", __qp5);
-      if (__qp6) reportQueryError("bill items", __qp6);
       const chargesByFolio = new Map<string, ChargeRow[]>();
-      for (const c of (charges ?? []) as any[]) {
+      for (const c of charges) {
         const list = chargesByFolio.get(c.folio_id) ?? [];
         list.push(c as ChargeRow);
         chargesByFolio.set(c.folio_id, list);
       }
       const itemsByBill = new Map<string, ChargeRow[]>();
-      for (const i of (items ?? []) as any[]) {
+      for (const i of items) {
         const list = itemsByBill.get(i.segment_bill_id) ?? [];
         list.push({ ...i, charged_on: null } as ChargeRow);
         itemsByBill.set(i.segment_bill_id, list);
