@@ -2952,7 +2952,7 @@ function FolioPage() {
                              {canVoid && (
                                <button
                                  type="button"
-                                 onClick={() => removeCharges((((c as any).source_charge_ids as string[] | undefined) ?? [String(c.id)]))}
+                                 onClick={() => removeNight(c as any)}
                                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-destructive hover:bg-muted"
                                  title="Delete this night's charge"
                                >
