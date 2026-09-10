@@ -1193,6 +1193,9 @@ function FolioPage() {
     }
     setTariffTarget(c);
     setTariffRate(String(Number(c.rate ?? 0)));
+    setTariffDesc(c.description ?? "");
+    setTariffDate(String(c.charged_on ?? "").slice(0, 10));
+    setTariffReason("");
     setTariffOpen(true);
   }
 
