@@ -2120,6 +2120,24 @@ function FolioPage() {
     const key = (groups as any)[c.charge_type] ? c.charge_type : "extra";
     (groups as any)[key].push(c);
   });
+
+  // GST breakup rows come from the real charge categories (direct restaurant
+  // postings show under their outlet instead of being dumped into "Others").
+  const outletByChargeId = buildOutletMap(restBills as any);
+  const gstBreakupRows = (() => {
+    const acc = new Map<string, { key: string; label: string; taxable: number; gst: number }>();
+    for (const c of charges) {
+      if (c.charge_type === "tax") continue;
+      const cat = categoriseCharge(c as any, outletByChargeId);
+      const row = acc.get(cat.key) ?? { key: cat.key, label: cat.label, taxable: 0, gst: 0 };
+      row.taxable += Number(c.amount || 0);
+      row.gst += Number(c.gst_amount || 0);
+      acc.set(cat.key, row);
+    }
+    return Array.from(acc.values())
+      .filter((r) => r.gst > 0 || Math.abs(r.taxable) >= 0.005)
+      .sort((a, b) => categoryKeyOrder(a.key) - categoryKeyOrder(b.key) || a.label.localeCompare(b.label));
+  })();
   const subtotalOf = (arr: Charge[]) => arr.reduce((s, c) => s + Number(c.amount), 0);
   const subRoom = subtotalOf(groups.room);
   const subFood = subtotalOf(groups.food);
