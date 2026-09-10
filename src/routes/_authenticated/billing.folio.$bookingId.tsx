@@ -203,6 +203,7 @@ function FolioPage() {
   // their Bill No to the mirrored folio line item description.
   const [restBills, setRestBills] = useState<Array<{
     folio_charge_id: string | null; bill_no: string | null; amount: number;
+    description?: string | null; outlet_name?: string | null;
   }>>([]);
   const [maxDiscPct, setMaxDiscPct] = useState<number>(100);
   const [billingCompanies, setBillingCompanies] = useState<
