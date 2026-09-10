@@ -15,6 +15,7 @@ import {
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
+import { pagedSelect } from "@/lib/reportPaging";
 
 export const Route = createFileRoute("/_authenticated/reports/cash-collection")({
   head: () => ({ meta: [{ title: "Cash Collection — HotelPilot" }] }),
@@ -36,6 +37,7 @@ function Page() {
   const [staff, setStaff] = useState("all");
   const [rows, setRows] = useState<Row[]>([]);
   const [derived, setDerived] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(false);
   const [staffList, setStaffList] = useState<Array<{ id: string; name: string }>>([]);
 
   useEffect(() => {
@@ -46,20 +48,25 @@ function Page() {
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    let q = supabase.from("payments").select(`
-      id,amount,mode,paid_at,created_by,folio_id,booking_id,
-      folios(invoice_number,bookings(guests(name))),
-      bookings(guests(name))
-    `).eq("property_id", propertyId)
-      .gte("paid_at", `${from}T00:00:00`).lte("paid_at", `${to}T23:59:59`)
-      .order("paid_at", { ascending: true });
-    if (mode !== "all") q = q.eq("mode", mode);
-    if (staff !== "all") q = q.eq("created_by", staff);
-    const [{ data, error: __qp1 }, scope] = await Promise.all([q, fetchBanquetScope(propertyId)]);
-    if (__qp1) reportQueryError("cash collection", __qp1);
+    setLoading(true);
+    const [data, scope] = await Promise.all([
+      pagedSelect<any>("cash collection", (f, t) => {
+        let q = supabase.from("payments").select(`
+          id,amount,mode,paid_at,created_by,folio_id,booking_id,
+          folios(invoice_number,bookings(guests(name))),
+          bookings(guests(name))
+        `).eq("property_id", propertyId)
+          .gte("paid_at", `${from}T00:00:00`).lte("paid_at", `${to}T23:59:59`)
+          .order("paid_at", { ascending: true });
+        if (mode !== "all") q = q.eq("mode", mode);
+        if (staff !== "all") q = q.eq("created_by", staff);
+        return q.range(f, t);
+      }),
+      fetchBanquetScope(propertyId),
+    ]);
     const profileMap = new Map(staffList.map((s) => [s.id, s.name] as const));
     // Banquet event-block collections are excluded (Owner-only Banquet Billing report).
-    const out: Row[] = ((data ?? []) as any[])
+    const out: Row[] = data
       .filter((p) => !isBanquetRecord(scope, p))
       .map((p) => ({
       _id: p.id,
@@ -70,9 +77,10 @@ function Page() {
       received_by: profileMap.get(p.created_by) ?? "",
     }));
     setRows(out);
+    setLoading(false);
   }, [propertyId, from, to, mode, staff, staffList]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setLoading(true); void Promise.resolve(load()).finally(() => setLoading(false)); }, [load]);
 
   const totals = useMemo(() => {
     const t = { cash: 0, card: 0, upi: 0, other: 0, grand: 0 };
@@ -130,10 +138,11 @@ function Page() {
           </Select>
         </div>
       </>}
-      onExcel={() => exportExcel(derived, columns, meta)}
-      onPdf={() => exportPdf(derived, columns, meta)}
-      disabled={rows.length === 0}
+      onExcel={() => exportExcel(derived.length ? derived : rows, columns, meta)}
+      onPdf={() => exportPdf(derived.length ? derived : rows, columns, meta)}
+      disabled={loading || rows.length === 0}
     >
+      {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
       <Card><CardContent className="pt-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           {(["cash","card","upi"] as const).map((k) => (

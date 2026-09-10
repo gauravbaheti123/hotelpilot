@@ -13,6 +13,7 @@ import { ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR } from "@/lib/rep
 import { reportQueryError } from "@/lib/queryError";
 import { billNo } from "@/lib/billNumber";
 import { istToday } from "@/lib/date";
+import { pagedSelect } from "@/lib/reportPaging";
 
 export const Route = createFileRoute("/_authenticated/reports/dues")({
   head: () => ({
@@ -58,14 +59,13 @@ function Page() {
   const load = useCallback(async () => {
     if (!propertyId) return;
     setLoading(true);
-    const { data, error } = await supabase
+    const data = await pagedSelect<any>("due folios", (f, t) => supabase
       .from("folios")
       .select("id,booking_id,invoice_number,status,total_amount,paid_amount,balance_amount,settled_at,created_at,is_deleted,bookings(guests(name))")
       .eq("property_id", propertyId)
       .eq("status", "due")
-      .order("settled_at", { ascending: true });
-    if (error) reportQueryError("due folios", error);
-    const out: Row[] = ((data ?? []) as any[])
+      .order("settled_at", { ascending: true }).range(f, t));
+    const out: Row[] = data
       .filter((f) => !f.is_deleted)
       .map((f) => {
         const billDate = String(f.settled_at ?? f.created_at ?? "").slice(0, 10);

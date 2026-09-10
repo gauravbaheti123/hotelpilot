@@ -18,6 +18,7 @@ import {
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
+import { pagedSelect, pagedIn } from "@/lib/reportPaging";
 
 export const Route = createFileRoute("/_authenticated/reports/bill-wise")({
   head: () => ({ meta: [{ title: "Bill-Wise Report — HotelPilot" }] }),
@@ -52,59 +53,75 @@ function Page() {
     setLoading(true);
     const fromIso = `${from}T00:00:00`;
     const toIso = `${to}T23:59:59`;
-    let q = supabase.from("folios").select(`
-      id,booking_id,invoice_number,created_at,sub_total,gst_amount,discount_amount,total_amount,bill_type,gst_mode,status,
-      bookings(booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number)),guests(name))
-    `).eq("property_id", propertyId).gte("created_at", fromIso).lte("created_at", toIso)
-      .order("created_at", { ascending: false });
-    if (status !== "all") q = q.eq("status", status === "active" ? "settled" : "voided");
-    const [{ data: allFolios, error: __qp1 }, scope] = await Promise.all([q, fetchBanquetScope(propertyId)]);
-    if (__qp1) reportQueryError("all folios", __qp1);
-    // Banquet event-block folios are excluded here — they live in the Owner-only Banquet Billing report.
-    const folios = (allFolios ?? []).filter((f: any) => !f.booking_id || !scope.bookingIds.has(f.booking_id));
-    const ids = (folios ?? []).map((f: any) => f.id);
-    const [{ data: charges, error: __qp2 }, { data: pays, error: __qp3 }] = await Promise.all([
-      ids.length ? supabase.from("folio_charges").select("folio_id,charge_type,amount").in("folio_id", ids) : Promise.resolve({ data: [] as any[], error: null }),
-      ids.length ? supabase.from("payments").select("folio_id,mode,paid_at").in("folio_id", ids) : Promise.resolve({ data: [] as any[], error: null }),
-    ]);
-    if (__qp2) reportQueryError("charges", __qp2);
-    if (__qp3) reportQueryError("payments", __qp3);
-    const chargeMap = new Map<string, { room: number; food: number; other: number }>();
-    for (const c of (charges ?? []) as any[]) {
-      const m = chargeMap.get(c.folio_id) ?? { room: 0, food: 0, other: 0 };
-      const a = Number(c.amount || 0);
-      if (c.charge_type === "room") m.room += a;
-      else if (c.charge_type === "food" || c.charge_type === "laundry") m.food += a;
-      else m.other += a;
-      chargeMap.set(c.folio_id, m);
-    }
-    const payMap = new Map<string, string>();
-    for (const p of (pays ?? []) as any[]) {
-      if (!payMap.has(p.folio_id)) payMap.set(p.folio_id, p.mode ?? "");
-    }
-    let out: Row[] = (folios ?? []).map((f: any) => {
-      const room = f.bookings?.booking_rooms?.[0]?.rooms?.room_number ?? "";
-      const guest = f.bookings?.guests?.name ?? "";
-      const m = chargeMap.get(f.id) ?? { room: 0, food: 0, other: 0 };
-      return {
-        _id: f.id,
-        bill_no: f.invoice_number ?? f.id.slice(0, 8),
-        date: f.created_at,
-        guest_name: guest, room_no: room,
-        room_charges: m.room, food_charges: m.food, other_charges: m.other,
-        total_amount: Number(f.sub_total ?? 0), discount: Number(f.discount_amount ?? 0),
-        net_amount: Number(f.total_amount ?? 0),
-        payment_mode: payMap.get(f.id) ?? "",
-        bill_type: f.bill_type ?? "gst_invoice", status: f.status,
-        gst_mode: f.gst_mode ?? "gst",
-        gst_amount: Number(f.gst_amount ?? 0),
-        sub_total: Number(f.sub_total ?? 0),
+    try {
+      const makeFolioQuery = (f: number, t: number) => {
+        let q = supabase.from("folios").select(`
+          id,booking_id,invoice_number,created_at,sub_total,gst_amount,discount_amount,total_amount,bill_type,gst_mode,status,
+          bookings(booking_rooms!booking_rooms_booking_id_fkey(rooms!booking_rooms_room_id_fkey(room_number)),guests(name))
+        `).eq("property_id", propertyId).gte("created_at", fromIso).lte("created_at", toIso)
+          .order("created_at", { ascending: false });
+        if (status !== "all") q = q.eq("status", status === "active" ? "settled" : "voided");
+        return q.range(f, t);
       };
-    });
-    if (payMode !== "all") out = out.filter((r) => r.payment_mode === payMode);
-    setRows(out);
-    setLoading(false);
+      const [allFolios, scope] = await Promise.all([
+        pagedSelect<any>("all folios", makeFolioQuery),
+        fetchBanquetScope(propertyId),
+      ]);
+      // Banquet event-block folios are excluded here — they live in the Owner-only Banquet Billing report.
+      const folios = allFolios.filter((f: any) => !f.booking_id || !scope.bookingIds.has(f.booking_id));
+      const ids = folios.map((f: any) => f.id);
+      const [charges, pays] = await Promise.all([
+        pagedIn<any>("charges", ids, (chunk, f, t) =>
+          supabase.from("folio_charges").select("folio_id,charge_type,amount").in("folio_id", chunk).range(f, t)),
+        pagedIn<any>("payments", ids, (chunk, f, t) =>
+          supabase.from("payments").select("folio_id,mode,paid_at").in("folio_id", chunk).range(f, t)),
+      ]);
+      const chargeMap = new Map<string, { room: number; food: number; other: number }>();
+      for (const c of charges) {
+        const m = chargeMap.get(c.folio_id) ?? { room: 0, food: 0, other: 0 };
+        const a = Number(c.amount || 0);
+        if (c.charge_type === "room") m.room += a;
+        else if (c.charge_type === "food" || c.charge_type === "laundry") m.food += a;
+        else m.other += a;
+        chargeMap.set(c.folio_id, m);
+      }
+      const payMap = new Map<string, string>();
+      for (const p of pays) {
+        if (!payMap.has(p.folio_id)) payMap.set(p.folio_id, p.mode ?? "");
+      }
+      let out: Row[] = folios.map((f: any) => {
+        // Multi-room bookings must list every room, not just the first one.
+        const room = Array.from(new Set(
+          ((f.bookings?.booking_rooms ?? []) as any[])
+            .map((br) => br?.rooms?.room_number)
+            .filter(Boolean),
+        )).join(", ");
+        const guest = f.bookings?.guests?.name ?? "";
+        const m = chargeMap.get(f.id) ?? { room: 0, food: 0, other: 0 };
+        return {
+          _id: f.id,
+          bill_no: f.invoice_number ?? f.id.slice(0, 8),
+          date: f.created_at,
+          guest_name: guest, room_no: room,
+          room_charges: m.room, food_charges: m.food, other_charges: m.other,
+          total_amount: Number(f.sub_total ?? 0), discount: Number(f.discount_amount ?? 0),
+          net_amount: Number(f.total_amount ?? 0),
+          payment_mode: payMap.get(f.id) ?? "",
+          bill_type: f.bill_type ?? "gst_invoice", status: f.status,
+          gst_mode: f.gst_mode ?? "gst",
+          gst_amount: Number(f.gst_amount ?? 0),
+          sub_total: Number(f.sub_total ?? 0),
+        };
+      });
+      if (payMode !== "all") out = out.filter((r) => r.payment_mode === payMode);
+      setRows(out);
+    } catch (e) {
+      reportQueryError("bill-wise report", e);
+    } finally {
+      setLoading(false);
+    }
   }, [propertyId, from, to, payMode, status]);
+
 
   useEffect(() => { load(); }, [load]);
 
@@ -144,8 +161,8 @@ function Page() {
     <ReportShell
       title="Bill-Wise Report"
       filters={<Filters {...{ from, to, setFrom, setTo, payMode, setPayMode, status, setStatus, paymentMethods }} />}
-      onExcel={() => exportExcel(derived, columns, meta)}
-      onPdf={() => exportPdf(derived, columns, meta)}
+      onExcel={() => exportExcel(derived.length ? derived : rows, columns, meta)}
+      onPdf={() => exportPdf(derived.length ? derived : rows, columns, meta)}
       onTally={tallyXml}
       tallyLabel="Export for Tally"
       disabled={loading || rows.length === 0}

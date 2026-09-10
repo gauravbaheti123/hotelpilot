@@ -5,6 +5,7 @@ import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 import { istDateISO } from "@/lib/date";
 import { reportQueryError } from "@/lib/queryError";
 import { resolveInvoiceDate } from "@/lib/invoiceDate";
+import { pagedSelect } from "@/lib/reportPaging";
 
 export interface DailySummary {
   date: string;
@@ -39,26 +40,24 @@ function dayRange(date: string) {
 export async function fetchDailySummary(propertyId: string, date: string): Promise<DailySummary> {
   const { startIso, endIso } = dayRange(date);
 
-  const [{ data: folioRows, error: __qp1 }, { data: payRows, error: __qp2 }, scope] = await Promise.all([
-    supabase.from("folios")
+  const [folioRows, payRows, scope] = await Promise.all([
+    pagedSelect<any>("folio rows", (f, t) => supabase.from("folios")
       .select("id,booking_id,status,sub_total,gst_amount,total_amount,created_at,settled_at,gst_mode,bill_type")
       .eq("property_id", propertyId)
       .gte("created_at", startIso)
-      .lt("created_at", endIso),
-    supabase.from("payments")
+      .lt("created_at", endIso).range(f, t)),
+    pagedSelect<any>("pay rows", (f, t) => supabase.from("payments")
       .select("amount,mode,paid_at,booking_id,folio_id")
       .eq("property_id", propertyId)
       .gte("paid_at", startIso)
-      .lt("paid_at", endIso),
+      .lt("paid_at", endIso).range(f, t)),
     fetchBanquetScope(propertyId),
   ]);
-  if (__qp1) reportQueryError("folio rows", __qp1);
-  if (__qp2) reportQueryError("pay rows", __qp2);
   // Banquet-origin (event_block) folios/payments are excluded from operational totals.
-  const folios = (folioRows ?? []).filter(
+  const folios = folioRows.filter(
     (f) => !isBanquetRecord(scope, { booking_id: (f as { booking_id?: string | null }).booking_id, folio_id: (f as { id: string }).id }),
   );
-  const pays = (payRows ?? []).filter(
+  const pays = payRows.filter(
     (p) => !isBanquetRecord(scope, p as { booking_id?: string | null; folio_id?: string | null }),
   );
 
@@ -101,21 +100,20 @@ export interface OccupancySnapshot {
 }
 
 export async function fetchOccupancy(propertyId: string, date: string): Promise<OccupancySnapshot> {
-  const [{ count: roomsTotal, error: __qp3 }, { data: br, error: __qp4 }] = await Promise.all([
+  const [{ count: roomsTotal, error: __qp3 }, br] = await Promise.all([
     supabase.from("rooms")
       .select("id", { count: "exact", head: true })
       .eq("property_id", propertyId)
       .eq("is_active", true),
-    supabase.from("booking_rooms")
+    pagedSelect<any>("occupancy data", (f, t) => supabase.from("booking_rooms")
       .select("id,booking_id,bookings!booking_rooms_booking_id_fkey!inner(property_id,check_in,check_out,status)")
       .eq("bookings.property_id", propertyId)
       .lte("bookings.check_in", date)
       .gt("bookings.check_out", date)
-      .in("bookings.status", ["checked_in", "reserved"]),
+      .in("bookings.status", ["checked_in", "reserved"]).range(f, t)),
   ]);
   if (__qp3) reportQueryError("rooms total", __qp3);
-  if (__qp4) reportQueryError("occupancy data", __qp4);
-  const occupied = br?.length ?? 0;
+  const occupied = br.length;
   const total = roomsTotal ?? 0;
   return {
     date,
@@ -162,7 +160,7 @@ export async function fetchGstInvoices(propertyId: string, from: string, to: str
   const endD = new Date(`${to}T00:00:00`);
   endD.setDate(endD.getDate() + 1);
   const end = endD.toISOString();
-  const { data, error: __qe1 } = await supabase.from("folios")
+  const data = await pagedSelect<any>("folios", (f, t) => supabase.from("folios")
     .select("id,booking_id,invoice_number,created_at,guest_gstin,guest_company,sub_total,gst_amount,total_amount,gst_mode,status,bookings(guests(name))")
     .eq("property_id", propertyId)
     .eq("gst_mode", "gst")
@@ -170,10 +168,9 @@ export async function fetchGstInvoices(propertyId: string, from: string, to: str
     .not("invoice_number", "is", null)
     .gte("created_at", start)
     .lt("created_at", end)
-    .order("created_at", { ascending: false });
-  if (__qe1) reportQueryError("folios", __qe1);
+    .order("created_at", { ascending: false }).range(f, t));
   const scope = await fetchBanquetScope(propertyId);
-  const visible = (data ?? []).filter((d) => !isBanquetRecord(scope, d as { booking_id?: string | null }));
+  const visible = data.filter((d) => !isBanquetRecord(scope, d as { booking_id?: string | null }));
   return visible.map((d) => {
     const row = d as unknown as {
       invoice_number: string | null; created_at: string; settled_at?: string | null;
@@ -220,7 +217,7 @@ export async function fetchGstInvoiceSlabs(
   const padEndD = new Date(end);
   padEndD.setDate(padEndD.getDate() + PAD_DAYS);
   const padEnd = padEndD.toISOString();
-  const { data, error: __qe2 } = await supabase.from("folios")
+  const data = await pagedSelect<any>("folios", (pf, pt) => supabase.from("folios")
     .select("id,booking_id,invoice_number,created_at,settled_at,guest_gstin,guest_company,billing_company_id,sub_total,gst_amount,total_amount,gst_mode,status,bookings(check_out,guests(name,state,state_code,gst_number),booking_rooms!booking_rooms_booking_id_fkey(actual_check_out)),folio_charges(charge_type,amount,gst_rate,gst_amount,discount_amount)")
     .eq("property_id", propertyId)
     .eq("gst_mode", "gst")
@@ -234,8 +231,7 @@ export async function fetchGstInvoiceSlabs(
       `and(settled_at.gte.${padStart},settled_at.lt.${padEnd}),` +
       `and(settled_at.is.null,created_at.gte.${padStart},created_at.lt.${padEnd})`,
     )
-    .order("created_at", { ascending: false });
-  if (__qe2) reportQueryError("folios", __qe2);
+    .order("created_at", { ascending: false }).range(pf, pt));
   // Place of supply compares GST state codes (GSTIN → state_code → state name).
   const [{ data: propRow, error: __qp5 }, { data: coRows, error: __qp6 }, scope] = await Promise.all([
     supabase.from("properties").select("state,state_code,gstin").eq("id", propertyId).maybeSingle(),
@@ -251,7 +247,7 @@ export async function fetchGstInvoiceSlabs(
     ((coRows ?? []) as CoRow[]).map((c) => [c.id, c]),
   );
   const out: GstInvoiceSlabRow[] = [];
-  for (const raw of (data ?? []).filter((d) => !isBanquetRecord(scope, d as { booking_id?: string | null }))) {
+  for (const raw of data.filter((d) => !isBanquetRecord(scope, d as { booking_id?: string | null }))) {
     const f = raw as unknown as {
       invoice_number: string | null; created_at: string; settled_at?: string | null;
       guest_gstin: string | null; guest_company: string | null;

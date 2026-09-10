@@ -15,6 +15,9 @@ import {
   ReportColumn, exportExcel, exportPdf, fmtDate, fmtINR, firstOfMonthIso,
 } from "@/lib/reportExports";
 import { istDateISO, istToday } from "@/lib/date";
+import { pagedSelect } from "@/lib/reportPaging";
+import { reportQueryError } from "@/lib/queryError";
+
 
 export const Route = createFileRoute("/_authenticated/reports/date-wise-revenue")({
   head: () => ({ meta: [{ title: "Date-Wise Revenue — HotelPilot" }] }),
@@ -43,57 +46,68 @@ function Page() {
   const [to, setTo] = useState(today);
   const [rows, setRows] = useState<DayRow[]>([]);
   const [derived, setDerived] = useState<DayRow[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!propertyId) return;
+    setLoading(true);
     const fromIso = `${from}T00:00:00`;
     const toIso = `${to}T23:59:59`;
-    const [charges, banquetRows, payRes, folioRes, scope] = await Promise.all([
-      supabase.from("folio_charges")
-        .select("charge_type,amount,charged_on,folio_id,folios!inner(property_id,booking_id)")
-        .gte("charged_on", from).lte("charged_on", to)
-        .eq("folios.property_id", propertyId),
-      fetchEventRevenue(propertyId, from, to),
-      supabase.from("payments").select("amount,paid_at,booking_id,folio_id").eq("property_id", propertyId)
-        .gte("paid_at", fromIso).lte("paid_at", toIso),
-      supabase.from("folios").select("id,booking_id,total_amount,paid_amount,created_at").eq("property_id", propertyId)
-        .gte("created_at", fromIso).lte("created_at", toIso).neq("status", "voided"),
-      fetchBanquetScope(propertyId),
-    ]);
+    try {
+      const [charges, banquetRows, pays, folioRows, scope] = await Promise.all([
+        pagedSelect<any>("revenue charges", (f, t) => supabase.from("folio_charges")
+          .select("charge_type,amount,charged_on,folio_id,folios!inner(property_id,booking_id)")
+          .gte("charged_on", from).lte("charged_on", to)
+          .eq("folios.property_id", propertyId).range(f, t)),
+        fetchEventRevenue(propertyId, from, to),
+        pagedSelect<any>("payments", (f, t) => supabase.from("payments")
+          .select("amount,paid_at,booking_id,folio_id").eq("property_id", propertyId)
+          .gte("paid_at", fromIso).lte("paid_at", toIso).range(f, t)),
+        pagedSelect<any>("folios", (f, t) => supabase.from("folios")
+          .select("id,booking_id,total_amount,paid_amount,created_at").eq("property_id", propertyId)
+          .gte("created_at", fromIso).lte("created_at", toIso).neq("status", "voided").range(f, t)),
+        fetchBanquetScope(propertyId),
+      ]);
 
-    const map = new Map<string, DayRow>();
-    for (const d of eachDay(from, to)) {
-      map.set(d, { date: d, rooms: 0, food: 0, banquet: 0, other: 0, total: 0, collections: 0, outstanding: 0 });
+      const map = new Map<string, DayRow>();
+      for (const d of eachDay(from, to)) {
+        map.set(d, { date: d, rooms: 0, food: 0, banquet: 0, other: 0, total: 0, collections: 0, outstanding: 0 });
+      }
+      for (const c of charges) {
+        // Skip charges on banquet event-block folios.
+        if (isBanquetRecord(scope, { folio_id: c.folio_id, booking_id: c.folios?.booking_id })) continue;
+        const key = (c.charged_on as string).slice(0, 10);
+        const r = map.get(key); if (!r) continue;
+        const a = Number(c.amount || 0);
+        if (c.charge_type === "room") r.rooms += a;
+        else if (c.charge_type === "food" || c.charge_type === "laundry") r.food += a;
+        else r.other += a;
+      }
+      for (const b of banquetRows) {
+        const r = map.get((b.event_date as string).slice(0, 10)); if (!r) continue;
+        r.banquet += Number(b.total_amount || 0);
+      }
+      for (const p of pays) {
+        if (isBanquetRecord(scope, p)) continue;
+        const r = map.get((p.paid_at as string).slice(0, 10)); if (!r) continue;
+        r.collections += Number(p.amount || 0);
+      }
+      for (const f of folioRows) {
+        if (isBanquetRecord(scope, { booking_id: f.booking_id, folio_id: f.id })) continue;
+        const r = map.get((f.created_at as string).slice(0, 10)); if (!r) continue;
+        r.outstanding += Math.max(0, Number(f.total_amount || 0) - Number(f.paid_amount || 0));
+      }
+      for (const r of map.values()) r.total = r.rooms + r.food + r.banquet + r.other;
+      setRows(Array.from(map.values()));
+    } catch (e) {
+      reportQueryError("date-wise revenue", e);
+    } finally {
+      setLoading(false);
     }
-    for (const c of (charges.data ?? []) as any[]) {
-      // Skip charges on banquet event-block folios.
-      if (isBanquetRecord(scope, { folio_id: c.folio_id, booking_id: c.folios?.booking_id })) continue;
-      const key = (c.charged_on as string).slice(0, 10);
-      const r = map.get(key); if (!r) continue;
-      const a = Number(c.amount || 0);
-      if (c.charge_type === "room") r.rooms += a;
-      else if (c.charge_type === "food" || c.charge_type === "laundry") r.food += a;
-      else r.other += a;
-    }
-    for (const b of banquetRows) {
-      const r = map.get((b.event_date as string).slice(0, 10)); if (!r) continue;
-      r.banquet += Number(b.total_amount || 0);
-    }
-    for (const p of (payRes.data ?? []) as any[]) {
-      if (isBanquetRecord(scope, p)) continue;
-      const r = map.get((p.paid_at as string).slice(0, 10)); if (!r) continue;
-      r.collections += Number(p.amount || 0);
-    }
-    for (const f of (folioRes.data ?? []) as any[]) {
-      if (isBanquetRecord(scope, { booking_id: f.booking_id, folio_id: f.id })) continue;
-      const r = map.get((f.created_at as string).slice(0, 10)); if (!r) continue;
-      r.outstanding += Math.max(0, Number(f.total_amount || 0) - Number(f.paid_amount || 0));
-    }
-    for (const r of map.values()) r.total = r.rooms + r.food + r.banquet + r.other;
-    setRows(Array.from(map.values()));
   }, [propertyId, from, to]);
 
   useEffect(() => { load(); }, [load]);
+
 
   const grand = useMemo(() => derived.reduce((g, r) => ({
     rooms: g.rooms + r.rooms, food: g.food + r.food, banquet: g.banquet + r.banquet, other: g.other + r.other,
@@ -124,11 +138,13 @@ function Page() {
         <div><Label>From</Label><Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-40" /></div>
         <div><Label>To</Label><Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" /></div>
       </>}
-      onExcel={() => exportExcel(derived, columns, meta)}
-      onPdf={() => exportPdf(derived, columns, meta)}
-      disabled={rows.length === 0}
+      onExcel={() => exportExcel(derived.length ? derived : rows, columns, meta)}
+      onPdf={() => exportPdf(derived.length ? derived : rows, columns, meta)}
+      disabled={loading || rows.length === 0}
     >
+      {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
       <Card><CardContent className="pt-4">
+
         <div className="h-64 mb-6">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={derived.map((r) => ({ name: fmtDate(r.date), total: r.total }))}>

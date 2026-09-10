@@ -12,6 +12,7 @@ import { isHoldPayment, HOLD_PAYMENT_MODE } from "@/lib/billing";
 import { istAddDays } from "@/lib/date";
 import { resolveTaxType } from "@/lib/gst";
 import { reportQueryError } from "@/lib/queryError";
+import { pagedSelect, pagedIn } from "@/lib/reportPaging";
 import type { ReportColumn } from "@/lib/reportExports";
 import { fmtDate, fmtDateTime, fmtINR } from "@/lib/reportExports";
 
@@ -104,16 +105,16 @@ export async function loadDailyReport(
   const startIso = `${from}T00:00:00+05:30`;
   const endIso = `${istAddDays(to, 1)}T00:00:00+05:30`; // exclusive upper bound
 
-  const [prop, brRes, kotRes, rdcRes, bqRes, payRes, roomsRes] = await Promise.all([
+  const [prop, brRows, kotRows, rdcRows, bqRows, payRows, roomRows] = await Promise.all([
     supabase.from("properties").select("state,state_code,gstin").eq("id", propertyId).maybeSingle(),
-    supabase.from("booking_rooms").select(`
+    pagedSelect<any>("booking rooms", (f, t) => supabase.from("booking_rooms").select(`
       id,rate,check_in,check_out,actual_check_in,actual_check_out,check_in_time,status,booking_id,
       rooms:room_id(room_number),room_categories:category_id(name),
       bookings!booking_rooms_booking_id_fkey(id,source,ota_partner_name,checked_in_at,guests(name))
-    `).eq("property_id", propertyId).lte("check_in", to).gt("check_out", from),
+    `).eq("property_id", propertyId).lte("check_in", to).gt("check_out", from).range(f, t)),
     // Food bills live in segment_bills (+ segment_bill_items) — the same source
     // the Invoices → Food tab reads. kot_orders is unused by the current flow.
-    supabase.from("segment_bills").select(`
+    pagedSelect<any>("food bills", (f, t) => supabase.from("segment_bills").select(`
       id,bill_number,status,payment_mode,total_amount,gst_amount,paid_amount,
       guest_name,is_walkin,booking_id,folio_id,created_at,is_complimentary,complimentary_reason,
       rooms:room_id(room_number),
@@ -121,29 +122,25 @@ export async function loadDailyReport(
       segment_bill_items(description,qty,rate,amount)
     `).eq("property_id", propertyId).eq("segment", "food").neq("status", "void")
       .gte("created_at", startIso).lt("created_at", endIso)
-      .order("created_at", { ascending: true }),
-    supabase.from("restaurant_direct_charges").select(`
+      .order("created_at", { ascending: true }).range(f, t)),
+    pagedSelect<any>("direct restaurant charges", (f, t) => supabase.from("restaurant_direct_charges").select(`
       id,charge_date,amount,description,bill_no,is_settled,created_at,
       restaurant_outlets:outlet_id(name),guests:guest_id(name)
     `).eq("property_id", propertyId).gte("charge_date", from).lte("charge_date", to)
-      .order("charge_date", { ascending: true }),
-    supabase.from("bookings").select(`
+      .order("charge_date", { ascending: true }).range(f, t)),
+    pagedSelect<any>("banquet bookings", (f, t) => supabase.from("bookings").select(`
       id,booking_number,banquet_number,event_name,function_type,pax,event_date,hall_id,
       total_amount,fb_charge,event_status,halls:hall_id(name)
     `).eq("property_id", propertyId).eq("booking_type", "banquet")
-      .gte("event_date", from).lte("event_date", to),
-    supabase.from("payments").select("id,amount,mode,paid_at,folio_id")
-      .eq("property_id", propertyId).gte("paid_at", startIso).lt("paid_at", endIso),
-    supabase.from("rooms").select("id").eq("property_id", propertyId).eq("is_active", true),
+      .gte("event_date", from).lte("event_date", to).range(f, t)),
+    pagedSelect<any>("payments", (f, t) => supabase.from("payments").select("id,amount,mode,paid_at,folio_id")
+      .eq("property_id", propertyId).gte("paid_at", startIso).lt("paid_at", endIso).range(f, t)),
+    pagedSelect<any>("rooms", (f, t) => supabase.from("rooms").select("id")
+      .eq("property_id", propertyId).eq("is_active", true).range(f, t)),
   ]);
-
-  for (const [label, res] of [
-    ["property", prop], ["booking rooms", brRes], ["food bills", kotRes],
-    ["direct restaurant charges", rdcRes], ["banquet bookings", bqRes],
-    ["payments", payRes], ["rooms", roomsRes],
-  ] as const) {
-    if ((res as { error?: unknown }).error) reportQueryError(label, (res as { error: unknown }).error as never);
-  }
+  if (prop.error) reportQueryError("property", prop.error);
+  const brRes = { data: brRows }, kotRes = { data: kotRows }, rdcRes = { data: rdcRows };
+  const bqRes = { data: bqRows }, payRes = { data: payRows }, roomsRes = { data: roomRows };
 
   const propertyState = (prop.data as { state?: string | null; state_code?: string | null } | null) ?? null;
 
@@ -155,23 +152,19 @@ export async function loadDailyReport(
   let charges: Record<string, any>[] = [];
   let folioPayments: Record<string, any>[] = [];
   if (bookingIds.length) {
-    const { data: fData, error: fErr } = await supabase.from("folios")
-      .select("id,booking_id,invoice_number,status,is_reopened,sub_total,discount_amount,gst_amount,total_amount,paid_amount,balance_amount,guest_gstin")
-      .in("booking_id", bookingIds).neq("status", "void");
-    if (fErr) reportQueryError("folios", fErr);
-    folios = (fData ?? []) as Record<string, any>[];
+    folios = await pagedIn<Record<string, any>>("folios", bookingIds as string[], (chunk, f, t) =>
+      supabase.from("folios")
+        .select("id,booking_id,invoice_number,status,is_reopened,sub_total,discount_amount,gst_amount,total_amount,paid_amount,balance_amount,guest_gstin")
+        .in("booking_id", chunk).neq("status", "void").range(f, t));
     const folioIds = folios.map((f) => f.id);
     if (folioIds.length) {
-      const [cRes, pRes] = await Promise.all([
-        supabase.from("folio_charges")
+      [charges, folioPayments] = await Promise.all([
+        pagedIn<Record<string, any>>("folio charges", folioIds, (chunk, f, t) => supabase.from("folio_charges")
           .select("folio_id,charge_type,amount,gst_rate,gst_amount,discount_amount,source_table,source_id")
-          .in("folio_id", folioIds).eq("charge_type", "room"),
-        supabase.from("payments").select("folio_id,amount,mode").in("folio_id", folioIds),
+          .in("folio_id", chunk).eq("charge_type", "room").range(f, t)),
+        pagedIn<Record<string, any>>("folio payments", folioIds, (chunk, f, t) =>
+          supabase.from("payments").select("folio_id,amount,mode").in("folio_id", chunk).range(f, t)),
       ]);
-      if (cRes.error) reportQueryError("folio charges", cRes.error);
-      if (pRes.error) reportQueryError("folio payments", pRes.error);
-      charges = (cRes.data ?? []) as Record<string, any>[];
-      folioPayments = (pRes.data ?? []) as Record<string, any>[];
     }
   }
   const folioByBooking = new Map<string, Record<string, any>>();
@@ -263,11 +256,10 @@ export async function loadDailyReport(
   const bqBookings = (bqRes.data ?? []) as Record<string, any>[];
   let masterBills: Record<string, any>[] = [];
   if (bqBookings.length) {
-    const { data: mb, error: mbErr } = await supabase.from("banquet_master_bills")
-      .select("booking_id,bill_number,food_subtotal,gst_amount,total_amount,status")
-      .in("booking_id", bqBookings.map((b) => b.id));
-    if (mbErr) reportQueryError("banquet master bills", mbErr);
-    masterBills = (mb ?? []) as Record<string, any>[];
+    masterBills = await pagedIn<Record<string, any>>("banquet master bills",
+      bqBookings.map((x) => x.id as string), (chunk, f, t) => supabase.from("banquet_master_bills")
+        .select("booking_id,bill_number,food_subtotal,gst_amount,total_amount,status")
+        .in("booking_id", chunk).range(f, t));
   }
   const banquet: BanquetRow[] = bqBookings.map((b) => {
     const bills = masterBills.filter((m) => m.booking_id === b.id);
@@ -308,12 +300,11 @@ export async function loadDailyReport(
   const holdTotal = r2(pays.filter((p) => isHoldPayment(p.mode)).reduce((s, p) => s + num(p.amount), 0));
 
   // Dues added: bills raised in the window still carrying a balance.
-  const { data: dueData, error: dueErr } = await supabase.from("folios")
+  const dueData = await pagedSelect<Record<string, any>>("dues", (f, t) => supabase.from("folios")
     .select("balance_amount")
     .eq("property_id", propertyId).neq("status", "void")
-    .gte("created_at", startIso).lt("created_at", endIso).gt("balance_amount", 0);
-  if (dueErr) reportQueryError("dues", dueErr);
-  const duesAdded = r2(((dueData ?? []) as Record<string, any>[]).reduce((s, f) => s + num(f.balance_amount), 0));
+    .gte("created_at", startIso).lt("created_at", endIso).gt("balance_amount", 0).range(f, t));
+  const duesAdded = r2(dueData.reduce((s, f) => s + num(f.balance_amount), 0));
 
   const sellable = ((roomsRes.data ?? []) as unknown[]).length;
   const occupiedRoomNos = new Set(rooms.map((r) => r.room_no));

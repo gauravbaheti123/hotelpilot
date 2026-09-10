@@ -1,4 +1,6 @@
+import { toast } from "sonner";
 import { istDateISO } from "@/lib/date";
+
 
 export interface ReportColumn<T> {
   key: string;
@@ -46,7 +48,18 @@ export function buildFileName(meta: ReportExportMeta, ext: string) {
 }
 
 /** Excel export — Sheet 1 data, Sheet 2 summary. */
+/** Write the workbook, surfacing a failure instead of doing nothing. */
+function writeWorkbook(XLSX: any, wb: any, meta: ReportExportMeta) {
+  try {
+    XLSX.writeFile(wb, buildFileName(meta, "xlsx"));
+  } catch (e) {
+    console.error("[export] excel failed", e);
+    toast.error("Could not create the Excel file", { description: "Please try again." });
+  }
+}
+
 export async function exportExcel<T>(
+
   rows: T[],
   columns: ReportColumn<T>[],
   meta: ReportExportMeta,
@@ -103,7 +116,8 @@ export async function exportExcel<T>(
   wsS["!cols"] = [{ wch: 28 }, { wch: 28 }];
   XLSX.utils.book_append_sheet(wb, wsS, "Summary");
 
-  XLSX.writeFile(wb, buildFileName(meta, "xlsx"));
+  writeWorkbook(XLSX, wb, meta);
+
 }
 
 /** PDF export via window.print() on a generated HTML document. */
@@ -160,13 +174,52 @@ export function exportPdf<T>(
     <div class="footer">${esc(meta.propertyName)} — ${esc(meta.reportName)}</div>
   </body></html>`;
 
-  const w = window.open("", "_blank", "width=1100,height=900");
-  if (!w) return;
-  w.document.write(html);
-  w.document.close();
-  w.focus();
-  setTimeout(() => w.print(), 250);
+  printHtmlDocument(html, 1100, 900);
 }
+
+/**
+ * Print a generated HTML document. A blocked pop-up used to make export
+ * silently do nothing, so fall back to a hidden same-tab iframe and only
+ * then report the failure.
+ */
+export function printHtmlDocument(html: string, width = 1100, height = 900) {
+  if (typeof window === "undefined") return;
+  try {
+    const w = window.open("", "_blank", `width=${width},height=${height}`);
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+      w.focus();
+      setTimeout(() => { try { w.print(); } catch { /* user closed it */ } }, 300);
+      return;
+    }
+  } catch { /* fall through to iframe */ }
+
+  try {
+    const frame = document.createElement("iframe");
+    frame.setAttribute("aria-hidden", "true");
+    frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+    document.body.appendChild(frame);
+    const doc = frame.contentWindow?.document;
+    if (!doc) throw new Error("no frame document");
+    doc.open();
+    doc.write(html);
+    doc.close();
+    setTimeout(() => {
+      try {
+        frame.contentWindow?.focus();
+        frame.contentWindow?.print();
+      } catch { /* ignore */ }
+      setTimeout(() => frame.remove(), 60000);
+    }, 400);
+    toast.message("Print dialog opened", { description: "Pop-ups are blocked, so the report is printing from this tab." });
+  } catch {
+    toast.error("Could not open the print view", {
+      description: "Allow pop-ups for this site and try Export PDF again.",
+    });
+  }
+}
+
 
 /* -------------------- Tally Prime XML helpers -------------------- */
 
@@ -371,7 +424,7 @@ export async function exportExcelSections(sections: ExportSection[], meta: Repor
     XLSX.utils.book_append_sheet(wb, ws, name);
   }
 
-  XLSX.writeFile(wb, buildFileName(meta, "xlsx"));
+  writeWorkbook(XLSX, wb, meta);
 }
 
 /** Branded, page-broken PDF (via print) with one page per section. */
@@ -460,13 +513,9 @@ export function exportSectionsPdf(
       .foot { margin-top: 8px; text-align: center; font-size: 8px; color: #777; }
     </style></head><body>${pages}</body></html>`;
 
-  const w = window.open("", "_blank", "width=1200,height=900");
-  if (!w) return;
-  w.document.write(html);
-  w.document.close();
-  w.focus();
-  setTimeout(() => w.print(), 400);
+  printHtmlDocument(html, 1200, 900);
 }
+
 
 /* ---------------- KPI helpers (dashboard-style reports) ---------------- */
 

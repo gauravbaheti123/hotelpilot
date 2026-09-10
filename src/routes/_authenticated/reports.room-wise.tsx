@@ -16,6 +16,7 @@ import {
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
+import { pagedSelect, pagedIn } from "@/lib/reportPaging";
 
 export const Route = createFileRoute("/_authenticated/reports/room-wise")({
   head: () => ({ meta: [{ title: "Room-Wise Report — HotelPilot" }] }),
@@ -41,21 +42,23 @@ function Page() {
   const { rooms: roomsList } = useRooms(propertyId);
   const [rows, setRows] = useState<Row[]>([]);
   const [derived, setDerived] = useState<Row[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!propertyId) return;
-    let q = supabase.from("booking_rooms").select(`
-      id,rate,check_in,check_out,
-      rooms:room_id(id,room_number),
-      room_categories(name),
-      tariff:tariff_id(name),
-      bookings!booking_rooms_booking_id_fkey(id,source,status,total_amount,balance_amount,checked_in_by,checked_out_by,guests(name))
-    `).eq("property_id", propertyId)
-      .gte("check_in", from).lte("check_in", to);
-    if (catId !== "all") q = q.eq("category_id", catId);
-    if (roomId !== "all") q = q.eq("room_id", roomId);
-    const { data, error } = await q;
-    if (error) { console.error("[room-wise] load failed:", error); setRows([]); return; }
+    const data = await pagedSelect<any>("room-wise stays", (f, t) => {
+      let q = supabase.from("booking_rooms").select(`
+        id,rate,check_in,check_out,
+        rooms:room_id(id,room_number),
+        room_categories(name),
+        tariff:tariff_id(name),
+        bookings!booking_rooms_booking_id_fkey(id,source,status,total_amount,balance_amount,checked_in_by,checked_out_by,guests(name))
+      `).eq("property_id", propertyId)
+        .gte("check_in", from).lte("check_in", to);
+      if (catId !== "all") q = q.eq("category_id", catId);
+      if (roomId !== "all") q = q.eq("room_id", roomId);
+      return q.range(f, t);
+    });
     // Banquet event-block stays are shown normally for 48h after the event
     // completes; only expired ones drop out of the operational room report.
     const scope = await fetchBanquetScope(propertyId);
@@ -70,10 +73,9 @@ function Page() {
     }
     const nameMap = new Map<string, string>();
     if (uids.size) {
-      const { data: profs, error: __qe1 } = await supabase.from("profiles")
-        .select("id,name,email").in("id", Array.from(uids));
-      if (__qe1) reportQueryError("profiles", __qe1);
-      for (const p of (profs ?? []) as any[]) {
+      const profs = await pagedIn<any>("profiles", Array.from(uids), (chunk, f, t) =>
+        supabase.from("profiles").select("id,name,email").in("id", chunk).range(f, t));
+      for (const p of profs) {
         nameMap.set(p.id, p.name || p.email || "");
       }
     }
@@ -100,7 +102,7 @@ function Page() {
     setRows(out);
   }, [propertyId, from, to, catId, roomId]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setLoading(true); void Promise.resolve(load()).finally(() => setLoading(false)); }, [load]);
 
   const grandDerived = useMemo(() => derived.reduce((s, r) => s + r.total_amount, 0), [derived]);
 
@@ -146,10 +148,11 @@ function Page() {
           </Select>
         </div>
       </>}
-      onExcel={() => exportExcel(derived, columns, meta)}
-      onPdf={() => exportPdf(derived, columns, meta)}
-      disabled={rows.length === 0}
+      onExcel={() => exportExcel(derived.length ? derived : rows, columns, meta)}
+      onPdf={() => exportPdf(derived.length ? derived : rows, columns, meta)}
+      disabled={loading || rows.length === 0}
     >
+      {loading && <p className="text-sm text-muted-foreground">Loading…</p>}
       <Card><CardContent className="pt-4">
         <ReportDataTable
           rows={rows}
