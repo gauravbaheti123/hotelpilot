@@ -134,6 +134,11 @@ export function OwnerInlineEditCard({
   }, [open, propertyId, stayRowId, resetFromProps]);
 
 
+  // No stored actual check-out means the guest has not left yet. Stamping one
+  // here would leave the booking checked in while the room vanishes from the
+  // dashboard, so the field is locked and the server rejects it too.
+  const stayInHouse = originActual.out === "";
+
   const dirtyName = name.trim() !== (guestName ?? "").trim();
   const dirtyStay = useMemo(
     () =>
