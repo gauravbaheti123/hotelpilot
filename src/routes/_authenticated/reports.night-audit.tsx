@@ -127,6 +127,7 @@ function NightAuditPage() {
   const [openKots, setOpenKots] = useState<OpenKotRow[]>([]);
   const [unsettled, setUnsettled] = useState<UnsettledRow[]>([]);
   const [byMode, setByMode] = useState<Record<string, number>>({});
+  const [modeLabels, setModeLabels] = useState<Record<string, string>>({});
   const [expenses, setExpenses] = useState(0);
   const [revenueRoom, setRevenueRoom] = useState(0);
   const [revenueFood, setRevenueFood] = useState(0);
