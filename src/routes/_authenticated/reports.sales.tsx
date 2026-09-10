@@ -9,7 +9,8 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { EmptyPropertyState } from "@/components/EmptyPropertyState";
 import { supabase } from "@/integrations/supabase/client";
 import { inr } from "@/lib/billing";
-import { todayIso, PAYMENT_MODE_LABELS } from "@/lib/reports";
+import { todayIso, normaliseModeKey } from "@/lib/reports";
+import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { fetchBanquetScope, isBanquetRecord } from "@/lib/banquetScope";
 
 import { RequirePermission } from "@/components/RequirePermission";
@@ -96,7 +97,8 @@ function SalesReportPage() {
       const row = ensure(d);
       const amt = Number(p.amount ?? 0);
       row.payments_total += amt;
-      row.by_mode[p.mode] = (row.by_mode[p.mode] ?? 0) + amt;
+      const key = normaliseModeKey(p.mode);
+      row.by_mode[key] = (row.by_mode[key] ?? 0) + amt;
     }
     return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
   }, [folios, pays]);
@@ -108,17 +110,38 @@ function SalesReportPage() {
     payments_total: acc.payments_total + d.payments_total,
   }), { sub_total: 0, gst_amount: 0, total_amount: 0, payments_total: 0 }), [days]);
 
+  // Mode columns follow the property's configured methods plus whatever was
+  // actually collected in the range, matched case-insensitively.
+  const modeKeys = useMemo(() => {
+    const rows: Array<{ key: string; label: string }> = [];
+    const seen = new Set<string>();
+    for (const m of methods) {
+      const key = normaliseModeKey(m.name);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ key, label: formatPaymentMethodLabel(m.name) });
+    }
+    for (const d of days) {
+      for (const key of Object.keys(d.by_mode)) {
+        if (seen.has(key)) continue;
+        seen.add(key);
+        rows.push({ key, label: formatPaymentMethodLabel(key) });
+      }
+    }
+    return rows;
+  }, [methods, days]);
+
   const columns: ReportColumn<DayRow>[] = useMemo(() => [
     { key: "date", header: "Date", get: (r) => r.date, type: "date", sortValue: (r) => r.date, dateValue: (r) => r.date },
     { key: "sub", header: "Sub Total", get: (r) => r.sub_total, currency: true },
     { key: "gst", header: "GST", get: (r) => r.gst_amount, currency: true },
     { key: "inv", header: "Invoiced", get: (r) => r.total_amount, currency: true },
     { key: "col", header: "Collected", get: (r) => r.payments_total, currency: true },
-    ...Object.keys(PAYMENT_MODE_LABELS).map((m) => ({
-      key: `mode_${m}`, header: PAYMENT_MODE_LABELS[m],
-      get: (r: DayRow) => r.by_mode[m] ?? 0, currency: true,
+    ...modeKeys.map((m) => ({
+      key: `mode_${m.key}`, header: m.label,
+      get: (r: DayRow) => r.by_mode[m.key] ?? 0, currency: true,
     })),
-  ], []);
+  ], [modeKeys]);
 
   const meta = { reportName: "Sales Report", propertyName: current?.name ?? "", from, to };
   const sections: ExportSection[] = [{
@@ -159,8 +182,8 @@ function SalesReportPage() {
                   <th className="px-3 py-2 text-right">GST</th>
                   <th className="px-3 py-2 text-right">Invoiced</th>
                   <th className="px-3 py-2 text-right">Collected</th>
-                  {Object.keys(PAYMENT_MODE_LABELS).map((m) => (
-                    <th key={m} className="px-3 py-2 text-right">{PAYMENT_MODE_LABELS[m]}</th>
+                  {modeKeys.map((m) => (
+                    <th key={m.key} className="px-3 py-2 text-right">{m.label}</th>
                   ))}
                 </tr>
               </thead>
@@ -175,8 +198,8 @@ function SalesReportPage() {
                     <td className="px-3 py-2 text-right">{inr(d.gst_amount)}</td>
                     <td className="px-3 py-2 text-right">{inr(d.total_amount)}</td>
                     <td className="px-3 py-2 text-right">{inr(d.payments_total)}</td>
-                    {Object.keys(PAYMENT_MODE_LABELS).map((m) => (
-                      <td key={m} className="px-3 py-2 text-right text-muted-foreground">{inr(d.by_mode[m] ?? 0)}</td>
+                    {modeKeys.map((m) => (
+                      <td key={m.key} className="px-3 py-2 text-right text-muted-foreground">{inr(d.by_mode[m.key] ?? 0)}</td>
                     ))}
                   </tr>
                 ))}
