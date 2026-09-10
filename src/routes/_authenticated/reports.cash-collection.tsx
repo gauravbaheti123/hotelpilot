@@ -16,6 +16,9 @@ import {
 import { istToday } from "@/lib/date";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
 import { pagedSelect } from "@/lib/reportPaging";
+import { normaliseModeKey } from "@/lib/reports";
+import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
+import { isHoldPayment, HOLD_PAYMENT_MODE } from "@/lib/billing";
 
 export const Route = createFileRoute("/_authenticated/reports/cash-collection")({
   head: () => ({ meta: [{ title: "Cash Collection — HotelPilot" }] }),
