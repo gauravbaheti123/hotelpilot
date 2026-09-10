@@ -205,7 +205,7 @@ function Page() {
             )}
             totalsRow={(d) => (
               <tr>
-                <td colSpan={9} className="px-2 py-2 text-right">Grand Total ({d.length} bills)</td>
+                <td colSpan={11} className="px-2 py-2 text-right">Grand Total ({d.length} bills)</td>
                 <td className="px-2 py-2 text-right tabular-nums">{fmtINR(d.reduce((s, r) => s + r.net_amount, 0))}</td>
                 <td colSpan={3} />
               </tr>
