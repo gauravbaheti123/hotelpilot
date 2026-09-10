@@ -124,6 +124,103 @@ ${THERMAL_FEED_HTML}
 </body></html>`;
 }
 
+export type ConsolidatedKotGroup = {
+  kot_number: string;
+  status?: string | null;
+  at?: string | null;
+  items: KotItemForPrint[];
+};
+
+/**
+ * One consolidated ticket listing every KOT punch of a room/table, in time
+ * order, with prices and a grand total. Used by "Print all KOTs".
+ */
+export function renderConsolidatedKotHtml(
+  header: KotHeader,
+  groups: ConsolidatedKotGroup[],
+  paperSize: string,
+  printerName: string,
+  opts?: { showPrice?: boolean },
+): string {
+  const showPrice = opts?.showPrice !== false;
+  const pageCss = getPrintStyles(paperSize);
+  const containerCss = getPrintContainerStyle(paperSize);
+  const printableWidth = getPrintContainerWidth(paperSize);
+  const safetyCss = getPrintSafetyCss(".print-container");
+  const stationName = (printerName || "").toUpperCase();
+  const now = new Date();
+  const grand = groups.reduce(
+    (s, g) => s + g.items.reduce((t, i) => t + i.qty * i.rate, 0),
+    0,
+  );
+  const tableLabel =
+    header.kot_type === "room"
+      ? `Room ${esc(header.room_number ?? "—")}`
+      : esc(header.table_no ?? "—");
+
+  const groupHtml = groups
+    .map((g) => {
+      const sub = g.items.reduce((t, i) => t + i.qty * i.rate, 0);
+      const when = g.at ? new Date(g.at) : null;
+      const whenStr = when
+        ? `${when.toLocaleDateString()} ${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}`
+        : "";
+      return `<div class="grp">
+<div class="grphd"><span>${esc(g.kot_number)}${g.status ? ` · ${esc(String(g.status).toUpperCase())}` : ""}</span><span>${esc(whenStr)}</span></div>
+${g.items
+  .map(
+    (i) =>
+      `<div class="item"><span class="n">${i.qty} x ${esc(i.item_name)}</span>${
+        showPrice ? `<span class="p">₹${(i.qty * i.rate).toFixed(0)}</span>` : ""
+      }</div>${i.notes ? `<div class="itemnote"><span class="lbl">**</span>${esc(i.notes)}</div>` : ""}`,
+  )
+  .join("")}
+${showPrice ? `<div class="sub"><span>Subtotal</span><span>₹${sub.toFixed(2)}</span></div>` : ""}
+</div>`;
+    })
+    .join("");
+
+  return `<!doctype html><html><head><meta charset="utf-8"><title>ALL ${esc(header.kot_number)}</title>
+<style>
+${pageCss}
+@media print {
+  html, body { width: ${printableWidth}; min-height: 0 !important; height: auto !important; }
+}
+html,body{margin:0;padding:0;height:auto;min-height:0;width:${printableWidth};color:#000}
+body{font-family: 'Arial Black', Arial, Helvetica, sans-serif; font-size:15px; font-weight:700; padding:0; box-sizing:border-box; line-height:1.35}
+.print-container{${containerCss}padding:2mm 0;}
+${safetyCss}
+.badge{display:block;text-align:center;border:2px solid #000;padding:4px 6px;font-weight:800;font-size:15px;letter-spacing:1px;margin-bottom:6px}
+.station{text-align:center;font-size:20px;font-weight:800;letter-spacing:1px;margin:2px 0 4px}
+.divider{border:none;border-top:2px dashed #000;margin:6px 0}
+.info{font-size:15px;font-weight:700;margin:2px 0;display:flex}
+.info .lbl{min-width:80px;font-weight:800}
+.grp{margin:6px 0;border-top:2px solid #000;padding-top:4px}
+.grphd{display:flex;justify-content:space-between;font-size:13px;font-weight:800;gap:8px;margin-bottom:3px}
+.item{display:flex;justify-content:space-between;align-items:flex-start;font-size:17px;font-weight:800;margin:5px 0;gap:8px}
+.item .n{flex:1;word-break:break-word}
+.item .p{white-space:nowrap}
+.itemnote{font-size:13px;font-weight:800;border:2px solid #000;padding:2px 5px;margin:0 0 6px 10px;text-transform:uppercase;word-break:break-word}
+.itemnote .lbl{font-size:11px;letter-spacing:1px;margin-right:4px}
+.sub{display:flex;justify-content:space-between;font-size:14px;font-weight:800;margin-top:2px}
+.total{display:flex;justify-content:space-between;font-size:19px;font-weight:800;margin-top:6px;border-top:2px solid #000;padding-top:4px}
+${getThermalFeedCss()}
+</style></head><body>
+<div class="print-container">
+<div class="badge">ALL KOT SUMMARY (RE-PRINT)</div>
+<div class="station">${esc(stationName)}</div>
+<hr class="divider"/>
+<div class="info"><span class="lbl">Table:</span><span>${tableLabel}</span></div>
+${header.guest_name ? `<div class="info"><span class="lbl">Guest:</span><span>${esc(header.guest_name)}</span></div>` : ""}
+<div class="info"><span class="lbl">Printed:</span><span>${esc(now.toLocaleDateString())} ${esc(now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }))}</span></div>
+<div class="info"><span class="lbl">KOTs:</span><span>${groups.length}</span></div>
+${groupHtml}
+${showPrice ? `<div class="total"><span>GRAND TOTAL</span><span>₹${grand.toFixed(2)}</span></div>` : ""}
+${THERMAL_FEED_HTML}
+</div>
+</body></html>`;
+}
+
 export function buildKotPrintPlan(
   items: KotItemForPrint[],
   printers: PrinterInfo[],
