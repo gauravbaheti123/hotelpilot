@@ -624,10 +624,10 @@ function NightAuditPage() {
               <CardTitle className="text-sm font-medium">Cash Summary</CardTitle>
             </CardHeader>
             <CardContent className="text-xs space-y-1">
-              {Object.keys(PAYMENT_MODE_LABELS).map((m) => (
-                <div key={m} className="flex justify-between">
-                  <span>{PAYMENT_MODE_LABELS[m]}</span>
-                  <span className="font-medium">{inr(byMode[m] || 0)}</span>
+              {modeRows.map((m) => (
+                <div key={m.key} className="flex justify-between">
+                  <span>{m.label}</span>
+                  <span className="font-medium">{inr(m.amount)}</span>
                 </div>
               ))}
               <div className="flex justify-between border-t pt-1 mt-1">
