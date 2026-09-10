@@ -255,20 +255,19 @@ function NightAuditPage() {
     setExpenses((exp ?? []).reduce((a, x: any) => a + Number(x.amount || 0), 0));
 
     // Split revenue by source (best-effort)
-    const { data: folioRows, error: __qe5 } = await supabase
+    const folioRows = await pagedSelect<any>("folios", (pf, pt) => supabase
       .from("folios").select("id, total_amount, bookings(source)")
       .eq("property_id", propertyId).neq("status", "void").eq("is_deleted", false)
-      .gte("created_at", startIso).lt("created_at", endIso);
-    if (__qe5) reportQueryError("folios", __qe5);
-    const folioIds = ((folioRows ?? []) as any[])
+      .gte("created_at", startIso).lt("created_at", endIso).range(pf, pt));
+    const folioIds = folioRows
       .filter((f) => !isBanquetRecord(bqScope, { folio_id: f.id }))
       .map((f) => f.id);
     let roomRev = 0, foodRev = 0, otherRev = 0;
     if (folioIds.length) {
-      const { data: ch, error: __qe6 } = await supabase
-        .from("folio_charges").select("folio_id, charge_type, amount, gst_amount").in("folio_id", folioIds);
-      if (__qe6) reportQueryError("folio charges", __qe6);
-      (ch ?? []).forEach((c: any) => {
+      const ch = await pagedIn<any>("folio charges", folioIds as string[], (chunk, pf, pt) => supabase
+        .from("folio_charges").select("folio_id, charge_type, amount, gst_amount")
+        .in("folio_id", chunk).range(pf, pt));
+      ch.forEach((c: any) => {
         const t = (c.charge_type ?? "").toLowerCase();
         const v = Number(c.amount || 0) + Number(c.gst_amount || 0);
         if (t.includes("room")) roomRev += v;
