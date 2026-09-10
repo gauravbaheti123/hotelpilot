@@ -460,7 +460,7 @@ function NightAuditPage() {
     { label: "Expenses", value: inr(expenses) },
     { label: "Expected closing cash", value: inr(expectedClosing) },
   ], [date, existing, occupied, dueToday, openKots, unsettled, revenueRoom, revenueFood,
-      revenueBanquet, revenueOther, revenueCats, totalRevenue, byMode, totalCollections, openingCash,
+      revenueBanquet, revenueOther, revenueCats, totalRevenue, modeRows, totalCollections, openingCash,
       expenses, expectedClosing]);
 
   const exportMeta = { reportName: "Night Audit / Day Close", propertyName: current?.name ?? "", from: date, to: date };
