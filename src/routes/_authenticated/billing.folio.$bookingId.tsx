@@ -3668,6 +3668,20 @@ function FolioPage() {
                   <Input type="number" value={editGst} onChange={(e) => setEditGst(e.target.value)} />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Date</Label>
+                  <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">HSN / SAC</Label>
+                  <Input value={editHsn} onChange={(e) => setEditHsn(e.target.value)} placeholder="e.g. 996331" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Reason</Label>
+                <Input value={editReason} onChange={(e) => setEditReason(e.target.value)} placeholder="Why is this line being corrected?" />
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => { setEditOpen(false); setEditId(null); setEditIds([]); }}>Cancel</Button>
