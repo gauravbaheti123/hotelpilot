@@ -1266,8 +1266,13 @@ function FolioPage() {
     const newRate = Number(tariffRate);
     if (!Number.isFinite(newRate) || newRate < 0) return toast.error("Enter a valid tariff");
     const oldRate = Number(tariffTarget.rate ?? 0);
-    if (Math.abs(newRate - oldRate) < 0.005) { setTariffOpen(false); setTariffTarget(null); return; }
-    if ((tariffTarget as any).is_night_split) return saveEditNightTariff();
+    const isNightRow = !!(tariffTarget as any).is_night_split;
+    const descChanged = !isNightRow && tariffDesc.trim() !== (tariffTarget.description ?? "").trim();
+    const dateChanged = !isNightRow && tariffDate !== String(tariffTarget.charged_on ?? "").slice(0, 10);
+    if (Math.abs(newRate - oldRate) < 0.005 && !descChanged && !dateChanged) {
+      setTariffOpen(false); setTariffTarget(null); return;
+    }
+    if (isNightRow) return saveEditNightTariff();
     const nights = Number(tariffTarget.qty ?? 1) || 1;
     const oldAmount = Number(tariffTarget.amount ?? 0);
     const newAmount = Math.round(nights * newRate * 100) / 100;
@@ -1283,13 +1288,15 @@ function FolioPage() {
     if (gstR == null) {
       return toast.error("No GST slab configured for this tariff — add a room slab in Master Data › GST Slabs");
     }
-    const gstAmt = Math.round(newAmount * gstR) / 100;
     setTariffSaving(true);
     try {
-      const { error } = await supabase
-        .from("folio_charges")
-        .update({ rate: newRate, amount: newAmount, gst_rate: gstR, gst_amount: gstAmt } as any)
-        .eq("id", tariffTarget.id);
+      const error = await writeChargeRow(String(tariffTarget.id), {
+        description: tariffDesc.trim() || tariffTarget.description,
+        qty: nights,
+        rate: newRate,
+        gst_rate: gstR,
+        charged_on: tariffDate || null,
+      }, tariffReason.trim() || "Room tariff corrected");
       if (error) { toastError(error); return; }
       // Keep the source segment in sync so the seed/self-heal path in load()
       // doesn't re-post the old rate.
