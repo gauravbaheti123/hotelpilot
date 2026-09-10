@@ -58,7 +58,7 @@ function Page() {
         `).eq("property_id", propertyId)
           .gte("paid_at", `${from}T00:00:00`).lte("paid_at", `${to}T23:59:59`)
           .order("paid_at", { ascending: true });
-        if (mode !== "all") q = q.eq("mode", mode);
+        if (mode !== "all") q = q.ilike("mode", mode);
         if (staff !== "all") q = q.eq("created_by", staff);
         return q.range(f, t);
       }),
