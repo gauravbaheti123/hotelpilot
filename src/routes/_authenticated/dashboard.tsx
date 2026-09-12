@@ -1816,7 +1816,7 @@ function RoomStatusModal({
         if (__qe5) reportQueryError("rooms", __qe5);
         const propertyId = (rRow as any)?.property_id;
         if (propertyId) {
-          await supabase.from("housekeeping_tasks").insert({
+          const { error: __hkErr } = await supabase.from("housekeeping_tasks").insert({
             property_id: propertyId,
             room_id: room.id,
             task_type: log.task_type,
@@ -1825,6 +1825,10 @@ function RoomStatusModal({
             notes: notes || null,
             completed_at: new Date().toISOString(),
           } as any);
+          // Never swallow this: a failed insert means the cleaning history is
+          // silently lost even though the room status changed.
+          if (__hkErr) throw __hkErr;
+
         }
       }
       toast.success(`Room ${room.room_number} ${successLabel}`);

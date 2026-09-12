@@ -81,13 +81,21 @@ export function categoriseCharge(
 
 /** Build the folio_charge_id -> outlet-name map from restaurant_direct_charges rows. */
 export function buildOutletMap(
-  rows: Array<{ folio_charge_id?: string | null; description?: string | null; restaurant_outlets?: { name?: string | null } | null }>,
+  rows: Array<{
+    folio_charge_id?: string | null;
+    description?: string | null;
+    /** Flattened outlet name (some callers pre-map the join). */
+    outlet_name?: string | null;
+    restaurant_outlets?: { name?: string | null } | null;
+  }>,
 ): Map<string, string> {
   const map = new Map<string, string>();
   for (const r of rows) {
     if (!r.folio_charge_id) continue;
-    const name = r.restaurant_outlets?.name ?? outletFromDescription(r.description) ?? "";
+    const name =
+      r.restaurant_outlets?.name ?? r.outlet_name ?? outletFromDescription(r.description) ?? "";
     if (name) map.set(String(r.folio_charge_id), titleise(name));
   }
   return map;
 }
+
