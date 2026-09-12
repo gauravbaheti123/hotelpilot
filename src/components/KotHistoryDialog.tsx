@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Printer, Pencil, Trash2, Plus, Minus } from "lucide-react";
 import { inr } from "@/lib/billing";
+import { recalcSegmentBillTotals } from "@/lib/segmentBill";
+
 import { useAuth, hasRole } from "@/hooks/use-auth";
 import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
