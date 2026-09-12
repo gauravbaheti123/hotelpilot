@@ -768,6 +768,95 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
         </Card>
       )}
 
+      {/* Read-only bill view (Food/Laundry) — opened by clicking a row or the eye icon */}
+      <Dialog open={!!viewBill} onOpenChange={(o) => { if (!o) setViewBill(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 flex-wrap">
+              {viewBill ? segmentBillNo(viewBill.bill_number) : "Bill"}
+              {viewBill?.is_complimentary ? (
+                <Badge variant="outline" className="uppercase text-[10px] border-emerald-500 text-emerald-600">Complimentary</Badge>
+              ) : viewBill ? (
+                <Badge variant="outline" className="uppercase text-[10px]">{viewBill.status}</Badge>
+              ) : null}
+              {viewBill && <Badge variant="outline" className="text-[10px] uppercase">{viewBill.segment}</Badge>}
+              {viewBill?.is_walkin && <Badge variant="outline" className="text-[10px]">Walk-in</Badge>}
+            </DialogTitle>
+          </DialogHeader>
+          {viewBill && (
+            <div className="space-y-3 text-sm">
+              <div className="text-muted-foreground text-xs">
+                {viewBill.guest_name ?? "Walk-in Guest"}
+                {viewRoom ? ` · Room ${viewRoom}` : ""}
+                {" · "}{new Date(viewBill.settled_at ?? viewBill.created_at).toLocaleString("en-IN", { hour12: false })}
+                {viewBill.is_complimentary && viewBill.complimentary_reason ? ` · ${viewBill.complimentary_reason}` : ""}
+              </div>
+              {viewLoading ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">Loading items…</p>
+              ) : viewItems.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">No items on this bill.</p>
+              ) : (
+                <div className="border rounded-md overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left px-2 py-1.5 font-medium">Item</th>
+                        <th className="text-right px-2 py-1.5 font-medium">Qty</th>
+                        <th className="text-right px-2 py-1.5 font-medium">Rate</th>
+                        <th className="text-right px-2 py-1.5 font-medium">Amount</th>
+                        <th className="text-right px-2 py-1.5 font-medium">GST</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {viewItems.map((it, i) => (
+                        <tr key={i}>
+                          <td className="px-2 py-1.5">{it.description}</td>
+                          <td className="px-2 py-1.5 text-right">{it.qty}</td>
+                          <td className="px-2 py-1.5 text-right">{inr(Number(it.rate))}</td>
+                          <td className="px-2 py-1.5 text-right">{inr(Number(it.amount))}</td>
+                          <td className="px-2 py-1.5 text-right text-muted-foreground">
+                            {inr(Number(it.gst_amount))}{Number(it.gst_rate) > 0 ? ` (${it.gst_rate}%)` : ""}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {(() => {
+                const sub = viewItems.reduce((s, i) => s + Number(i.amount || 0), 0);
+                const gst = viewItems.reduce((s, i) => s + Number(i.gst_amount || 0), 0);
+                const onRoomBill = !viewBill.is_walkin && !!viewBill.booking_id;
+                const balance = viewBill.is_complimentary
+                  ? 0
+                  : Math.max(0, Number(viewBill.total_amount || 0) - Number(viewBill.paid_amount || 0));
+                return (
+                  <div className="space-y-1 text-xs border-t pt-2">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{inr(sub)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">GST</span><span>{inr(gst)}</span></div>
+                    <div className="flex justify-between font-medium text-sm"><span>Total</span><span>{inr(Number(viewBill.total_amount))}</span></div>
+                    {!viewBill.is_complimentary && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Balance</span>
+                        <span>{onRoomBill ? "On room bill" : inr(balance)}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewBill(null)}>Close</Button>
+            {viewBill && (
+              <Button onClick={() => printSegBill(viewBill)}>
+                <Printer className="h-4 w-4 mr-1" /> Print bill
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <SegmentBillEditDialog
         bill={segEditTarget}
         propertyId={propertyId}
