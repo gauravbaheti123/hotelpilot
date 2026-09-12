@@ -2108,12 +2108,30 @@ function FolioPage() {
   const provisionalRef = `Ref: ${booking.booking_number} (provisional)`;
   const propAddrLine = [property?.address, property?.city, property?.state, property?.pincode]
     .filter(Boolean).join(", ");
-  const nights = booking.booking_rooms.reduce((acc, br) => {
-    const n = Math.max(1, Math.round(
-      (new Date(br.check_out).getTime() - new Date(br.check_in).getTime()) / 86400000,
-    ));
-    return Math.max(acc, n);
-  }, 1);
+  // Duration = nights actually stayed. Night-split stays (one row per night)
+  // and room shifts used to make the longest single segment win, which printed
+  // a far too short night count. Count distinct night dates instead.
+  const nights = (() => {
+    const addSpan = (ci?: string | null, co?: string | null, into?: Set<string>) => {
+      if (!ci || !co || !into) return;
+      const start = String(ci).slice(0, 10);
+      const end = String(co).slice(0, 10);
+      let cur = start;
+      let guard = 0;
+      while (cur < end && guard++ < 800) {
+        into.add(cur);
+        cur = istAddDays(cur, 1);
+      }
+    };
+    const rows = booking.booking_rooms ?? [];
+    const usable = rows.filter((br: any) => br.status !== "shifted");
+    const pool = usable.length > 0 ? usable : rows;
+    const set = new Set<string>();
+    pool.forEach((br: any) => addSpan(br.check_in, br.check_out, set));
+    if (set.size === 0) addSpan(booking.check_in, booking.check_out, set);
+    return Math.max(1, set.size);
+  })();
+
 
   // Group charges
   const groups: Record<string, Charge[]> = { room: [], food: [], sundry: [], extra: [], discount: [] };
