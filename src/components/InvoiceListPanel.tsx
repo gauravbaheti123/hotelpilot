@@ -143,6 +143,43 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
   // Phase 62 — owner Edit / Delete on Food & Laundry bills
   const [segEditTarget, setSegEditTarget] = useState<SegmentBillTarget | null>(null);
   const [segDelTarget, setSegDelTarget] = useState<SegmentBillTarget | null>(null);
+  // Read-only "View bill" dialog (Food/Laundry rows)
+  const [viewBill, setViewBill] = useState<{
+    id: string; bill_number: string; segment: string; status: string;
+    total_amount: number; paid_amount: number;
+    is_walkin: boolean; guest_name: string | null; room_id: string | null;
+    booking_id: string | null; created_at: string; settled_at?: string | null;
+    is_complimentary?: boolean | null; complimentary_reason?: string | null;
+  } | null>(null);
+  const [viewItems, setViewItems] = useState<Array<{
+    description: string; qty: number; rate: number; amount: number;
+    gst_rate: number; gst_amount: number;
+  }>>([]);
+  const [viewRoom, setViewRoom] = useState<string | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
+
+  async function openViewBill(r: (typeof segRows)[number]) {
+    setViewBill(r);
+    setViewItems([]);
+    setViewRoom(null);
+    setViewLoading(true);
+    try {
+      const [{ data: items, error: e1 }, { data: room, error: e2 }] = await Promise.all([
+        supabase.from("segment_bill_items" as any)
+          .select("description,qty,rate,amount,gst_rate,gst_amount")
+          .eq("segment_bill_id", r.id),
+        r.room_id
+          ? supabase.from("rooms").select("room_number").eq("id", r.room_id).maybeSingle()
+          : Promise.resolve({ data: null as any, error: null }),
+      ]);
+      if (e1) { reportQueryError("bill items", e1); }
+      if (e2) { reportQueryError("room", e2); }
+      setViewItems((items ?? []) as any[]);
+      setViewRoom((room as any)?.room_number ?? null);
+    } finally {
+      setViewLoading(false);
+    }
+  }
   // Audit rows for BILL_DELETED / BILL_NUMBER_EDITED
   const [auditRows, setAuditRows] = useState<Array<{
     id: string; created_at: string; user_name: string | null;
