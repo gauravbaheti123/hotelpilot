@@ -743,7 +743,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                             status: r.status, total_amount: Number(r.total_amount),
                             paid_amount: Number(r.paid_amount), folio_id: r.folio_id,
                             booking_id: r.booking_id,
-                          })}>
+                          })}}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                         )}
@@ -755,7 +755,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                             status: r.status, total_amount: Number(r.total_amount),
                             paid_amount: Number(r.paid_amount), folio_id: r.folio_id,
                             booking_id: r.booking_id,
-                          })}>
+                          })}}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                         )}
