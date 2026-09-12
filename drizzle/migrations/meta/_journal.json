@@ -15,6 +15,13 @@
       "when": 1789203770208,
       "tag": "0001_fix_has_permission_arg_count_in_owner_update_folio_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789204803650,
+      "tag": "0002_auto_void_empty_segment_bills",
+      "breakpoints": true
     }
   ]
 }
