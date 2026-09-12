@@ -683,8 +683,9 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                     <div className="text-right shrink-0">
                       <div className="text-sm font-medium">{inr(r.total_amount)}</div>
                       <div className="text-xs text-muted-foreground">
-                        {isComp ? "No charge" : `Bal ${inr(balance)}`}
+                        {isComp ? "No charge" : onRoomBill ? "On room bill" : `Bal ${inr(balance)}`}
                       </div>
+
                     </div>
                     <Button size="sm" variant="ghost" title="Print bill" onClick={() => printSegBill(r)}>
                       <Printer className="h-4 w-4" />
