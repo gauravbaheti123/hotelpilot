@@ -8,6 +8,13 @@
       "when": 1789190103399,
       "tag": "0000_fix_segment_bill_total_includes_gst",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789203770208,
+      "tag": "0001_fix_has_permission_arg_count_in_owner_update_folio_functions",
+      "breakpoints": true
     }
   ]
 }
