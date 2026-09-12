@@ -36,7 +36,7 @@ export async function recalcSegmentBillTotals(billId: string): Promise<SegmentBi
   if (rows.length === 0) {
     const { data: bill, error: bErr } = await supabase
       .from("segment_bills" as any)
-      .select("id,status,folio_id,paid_amount")
+      .select("id,status,folio_id,paid_amount,bill_number,property_id")
       .eq("id", billId)
       .maybeSingle();
     if (bErr) throw bErr;
@@ -46,6 +46,8 @@ export async function recalcSegmentBillTotals(billId: string): Promise<SegmentBi
 
     if (deletable) {
       const folioId = (bill as any)?.folio_id as string | null;
+      const billNumber = String((bill as any)?.bill_number ?? "");
+      const propertyId = (bill as any)?.property_id as string | null;
       // Drop any folio postings this bill made before removing it.
       const { error: fcErr } = await supabase
         .from("folio_charges" as any)
@@ -59,6 +61,22 @@ export async function recalcSegmentBillTotals(billId: string): Promise<SegmentBi
         .delete()
         .eq("id", billId);
       if (dErr) throw dErr;
+
+      // Rewind the numbering counter when the deleted bill was the latest in
+      // its series, so the next bill reuses the freed number and staff never
+      // see a skipped bill number. If a newer bill already exists we leave
+      // the counter alone to avoid handing out a duplicate number.
+      const m = billNumber.match(/^(.*?)(\d+)$/);
+      if (m && propertyId) {
+        const prefix = m[1];
+        const num = parseInt(m[2], 10);
+        await supabase
+          .from("bill_sequences" as any)
+          .update({ last_number: num - 1 })
+          .eq("property_id", propertyId)
+          .eq("prefix", prefix)
+          .eq("last_number", num);
+      }
 
       if (folioId) {
         await supabase.rpc("recompute_folio_totals" as any, { _folio_id: folioId } as any);
