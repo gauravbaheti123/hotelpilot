@@ -58,6 +58,8 @@ import {
   type InvoiceProperty,
 } from "@/lib/invoiceTemplates";
 import { invoiceDateLabel } from "@/lib/invoiceDate";
+import { istAddDays } from "@/lib/date";
+
 import { printIsolated, withPrintStyles } from "@/lib/printStyles";
 
 import { RequirePermission } from "@/components/RequirePermission";
