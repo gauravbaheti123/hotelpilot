@@ -19,7 +19,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { toast } from "sonner";
 import { toastWithUndo } from "@/lib/undoToast";
-import { Pencil, Trash2, FileSpreadsheet, Hash, AlertTriangle, Wallet } from "lucide-react";
+import { Pencil, Trash2, FileSpreadsheet, Hash, AlertTriangle, Wallet, Eye } from "lucide-react";
 import { ChangePaymentModeDialog, type ChangePaymentModeFolio } from "@/components/ChangePaymentModeDialog";
 import { Printer } from "lucide-react";
 import { printSegmentBill } from "@/components/PunchChargeDialog";
