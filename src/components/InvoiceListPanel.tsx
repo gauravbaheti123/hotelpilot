@@ -694,7 +694,9 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                   : Math.max(0, Number(r.total_amount || 0) - Number(r.paid_amount || 0));
 
                 return (
-                  <div key={r.id} className="flex items-center gap-3 px-4 py-3">
+                  <div key={r.id}
+                    className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50"
+                    onClick={() => openViewBill(r)}>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
                         <div className="font-medium text-sm break-all">{segmentBillNo(r.bill_number)}</div>
