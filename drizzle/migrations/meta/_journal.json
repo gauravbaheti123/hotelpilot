@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789190103399,
+      "tag": "0000_fix_segment_bill_total_includes_gst",
+      "breakpoints": true
+    }
+  ]
+}
