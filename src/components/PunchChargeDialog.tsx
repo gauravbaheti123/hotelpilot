@@ -12,6 +12,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Trash2, Plus, Printer, Check, ChevronsUpDown, Gift } from "lucide-react";
 import { inr } from "@/lib/billing";
+import { recalcSegmentBillTotals } from "@/lib/segmentBill";
+
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useAuth } from "@/hooks/use-auth";
 import { ItemPickerCombobox, type PickerItem } from "@/components/ItemPickerCombobox";
