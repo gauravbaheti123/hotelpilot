@@ -648,9 +648,14 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                 (r.guest_name ?? "").toLowerCase().includes(q.toLowerCase()))
             ).map((r) => {
               const isComp = !!r.is_complimentary;
+                // Room guests pay their food/laundry through the room folio, so
+                // the segment bill's own paid_amount stays 0 — showing a
+                // "balance" there is misleading.
+                const onRoomBill = !r.is_walkin && !!r.booking_id;
                 const balance = isComp
                   ? 0
                   : Math.max(0, Number(r.total_amount || 0) - Number(r.paid_amount || 0));
+
                 return (
                   <div key={r.id} className="flex items-center gap-3 px-4 py-3">
                     <div className="flex-1 min-w-0">
