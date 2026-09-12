@@ -726,14 +726,19 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                       </div>
 
                     </div>
-                    <Button size="sm" variant="ghost" title="Print bill" onClick={() => printSegBill(r)}>
+                    <Button size="sm" variant="ghost" title="View bill"
+                      onClick={(e) => { e.stopPropagation(); openViewBill(r); }}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" title="Print bill"
+                      onClick={(e) => { e.stopPropagation(); printSegBill(r); }}>
                       <Printer className="h-4 w-4" />
                     </Button>
                     {(canEdit || canDelete) && (
                       <>
                         {canEdit && (
                         <Button size="sm" variant="ghost" title="Edit bill"
-                          onClick={() => setSegEditTarget({
+                          onClick={(e) => { e.stopPropagation(); setSegEditTarget({
                             id: r.id, bill_number: r.bill_number, segment: r.segment,
                             status: r.status, total_amount: Number(r.total_amount),
                             paid_amount: Number(r.paid_amount), folio_id: r.folio_id,
