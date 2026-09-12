@@ -19,7 +19,7 @@ import { usePermissions } from "@/hooks/use-permissions";
 import { logActivity, userDisplayName } from "@/lib/activityLog";
 import { toast } from "sonner";
 import { toastWithUndo } from "@/lib/undoToast";
-import { Pencil, Trash2, FileSpreadsheet, Hash, AlertTriangle, Wallet } from "lucide-react";
+import { Pencil, Trash2, FileSpreadsheet, Hash, AlertTriangle, Wallet, Eye } from "lucide-react";
 import { ChangePaymentModeDialog, type ChangePaymentModeFolio } from "@/components/ChangePaymentModeDialog";
 import { Printer } from "lucide-react";
 import { printSegmentBill } from "@/components/PunchChargeDialog";
@@ -143,6 +143,43 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
   // Phase 62 — owner Edit / Delete on Food & Laundry bills
   const [segEditTarget, setSegEditTarget] = useState<SegmentBillTarget | null>(null);
   const [segDelTarget, setSegDelTarget] = useState<SegmentBillTarget | null>(null);
+  // Read-only "View bill" dialog (Food/Laundry rows)
+  const [viewBill, setViewBill] = useState<{
+    id: string; bill_number: string; segment: string; status: string;
+    total_amount: number; paid_amount: number;
+    is_walkin: boolean; guest_name: string | null; room_id: string | null;
+    booking_id: string | null; created_at: string; settled_at?: string | null;
+    is_complimentary?: boolean | null; complimentary_reason?: string | null;
+  } | null>(null);
+  const [viewItems, setViewItems] = useState<Array<{
+    description: string; qty: number; rate: number; amount: number;
+    gst_rate: number; gst_amount: number;
+  }>>([]);
+  const [viewRoom, setViewRoom] = useState<string | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
+
+  async function openViewBill(r: (typeof segRows)[number]) {
+    setViewBill(r);
+    setViewItems([]);
+    setViewRoom(null);
+    setViewLoading(true);
+    try {
+      const [{ data: items, error: e1 }, { data: room, error: e2 }] = await Promise.all([
+        supabase.from("segment_bill_items" as any)
+          .select("description,qty,rate,amount,gst_rate,gst_amount")
+          .eq("segment_bill_id", r.id),
+        r.room_id
+          ? supabase.from("rooms").select("room_number").eq("id", r.room_id).maybeSingle()
+          : Promise.resolve({ data: null as any, error: null }),
+      ]);
+      if (e1) { reportQueryError("bill items", e1); }
+      if (e2) { reportQueryError("room", e2); }
+      setViewItems((items ?? []) as any[]);
+      setViewRoom((room as any)?.room_number ?? null);
+    } finally {
+      setViewLoading(false);
+    }
+  }
   // Audit rows for BILL_DELETED / BILL_NUMBER_EDITED
   const [auditRows, setAuditRows] = useState<Array<{
     id: string; created_at: string; user_name: string | null;
@@ -657,7 +694,9 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                   : Math.max(0, Number(r.total_amount || 0) - Number(r.paid_amount || 0));
 
                 return (
-                  <div key={r.id} className="flex items-center gap-3 px-4 py-3">
+                  <div key={r.id}
+                    className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50"
+                    onClick={() => openViewBill(r)}>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
                         <div className="font-medium text-sm break-all">{segmentBillNo(r.bill_number)}</div>
@@ -687,31 +726,36 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                       </div>
 
                     </div>
-                    <Button size="sm" variant="ghost" title="Print bill" onClick={() => printSegBill(r)}>
+                    <Button size="sm" variant="ghost" title="View bill"
+                      onClick={(e) => { e.stopPropagation(); openViewBill(r); }}>
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" title="Print bill"
+                      onClick={(e) => { e.stopPropagation(); printSegBill(r); }}>
                       <Printer className="h-4 w-4" />
                     </Button>
                     {(canEdit || canDelete) && (
                       <>
                         {canEdit && (
                         <Button size="sm" variant="ghost" title="Edit bill"
-                          onClick={() => setSegEditTarget({
+                          onClick={(e) => { e.stopPropagation(); setSegEditTarget({
                             id: r.id, bill_number: r.bill_number, segment: r.segment,
                             status: r.status, total_amount: Number(r.total_amount),
                             paid_amount: Number(r.paid_amount), folio_id: r.folio_id,
                             booking_id: r.booking_id,
-                          })}>
+                          })}}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                         )}
                         {canDelete && (
                         <Button size="sm" variant="ghost" title="Delete bill"
                           className="text-destructive hover:text-destructive"
-                          onClick={() => setSegDelTarget({
+                          onClick={(e) => { e.stopPropagation(); setSegDelTarget({
                             id: r.id, bill_number: r.bill_number, segment: r.segment,
                             status: r.status, total_amount: Number(r.total_amount),
                             paid_amount: Number(r.paid_amount), folio_id: r.folio_id,
                             booking_id: r.booking_id,
-                          })}>
+                          })}}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                         )}
@@ -723,6 +767,95 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
           </CardContent>
         </Card>
       )}
+
+      {/* Read-only bill view (Food/Laundry) — opened by clicking a row or the eye icon */}
+      <Dialog open={!!viewBill} onOpenChange={(o) => { if (!o) setViewBill(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 flex-wrap">
+              {viewBill ? segmentBillNo(viewBill.bill_number) : "Bill"}
+              {viewBill?.is_complimentary ? (
+                <Badge variant="outline" className="uppercase text-[10px] border-emerald-500 text-emerald-600">Complimentary</Badge>
+              ) : viewBill ? (
+                <Badge variant="outline" className="uppercase text-[10px]">{viewBill.status}</Badge>
+              ) : null}
+              {viewBill && <Badge variant="outline" className="text-[10px] uppercase">{viewBill.segment}</Badge>}
+              {viewBill?.is_walkin && <Badge variant="outline" className="text-[10px]">Walk-in</Badge>}
+            </DialogTitle>
+          </DialogHeader>
+          {viewBill && (
+            <div className="space-y-3 text-sm">
+              <div className="text-muted-foreground text-xs">
+                {viewBill.guest_name ?? "Walk-in Guest"}
+                {viewRoom ? ` · Room ${viewRoom}` : ""}
+                {" · "}{new Date(viewBill.settled_at ?? viewBill.created_at).toLocaleString("en-IN", { hour12: false })}
+                {viewBill.is_complimentary && viewBill.complimentary_reason ? ` · ${viewBill.complimentary_reason}` : ""}
+              </div>
+              {viewLoading ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">Loading items…</p>
+              ) : viewItems.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">No items on this bill.</p>
+              ) : (
+                <div className="border rounded-md overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-left px-2 py-1.5 font-medium">Item</th>
+                        <th className="text-right px-2 py-1.5 font-medium">Qty</th>
+                        <th className="text-right px-2 py-1.5 font-medium">Rate</th>
+                        <th className="text-right px-2 py-1.5 font-medium">Amount</th>
+                        <th className="text-right px-2 py-1.5 font-medium">GST</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {viewItems.map((it, i) => (
+                        <tr key={i}>
+                          <td className="px-2 py-1.5">{it.description}</td>
+                          <td className="px-2 py-1.5 text-right">{it.qty}</td>
+                          <td className="px-2 py-1.5 text-right">{inr(Number(it.rate))}</td>
+                          <td className="px-2 py-1.5 text-right">{inr(Number(it.amount))}</td>
+                          <td className="px-2 py-1.5 text-right text-muted-foreground">
+                            {inr(Number(it.gst_amount))}{Number(it.gst_rate) > 0 ? ` (${it.gst_rate}%)` : ""}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {(() => {
+                const sub = viewItems.reduce((s, i) => s + Number(i.amount || 0), 0);
+                const gst = viewItems.reduce((s, i) => s + Number(i.gst_amount || 0), 0);
+                const onRoomBill = !viewBill.is_walkin && !!viewBill.booking_id;
+                const balance = viewBill.is_complimentary
+                  ? 0
+                  : Math.max(0, Number(viewBill.total_amount || 0) - Number(viewBill.paid_amount || 0));
+                return (
+                  <div className="space-y-1 text-xs border-t pt-2">
+                    <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{inr(sub)}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">GST</span><span>{inr(gst)}</span></div>
+                    <div className="flex justify-between font-medium text-sm"><span>Total</span><span>{inr(Number(viewBill.total_amount))}</span></div>
+                    {!viewBill.is_complimentary && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Balance</span>
+                        <span>{onRoomBill ? "On room bill" : inr(balance)}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewBill(null)}>Close</Button>
+            {viewBill && (
+              <Button onClick={() => printSegBill(viewBill)}>
+                <Printer className="h-4 w-4 mr-1" /> Print bill
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <SegmentBillEditDialog
         bill={segEditTarget}
