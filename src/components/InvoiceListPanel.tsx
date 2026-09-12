@@ -750,7 +750,7 @@ export function InvoiceListPanel({ seg: segParam, bill: billParam, pullToRefresh
                         {canDelete && (
                         <Button size="sm" variant="ghost" title="Delete bill"
                           className="text-destructive hover:text-destructive"
-                          onClick={() => setSegDelTarget({
+                          onClick={(e) => { e.stopPropagation(); setSegDelTarget({
                             id: r.id, bill_number: r.bill_number, segment: r.segment,
                             status: r.status, total_amount: Number(r.total_amount),
                             paid_amount: Number(r.paid_amount), folio_id: r.folio_id,
