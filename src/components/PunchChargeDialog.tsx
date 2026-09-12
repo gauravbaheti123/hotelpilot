@@ -12,6 +12,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Trash2, Plus, Printer, Check, ChevronsUpDown, Gift } from "lucide-react";
 import { inr } from "@/lib/billing";
+import { recalcSegmentBillTotals } from "@/lib/segmentBill";
+
 import { usePaymentMethods, formatPaymentMethodLabel } from "@/hooks/use-payment-methods";
 import { useAuth } from "@/hooks/use-auth";
 import { ItemPickerCombobox, type PickerItem } from "@/components/ItemPickerCombobox";
@@ -353,21 +355,9 @@ export function PunchChargeDialog({
   }
 
   async function recalcBillTotals(billId: string) {
-    const { data: items, error } = await supabase
-      .from("segment_bill_items" as any)
-      .select("amount,gst_amount")
-      .eq("segment_bill_id", billId);
-    if (error) throw error;
-    const sub = (items ?? []).reduce((s: number, i: any) => s + Number(i.amount || 0), 0);
-    const gst = (items ?? []).reduce((s: number, i: any) => s + Number(i.gst_amount || 0), 0);
-    const total = Math.round((sub + gst) * 100) / 100;
-    const { error: uErr } = await supabase
-      .from("segment_bills" as any)
-      .update({ total_amount: total, gst_amount: Math.round(gst * 100) / 100 })
-      .eq("id", billId);
-    if (uErr) throw uErr;
-    return { sub: Math.round(sub * 100) / 100, gst: Math.round(gst * 100) / 100, total };
+    return await recalcSegmentBillTotals(billId);
   }
+
 
   /** Append the currently punched lines to today's consolidated bill. */
   async function appendToTodayBill(clean: Line[]) {
