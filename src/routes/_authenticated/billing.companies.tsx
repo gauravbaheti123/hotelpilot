@@ -3,7 +3,7 @@ import { CrudPage, FieldDef, ColumnDef } from "@/components/master/CrudPage";
 import { Badge } from "@/components/ui/badge";
 import { RequirePermission } from "@/components/RequirePermission";
 import { isValidOrEmptyGSTIN } from "@/lib/gstin";
-import { INDIAN_STATES } from "@/lib/indiaGeo";
+import { CityInput, StateSelect } from "@/components/AddressFields";
 import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { toast } from "sonner";
