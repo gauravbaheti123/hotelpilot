@@ -182,8 +182,9 @@ export const RELATION_OPTIONS = [
 
 export const WIZARD_DRAFT_KEY = "front-desk-new-wizard";
 
-export const DEFAULT_CITY = "Latur";
-export const DEFAULT_STATE = "Maharashtra";
+// No pre-filled city/state — staff enter the guest's real city each time.
+export const DEFAULT_CITY = "";
+export const DEFAULT_STATE = "";
 
 export function emptyGuest(): WizardGuest {
   return {
