@@ -6482,6 +6482,10 @@ export type Database = {
         Returns: Json
       }
       check_login_allowed: { Args: { _email: string }; Returns: Json }
+      cleanup_empty_segment_bill: {
+        Args: { _bill_id: string }
+        Returns: boolean
+      }
       complete_checkout: {
         Args: { _booking_id: string; _due_reason?: string; _mark_due?: boolean }
         Returns: Json
