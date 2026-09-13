@@ -3,7 +3,7 @@ import { CrudPage, FieldDef, ColumnDef } from "@/components/master/CrudPage";
 import { Badge } from "@/components/ui/badge";
 import { RequirePermission } from "@/components/RequirePermission";
 import { isValidOrEmptyGSTIN } from "@/lib/gstin";
-import { INDIAN_STATES } from "@/lib/indiaGeo";
+import { CityInput, StateSelect } from "@/components/AddressFields";
 import { BulkCsvButtons } from "@/components/master/BulkCsvButtons";
 import { useCurrentProperty } from "@/hooks/use-property";
 import { toast } from "sonner";
@@ -53,12 +53,17 @@ const fields: FieldDef[] = [
   { name: "phone", label: "Phone", type: "text" },
   { name: "email", label: "Email", type: "text" },
   { name: "address", label: "Address Line", type: "textarea", colSpan: 2 },
-  { name: "city", label: "City", type: "text" },
+  {
+    name: "city",
+    label: "City",
+    type: "custom",
+    render: (v, set) => <CityInput value={v ?? ""} onChange={set} />,
+  },
   {
     name: "state",
     label: "State (decides CGST+SGST vs IGST)",
-    type: "select",
-    options: INDIAN_STATES.map((s) => ({ value: s, label: s })),
+    type: "custom",
+    render: (v, set) => <StateSelect value={v ?? ""} onChange={set} />,
   },
   { name: "nation", label: "Nation", type: "text", defaultValue: "India" },
   { name: "is_active", label: "Active", type: "switch", defaultValue: true },
