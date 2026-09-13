@@ -55,7 +55,8 @@ export type FieldType =
   | "textarea"
   | "switch"
   | "select"
-  | "date";
+  | "date"
+  | "custom";
 
 export interface FieldDef {
   name: string;
@@ -67,6 +68,8 @@ export interface FieldDef {
   colSpan?: 1 | 2;
   /** Opt-in Title Casing on blur (name/address-type fields only). */
   titleCase?: boolean;
+  /** Custom control (type: "custom") — receives the current value and a setter. */
+  render?: (value: any, set: (v: any) => void, row: Record<string, any>) => ReactNode;
 }
 
 export interface ColumnDef<T> {
