@@ -34,56 +34,20 @@ export async function recalcSegmentBillTotals(billId: string): Promise<SegmentBi
   const total = Math.round((sub + gst) * 100) / 100;
 
   if (rows.length === 0) {
-    const { data: bill, error: bErr } = await supabase
-      .from("segment_bills" as any)
-      .select("id,status,folio_id,paid_amount,bill_number,property_id")
-      .eq("id", billId)
-      .maybeSingle();
-    if (bErr) throw bErr;
-    const status = String((bill as any)?.status ?? "");
-    const paid = Number((bill as any)?.paid_amount ?? 0);
-    const deletable = !!bill && status === "open" && paid <= 0;
-
-    if (deletable) {
-      const folioId = (bill as any)?.folio_id as string | null;
-      const billNumber = String((bill as any)?.bill_number ?? "");
-      const propertyId = (bill as any)?.property_id as string | null;
-      // Drop any folio postings this bill made before removing it.
-      const { error: fcErr } = await supabase
-        .from("folio_charges" as any)
-        .delete()
-        .eq("source_table", "segment_bills")
-        .eq("source_id", billId);
-      if (fcErr) throw fcErr;
-
-      const { error: dErr } = await supabase
-        .from("segment_bills" as any)
-        .delete()
-        .eq("id", billId);
-      if (dErr) throw dErr;
-
-      // Rewind the numbering counter when the deleted bill was the latest in
-      // its series, so the next bill reuses the freed number and staff never
-      // see a skipped bill number. If a newer bill already exists we leave
-      // the counter alone to avoid handing out a duplicate number.
-      const m = billNumber.match(/^(.*?)(\d+)$/);
-      if (m && propertyId) {
-        const prefix = m[1];
-        const num = parseInt(m[2], 10);
-        await supabase
-          .from("bill_sequences" as any)
-          .update({ last_number: num - 1 })
-          .eq("property_id", propertyId)
-          .eq("prefix", prefix)
-          .eq("last_number", num);
-      }
-
-      if (folioId) {
-        await supabase.rpc("recompute_folio_totals" as any, { _folio_id: folioId } as any);
-      }
+    // Server-side cleanup: RLS forbids client DELETE on segment_bills and any
+    // UPDATE on bill_sequences, so an emptied bill is removed (and its freed
+    // number rewound) through a security-definer RPC instead.
+    const { data: removed, error: cErr } = await supabase.rpc(
+      "cleanup_empty_segment_bill" as any,
+      { _bill_id: billId } as any,
+    );
+    if (cErr) throw cErr;
+    if (removed === true) {
       return { sub: 0, gst: 0, total: 0, itemCount: 0, billDeleted: true };
     }
+    // Not deletable (settled/paid) — fall through and refresh the header to 0.
   }
+
 
   const { error: uErr } = await supabase
     .from("segment_bills" as any)
