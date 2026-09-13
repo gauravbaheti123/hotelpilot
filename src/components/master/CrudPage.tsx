@@ -479,6 +479,9 @@ function renderField(
   const v = editing[f.name];
   const set = (val: any) => setEditing({ ...editing, [f.name]: val });
 
+  if (f.type === "custom" && f.render) {
+    return <>{f.render(v, set, editing)}</>;
+  }
   if (f.type === "textarea") {
     return <Textarea rows={2} value={v ?? ""} onChange={(e) => set(e.target.value)} />;
   }
