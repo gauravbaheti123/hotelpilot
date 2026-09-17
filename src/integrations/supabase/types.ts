@@ -376,6 +376,36 @@ export type Database = {
           },
         ]
       }
+      bill_number_pool: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          id: string
+          number: number
+          property_id: string
+          released_from_folio_id: string | null
+          sequence_type: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+          number: number
+          property_id: string
+          released_from_folio_id?: string | null
+          sequence_type: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+          number?: number
+          property_id?: string
+          released_from_folio_id?: string | null
+          sequence_type?: string
+        }
+        Relationships: []
+      }
       bill_sequences: {
         Row: {
           created_at: string

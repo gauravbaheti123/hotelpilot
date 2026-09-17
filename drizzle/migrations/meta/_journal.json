@@ -29,6 +29,13 @@
       "when": 1789262091123,
       "tag": "0003_cleanup_empty_segment_bill_rpc",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789628772970,
+      "tag": "0004_bill_number_pool_reuse",
+      "breakpoints": true
     }
   ]
 }
