@@ -2125,11 +2125,33 @@ function FolioPage() {
         cur = istAddDays(cur, 1);
       }
     };
+    // 1) Nights actually billed. A stay that was extended without stretching
+    //    the stored room dates only shows up here, so this wins.
+    const billed = new Set<string>();
+    charges.forEach((c) => {
+      if (c.charge_type !== "room") return;
+      const day = String(c.charged_on ?? "").slice(0, 10);
+      if (!day) return;
+      const q = Math.max(1, Math.round(Number(c.qty ?? 1) || 1));
+      let cur = day;
+      for (let i = 0; i < q && i < 800; i++) {
+        billed.add(cur);
+        cur = istAddDays(cur, 1);
+      }
+    });
+    if (billed.size > 0) return billed.size;
+    // 2) Stored room segments (ignoring rows already shifted away).
     const rows = booking.booking_rooms ?? [];
     const usable = rows.filter((br: any) => br.status !== "shifted");
     const pool = usable.length > 0 ? usable : rows;
     const set = new Set<string>();
     pool.forEach((br: any) => addSpan(br.check_in, br.check_out, set));
+    // 3) Actual arrival → departure, then the booking's own dates.
+    if (set.size === 0) {
+      const actualIn = pool.map((br: any) => br.actual_check_in).filter(Boolean).sort()[0];
+      const actualOut = pool.map((br: any) => br.actual_check_out).filter(Boolean).sort().slice(-1)[0];
+      addSpan(actualIn, actualOut, set);
+    }
     if (set.size === 0) addSpan(booking.check_in, booking.check_out, set);
     return Math.max(1, set.size);
   })();
