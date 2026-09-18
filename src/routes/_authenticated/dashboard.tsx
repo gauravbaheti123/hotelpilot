@@ -328,6 +328,23 @@ function OwnerDashboard({
     );
     if (gridErr) {
       console.warn("dashboard_grid rpc failed", gridErr);
+      const code = String((gridErr as any)?.code ?? "");
+      const msg = String((gridErr as any)?.message ?? "");
+      const isAuthLoss =
+        code === "42501" ||
+        code === "PGRST301" ||
+        /permission denied/i.test(msg) ||
+        /jwt|refresh token|not authenticated/i.test(msg);
+      if (isAuthLoss) {
+        const { data: sess } = await supabase.auth.getSession();
+        if (!sess.session) {
+          toast.error("Your session expired. Please sign in again.");
+          try { await supabase.auth.signOut(); } catch { /* ignore */ }
+          if (typeof window !== "undefined") window.location.href = "/login";
+          return;
+        }
+      }
+      reportQueryError("dashboard", gridErr);
       return;
     }
     const grid: any = gridData ?? {};
