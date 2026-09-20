@@ -368,7 +368,7 @@ function FolioPage() {
     setLoading(true);
     const { data: b, error: be } = await supabase
       .from("bookings")
-      .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,checked_out_at,source,ota_partner_name,
+      .select(`id,booking_number,status,check_in,check_out,total_amount,property_id,adults,children,checked_out_at,source,ota_partner_name,billing_company_id,
         guests(id,name,mobile,gst_number,company,address,city,state,state_code,country,id_proof_type,id_proof_number,nationality),
         booking_rooms!booking_rooms_booking_id_fkey(id,rate,status,check_in,check_out,actual_check_in,actual_check_out,rooms!booking_rooms_room_id_fkey(room_number),room_categories(name,gst_rate))`)
       .eq("id", bookingId).single();
@@ -440,6 +440,31 @@ function FolioPage() {
     if (__qp1) reportQueryError("folio", __qp1);
     if (__qp2) reportQueryError("folio charges", __qp2);
     if (__qp3) reportQueryError("payments", __qp3);
+    // Bills created before the folio inherited the booking's Bill-To company
+    // showed "Guest (individual)" with no GSTIN even though the booking had a
+    // company. Repair OPEN bills only — finalised ones keep their printed GST.
+    {
+      const fRow0 = f as any;
+      const bookCoId = (bk as any)?.billing_company_id ?? null;
+      if (
+        fRow0 && bookCoId &&
+        !fRow0.billing_company_id && !fRow0.billing_guest_id &&
+        fRow0.status === "open"
+      ) {
+        const co = ((bcs ?? []) as any[]).find((x) => x.id === bookCoId) ?? null;
+        if (co) {
+          const patch = {
+            billing_company_id: co.id,
+            guest_company: co.name ?? null,
+            guest_gstin: co.gstin ?? null,
+          };
+          const { error: __qeBT } = await supabase
+            .from("folios").update(patch as any).eq("id", fRow0.id);
+          if (__qeBT) reportQueryError("folio bill-to", __qeBT);
+          else Object.assign(fRow0, patch);
+        }
+      }
+    }
     setFolio((f ?? null) as unknown as Folio);
     // Hydrate the Bill-To guest (when the folio bills to another individual).
     const billGuestId = (f as any)?.billing_guest_id ?? null;
