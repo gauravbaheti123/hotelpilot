@@ -1924,12 +1924,21 @@ function RoomStatusModal({
 
         {kind === "vacant" && (
           <div className="grid gap-2">
+            <div className="grid gap-1.5">
+              <Label>Maintenance reason (shows on dashboard card)</Label>
+              <Textarea rows={2} value={maintNote} maxLength={200}
+                onChange={(e) => setMaintNote(e.target.value)}
+                placeholder="e.g. AC not cooling — technician called" />
+            </div>
             <Button variant="outline" disabled={busy}
               onClick={() => update({ status: "vacant", housekeeping_status: "dirty" }, null, "marked as Dirty")}>
               Mark as Dirty
             </Button>
             <Button variant="outline" disabled={busy}
-              onClick={() => update({ status: "maintenance", housekeeping_status: "dirty" }, null, "marked as Maintenance")}>
+              onClick={() => update(
+                { status: "maintenance", housekeeping_status: "dirty", maintenance_note: maintNote.trim() || null },
+                null, "marked as Maintenance",
+              )}>
               Mark as Maintenance
             </Button>
             <Button disabled={busy} onClick={onNewBooking}>New Booking</Button>
