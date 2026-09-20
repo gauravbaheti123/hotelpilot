@@ -4101,6 +4101,45 @@ function FolioPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Post-settle: jump straight to the next unsettled split bill */}
+      <Dialog open={nextBillsOffer !== null} onOpenChange={(o) => { if (!o) setNextBillsOffer(null); }}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Bill settled — {nextBillsOffer?.length ?? 0} more bill(s) pending</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <p className="text-muted-foreground">
+              This booking has unsettled split bills. Open one now, or stay here.
+            </p>
+            <div className="space-y-2">
+              {(nextBillsOffer ?? []).map((s) => {
+                const due = Math.max(0, Number(s.total_amount ?? 0) - Number(s.paid_amount ?? 0));
+                return (
+                  <Button
+                    key={s.id}
+                    variant="outline"
+                    className="w-full justify-between"
+                    onClick={() => {
+                      setNextBillsOffer(null);
+                      router.navigate({
+                        to: "/billing/folio/$bookingId",
+                        params: { bookingId },
+                        search: { folio: s.id },
+                      });
+                    }}
+                  >
+                    <span>{billNo(s.invoice_number, "Provisional")}</span>
+                    <span className="font-semibold">Due {inr(due)}</span>
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNextBillsOffer(null)}>Stay here</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
