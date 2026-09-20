@@ -2967,10 +2967,20 @@ function FolioPage() {
                     String(b.actual_check_out ?? "").localeCompare(String(a.actual_check_out ?? "")),
                   )[0] ??
                   rows[0];
-                // Multi-room (bulk) bookings: list every distinct room / category.
-                const allRoomNos = Array.from(
-                  new Set(rows.map((r) => r.rooms?.room_number).filter(Boolean) as string[]),
-                ).join(", ");
+                 // Multi-room (bulk) bookings: list every distinct room / category.
+                 // Rooms the guest shifted out of are shown separately, so the
+                 // "Room" line always names where the guest actually is now.
+                 const activeNos = Array.from(
+                   new Set(pool.map((r) => r.rooms?.room_number).filter(Boolean) as string[]),
+                 );
+                 const shiftedNos = Array.from(
+                   new Set(rows
+                     .filter((r) => r.status === "shifted")
+                     .map((r) => r.rooms?.room_number)
+                     .filter((n): n is string => !!n && !activeNos.includes(n))),
+                 );
+                 const allRoomNos = activeNos.join(", ")
+                   + (shiftedNos.length > 0 ? ` (Shifted from ${shiftedNos.join(", ")})` : "");
                 const allCats = Array.from(
                   new Set(rows.map((r) => r.room_categories?.name).filter(Boolean) as string[]),
                 ).join(", ");
