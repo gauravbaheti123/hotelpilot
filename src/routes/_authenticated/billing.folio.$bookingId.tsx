@@ -2631,6 +2631,40 @@ function FolioPage() {
           </div>
         </div>
 
+        {/* Split-bill switcher: other bills on this booking */}
+        {siblingFolios.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 no-print rounded-md border bg-muted/40 px-3 py-2">
+            <span className="text-xs font-medium text-muted-foreground">Bills on this booking:</span>
+            <Badge variant="secondary" className="text-xs">
+              This bill · {billNo(folio.invoice_number, "Provisional")}
+            </Badge>
+            {siblingFolios.map((s) => {
+              const due = Math.max(0, Number(s.total_amount ?? 0) - Number(s.paid_amount ?? 0));
+              const settled = s.status === "settled" || due <= 0.01;
+              return (
+                <Button
+                  key={s.id}
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() =>
+                    router.navigate({
+                      to: "/billing/folio/$bookingId",
+                      params: { bookingId },
+                      search: { folio: s.id },
+                    })
+                  }
+                >
+                  {billNo(s.invoice_number, "Provisional")}
+                  <span className={`ml-1.5 rounded px-1 py-0.5 text-[10px] font-semibold ${settled ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                    {settled ? "SETTLED" : `DUE ${inr(due)}`}
+                  </span>
+                </Button>
+              );
+            })}
+          </div>
+        )}
+
         {canOwnerInlineEdit && (
           <OwnerInlineEditCard
             propertyId={booking.property_id}
