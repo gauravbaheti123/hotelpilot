@@ -6848,6 +6848,10 @@ export type Database = {
         Args: { _folio_id: string; _payload: Json }
         Returns: Json
       }
+      split_folio_bill_v2: {
+        Args: { _folio_id: string; _payload: Json }
+        Returns: Json
+      }
       split_room_night: {
         Args: { _booking_room_id: string; _new_rate: number; _night: string }
         Returns: string
