@@ -1456,7 +1456,7 @@ function RoomGroups({
 // name and this segment's pending bill amount (₹0 = clean). Tapping opens
 // the Punch Food/Laundry Charge dialog via the parent's onPick.
 function SegmentRoomCard({
-  room, category, segment, occ, pending, onPick, onViewKot, onViewInvoice,
+  room, category, segment, occ, pending, onPick, onViewKot, onViewInvoice, onAddToBill,
 }: {
   room: Room;
   category: string;
@@ -1466,6 +1466,7 @@ function SegmentRoomCard({
   onPick: () => void;
   onViewKot: () => void;
   onViewInvoice: () => void;
+  onAddToBill: () => void;
 }) {
   const amount = pending?.amount ?? 0;
   const hasPending = amount > 0.01;
