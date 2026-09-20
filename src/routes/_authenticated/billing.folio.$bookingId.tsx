@@ -1911,7 +1911,7 @@ function FolioPage() {
     const { data: openSibs, error: __qeOS } = await supabase
       .from("folios")
       .select("id,invoice_number,status,total_amount,paid_amount,balance_amount")
-      .eq("booking_id", folio.booking_id ?? bookingId)
+      .eq("booking_id", bookingId)
       .neq("id", folio.id)
       .eq("is_deleted" as any, false)
       .in("status", ["open", "due"])
