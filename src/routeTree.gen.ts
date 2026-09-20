@@ -56,6 +56,7 @@ import { Route as AuthenticatedReportsPlanWiseRouteImport } from './routes/_auth
 import { Route as AuthenticatedReportsNightAuditRouteImport } from './routes/_authenticated/reports.night-audit'
 import { Route as AuthenticatedReportsMorningRouteImport } from './routes/_authenticated/reports.morning'
 import { Route as AuthenticatedReportsKotActivityRouteImport } from './routes/_authenticated/reports.kot-activity'
+import { Route as AuthenticatedReportsItemSalesRouteImport } from './routes/_authenticated/reports.item-sales'
 import { Route as AuthenticatedReportsGuestWiseRouteImport } from './routes/_authenticated/reports.guest-wise'
 import { Route as AuthenticatedReportsGstRouteImport } from './routes/_authenticated/reports.gst'
 import { Route as AuthenticatedReportsFoodKotRouteImport } from './routes/_authenticated/reports.food-kot'
@@ -65,6 +66,7 @@ import { Route as AuthenticatedReportsDateWiseRevenueRouteImport } from './route
 import { Route as AuthenticatedReportsDailyRouteImport } from './routes/_authenticated/reports.daily'
 import { Route as AuthenticatedReportsCashHandoverRouteImport } from './routes/_authenticated/reports.cash-handover'
 import { Route as AuthenticatedReportsCashCollectionRouteImport } from './routes/_authenticated/reports.cash-collection'
+import { Route as AuthenticatedReportsCancelledRouteImport } from './routes/_authenticated/reports.cancelled'
 import { Route as AuthenticatedReportsBillWiseRouteImport } from './routes/_authenticated/reports.bill-wise'
 import { Route as AuthenticatedReportsBanquetBillingRouteImport } from './routes/_authenticated/reports.banquet-billing'
 import { Route as AuthenticatedReportsBanquetRouteImport } from './routes/_authenticated/reports.banquet'
@@ -383,6 +385,12 @@ const AuthenticatedReportsKotActivityRoute =
     path: '/reports/kot-activity',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedReportsItemSalesRoute =
+  AuthenticatedReportsItemSalesRouteImport.update({
+    id: '/reports/item-sales',
+    path: '/reports/item-sales',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedReportsGuestWiseRoute =
   AuthenticatedReportsGuestWiseRouteImport.update({
     id: '/reports/guest-wise',
@@ -434,6 +442,12 @@ const AuthenticatedReportsCashCollectionRoute =
   AuthenticatedReportsCashCollectionRouteImport.update({
     id: '/reports/cash-collection',
     path: '/reports/cash-collection',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsCancelledRoute =
+  AuthenticatedReportsCancelledRouteImport.update({
+    id: '/reports/cancelled',
+    path: '/reports/cancelled',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedReportsBillWiseRoute =
@@ -831,6 +845,7 @@ export interface FileRoutesByFullPath {
   '/reports/banquet': typeof AuthenticatedReportsBanquetRoute
   '/reports/banquet-billing': typeof AuthenticatedReportsBanquetBillingRoute
   '/reports/bill-wise': typeof AuthenticatedReportsBillWiseRoute
+  '/reports/cancelled': typeof AuthenticatedReportsCancelledRoute
   '/reports/cash-collection': typeof AuthenticatedReportsCashCollectionRoute
   '/reports/cash-handover': typeof AuthenticatedReportsCashHandoverRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
@@ -840,6 +855,7 @@ export interface FileRoutesByFullPath {
   '/reports/food-kot': typeof AuthenticatedReportsFoodKotRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
   '/reports/guest-wise': typeof AuthenticatedReportsGuestWiseRoute
+  '/reports/item-sales': typeof AuthenticatedReportsItemSalesRoute
   '/reports/kot-activity': typeof AuthenticatedReportsKotActivityRoute
   '/reports/morning': typeof AuthenticatedReportsMorningRoute
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
@@ -944,6 +960,7 @@ export interface FileRoutesByTo {
   '/reports/banquet': typeof AuthenticatedReportsBanquetRoute
   '/reports/banquet-billing': typeof AuthenticatedReportsBanquetBillingRoute
   '/reports/bill-wise': typeof AuthenticatedReportsBillWiseRoute
+  '/reports/cancelled': typeof AuthenticatedReportsCancelledRoute
   '/reports/cash-collection': typeof AuthenticatedReportsCashCollectionRoute
   '/reports/cash-handover': typeof AuthenticatedReportsCashHandoverRoute
   '/reports/daily': typeof AuthenticatedReportsDailyRoute
@@ -953,6 +970,7 @@ export interface FileRoutesByTo {
   '/reports/food-kot': typeof AuthenticatedReportsFoodKotRoute
   '/reports/gst': typeof AuthenticatedReportsGstRoute
   '/reports/guest-wise': typeof AuthenticatedReportsGuestWiseRoute
+  '/reports/item-sales': typeof AuthenticatedReportsItemSalesRoute
   '/reports/kot-activity': typeof AuthenticatedReportsKotActivityRoute
   '/reports/morning': typeof AuthenticatedReportsMorningRoute
   '/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
@@ -1059,6 +1077,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/banquet': typeof AuthenticatedReportsBanquetRoute
   '/_authenticated/reports/banquet-billing': typeof AuthenticatedReportsBanquetBillingRoute
   '/_authenticated/reports/bill-wise': typeof AuthenticatedReportsBillWiseRoute
+  '/_authenticated/reports/cancelled': typeof AuthenticatedReportsCancelledRoute
   '/_authenticated/reports/cash-collection': typeof AuthenticatedReportsCashCollectionRoute
   '/_authenticated/reports/cash-handover': typeof AuthenticatedReportsCashHandoverRoute
   '/_authenticated/reports/daily': typeof AuthenticatedReportsDailyRoute
@@ -1068,6 +1087,7 @@ export interface FileRoutesById {
   '/_authenticated/reports/food-kot': typeof AuthenticatedReportsFoodKotRoute
   '/_authenticated/reports/gst': typeof AuthenticatedReportsGstRoute
   '/_authenticated/reports/guest-wise': typeof AuthenticatedReportsGuestWiseRoute
+  '/_authenticated/reports/item-sales': typeof AuthenticatedReportsItemSalesRoute
   '/_authenticated/reports/kot-activity': typeof AuthenticatedReportsKotActivityRoute
   '/_authenticated/reports/morning': typeof AuthenticatedReportsMorningRoute
   '/_authenticated/reports/night-audit': typeof AuthenticatedReportsNightAuditRoute
@@ -1174,6 +1194,7 @@ export interface FileRouteTypes {
     | '/reports/banquet'
     | '/reports/banquet-billing'
     | '/reports/bill-wise'
+    | '/reports/cancelled'
     | '/reports/cash-collection'
     | '/reports/cash-handover'
     | '/reports/daily'
@@ -1183,6 +1204,7 @@ export interface FileRouteTypes {
     | '/reports/food-kot'
     | '/reports/gst'
     | '/reports/guest-wise'
+    | '/reports/item-sales'
     | '/reports/kot-activity'
     | '/reports/morning'
     | '/reports/night-audit'
@@ -1287,6 +1309,7 @@ export interface FileRouteTypes {
     | '/reports/banquet'
     | '/reports/banquet-billing'
     | '/reports/bill-wise'
+    | '/reports/cancelled'
     | '/reports/cash-collection'
     | '/reports/cash-handover'
     | '/reports/daily'
@@ -1296,6 +1319,7 @@ export interface FileRouteTypes {
     | '/reports/food-kot'
     | '/reports/gst'
     | '/reports/guest-wise'
+    | '/reports/item-sales'
     | '/reports/kot-activity'
     | '/reports/morning'
     | '/reports/night-audit'
@@ -1401,6 +1425,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/banquet'
     | '/_authenticated/reports/banquet-billing'
     | '/_authenticated/reports/bill-wise'
+    | '/_authenticated/reports/cancelled'
     | '/_authenticated/reports/cash-collection'
     | '/_authenticated/reports/cash-handover'
     | '/_authenticated/reports/daily'
@@ -1410,6 +1435,7 @@ export interface FileRouteTypes {
     | '/_authenticated/reports/food-kot'
     | '/_authenticated/reports/gst'
     | '/_authenticated/reports/guest-wise'
+    | '/_authenticated/reports/item-sales'
     | '/_authenticated/reports/kot-activity'
     | '/_authenticated/reports/morning'
     | '/_authenticated/reports/night-audit'
@@ -1800,6 +1826,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedReportsKotActivityRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/reports/item-sales': {
+      id: '/_authenticated/reports/item-sales'
+      path: '/reports/item-sales'
+      fullPath: '/reports/item-sales'
+      preLoaderRoute: typeof AuthenticatedReportsItemSalesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/reports/guest-wise': {
       id: '/_authenticated/reports/guest-wise'
       path: '/reports/guest-wise'
@@ -1861,6 +1894,13 @@ declare module '@tanstack/react-router' {
       path: '/reports/cash-collection'
       fullPath: '/reports/cash-collection'
       preLoaderRoute: typeof AuthenticatedReportsCashCollectionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/cancelled': {
+      id: '/_authenticated/reports/cancelled'
+      path: '/reports/cancelled'
+      fullPath: '/reports/cancelled'
+      preLoaderRoute: typeof AuthenticatedReportsCancelledRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/reports/bill-wise': {
@@ -2345,6 +2385,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsBanquetRoute: typeof AuthenticatedReportsBanquetRoute
   AuthenticatedReportsBanquetBillingRoute: typeof AuthenticatedReportsBanquetBillingRoute
   AuthenticatedReportsBillWiseRoute: typeof AuthenticatedReportsBillWiseRoute
+  AuthenticatedReportsCancelledRoute: typeof AuthenticatedReportsCancelledRoute
   AuthenticatedReportsCashCollectionRoute: typeof AuthenticatedReportsCashCollectionRoute
   AuthenticatedReportsCashHandoverRoute: typeof AuthenticatedReportsCashHandoverRoute
   AuthenticatedReportsDailyRoute: typeof AuthenticatedReportsDailyRoute
@@ -2354,6 +2395,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedReportsFoodKotRoute: typeof AuthenticatedReportsFoodKotRoute
   AuthenticatedReportsGstRoute: typeof AuthenticatedReportsGstRoute
   AuthenticatedReportsGuestWiseRoute: typeof AuthenticatedReportsGuestWiseRoute
+  AuthenticatedReportsItemSalesRoute: typeof AuthenticatedReportsItemSalesRoute
   AuthenticatedReportsKotActivityRoute: typeof AuthenticatedReportsKotActivityRoute
   AuthenticatedReportsMorningRoute: typeof AuthenticatedReportsMorningRoute
   AuthenticatedReportsNightAuditRoute: typeof AuthenticatedReportsNightAuditRoute
@@ -2450,6 +2492,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsBanquetBillingRoute:
     AuthenticatedReportsBanquetBillingRoute,
   AuthenticatedReportsBillWiseRoute: AuthenticatedReportsBillWiseRoute,
+  AuthenticatedReportsCancelledRoute: AuthenticatedReportsCancelledRoute,
   AuthenticatedReportsCashCollectionRoute:
     AuthenticatedReportsCashCollectionRoute,
   AuthenticatedReportsCashHandoverRoute: AuthenticatedReportsCashHandoverRoute,
@@ -2461,6 +2504,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedReportsFoodKotRoute: AuthenticatedReportsFoodKotRoute,
   AuthenticatedReportsGstRoute: AuthenticatedReportsGstRoute,
   AuthenticatedReportsGuestWiseRoute: AuthenticatedReportsGuestWiseRoute,
+  AuthenticatedReportsItemSalesRoute: AuthenticatedReportsItemSalesRoute,
   AuthenticatedReportsKotActivityRoute: AuthenticatedReportsKotActivityRoute,
   AuthenticatedReportsMorningRoute: AuthenticatedReportsMorningRoute,
   AuthenticatedReportsNightAuditRoute: AuthenticatedReportsNightAuditRoute,
