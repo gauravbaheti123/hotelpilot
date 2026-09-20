@@ -145,7 +145,16 @@ function InHousePage() {
                           )}
                         </TableCell>
                         <TableCell className="text-sm">
-                          {r.booking_rooms.map((br) => br.rooms?.room_number).filter(Boolean).join(", ") || (
+                          {activeRooms.length > 0 ? (
+                            <>
+                              {activeRooms.join(", ")}
+                              {shiftedFrom.length > 0 && (
+                                <div className="text-xs text-muted-foreground">
+                                  Shifted from {shiftedFrom.join(", ")}
+                                </div>
+                              )}
+                            </>
+                          ) : (
                             <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300 italic">
                               <AlertTriangle className="h-3.5 w-3.5" /> Unassigned
                             </span>

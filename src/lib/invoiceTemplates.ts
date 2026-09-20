@@ -286,7 +286,7 @@ function metaBlock(ctx: InvoiceContext): string {
       <div style="flex:1">
         <div class="small" style="text-transform:uppercase;letter-spacing:1px">Bill To</div>
         <div style="font-weight:600;font-size:13px;margin-top:2px">${billToPrimary}</div>
-        ${hasCompany && billToGstin ? `<div class="small">GSTIN: ${esc(billToGstin)}</div>` : ""}
+        ${billToGstin ? `<div class="small">GSTIN: ${esc(billToGstin)}</div>` : ""}
         ${booking.guests?.address ? `<div class="small">${esc(booking.guests.address)}</div>` : ""}
         ${booking.guests?.mobile ? `<div class="small">${esc(booking.guests.mobile)}</div>` : ""}
         ${booking.guests?.nationality ? `<div class="small">Nationality: ${esc(booking.guests.nationality)}</div>` : ""}
