@@ -611,7 +611,8 @@ function OwnerDashboard({
     return () => { supabase.removeChannel(ch); };
   }, [propertyId, segment]);
 
-  async function addPendingFoodToBill(bookingId: string) {
+  async function addPendingSegmentToBill(bookingId: string, segment: "food" | "laundry") {
+    const segLabel = segment === "food" ? "food" : "laundry";
     try {
       const { data: folioId, error: fErr } = await supabase.rpc("get_or_create_folio", { _booking_id: bookingId });
       if (fErr || !folioId) throw fErr ?? new Error("Folio not created");
@@ -619,10 +620,10 @@ function OwnerDashboard({
         .from("segment_bills" as any)
         .select("id,bill_number")
         .eq("booking_id", bookingId)
-        .eq("segment", "food")
+        .eq("segment", segment)
         .eq("status", "open");
       if (kErr) throw kErr;
-      if (!bills || bills.length === 0) { toast.info("No pending food bills"); return; }
+      if (!bills || bills.length === 0) { toast.info(`No pending ${segLabel} bills`); return; }
       // One locked, idempotent server call per bill — repeat taps can never
       // create duplicate folio charge lines.
       for (const b of bills as any[]) {
@@ -637,7 +638,7 @@ function OwnerDashboard({
         }
       }
 
-      toast.success(`Added ${bills.length} food bill(s) to room bill`);
+      toast.success(`Added ${bills.length} ${segLabel} bill(s) to room bill`);
       reload();
     } catch (e: any) {
       toastError(e, "Failed to add to bill");
@@ -847,6 +848,7 @@ function OwnerDashboard({
                   }
                   setModalRoom(r);
                 }}
+                onAddSegmentToBill={(bid, seg) => { void addPendingSegmentToBill(bid, seg); }}
                 onSegmentAction={async (r, action) => {
                   if (segment === "rooms") return;
                   const seg = segment as "food" | "laundry";
@@ -1077,7 +1079,7 @@ function OwnerDashboard({
                             {r.lastAt ? new Date(r.lastAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "—"}
                           </td>
                           <td className="py-2 pr-3 text-right">
-                            <Button size="sm" onClick={() => addPendingFoodToBill(r.bookingId)}>
+                            <Button size="sm" onClick={() => addPendingSegmentToBill(r.bookingId, "food")}>
                               Add to Bill
                             </Button>
                           </td>
@@ -1339,7 +1341,7 @@ function OwnerDashboard({
 function RoomGroups({
   rooms, categories, grouping, occupiedRoomIds, pendingFoodByRoom, occInfoByRoom, eventBlockByRoom,
   segmentMode, segmentPendingByRoom,
-  onPick, onPickFood, onCheckout, onAssignEvent, onEventCheckIn, onSegmentAction,
+  onPick, onPickFood, onCheckout, onAssignEvent, onEventCheckIn, onSegmentAction, onAddSegmentToBill,
 }: {
   rooms: Room[];
   categories: RoomCategory[];
@@ -1356,6 +1358,7 @@ function RoomGroups({
   onAssignEvent: (blk: EventBlockRecord) => void;
   onEventCheckIn: (blk: EventBlockRecord) => void;
   onSegmentAction: (r: Room, action: "view_kot" | "view_invoice") => void;
+  onAddSegmentToBill: (bookingId: string, segment: "food" | "laundry") => void;
 }) {
   // Memoize the group derivation so unrelated state changes on the dashboard
   // (modal toggles, form inputs, etc.) don't rebuild these arrays on every
@@ -1433,6 +1436,10 @@ function RoomGroups({
                   onPick={() => onPick(r)}
                   onViewKot={() => onSegmentAction(r, "view_kot")}
                   onViewInvoice={() => onSegmentAction(r, "view_invoice")}
+                  onAddToBill={() => {
+                    const occ = occInfoByRoom.get(r.id);
+                    if (occ?.bookingId) onAddSegmentToBill(occ.bookingId, segmentMode as "food" | "laundry");
+                  }}
                 />
               ) : (
               <RoomCard
@@ -1462,7 +1469,7 @@ function RoomGroups({
 // name and this segment's pending bill amount (₹0 = clean). Tapping opens
 // the Punch Food/Laundry Charge dialog via the parent's onPick.
 function SegmentRoomCard({
-  room, category, segment, occ, pending, onPick, onViewKot, onViewInvoice,
+  room, category, segment, occ, pending, onPick, onViewKot, onViewInvoice, onAddToBill,
 }: {
   room: Room;
   category: string;
@@ -1472,6 +1479,7 @@ function SegmentRoomCard({
   onPick: () => void;
   onViewKot: () => void;
   onViewInvoice: () => void;
+  onAddToBill: () => void;
 }) {
   const amount = pending?.amount ?? 0;
   const hasPending = amount > 0.01;
@@ -1522,6 +1530,11 @@ function SegmentRoomCard({
         <DropdownMenuItem onSelect={() => onPick()}>
           New {segment === "food" ? "KOT" : "Ticket"}
         </DropdownMenuItem>
+        {hasPending && (
+          <DropdownMenuItem onSelect={() => onAddToBill()}>
+            Add to Room Bill · ₹{amount.toLocaleString("en-IN")}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onSelect={() => onViewInvoice()}>
           View Invoice
         </DropdownMenuItem>
