@@ -16,7 +16,7 @@ import {
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
-import { pagedSelect } from "@/lib/reportPaging";
+import { pagedSelect, pagedIn } from "@/lib/reportPaging";
 
 export const Route = createFileRoute("/_authenticated/reports/room-shift")({
   head: () => ({ meta: [{ title: "Room Shift Report — HotelPilot" }] }),
@@ -37,6 +37,8 @@ interface Row {
   difference: number;
   total_room_bill: number;
   category: string;
+  reason: string;
+  shifted_by: string;
 }
 
 function Page() {
@@ -65,7 +67,7 @@ function Page() {
     const data = await pagedSelect<any>("room shifts", (pf, pt) => supabase
       .from("room_shifts")
       .select(`
-        id, shifted_at, old_rate, new_rate, rate_applied, rate_type, tariff_choice,
+        id, shifted_at, old_rate, new_rate, rate_applied, rate_type, tariff_choice, reason, shifted_by,
         from_room:from_room_id(room_number, room_categories(id,name)),
         to_room:to_room_id(room_number, room_categories(id,name)),
         booking_room:booking_room_id(
@@ -77,6 +79,15 @@ function Page() {
       .gte("shifted_at", fromIso)
       .lt("shifted_at", toIso)
       .order("shifted_at", { ascending: false }).range(pf, pt));
+    // shifted_by points at auth users, so staff names come from profiles in a
+    // second read (no PostgREST relationship exists between the two tables).
+    const staffIds = Array.from(new Set(data.map((s: any) => s.shifted_by).filter(Boolean))) as string[];
+    const staffMap = new Map<string, string>();
+    if (staffIds.length > 0) {
+      const profs = await pagedIn<any>("staff names", staffIds, (chunk, f, t) => supabase
+        .from("profiles").select("id,name,display_name,email").in("id", chunk).range(f, t));
+      for (const p of profs) staffMap.set(p.id, p.display_name || p.name || p.email || "—");
+    }
     const out: Row[] = data.map((s: any) => {
       const old = Number(s.old_rate ?? 0);
       const nw = Number(s.new_rate ?? 0);
@@ -98,6 +109,8 @@ function Page() {
         difference: applied - old,
         total_room_bill: Number(bk?.total_amount ?? 0),
         category: s.to_room?.room_categories?.name ?? "",
+        reason: s.reason ?? "—",
+        shifted_by: s.shifted_by ? (staffMap.get(s.shifted_by) ?? "—") : "—",
       };
     });
     setRows(out);
@@ -130,6 +143,8 @@ function Page() {
     { key: "rate_type", header: "Rate Type", get: (r) => r.rate_type === "original_rate" ? "Original Rate Kept" : "New Room Rate Applied", type: "enum" },
     { key: "difference", header: "Difference", get: (r) => r.difference, currency: true, sortValue: (r) => r.difference },
     { key: "total_room_bill", header: "Total Room Bill", get: (r) => r.total_room_bill, currency: true, sortValue: (r) => r.total_room_bill },
+    { key: "reason", header: "Shift Reason", get: (r) => r.reason, type: "text" },
+    { key: "shifted_by", header: "Shifted By", get: (r) => r.shifted_by, type: "enum" },
   ];
 
   function doExcel() {

@@ -1,4 +1,4 @@
-import { Link, useRouter } from "@tanstack/react-router";
+import { Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { ReactNode, Suspense, lazy, useEffect, useState } from "react";
 import { Logo } from "./Logo";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -45,6 +45,7 @@ import {
   Package,
   Boxes,
   Truck,
+  ArrowLeft,
   ArrowLeftRight,
   Wallet,
   Tags,
@@ -529,6 +530,7 @@ function AppShellInner({
               {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             </Button>
             <div className="md:hidden shrink-0"><Logo size={28} /></div>
+            <HeaderBackButton />
             {onTitleClick ? (
               <button
                 type="button"
@@ -642,5 +644,40 @@ function AppShellInner({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Universal back control in the app header. Uses in-app history when there is
+ * one, otherwise walks up one path segment (falling back to the dashboard), so
+ * deep links and hard refreshes still have a sensible way back.
+ */
+function HeaderBackButton() {
+  const router = useRouter();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  if (pathname === "/dashboard" || pathname === "/") return null;
+
+  const goBack = () => {
+    const canGoBack =
+      typeof window !== "undefined" &&
+      window.history.length > 1 &&
+      (router.history.canGoBack?.() ?? true);
+    if (canGoBack) { router.history.back(); return; }
+    const parts = pathname.split("/").filter(Boolean);
+    const parent = parts.length > 1 ? `/${parts.slice(0, -1).join("/")}` : "/dashboard";
+    router.navigate({ to: parent as never });
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-9 w-9 shrink-0"
+      onClick={goBack}
+      aria-label="Back"
+      title="Back"
+    >
+      <ArrowLeft className="h-5 w-5" />
+    </Button>
   );
 }

@@ -34,6 +34,8 @@ const ITEMS = [
   { to: "/reports/plan-wise", label: "Plan-Wise (EP/CP/MAP/AP)", icon: BedDouble, desc: "Room revenue by meal plan, with period grouping" },
   { to: "/reports/room-shift", label: "Room Shift", icon: FileSpreadsheet, desc: "Shifts & rate decisions" },
   { to: "/reports/food-kot", label: "Food / KOT", icon: FileSpreadsheet, desc: "Restaurant report" },
+  { to: "/reports/item-sales", label: "Item Sales", icon: UtensilsCrossed, desc: "Item-wise quantity & revenue" },
+  { to: "/reports/cancelled", label: "Cancelled Bookings", icon: AlertCircle, desc: "Cancellations, reason & refund status" },
   { to: "/reports/banquet", label: "Banquet", icon: FileSpreadsheet, desc: "Events report" },
   { to: "/reports/guest-wise", label: "Guest-Wise", icon: FileSpreadsheet, desc: "By guest" },
   { to: "/reports/expenses", label: "Expenses", icon: FileSpreadsheet, desc: "Expense report", module: "expenses" },

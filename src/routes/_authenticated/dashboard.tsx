@@ -785,7 +785,7 @@ function OwnerDashboard({
                         : "bg-background hover:bg-muted"
                     }`}
                   >
-                    {s === "rooms" ? "Lodge" : s === "food" ? "Food" : "Laundry"}
+                    {s === "rooms" ? "Room" : s === "food" ? "Food" : "Laundry"}
                   </button>
                 ))}
               </div>

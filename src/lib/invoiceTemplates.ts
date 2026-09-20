@@ -100,6 +100,8 @@ export interface InvoiceBooking {
     id_proof_number?: string | null;
   } | null;
   booking_rooms?: {
+    /** "shifted" rows are rooms the guest has moved out of. */
+    status?: string | null;
     rooms?: { room_number: string } | null;
     room_categories?: { name: string } | null;
     /** Real checkout instant — drives the printed invoice date. */
@@ -256,7 +258,28 @@ function metaBlock(ctx: InvoiceContext): string {
   const docTitle = provisional
     ? PROVISIONAL_DOC_TITLE
     : draft ? "DRAFT BILL" : isGst ? "TAX INVOICE" : "BILL OF SUPPLY";
-  const rooms = (booking.booking_rooms ?? []).map((r) => r.rooms?.room_number).filter(Boolean).join(", ");
+  // After a room shift the old assignment stays on the booking as history.
+  // The bill shows the room(s) the guest actually occupied at the end, with the
+  // earlier room noted, so "Room:" is never ambiguous.
+  const allRoomRows = booking.booking_rooms ?? [];
+  const activeRooms = Array.from(new Set(
+    allRoomRows
+      .filter((r) => String(r.status ?? "active") !== "shifted")
+      .map((r) => r.rooms?.room_number)
+      .filter(Boolean) as string[],
+  ));
+  const shiftedFrom = Array.from(new Set(
+    allRoomRows
+      .filter((r) => String(r.status ?? "") === "shifted")
+      .map((r) => r.rooms?.room_number)
+      .filter((n): n is string => !!n && !activeRooms.includes(n)),
+  ));
+  const roomsBase = activeRooms.length > 0
+    ? activeRooms.join(", ")
+    : Array.from(new Set(allRoomRows.map((r) => r.rooms?.room_number).filter(Boolean) as string[])).join(", ");
+  const rooms = roomsBase
+    ? `${roomsBase}${shiftedFrom.length > 0 ? ` (Shifted from ${shiftedFrom.join(", ")})` : ""}`
+    : "";
   const ns = nights(booking.check_in, booking.check_out);
   const billNoLabel = provisional
     ? `<span style="color:#6b7280">Ref: ${esc(booking.booking_number)} (provisional)</span>`
@@ -286,7 +309,7 @@ function metaBlock(ctx: InvoiceContext): string {
       <div style="flex:1">
         <div class="small" style="text-transform:uppercase;letter-spacing:1px">Bill To</div>
         <div style="font-weight:600;font-size:13px;margin-top:2px">${billToPrimary}</div>
-        ${hasCompany && billToGstin ? `<div class="small">GSTIN: ${esc(billToGstin)}</div>` : ""}
+        ${billToGstin ? `<div class="small">GSTIN: ${esc(billToGstin)}</div>` : ""}
         ${booking.guests?.address ? `<div class="small">${esc(booking.guests.address)}</div>` : ""}
         ${booking.guests?.mobile ? `<div class="small">${esc(booking.guests.mobile)}</div>` : ""}
         ${booking.guests?.nationality ? `<div class="small">Nationality: ${esc(booking.guests.nationality)}</div>` : ""}
