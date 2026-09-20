@@ -72,6 +72,8 @@ type Room = {
   housekeeping_status: "clean" | "dirty" | "inspected" | "out_of_order";
   category_id: string | null;
   floor: string | null;
+  /** Free-text reason shown on the dashboard tile while a room is under maintenance. */
+  maintenance_note?: string | null;
 };
 
 type RoomCategory = { id: string; name: string };
