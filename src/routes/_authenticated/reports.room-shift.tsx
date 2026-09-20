@@ -109,6 +109,8 @@ function Page() {
         difference: applied - old,
         total_room_bill: Number(bk?.total_amount ?? 0),
         category: s.to_room?.room_categories?.name ?? "",
+        reason: s.reason ?? "—",
+        shifted_by: s.shifted_by ? (staffMap.get(s.shifted_by) ?? "—") : "—",
       };
     });
     setRows(out);
