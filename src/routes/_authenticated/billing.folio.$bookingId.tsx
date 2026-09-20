@@ -199,6 +199,11 @@ function FolioPage() {
   const [charges, setCharges] = useState<Charge[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [missingNights, setMissingNights] = useState<string[]>([]);
+  // Split bills: other folios on the same booking (for the switcher bar and
+  // the post-settle "open next bill" prompt).
+  type SiblingFolio = { id: string; invoice_number: string | null; status: string; total_amount: number; paid_amount: number; balance_amount: number };
+  const [siblingFolios, setSiblingFolios] = useState<SiblingFolio[]>([]);
+  const [nextBillsOffer, setNextBillsOffer] = useState<SiblingFolio[] | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [foodBillNumber, setFoodBillNumber] = useState<string | null>(null);
@@ -466,6 +471,17 @@ function FolioPage() {
       }
     }
     setFolio((f ?? null) as unknown as Folio);
+    // Sibling split bills on this booking (non-deleted, non-void, not this one).
+    const { data: sibs, error: __qeSib } = await supabase
+      .from("folios")
+      .select("id,invoice_number,status,total_amount,paid_amount,balance_amount")
+      .eq("booking_id", bookingId)
+      .neq("id", fId)
+      .eq("is_deleted" as any, false)
+      .neq("status", "void")
+      .order("created_at", { ascending: true });
+    if (__qeSib) reportQueryError("sibling folios", __qeSib);
+    setSiblingFolios(((sibs ?? []) as any[]));
     // Hydrate the Bill-To guest (when the folio bills to another individual).
     const billGuestId = (f as any)?.billing_guest_id ?? null;
     if (billGuestId) {
@@ -1881,7 +1897,6 @@ function FolioPage() {
       } catch { /* ignore */ }
     }
 
-    toast.success("Folio settled & guest checked out");
     if (booking) logActivity({
       property_id: booking.property_id,
       user_id: user?.id ?? "",
@@ -1891,6 +1906,24 @@ function FolioPage() {
       reference_label: `${booking.booking_number} — ${booking.guests?.name ?? ""}`,
       details: { total: folio.total_amount, bill_type: folio.bill_type },
     });
+    // Split bills: if sibling bills on this booking still need settling, offer
+    // to jump straight to them instead of making the cashier go back and hunt.
+    const { data: openSibs, error: __qeOS } = await supabase
+      .from("folios")
+      .select("id,invoice_number,status,total_amount,paid_amount,balance_amount")
+      .eq("booking_id", bookingId)
+      .neq("id", folio.id)
+      .eq("is_deleted" as any, false)
+      .in("status", ["open", "due"])
+      .order("created_at", { ascending: true });
+    if (__qeOS) reportQueryError("sibling folios", __qeOS);
+    const pending = (openSibs ?? []) as any[];
+    if (pending.length > 0) {
+      toast.success("Folio settled");
+      setNextBillsOffer(pending as any);
+    } else {
+      toast.success("Folio settled & guest checked out");
+    }
     load();
   }
 
@@ -2597,6 +2630,40 @@ function FolioPage() {
             )}
           </div>
         </div>
+
+        {/* Split-bill switcher: other bills on this booking */}
+        {siblingFolios.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 no-print rounded-md border bg-muted/40 px-3 py-2">
+            <span className="text-xs font-medium text-muted-foreground">Bills on this booking:</span>
+            <Badge variant="secondary" className="text-xs">
+              This bill · {billNo(folio.invoice_number, "Provisional")}
+            </Badge>
+            {siblingFolios.map((s) => {
+              const due = Math.max(0, Number(s.total_amount ?? 0) - Number(s.paid_amount ?? 0));
+              const settled = s.status === "settled" || due <= 0.01;
+              return (
+                <Button
+                  key={s.id}
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() =>
+                    router.navigate({
+                      to: "/billing/folio/$bookingId",
+                      params: { bookingId },
+                      search: { folio: s.id },
+                    })
+                  }
+                >
+                  {billNo(s.invoice_number, "Provisional")}
+                  <span className={`ml-1.5 rounded px-1 py-0.5 text-[10px] font-semibold ${settled ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
+                    {settled ? "SETTLED" : `DUE ${inr(due)}`}
+                  </span>
+                </Button>
+              );
+            })}
+          </div>
+        )}
 
         {canOwnerInlineEdit && (
           <OwnerInlineEditCard
@@ -4031,6 +4098,45 @@ function FolioPage() {
               style={{ background: TEAL, color: "#fff" }}>
               {undoBusy ? "Reversing…" : "Yes, Undo Checkout"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Post-settle: jump straight to the next unsettled split bill */}
+      <Dialog open={nextBillsOffer !== null} onOpenChange={(o) => { if (!o) setNextBillsOffer(null); }}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Bill settled — {nextBillsOffer?.length ?? 0} more bill(s) pending</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <p className="text-muted-foreground">
+              This booking has unsettled split bills. Open one now, or stay here.
+            </p>
+            <div className="space-y-2">
+              {(nextBillsOffer ?? []).map((s) => {
+                const due = Math.max(0, Number(s.total_amount ?? 0) - Number(s.paid_amount ?? 0));
+                return (
+                  <Button
+                    key={s.id}
+                    variant="outline"
+                    className="w-full justify-between"
+                    onClick={() => {
+                      setNextBillsOffer(null);
+                      router.navigate({
+                        to: "/billing/folio/$bookingId",
+                        params: { bookingId },
+                        search: { folio: s.id },
+                      });
+                    }}
+                  >
+                    <span>{billNo(s.invoice_number, "Provisional")}</span>
+                    <span className="font-semibold">Due {inr(due)}</span>
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNextBillsOffer(null)}>Stay here</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
