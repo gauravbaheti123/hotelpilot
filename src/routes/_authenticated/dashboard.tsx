@@ -848,6 +848,7 @@ function OwnerDashboard({
                   }
                   setModalRoom(r);
                 }}
+                onAddSegmentToBill={(bid, seg) => { void addPendingSegmentToBill(bid, seg); }}
                 onSegmentAction={async (r, action) => {
                   if (segment === "rooms") return;
                   const seg = segment as "food" | "laundry";
@@ -1422,6 +1423,10 @@ function RoomGroups({
                   onPick={() => onPick(r)}
                   onViewKot={() => onSegmentAction(r, "view_kot")}
                   onViewInvoice={() => onSegmentAction(r, "view_invoice")}
+                  onAddToBill={() => {
+                    const occ = occInfoByRoom.get(r.id);
+                    if (occ?.bookingId) onAddSegmentToBill(occ.bookingId, segmentMode as "food" | "laundry");
+                  }}
                 />
               ) : (
               <RoomCard
