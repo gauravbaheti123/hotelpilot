@@ -2765,6 +2765,111 @@ function FolioPage() {
           </div>
         )}
 
+        {/* Advance collected above the bill total — refund or move it */}
+        {excessCollected > 0.01 && (
+          <Card className="no-print border-amber-400 bg-amber-50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2 text-amber-800">
+                <AlertTriangle className="h-5 w-5" />
+                Advance excess {inr(excessCollected)} — more collected than this bill
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-amber-900">
+                Refund it to the guest, or move it to another bill of this booking.
+              </span>
+              <div className="ml-auto flex flex-wrap gap-2">
+                <Button size="sm" onClick={openRefund} style={{ background: TEAL, color: "#fff" }}>
+                  Refund
+                </Button>
+                {siblingFolios
+                  .filter((s) => s.status === "open" || s.status === "due")
+                  .map((s) => (
+                    <Button
+                      key={s.id}
+                      size="sm"
+                      variant="outline"
+                      onClick={() => transferExcessTo(s.id, billNo(s.invoice_number, "Provisional"))}
+                    >
+                      Move to {billNo(s.invoice_number, "Provisional")}
+                    </Button>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* REFUND DIALOG */}
+        <Dialog open={refundOpen} onOpenChange={setRefundOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Refund extra advance</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
+                Collected above this bill: <span className="font-semibold">{inr(excessCollected)}</span>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Refund amount *</Label>
+                  <Input type="number" value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Mode</Label>
+                  <Select value={refundMode} onValueChange={setRefundMode}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {payMethods.map((m) => (
+                        <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Reference</Label>
+                <Input value={refundRef} onChange={(e) => setRefundRef(e.target.value)} placeholder="Txn id, voucher no." />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Reason *</Label>
+                <Textarea rows={2} value={refundReason} onChange={(e) => setRefundReason(e.target.value)}
+                  placeholder="Early checkout, rate revision, excess advance…" />
+              </div>
+              {siblingFolios.filter((s) => s.status === "open" || s.status === "due").length > 0 && (
+                <div className="rounded-md border p-2 text-xs">
+                  <div className="mb-1 text-muted-foreground">Or move the full excess to another bill:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {siblingFolios
+                      .filter((s) => s.status === "open" || s.status === "due")
+                      .map((s) => (
+                        <Button key={s.id} size="sm" variant="outline"
+                          onClick={() => transferExcessTo(s.id, billNo(s.invoice_number, "Provisional"))}>
+                          {billNo(s.invoice_number, "Provisional")}
+                        </Button>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="gap-2">
+              {isOwnerRole && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setRefundLaterAck(true);
+                    setRefundOpen(false);
+                    toast.message("Refund pending — you can settle now and refund later");
+                  }}
+                >
+                  Refund later
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => setRefundOpen(false)}>Cancel</Button>
+              <Button onClick={addRefund} disabled={refundSaving} style={{ background: TEAL, color: "#fff" }}>
+                {refundSaving ? "Saving…" : "Record refund"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {canOwnerInlineEdit && (
           <OwnerInlineEditCard
             propertyId={booking.property_id}
