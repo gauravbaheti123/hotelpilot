@@ -64,6 +64,13 @@
       "when": 1789897988162,
       "tag": "0008_transfer_folio_credit",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789899715259,
+      "tag": "0009_add_room_maintenance_note",
+      "breakpoints": true
     }
   ]
 }
