@@ -5325,6 +5325,7 @@ export type Database = {
           housekeeping_status: Database["public"]["Enums"]["housekeeping_status"]
           id: string
           is_active: boolean
+          maintenance_note: string | null
           notes: string | null
           property_id: string
           room_number: string
@@ -5338,6 +5339,7 @@ export type Database = {
           housekeeping_status?: Database["public"]["Enums"]["housekeeping_status"]
           id?: string
           is_active?: boolean
+          maintenance_note?: string | null
           notes?: string | null
           property_id: string
           room_number: string
@@ -5351,6 +5353,7 @@ export type Database = {
           housekeeping_status?: Database["public"]["Enums"]["housekeeping_status"]
           id?: string
           is_active?: boolean
+          maintenance_note?: string | null
           notes?: string | null
           property_id?: string
           room_number?: string

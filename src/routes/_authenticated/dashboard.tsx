@@ -72,6 +72,8 @@ type Room = {
   housekeeping_status: "clean" | "dirty" | "inspected" | "out_of_order";
   category_id: string | null;
   floor: string | null;
+  /** Free-text reason shown on the dashboard tile while a room is under maintenance. */
+  maintenance_note?: string | null;
 };
 
 type RoomCategory = { id: string; name: string };
@@ -399,7 +401,23 @@ function OwnerDashboard({
       });
       setArrivals(arrRows.map(mapRow));
       setDepartures(depRows.map(mapRow));
-      setRooms(rmsRows as Room[]);
+      // Maintenance narration lives on rooms.maintenance_note; the grid RPC
+      // doesn't return it, so pull it only for the rooms that are out of order.
+      const maintIds = rmsRows
+        .filter((r: any) => r.status === "maintenance" || r.housekeeping_status === "out_of_order")
+        .map((r: any) => r.id);
+      const maintNotes: Record<string, string> = {};
+      if (maintIds.length) {
+        const { data: mn, error: mnErr } = await supabase
+          .from("rooms")
+          .select("id,maintenance_note")
+          .in("id", maintIds);
+        if (mnErr) reportQueryError("room maintenance notes", mnErr);
+        for (const row of (mn ?? []) as any[]) {
+          if (row.maintenance_note) maintNotes[row.id] = row.maintenance_note as string;
+        }
+      }
+      setRooms(rmsRows.map((r: any) => ({ ...r, maintenance_note: maintNotes[r.id] ?? null })) as Room[]);
 
       // Steps 3, 5 and 6 have no data dependency on each other, so they run in
       // parallel. Only the guest backfill (step 4) truly needs the food-bill
@@ -1688,7 +1706,8 @@ const RoomCard = memo(function RoomCard({
   const cardHeight = 118;
   const hintText =
     kind === "dirty" ? "🧹 Needs cleaning"
-    : kind === "maintenance" ? "🔧 Under repair"
+    : kind === "maintenance"
+      ? `🔧 ${room.maintenance_note?.trim() || "Under repair"}`
     : kind === "blocked"
       ? `🎉 ${eventInfo?.eventName ?? "Event"} — ${eventInfo?.guestName ?? "Unassigned"}`
     : null;
@@ -1748,7 +1767,7 @@ const RoomCard = memo(function RoomCard({
         )}
 
         {hintText && (
-          <div className="mt-auto line-clamp-2 break-words" style={{ color: meta.fgMuted, fontSize: 11 }}>
+          <div className="mt-auto line-clamp-2 break-words" title={hintText} style={{ color: meta.fgMuted, fontSize: 11 }}>
             {hintText}
           </div>
         )}
@@ -1823,17 +1842,22 @@ function RoomStatusModal({
 }) {
   const [staffId, setStaffId] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
+  const [maintNote, setMaintNote] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const { can } = usePermissions();
   const canEditBooking = can("bookings", "edit") || can("bookings", "create");
   const showExtraBed = !!bookingId && canEditBooking;
 
-  useEffect(() => { setStaffId(""); setNotes(""); }, [room?.id]);
+  useEffect(() => {
+    setStaffId("");
+    setNotes("");
+    setMaintNote(room?.maintenance_note ?? "");
+  }, [room?.id, room?.maintenance_note]);
 
   if (!room || !kind) return null;
 
   const update = async (
-    patch: Partial<Pick<Room, "status" | "housekeeping_status">>,
+    patch: Partial<Pick<Room, "status" | "housekeeping_status" | "maintenance_note">>,
     log: null | { task_type: "cleaning" | "maintenance" },
     successLabel: string,
   ) => {
@@ -1900,12 +1924,21 @@ function RoomStatusModal({
 
         {kind === "vacant" && (
           <div className="grid gap-2">
+            <div className="grid gap-1.5">
+              <Label>Maintenance reason (shows on dashboard card)</Label>
+              <Textarea rows={2} value={maintNote} maxLength={200}
+                onChange={(e) => setMaintNote(e.target.value)}
+                placeholder="e.g. AC not cooling — technician called" />
+            </div>
             <Button variant="outline" disabled={busy}
               onClick={() => update({ status: "vacant", housekeeping_status: "dirty" }, null, "marked as Dirty")}>
               Mark as Dirty
             </Button>
             <Button variant="outline" disabled={busy}
-              onClick={() => update({ status: "maintenance", housekeeping_status: "dirty" }, null, "marked as Maintenance")}>
+              onClick={() => update(
+                { status: "maintenance", housekeeping_status: "dirty", maintenance_note: maintNote.trim() || null },
+                null, "marked as Maintenance",
+              )}>
               Mark as Maintenance
             </Button>
             <Button disabled={busy} onClick={onNewBooking}>New Booking</Button>
@@ -1947,10 +1980,25 @@ function RoomStatusModal({
               <Label>{kind === "dirty" ? "Cleaning notes" : "Resolution notes"}</Label>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
             </div>
+            <div className="grid gap-1.5">
+              <Label>Maintenance reason (shows on dashboard card)</Label>
+              <Textarea rows={2} value={maintNote} maxLength={200}
+                onChange={(e) => setMaintNote(e.target.value)}
+                placeholder="e.g. AC not cooling — technician called" />
+            </div>
             <div className="grid gap-2">
+              {kind === "maintenance" && (
+                <Button variant="secondary" disabled={busy}
+                  onClick={() => update(
+                    { maintenance_note: maintNote.trim() || null },
+                    null, "maintenance reason saved",
+                  )}>
+                  Save reason
+                </Button>
+              )}
               <Button disabled={busy}
                 onClick={() => update(
-                  { status: "vacant", housekeeping_status: "clean" },
+                  { status: "vacant", housekeeping_status: "clean", maintenance_note: null },
                   { task_type: kind === "dirty" ? "cleaning" : "maintenance" },
                   "marked as Vacant",
                 )}>
@@ -1958,12 +2006,18 @@ function RoomStatusModal({
               </Button>
               {kind === "dirty" ? (
                 <Button variant="outline" disabled={busy}
-                  onClick={() => update({ status: "maintenance" }, null, "marked as Maintenance")}>
+                  onClick={() => update(
+                    { status: "maintenance", maintenance_note: maintNote.trim() || null },
+                    null, "marked as Maintenance",
+                  )}>
                   Mark as Maintenance
                 </Button>
               ) : (
                 <Button variant="outline" disabled={busy}
-                  onClick={() => update({ status: "vacant", housekeeping_status: "dirty" }, null, "marked as Dirty")}>
+                  onClick={() => update(
+                    { status: "vacant", housekeeping_status: "dirty", maintenance_note: null },
+                    null, "marked as Dirty",
+                  )}>
                   Mark as Dirty
                 </Button>
               )}
