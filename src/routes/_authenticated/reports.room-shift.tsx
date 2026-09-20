@@ -37,6 +37,8 @@ interface Row {
   difference: number;
   total_room_bill: number;
   category: string;
+  reason: string;
+  shifted_by: string;
 }
 
 function Page() {
