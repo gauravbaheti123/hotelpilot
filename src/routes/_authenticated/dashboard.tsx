@@ -1767,7 +1767,7 @@ const RoomCard = memo(function RoomCard({
         )}
 
         {hintText && (
-          <div className="mt-auto line-clamp-2 break-words" style={{ color: meta.fgMuted, fontSize: 11 }}>
+          <div className="mt-auto line-clamp-2 break-words" title={hintText} style={{ color: meta.fgMuted, fontSize: 11 }}>
             {hintText}
           </div>
         )}
