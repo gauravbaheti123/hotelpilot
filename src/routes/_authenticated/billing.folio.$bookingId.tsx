@@ -34,6 +34,9 @@ import {
   type DisplayCharge,
   settlementPaidTotal,
   overpaymentError,
+  excessAmount,
+  isRefundPayment,
+  REFUND_NOTE_PREFIX,
   distributeWithRemainder,
 } from "@/lib/billing";
 import { searchGuests } from "@/lib/guestIdLookup";
@@ -326,6 +329,16 @@ function FolioPage() {
   // still-open Food/Laundry segment bill. Staff must pick one explicitly.
   const [payTargets, setPayTargets] = useState<PaymentTarget[]>([]);
   const [payTarget, setPayTarget] = useState<string>("");
+
+  // Refund / adjust: advance collected is more than the final bill.
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundMode, setRefundMode] = useState<string>("cash");
+  const [refundRef, setRefundRef] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundSaving, setRefundSaving] = useState(false);
+  // Owner chose "settle now, refund later" — lets settle() pass with excess.
+  const [refundLaterAck, setRefundLaterAck] = useState(false);
 
   const [voidOpen, setVoidOpen] = useState(false);
   const [voidReason, setVoidReason] = useState("");
@@ -1649,6 +1662,86 @@ function FolioPage() {
     load();
   }
 
+  /** Money collected above this bill's total (advance > final bill). */
+  const excessCollected = folio
+    ? excessAmount(Number(folio.total_amount ?? 0), payments as any[])
+    : 0;
+
+  function openRefund() {
+    setRefundAmount(String(excessCollected.toFixed(2)));
+    setRefundMode("cash");
+    setRefundRef("");
+    setRefundReason("");
+    setRefundOpen(true);
+  }
+
+  /** Record a refund: a payments row with a NEGATIVE amount. */
+  async function addRefund() {
+    if (!folio || !booking) return;
+    const amt = Number(refundAmount);
+    if (!(amt > 0)) return toast.error("Enter a refund amount");
+    if (amt > excessCollected + 0.01) {
+      return toast.error(`Only ${inr(excessCollected)} was collected above this bill — cannot refund more.`);
+    }
+    if (!refundReason.trim()) return toast.error("Reason is required for a refund");
+    setRefundSaving(true);
+    const { error } = await supabase.from("payments").insert({
+      property_id: booking.property_id,
+      folio_id: folio.id,
+      booking_id: booking.id,
+      amount: -amt,
+      mode: refundMode,
+      reference_no: refundRef || null,
+      notes: `${REFUND_NOTE_PREFIX} — ${refundReason.trim()}`,
+      created_by: user?.id ?? null,
+    } as any);
+    if (error) { setRefundSaving(false); return toastError(error); }
+    const { data: nextRows } = await supabase.from("payments").select("*").eq("folio_id", folio.id);
+    await persistTotals(charges, ((nextRows ?? []) as unknown as Payment[]));
+    setRefundSaving(false);
+    setRefundOpen(false);
+    logActivity({
+      property_id: booking.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      ...ACTIVITY.PAYMENT_RECEIVED,
+      reference_id: booking.id,
+      reference_label: `${booking.booking_number} — REFUND ₹${amt} via ${refundMode}`,
+      details: {
+        refund: true, amount: amt, mode: refundMode, folio_id: folio.id,
+        bill_number: billNo(folio.invoice_number), reason: refundReason.trim(),
+      },
+    });
+    toast.success(`Refund of ${inr(amt)} recorded`);
+    load();
+  }
+
+  /** Move the excess to another unsettled bill of the same booking. */
+  async function transferExcessTo(targetFolioId: string, targetLabel: string) {
+    if (!folio || !booking) return;
+    const amt = excessCollected;
+    if (!(amt > 0)) return;
+    const { error } = await supabase.rpc("transfer_folio_credit" as any, {
+      _from_folio_id: folio.id,
+      _to_folio_id: targetFolioId,
+      _amount: amt,
+      _reason: refundReason.trim() || null,
+    } as any);
+    if (error) return toastError(error);
+    setRefundOpen(false);
+    logActivity({
+      property_id: booking.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      ...ACTIVITY.PAYMENT_RECEIVED,
+      reference_id: booking.id,
+      reference_label: `${booking.booking_number} — ₹${amt} moved to ${targetLabel}`,
+      details: { transfer: true, amount: amt, from_folio: folio.id, to_folio: targetFolioId },
+    });
+    toast.success(`${inr(amt)} moved to ${targetLabel}`);
+    load();
+  }
+
   // Load mode-change audit history for the current folio's payments so we
   // can surface an "edited" chip inline with each row.
   useEffect(() => {
@@ -1840,6 +1933,13 @@ function FolioPage() {
   async function settle() {
     if (!folio) return;
     if (Number(folio.balance_amount) > 0.01) return toast.error("Balance not zero");
+    // Advance bigger than the bill: refund or move it before settling.
+    if (excessCollected > 0.01 && !refundLaterAck) {
+      setRefundOpen(true);
+      return toast.error(
+        `${inr(excessCollected)} collected above this bill — refund it or move it to another bill first.`,
+      );
+    }
     if (pendingKots.length > 0 && !overrideApproved) {
       return toast.error("Resolve pending food orders before settling");
     }
@@ -2665,6 +2765,111 @@ function FolioPage() {
           </div>
         )}
 
+        {/* Advance collected above the bill total — refund or move it */}
+        {excessCollected > 0.01 && (
+          <Card className="no-print border-amber-400 bg-amber-50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2 text-amber-800">
+                <AlertTriangle className="h-5 w-5" />
+                Advance excess {inr(excessCollected)} — more collected than this bill
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-amber-900">
+                Refund it to the guest, or move it to another bill of this booking.
+              </span>
+              <div className="ml-auto flex flex-wrap gap-2">
+                <Button size="sm" onClick={openRefund} style={{ background: TEAL, color: "#fff" }}>
+                  Refund
+                </Button>
+                {siblingFolios
+                  .filter((s) => s.status === "open" || s.status === "due")
+                  .map((s) => (
+                    <Button
+                      key={s.id}
+                      size="sm"
+                      variant="outline"
+                      onClick={() => transferExcessTo(s.id, billNo(s.invoice_number, "Provisional"))}
+                    >
+                      Move to {billNo(s.invoice_number, "Provisional")}
+                    </Button>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* REFUND DIALOG */}
+        <Dialog open={refundOpen} onOpenChange={setRefundOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Refund extra advance</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs">
+                Collected above this bill: <span className="font-semibold">{inr(excessCollected)}</span>
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Refund amount *</Label>
+                  <Input type="number" value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Mode</Label>
+                  <Select value={refundMode} onValueChange={setRefundMode}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {payMethods.map((m) => (
+                        <SelectItem key={m.id} value={m.name}>{formatPaymentMethodLabel(m.name)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Reference</Label>
+                <Input value={refundRef} onChange={(e) => setRefundRef(e.target.value)} placeholder="Txn id, voucher no." />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Reason *</Label>
+                <Textarea rows={2} value={refundReason} onChange={(e) => setRefundReason(e.target.value)}
+                  placeholder="Early checkout, rate revision, excess advance…" />
+              </div>
+              {siblingFolios.filter((s) => s.status === "open" || s.status === "due").length > 0 && (
+                <div className="rounded-md border p-2 text-xs">
+                  <div className="mb-1 text-muted-foreground">Or move the full excess to another bill:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {siblingFolios
+                      .filter((s) => s.status === "open" || s.status === "due")
+                      .map((s) => (
+                        <Button key={s.id} size="sm" variant="outline"
+                          onClick={() => transferExcessTo(s.id, billNo(s.invoice_number, "Provisional"))}>
+                          {billNo(s.invoice_number, "Provisional")}
+                        </Button>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="gap-2">
+              {isOwnerRole && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setRefundLaterAck(true);
+                    setRefundOpen(false);
+                    toast.message("Refund pending — you can settle now and refund later");
+                  }}
+                >
+                  Refund later
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => setRefundOpen(false)}>Cancel</Button>
+              <Button onClick={addRefund} disabled={refundSaving} style={{ background: TEAL, color: "#fff" }}>
+                {refundSaving ? "Saving…" : "Record refund"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {canOwnerInlineEdit && (
           <OwnerInlineEditCard
             propertyId={booking.property_id}
@@ -3375,7 +3580,12 @@ function FolioPage() {
                         : undefined;
                       return (
                         <tr key={p.id}>
-                          <td style={{ textTransform: "capitalize" }}>
+                          <td style={{ textTransform: "capitalize", color: isRefundPayment(p as any) ? "#b91c1c" : undefined }}>
+                            {isRefundPayment(p as any) && (
+                              <span className="mr-1.5 rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-red-700">
+                                refund
+                              </span>
+                            )}
                             {p.mode.replace(/_/g, " ")}
                             {latestEdit && (
                               <span
@@ -3389,7 +3599,9 @@ function FolioPage() {
                           <td style={{ fontSize: 11, color: "#666" }}>{new Date(p.paid_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
                           <td style={{ fontSize: 11, color: "#666" }}>{p.reference_no ?? ""}</td>
                           <td style={{ textAlign: "right" }}>
-                            <span>{inr(p.amount)}</span>
+                            <span style={{ color: isRefundPayment(p as any) ? "#b91c1c" : undefined }}>
+                              {isRefundPayment(p as any) ? `- ${inr(Math.abs(Number(p.amount)))}` : inr(p.amount)}
+                            </span>
                             {(canEditPaymentAmount || inGraceWindow) && (
                               <button
                                 type="button"

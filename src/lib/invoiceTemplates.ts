@@ -414,15 +414,17 @@ function paymentsBlock(ctx: InvoiceContext): string {
           <th ${th}>Remark</th>
         </tr></thead>
         <tbody>
-          ${payments.map((p, i) => `<tr style="page-break-inside:avoid">
+          ${payments.map((p, i) => {
+            const isRefund = Number(p.amount || 0) < 0;
+            return `<tr style="page-break-inside:avoid">
             <td ${td}>${new Date(p.paid_at).toLocaleDateString("en-IN")}</td>
             <td ${td}>${esc(receiptNo(p, i))}</td>
-            <td ${td}>${esc(String(p.mode || "").toUpperCase())}</td>
-            <td ${td} class="right">${inr(p.amount)}</td>
+            <td ${td}>${isRefund ? "REFUND · " : ""}${esc(String(p.mode || "").toUpperCase())}</td>
+            <td ${td} class="right">${isRefund ? `- ${inr(Math.abs(Number(p.amount)))}` : inr(p.amount)}</td>
             <td ${td}>${esc(p.notes ?? "—")}</td>
-          </tr>`).join("")}
+          </tr>`; }).join("")}
           <tr>
-            <td ${td} colspan="3"><strong>Total Received</strong></td>
+            <td ${td} colspan="3"><strong>${payments.some((p) => Number(p.amount || 0) < 0) ? "Net Received (after refunds)" : "Total Received"}</strong></td>
             <td ${td} class="right"><strong>${inr(total)}</strong></td>
             <td ${td}></td>
           </tr>

@@ -6866,6 +6866,15 @@ export type Database = {
         Args: { _block_id: string }
         Returns: string
       }
+      transfer_folio_credit: {
+        Args: {
+          _amount: number
+          _from_folio_id: string
+          _reason?: string
+          _to_folio_id: string
+        }
+        Returns: undefined
+      }
       undo_checkout: { Args: { _booking_id: string }; Returns: Json }
       update_booking_safe_fields: { Args: { payload: Json }; Returns: Json }
       user_discount_limit: {
