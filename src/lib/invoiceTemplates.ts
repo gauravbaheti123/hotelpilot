@@ -258,7 +258,28 @@ function metaBlock(ctx: InvoiceContext): string {
   const docTitle = provisional
     ? PROVISIONAL_DOC_TITLE
     : draft ? "DRAFT BILL" : isGst ? "TAX INVOICE" : "BILL OF SUPPLY";
-  const rooms = (booking.booking_rooms ?? []).map((r) => r.rooms?.room_number).filter(Boolean).join(", ");
+  // After a room shift the old assignment stays on the booking as history.
+  // The bill shows the room(s) the guest actually occupied at the end, with the
+  // earlier room noted, so "Room:" is never ambiguous.
+  const allRoomRows = booking.booking_rooms ?? [];
+  const activeRooms = Array.from(new Set(
+    allRoomRows
+      .filter((r) => String(r.status ?? "active") !== "shifted")
+      .map((r) => r.rooms?.room_number)
+      .filter(Boolean) as string[],
+  ));
+  const shiftedFrom = Array.from(new Set(
+    allRoomRows
+      .filter((r) => String(r.status ?? "") === "shifted")
+      .map((r) => r.rooms?.room_number)
+      .filter((n): n is string => !!n && !activeRooms.includes(n)),
+  ));
+  const roomsBase = activeRooms.length > 0
+    ? activeRooms.join(", ")
+    : Array.from(new Set(allRoomRows.map((r) => r.rooms?.room_number).filter(Boolean) as string[])).join(", ");
+  const rooms = roomsBase
+    ? `${roomsBase}${shiftedFrom.length > 0 ? ` (Shifted from ${shiftedFrom.join(", ")})` : ""}`
+    : "";
   const ns = nights(booking.check_in, booking.check_out);
   const billNoLabel = provisional
     ? `<span style="color:#6b7280">Ref: ${esc(booking.booking_number)} (provisional)</span>`
