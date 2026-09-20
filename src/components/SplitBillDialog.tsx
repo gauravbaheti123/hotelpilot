@@ -651,6 +651,20 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     if (emptyIdx >= 0) {
       return toast.error(`Bill ${emptyIdx + 1} has no line items — every bill needs at least one`);
     }
+    // Every line of the original bill must land on exactly one new bill. A
+    // multi-night room charge is shown as one row per night, so a dropped
+    // night would otherwise cut the bill short without any warning.
+    {
+      const originalSum = charges.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+      const assignedSum = billCharges
+        .flat()
+        .reduce((s, c) => s + (Number(c.amount) || 0), 0);
+      if (Math.abs(assignedSum - originalSum) > 1) {
+        return toast.error(
+          `The new bills add up to ₹${assignedSum.toFixed(2)} but the original bill is ₹${originalSum.toFixed(2)}. Some charge lines are missing — refresh the bill and try again.`,
+        );
+      }
+    }
     for (let i = 0; i < billCount; i++) {
       const party = partyForBill(i);
       if (splitType === "different" && i > 0 && !party.name.trim()) {
