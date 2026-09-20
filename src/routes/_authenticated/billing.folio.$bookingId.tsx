@@ -34,6 +34,9 @@ import {
   type DisplayCharge,
   settlementPaidTotal,
   overpaymentError,
+  excessAmount,
+  isRefundPayment,
+  REFUND_NOTE_PREFIX,
   distributeWithRemainder,
 } from "@/lib/billing";
 import { searchGuests } from "@/lib/guestIdLookup";
@@ -326,6 +329,16 @@ function FolioPage() {
   // still-open Food/Laundry segment bill. Staff must pick one explicitly.
   const [payTargets, setPayTargets] = useState<PaymentTarget[]>([]);
   const [payTarget, setPayTarget] = useState<string>("");
+
+  // Refund / adjust: advance collected is more than the final bill.
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundMode, setRefundMode] = useState<string>("cash");
+  const [refundRef, setRefundRef] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundSaving, setRefundSaving] = useState(false);
+  // Owner chose "settle now, refund later" — lets settle() pass with excess.
+  const [refundLaterAck, setRefundLaterAck] = useState(false);
 
   const [voidOpen, setVoidOpen] = useState(false);
   const [voidReason, setVoidReason] = useState("");
@@ -1649,6 +1662,86 @@ function FolioPage() {
     load();
   }
 
+  /** Money collected above this bill's total (advance > final bill). */
+  const excessCollected = folio
+    ? excessAmount(Number(folio.total_amount ?? 0), payments as any[])
+    : 0;
+
+  function openRefund() {
+    setRefundAmount(String(excessCollected.toFixed(2)));
+    setRefundMode("cash");
+    setRefundRef("");
+    setRefundReason("");
+    setRefundOpen(true);
+  }
+
+  /** Record a refund: a payments row with a NEGATIVE amount. */
+  async function addRefund() {
+    if (!folio || !booking) return;
+    const amt = Number(refundAmount);
+    if (!(amt > 0)) return toast.error("Enter a refund amount");
+    if (amt > excessCollected + 0.01) {
+      return toast.error(`Only ${inr(excessCollected)} was collected above this bill — cannot refund more.`);
+    }
+    if (!refundReason.trim()) return toast.error("Reason is required for a refund");
+    setRefundSaving(true);
+    const { error } = await supabase.from("payments").insert({
+      property_id: booking.property_id,
+      folio_id: folio.id,
+      booking_id: booking.id,
+      amount: -amt,
+      mode: refundMode,
+      reference_no: refundRef || null,
+      notes: `${REFUND_NOTE_PREFIX} — ${refundReason.trim()}`,
+      created_by: user?.id ?? null,
+    } as any);
+    if (error) { setRefundSaving(false); return toastError(error); }
+    const { data: nextRows } = await supabase.from("payments").select("*").eq("folio_id", folio.id);
+    await persistTotals(charges, ((nextRows ?? []) as unknown as Payment[]));
+    setRefundSaving(false);
+    setRefundOpen(false);
+    logActivity({
+      property_id: booking.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      ...ACTIVITY.PAYMENT_RECEIVED,
+      reference_id: booking.id,
+      reference_label: `${booking.booking_number} — REFUND ₹${amt} via ${refundMode}`,
+      details: {
+        refund: true, amount: amt, mode: refundMode, folio_id: folio.id,
+        bill_number: billNo(folio.invoice_number), reason: refundReason.trim(),
+      },
+    });
+    toast.success(`Refund of ${inr(amt)} recorded`);
+    load();
+  }
+
+  /** Move the excess to another unsettled bill of the same booking. */
+  async function transferExcessTo(targetFolioId: string, targetLabel: string) {
+    if (!folio || !booking) return;
+    const amt = excessCollected;
+    if (!(amt > 0)) return;
+    const { error } = await supabase.rpc("transfer_folio_credit" as any, {
+      _from_folio_id: folio.id,
+      _to_folio_id: targetFolioId,
+      _amount: amt,
+      _reason: refundReason.trim() || null,
+    } as any);
+    if (error) return toastError(error);
+    setRefundOpen(false);
+    logActivity({
+      property_id: booking.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      ...ACTIVITY.PAYMENT_RECEIVED,
+      reference_id: booking.id,
+      reference_label: `${booking.booking_number} — ₹${amt} moved to ${targetLabel}`,
+      details: { transfer: true, amount: amt, from_folio: folio.id, to_folio: targetFolioId },
+    });
+    toast.success(`${inr(amt)} moved to ${targetLabel}`);
+    load();
+  }
+
   // Load mode-change audit history for the current folio's payments so we
   // can surface an "edited" chip inline with each row.
   useEffect(() => {
@@ -1840,6 +1933,13 @@ function FolioPage() {
   async function settle() {
     if (!folio) return;
     if (Number(folio.balance_amount) > 0.01) return toast.error("Balance not zero");
+    // Advance bigger than the bill: refund or move it before settling.
+    if (excessCollected > 0.01 && !refundLaterAck) {
+      setRefundOpen(true);
+      return toast.error(
+        `${inr(excessCollected)} collected above this bill — refund it or move it to another bill first.`,
+      );
+    }
     if (pendingKots.length > 0 && !overrideApproved) {
       return toast.error("Resolve pending food orders before settling");
     }
