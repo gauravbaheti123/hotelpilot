@@ -623,7 +623,7 @@ function OwnerDashboard({
         .eq("segment", segment)
         .eq("status", "open");
       if (kErr) throw kErr;
-      if (!bills || bills.length === 0) { toast.info("No pending food bills"); return; }
+      if (!bills || bills.length === 0) { toast.info(`No pending ${segLabel} bills`); return; }
       // One locked, idempotent server call per bill — repeat taps can never
       // create duplicate folio charge lines.
       for (const b of bills as any[]) {
@@ -638,7 +638,7 @@ function OwnerDashboard({
         }
       }
 
-      toast.success(`Added ${bills.length} food bill(s) to room bill`);
+      toast.success(`Added ${bills.length} ${segLabel} bill(s) to room bill`);
       reload();
     } catch (e: any) {
       toastError(e, "Failed to add to bill");
