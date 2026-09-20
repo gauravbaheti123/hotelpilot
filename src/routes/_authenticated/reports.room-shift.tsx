@@ -16,7 +16,7 @@ import {
 } from "@/lib/reportExports";
 import { istToday } from "@/lib/date";
 import { reportQueryError, guardQuery } from "@/lib/queryError";
-import { pagedSelect } from "@/lib/reportPaging";
+import { pagedSelect, pagedIn } from "@/lib/reportPaging";
 
 export const Route = createFileRoute("/_authenticated/reports/room-shift")({
   head: () => ({ meta: [{ title: "Room Shift Report — HotelPilot" }] }),
@@ -143,6 +143,8 @@ function Page() {
     { key: "rate_type", header: "Rate Type", get: (r) => r.rate_type === "original_rate" ? "Original Rate Kept" : "New Room Rate Applied", type: "enum" },
     { key: "difference", header: "Difference", get: (r) => r.difference, currency: true, sortValue: (r) => r.difference },
     { key: "total_room_bill", header: "Total Room Bill", get: (r) => r.total_room_bill, currency: true, sortValue: (r) => r.total_room_bill },
+    { key: "reason", header: "Shift Reason", get: (r) => r.reason, type: "text" },
+    { key: "shifted_by", header: "Shifted By", get: (r) => r.shifted_by, type: "enum" },
   ];
 
   function doExcel() {
