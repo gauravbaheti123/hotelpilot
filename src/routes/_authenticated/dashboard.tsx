@@ -1517,6 +1517,11 @@ function SegmentRoomCard({
         <DropdownMenuItem onSelect={() => onPick()}>
           New {segment === "food" ? "KOT" : "Ticket"}
         </DropdownMenuItem>
+        {hasPending && (
+          <DropdownMenuItem onSelect={() => onAddToBill()}>
+            Add to Room Bill · ₹{amount.toLocaleString("en-IN")}
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onSelect={() => onViewInvoice()}>
           View Invoice
         </DropdownMenuItem>
