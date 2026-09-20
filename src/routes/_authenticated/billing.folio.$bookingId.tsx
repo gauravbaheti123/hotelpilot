@@ -3580,7 +3580,12 @@ function FolioPage() {
                         : undefined;
                       return (
                         <tr key={p.id}>
-                          <td style={{ textTransform: "capitalize" }}>
+                          <td style={{ textTransform: "capitalize", color: isRefundPayment(p as any) ? "#b91c1c" : undefined }}>
+                            {isRefundPayment(p as any) && (
+                              <span className="mr-1.5 rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-red-700">
+                                refund
+                              </span>
+                            )}
                             {p.mode.replace(/_/g, " ")}
                             {latestEdit && (
                               <span
@@ -3594,7 +3599,9 @@ function FolioPage() {
                           <td style={{ fontSize: 11, color: "#666" }}>{new Date(p.paid_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
                           <td style={{ fontSize: 11, color: "#666" }}>{p.reference_no ?? ""}</td>
                           <td style={{ textAlign: "right" }}>
-                            <span>{inr(p.amount)}</span>
+                            <span style={{ color: isRefundPayment(p as any) ? "#b91c1c" : undefined }}>
+                              {isRefundPayment(p as any) ? `- ${inr(Math.abs(Number(p.amount)))}` : inr(p.amount)}
+                            </span>
                             {(canEditPaymentAmount || inGraceWindow) && (
                               <button
                                 type="button"
