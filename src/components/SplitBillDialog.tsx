@@ -530,10 +530,16 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
    * function, so no sub-step can silently no-op under RLS and leave orphan
    * duplicate bills behind (the cause of the 6 Aug double-payment incident).
    */
-  async function runAtomicSplit(children: any[], reason: string) {
-    const { data, error } = await supabase.rpc("split_folio_bill" as any, {
+  /**
+   * `coverage: "full"` tells the server that these children are meant to carry
+   * EVERY live line of the original bill (item-mode whole-bill split). The
+   * guarded RPC then rejects the split if any line — e.g. one room night of a
+   * multi-night charge — is missing, instead of quietly cutting a short bill.
+   */
+  async function runAtomicSplit(children: any[], reason: string, coverage: "full" | "scope" = "scope") {
+    const { data, error } = await supabase.rpc("split_folio_bill_v2" as any, {
       _folio_id: folio.id,
-      _payload: { reason, children, payments: paymentPayload() },
+      _payload: { reason, children, coverage, payments: paymentPayload() },
     } as any);
     if (error) {
       throw new BusinessError(
