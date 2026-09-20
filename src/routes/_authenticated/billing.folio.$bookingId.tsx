@@ -440,6 +440,31 @@ function FolioPage() {
     if (__qp1) reportQueryError("folio", __qp1);
     if (__qp2) reportQueryError("folio charges", __qp2);
     if (__qp3) reportQueryError("payments", __qp3);
+    // Bills created before the folio inherited the booking's Bill-To company
+    // showed "Guest (individual)" with no GSTIN even though the booking had a
+    // company. Repair OPEN bills only — finalised ones keep their printed GST.
+    {
+      const fRow0 = f as any;
+      const bookCoId = (bk as any)?.billing_company_id ?? null;
+      if (
+        fRow0 && bookCoId &&
+        !fRow0.billing_company_id && !fRow0.billing_guest_id &&
+        fRow0.status === "open"
+      ) {
+        const co = ((bcs ?? []) as any[]).find((x) => x.id === bookCoId) ?? null;
+        if (co) {
+          const patch = {
+            billing_company_id: co.id,
+            guest_company: co.name ?? null,
+            guest_gstin: co.gstin ?? null,
+          };
+          const { error: __qeBT } = await supabase
+            .from("folios").update(patch as any).eq("id", fRow0.id);
+          if (__qeBT) reportQueryError("folio bill-to", __qeBT);
+          else Object.assign(fRow0, patch);
+        }
+      }
+    }
     setFolio((f ?? null) as unknown as Folio);
     // Hydrate the Bill-To guest (when the folio bills to another individual).
     const billGuestId = (f as any)?.billing_guest_id ?? null;
