@@ -732,7 +732,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         };
       });
 
-      const rows = await runAtomicSplit(children, `Split into ${billCount} bills (${splitType})`);
+      const rows = await runAtomicSplit(children, `Split into ${billCount} bills (${splitType})`, "full");
       const created: typeof createdBills = rows.map((r, i) => ({
         folio_id: r.folio_id,
         invoice_number: r.invoice_number,
