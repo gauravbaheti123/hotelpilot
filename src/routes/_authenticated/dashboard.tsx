@@ -1343,7 +1343,20 @@ function RoomGroups({
   segmentMode, segmentPendingByRoom,
   onPick, onPickFood, onCheckout, onAssignEvent, onEventCheckIn, onSegmentAction, onAddSegmentToBill,
 }: {
-...
+  rooms: Room[];
+  categories: RoomCategory[];
+  grouping: "category" | "floor";
+  occupiedRoomIds: Set<string>;
+  pendingFoodByRoom: Map<string, PendingFood>;
+  occInfoByRoom: Map<string, OccInfo>;
+  eventBlockByRoom: Map<string, RoomEventInfo>;
+  segmentMode: "rooms" | "food" | "laundry";
+  segmentPendingByRoom: Map<string, { amount: number; count: number; bills: Array<{ id: string; bill_number: string; amount: number }> }>;
+  onPick: (r: Room) => void;
+  onPickFood: (r: Room) => void;
+  onCheckout: (bookingId: string) => void;
+  onAssignEvent: (blk: EventBlockRecord) => void;
+  onEventCheckIn: (blk: EventBlockRecord) => void;
   onSegmentAction: (r: Room, action: "view_kot" | "view_invoice") => void;
   onAddSegmentToBill: (bookingId: string, segment: "food" | "laundry") => void;
 }) {
