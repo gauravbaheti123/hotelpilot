@@ -1706,7 +1706,8 @@ const RoomCard = memo(function RoomCard({
   const cardHeight = 118;
   const hintText =
     kind === "dirty" ? "🧹 Needs cleaning"
-    : kind === "maintenance" ? "🔧 Under repair"
+    : kind === "maintenance"
+      ? `🔧 ${room.maintenance_note?.trim() || "Under repair"}`
     : kind === "blocked"
       ? `🎉 ${eventInfo?.eventName ?? "Event"} — ${eventInfo?.guestName ?? "Unassigned"}`
     : null;
