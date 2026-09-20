@@ -529,6 +529,7 @@ function AppShellInner({
               {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             </Button>
             <div className="md:hidden shrink-0"><Logo size={28} /></div>
+            <HeaderBackButton />
             {onTitleClick ? (
               <button
                 type="button"
