@@ -100,6 +100,8 @@ export interface InvoiceBooking {
     id_proof_number?: string | null;
   } | null;
   booking_rooms?: {
+    /** "shifted" rows are rooms the guest has moved out of. */
+    status?: string | null;
     rooms?: { room_number: string } | null;
     room_categories?: { name: string } | null;
     /** Real checkout instant — drives the printed invoice date. */
