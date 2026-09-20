@@ -611,7 +611,8 @@ function OwnerDashboard({
     return () => { supabase.removeChannel(ch); };
   }, [propertyId, segment]);
 
-  async function addPendingFoodToBill(bookingId: string) {
+  async function addPendingSegmentToBill(bookingId: string, segment: "food" | "laundry") {
+    const segLabel = segment === "food" ? "food" : "laundry";
     try {
       const { data: folioId, error: fErr } = await supabase.rpc("get_or_create_folio", { _booking_id: bookingId });
       if (fErr || !folioId) throw fErr ?? new Error("Folio not created");
@@ -619,7 +620,7 @@ function OwnerDashboard({
         .from("segment_bills" as any)
         .select("id,bill_number")
         .eq("booking_id", bookingId)
-        .eq("segment", "food")
+        .eq("segment", segment)
         .eq("status", "open");
       if (kErr) throw kErr;
       if (!bills || bills.length === 0) { toast.info("No pending food bills"); return; }
