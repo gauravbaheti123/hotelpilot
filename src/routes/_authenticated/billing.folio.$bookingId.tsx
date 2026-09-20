@@ -199,6 +199,11 @@ function FolioPage() {
   const [charges, setCharges] = useState<Charge[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [missingNights, setMissingNights] = useState<string[]>([]);
+  // Split bills: other folios on the same booking (for the switcher bar and
+  // the post-settle "open next bill" prompt).
+  type SiblingFolio = { id: string; invoice_number: string | null; status: string; total_amount: number; paid_amount: number; balance_amount: number };
+  const [siblingFolios, setSiblingFolios] = useState<SiblingFolio[]>([]);
+  const [nextBillsOffer, setNextBillsOffer] = useState<SiblingFolio[] | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [foodBillNumber, setFoodBillNumber] = useState<string | null>(null);
@@ -466,6 +471,17 @@ function FolioPage() {
       }
     }
     setFolio((f ?? null) as unknown as Folio);
+    // Sibling split bills on this booking (non-deleted, non-void, not this one).
+    const { data: sibs, error: __qeSib } = await supabase
+      .from("folios")
+      .select("id,invoice_number,status,total_amount,paid_amount,balance_amount")
+      .eq("booking_id", bookingId)
+      .neq("id", fId)
+      .eq("is_deleted" as any, false)
+      .neq("status", "void")
+      .order("created_at", { ascending: true });
+    if (__qeSib) reportQueryError("sibling folios", __qeSib);
+    setSiblingFolios(((sibs ?? []) as any[]));
     // Hydrate the Bill-To guest (when the folio bills to another individual).
     const billGuestId = (f as any)?.billing_guest_id ?? null;
     if (billGuestId) {
