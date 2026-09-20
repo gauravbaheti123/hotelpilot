@@ -44,7 +44,7 @@ interface InHouseRow {
   children: number;
   balance_amount: number;
   guests: { name: string; mobile: string | null } | null;
-  booking_rooms: { id: string; rate: number; rooms: { room_number: string } | null }[];
+  booking_rooms: { id: string; rate: number; status: string | null; rooms: { room_number: string } | null }[];
 }
 
 function InHousePage() {
@@ -60,7 +60,7 @@ function InHousePage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("bookings")
-      .select("id,booking_number,check_in,check_out,adults,children,balance_amount,guests(name,mobile),booking_rooms!booking_rooms_booking_id_fkey(id,rate,rooms!booking_rooms_room_id_fkey(room_number))")
+      .select("id,booking_number,check_in,check_out,adults,children,balance_amount,guests(name,mobile),booking_rooms!booking_rooms_booking_id_fkey(id,rate,status,rooms!booking_rooms_room_id_fkey(room_number))")
       .eq("property_id", current.id)
       .eq("status", "checked_in")
       .order("check_out", { ascending: true });
@@ -109,7 +109,21 @@ function InHousePage() {
                     const overdue = r.check_out < today;
                     const dueToday = r.check_out === today;
                     const noGuest = !r.guests?.name;
-                    const noRoom = (r.booking_rooms ?? []).every((br) => !br.rooms?.room_number);
+                    // A shifted-out assignment is history, not an occupied
+                    // room — show only the rooms the guest is actually in.
+                    const liveRooms = (r.booking_rooms ?? []).filter(
+                      (br) => !["shifted", "cancelled", "checked_out"].includes(String(br.status ?? "active")),
+                    );
+                    const activeRooms = Array.from(new Set(
+                      liveRooms.map((br) => br.rooms?.room_number).filter(Boolean) as string[],
+                    ));
+                    const shiftedFrom = Array.from(new Set(
+                      (r.booking_rooms ?? [])
+                        .filter((br) => String(br.status) === "shifted")
+                        .map((br) => br.rooms?.room_number)
+                        .filter((n): n is string => !!n && !activeRooms.includes(n)),
+                    ));
+                    const noRoom = activeRooms.length === 0;
                     const incomplete = noGuest || noRoom;
                     return (
                       <TableRow key={r.id}>
