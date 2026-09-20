@@ -530,10 +530,16 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
    * function, so no sub-step can silently no-op under RLS and leave orphan
    * duplicate bills behind (the cause of the 6 Aug double-payment incident).
    */
-  async function runAtomicSplit(children: any[], reason: string) {
-    const { data, error } = await supabase.rpc("split_folio_bill" as any, {
+  /**
+   * `coverage: "full"` tells the server that these children are meant to carry
+   * EVERY live line of the original bill (item-mode whole-bill split). The
+   * guarded RPC then rejects the split if any line — e.g. one room night of a
+   * multi-night charge — is missing, instead of quietly cutting a short bill.
+   */
+  async function runAtomicSplit(children: any[], reason: string, coverage: "full" | "scope" = "scope") {
+    const { data, error } = await supabase.rpc("split_folio_bill_v2" as any, {
       _folio_id: folio.id,
-      _payload: { reason, children, payments: paymentPayload() },
+      _payload: { reason, children, coverage, payments: paymentPayload() },
     } as any);
     if (error) {
       throw new BusinessError(
@@ -645,6 +651,20 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
     if (emptyIdx >= 0) {
       return toast.error(`Bill ${emptyIdx + 1} has no line items — every bill needs at least one`);
     }
+    // Every line of the original bill must land on exactly one new bill. A
+    // multi-night room charge is shown as one row per night, so a dropped
+    // night would otherwise cut the bill short without any warning.
+    {
+      const originalSum = charges.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+      const assignedSum = billCharges
+        .flat()
+        .reduce((s, c) => s + (Number(c.amount) || 0), 0);
+      if (Math.abs(assignedSum - originalSum) > 1) {
+        return toast.error(
+          `The new bills add up to ₹${assignedSum.toFixed(2)} but the original bill is ₹${originalSum.toFixed(2)}. Some charge lines are missing — refresh the bill and try again.`,
+        );
+      }
+    }
     for (let i = 0; i < billCount; i++) {
       const party = partyForBill(i);
       if (splitType === "different" && i > 0 && !party.name.trim()) {
@@ -712,7 +732,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, o
         };
       });
 
-      const rows = await runAtomicSplit(children, `Split into ${billCount} bills (${splitType})`);
+      const rows = await runAtomicSplit(children, `Split into ${billCount} bills (${splitType})`, "full");
       const created: typeof createdBills = rows.map((r, i) => ({
         folio_id: r.folio_id,
         invoice_number: r.invoice_number,

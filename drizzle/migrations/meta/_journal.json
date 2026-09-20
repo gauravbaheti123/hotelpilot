@@ -43,6 +43,13 @@
       "when": 1789700258606,
       "tag": "0005_undo_checkout_only_release_checkout_folios",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789894022657,
+      "tag": "0006_split_folio_bill_guarded",
+      "breakpoints": true
     }
   ]
 }
