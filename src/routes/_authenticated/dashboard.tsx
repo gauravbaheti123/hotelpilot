@@ -1980,10 +1980,25 @@ function RoomStatusModal({
               <Label>{kind === "dirty" ? "Cleaning notes" : "Resolution notes"}</Label>
               <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
             </div>
+            <div className="grid gap-1.5">
+              <Label>Maintenance reason (shows on dashboard card)</Label>
+              <Textarea rows={2} value={maintNote} maxLength={200}
+                onChange={(e) => setMaintNote(e.target.value)}
+                placeholder="e.g. AC not cooling — technician called" />
+            </div>
             <div className="grid gap-2">
+              {kind === "maintenance" && (
+                <Button variant="secondary" disabled={busy}
+                  onClick={() => update(
+                    { maintenance_note: maintNote.trim() || null },
+                    null, "maintenance reason saved",
+                  )}>
+                  Save reason
+                </Button>
+              )}
               <Button disabled={busy}
                 onClick={() => update(
-                  { status: "vacant", housekeeping_status: "clean" },
+                  { status: "vacant", housekeeping_status: "clean", maintenance_note: null },
                   { task_type: kind === "dirty" ? "cleaning" : "maintenance" },
                   "marked as Vacant",
                 )}>
@@ -1991,12 +2006,18 @@ function RoomStatusModal({
               </Button>
               {kind === "dirty" ? (
                 <Button variant="outline" disabled={busy}
-                  onClick={() => update({ status: "maintenance" }, null, "marked as Maintenance")}>
+                  onClick={() => update(
+                    { status: "maintenance", maintenance_note: maintNote.trim() || null },
+                    null, "marked as Maintenance",
+                  )}>
                   Mark as Maintenance
                 </Button>
               ) : (
                 <Button variant="outline" disabled={busy}
-                  onClick={() => update({ status: "vacant", housekeeping_status: "dirty" }, null, "marked as Dirty")}>
+                  onClick={() => update(
+                    { status: "vacant", housekeeping_status: "dirty", maintenance_note: null },
+                    null, "marked as Dirty",
+                  )}>
                   Mark as Dirty
                 </Button>
               )}
