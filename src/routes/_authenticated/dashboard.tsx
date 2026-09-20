@@ -1078,7 +1078,7 @@ function OwnerDashboard({
                             {r.lastAt ? new Date(r.lastAt).toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" }) : "—"}
                           </td>
                           <td className="py-2 pr-3 text-right">
-                            <Button size="sm" onClick={() => addPendingFoodToBill(r.bookingId)}>
+                            <Button size="sm" onClick={() => addPendingSegmentToBill(r.bookingId, "food")}>
                               Add to Bill
                             </Button>
                           </td>
@@ -1340,23 +1340,11 @@ function OwnerDashboard({
 function RoomGroups({
   rooms, categories, grouping, occupiedRoomIds, pendingFoodByRoom, occInfoByRoom, eventBlockByRoom,
   segmentMode, segmentPendingByRoom,
-  onPick, onPickFood, onCheckout, onAssignEvent, onEventCheckIn, onSegmentAction,
+  onPick, onPickFood, onCheckout, onAssignEvent, onEventCheckIn, onSegmentAction, onAddSegmentToBill,
 }: {
-  rooms: Room[];
-  categories: RoomCategory[];
-  grouping: "category" | "floor";
-  occupiedRoomIds: Set<string>;
-  pendingFoodByRoom: Map<string, PendingFood>;
-  occInfoByRoom: Map<string, OccInfo>;
-  eventBlockByRoom: Map<string, RoomEventInfo>;
-  segmentMode: "rooms" | "food" | "laundry";
-  segmentPendingByRoom: Map<string, { amount: number; count: number; bills: Array<{ id: string; bill_number: string; amount: number }> }>;
-  onPick: (r: Room) => void;
-  onPickFood: (r: Room) => void;
-  onCheckout: (bookingId: string) => void;
-  onAssignEvent: (blk: EventBlockRecord) => void;
-  onEventCheckIn: (blk: EventBlockRecord) => void;
+...
   onSegmentAction: (r: Room, action: "view_kot" | "view_invoice") => void;
+  onAddSegmentToBill: (bookingId: string, segment: "food" | "laundry") => void;
 }) {
   // Memoize the group derivation so unrelated state changes on the dashboard
   // (modal toggles, form inputs, etc.) don't rebuild these arrays on every
