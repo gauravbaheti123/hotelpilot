@@ -401,7 +401,23 @@ function OwnerDashboard({
       });
       setArrivals(arrRows.map(mapRow));
       setDepartures(depRows.map(mapRow));
-      setRooms(rmsRows as Room[]);
+      // Maintenance narration lives on rooms.maintenance_note; the grid RPC
+      // doesn't return it, so pull it only for the rooms that are out of order.
+      const maintIds = rmsRows
+        .filter((r: any) => r.status === "maintenance" || r.housekeeping_status === "out_of_order")
+        .map((r: any) => r.id);
+      const maintNotes: Record<string, string> = {};
+      if (maintIds.length) {
+        const { data: mn, error: mnErr } = await supabase
+          .from("rooms")
+          .select("id,maintenance_note")
+          .in("id", maintIds);
+        if (mnErr) reportQueryError("room maintenance notes", mnErr);
+        for (const row of (mn ?? []) as any[]) {
+          if (row.maintenance_note) maintNotes[row.id] = row.maintenance_note as string;
+        }
+      }
+      setRooms(rmsRows.map((r: any) => ({ ...r, maintenance_note: maintNotes[r.id] ?? null })) as Room[]);
 
       // Steps 3, 5 and 6 have no data dependency on each other, so they run in
       // parallel. Only the guest backfill (step 4) truly needs the food-bill
