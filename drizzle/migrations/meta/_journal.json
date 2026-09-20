@@ -57,6 +57,13 @@
       "when": 1789896804328,
       "tag": "0007_folio_inherit_booking_billto",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789897988162,
+      "tag": "0008_transfer_folio_credit",
+      "breakpoints": true
     }
   ]
 }

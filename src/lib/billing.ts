@@ -43,6 +43,47 @@ export function settlementPaidTotal(
 }
 
 
+/* ------------------------------------------------------------------ *
+ * Refunds — money given BACK to the guest
+ * ------------------------------------------------------------------ *
+ * A refund is stored as a `payments` row with a NEGATIVE amount, so every
+ * existing sum (paid total, balance, collection reports) nets it out
+ * automatically. `notes` carries the REFUND_NOTE_PREFIX for traceability.
+ */
+
+export const REFUND_NOTE_PREFIX = "REFUND";
+
+/** True when a payment row is a refund (money returned to the guest). */
+export function isRefundPayment(
+  p: { amount: number | string; notes?: string | null },
+): boolean {
+  return Number(p.amount ?? 0) < 0;
+}
+
+/** Sum of refunds on a bill, as a positive number. */
+export function refundedTotal(
+  payments: { amount: number | string }[],
+): number {
+  return round2(
+    (payments ?? []).reduce(
+      (s, p) => (Number(p.amount ?? 0) < 0 ? s + Math.abs(Number(p.amount)) : s),
+      0,
+    ),
+  );
+}
+
+/**
+ * Money collected ABOVE the bill total (advance bigger than the final bill).
+ * Returns 0 when nothing is in excess. Refund rows already reduce this.
+ */
+export function excessAmount(
+  total: number | string,
+  payments: { amount: number | string; mode?: string | null }[],
+): number {
+  const over = round2(settlementPaidTotal(payments) - Number(total ?? 0));
+  return over > 0.01 ? over : 0;
+}
+
 /**
  * Guard against collecting more than the outstanding balance.
  * Returns an error message, or null when the amount is acceptable.
