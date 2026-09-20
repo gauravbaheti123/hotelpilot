@@ -1897,7 +1897,6 @@ function FolioPage() {
       } catch { /* ignore */ }
     }
 
-    toast.success("Folio settled & guest checked out");
     if (booking) logActivity({
       property_id: booking.property_id,
       user_id: user?.id ?? "",
@@ -1907,6 +1906,24 @@ function FolioPage() {
       reference_label: `${booking.booking_number} — ${booking.guests?.name ?? ""}`,
       details: { total: folio.total_amount, bill_type: folio.bill_type },
     });
+    // Split bills: if sibling bills on this booking still need settling, offer
+    // to jump straight to them instead of making the cashier go back and hunt.
+    const { data: openSibs, error: __qeOS } = await supabase
+      .from("folios")
+      .select("id,invoice_number,status,total_amount,paid_amount,balance_amount")
+      .eq("booking_id", folio.booking_id ?? bookingId)
+      .neq("id", folio.id)
+      .eq("is_deleted" as any, false)
+      .in("status", ["open", "due"])
+      .order("created_at", { ascending: true });
+    if (__qeOS) reportQueryError("sibling folios", __qeOS);
+    const pending = (openSibs ?? []) as any[];
+    if (pending.length > 0) {
+      toast.success("Folio settled");
+      setNextBillsOffer(pending as any);
+    } else {
+      toast.success("Folio settled & guest checked out");
+    }
     load();
   }
 
