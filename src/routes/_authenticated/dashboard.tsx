@@ -1842,17 +1842,22 @@ function RoomStatusModal({
 }) {
   const [staffId, setStaffId] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
+  const [maintNote, setMaintNote] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const { can } = usePermissions();
   const canEditBooking = can("bookings", "edit") || can("bookings", "create");
   const showExtraBed = !!bookingId && canEditBooking;
 
-  useEffect(() => { setStaffId(""); setNotes(""); }, [room?.id]);
+  useEffect(() => {
+    setStaffId("");
+    setNotes("");
+    setMaintNote(room?.maintenance_note ?? "");
+  }, [room?.id, room?.maintenance_note]);
 
   if (!room || !kind) return null;
 
   const update = async (
-    patch: Partial<Pick<Room, "status" | "housekeeping_status">>,
+    patch: Partial<Pick<Room, "status" | "housekeeping_status" | "maintenance_note">>,
     log: null | { task_type: "cleaning" | "maintenance" },
     successLabel: string,
   ) => {
