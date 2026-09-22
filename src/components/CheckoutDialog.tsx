@@ -1117,6 +1117,8 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
                 {inrRound(Number(folio.paid_amount ?? 0))}
               </div>
             </div>
+            {earlyCard}
+
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
                 Cancel
