@@ -991,6 +991,64 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     });
   }
 
+  /**
+   * Early-checkout billing choice. Rendered in BOTH the normal checkout body and
+   * the already-settled (₹0 due) body — collectAndCheckout() gates on
+   * `early && !earlyChoice`, so a settled folio without this card was a dead end
+   * ("Select an early-checkout billing option first" with nothing to select).
+   */
+  const earlyCard = early ? (
+    <div className="rounded-md border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/40 p-3 space-y-2">
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+        <AlertTriangle className="h-4 w-4" /> Early checkout — choose billing
+      </div>
+      <div className="text-[11px] text-muted-foreground">
+        Booked till {early.bookedCheckout} ({early.bookedNights} night
+        {early.bookedNights > 1 ? "s" : ""}); checking out today ({istTodayStr}). Rate stays as
+        originally booked.
+      </div>
+      <label className="flex items-start gap-2 cursor-pointer text-sm">
+        <input
+          type="radio"
+          name="early-checkout-choice"
+          className="mt-1"
+          disabled={earlyBusy}
+          checked={earlyChoice === "actual_stay"}
+          onChange={() => applyEarlyChoice("actual_stay")}
+        />
+        <span>
+          Charge for actual stay ({early.actualNights} night{early.actualNights > 1 ? "s" : ""})
+        </span>
+      </label>
+      <label className="flex items-start gap-2 cursor-pointer text-sm">
+        <input
+          type="radio"
+          name="early-checkout-choice"
+          className="mt-1"
+          disabled={earlyBusy}
+          checked={earlyChoice === "full_booked"}
+          onChange={() => applyEarlyChoice("full_booked")}
+        />
+        <span>
+          Charge for full booked stay ({early.bookedNights} night
+          {early.bookedNights > 1 ? "s" : ""})
+        </span>
+      </label>
+      {earlyBusy && (
+        <div className="text-[11px] text-muted-foreground flex items-center gap-1">
+          <Loader2 className="h-3 w-3 animate-spin" /> Re-pricing folio…
+        </div>
+      )}
+      {!earlyChoice && !earlyBusy && (
+        <div className="text-[11px] font-medium text-amber-800 dark:text-amber-300">
+          Select an option to enable checkout.
+        </div>
+      )}
+    </div>
+  ) : null;
+
+
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90dvh] overflow-y-auto">
