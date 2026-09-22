@@ -19,7 +19,7 @@ import { AndroidBackHandler } from "@/components/AndroidBackHandler";
 import { useSessionTimeout } from "@/hooks/use-session-timeout";
 import { supabase } from "@/integrations/supabase/client";
 import { AUTH_QUERY_KEY } from "@/hooks/use-auth";
-import { installStaleChunkReload, reloadIfStaleChunk } from "@/lib/stale-chunk-reload";
+import { installStaleChunkReload, isStaleChunkError, reloadIfStaleChunk } from "@/lib/stale-chunk-reload";
 
 function NotFoundComponent() {
   return (
@@ -48,15 +48,23 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
   // A freshly published build removes the old hashed chunk files. Old tabs
   // then fail to import them — reload once instead of showing a crash screen.
-  const staleChunk = typeof window !== "undefined" && reloadIfStaleChunk(error);
+  const staleChunk = isStaleChunkError(error);
   useEffect(() => {
-    if (staleChunk) return;
+    if (reloadIfStaleChunk(error)) return;
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
     void logClientError(error, {
       boundary: "tanstack_root_error_component",
       componentStack: (error as unknown as { componentStack?: string })?.componentStack ?? null,
     });
   }, [error]);
+
+  if (staleChunk) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <p className="text-sm text-muted-foreground">Updating to the latest version…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
