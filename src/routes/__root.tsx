@@ -168,6 +168,7 @@ function RootComponent() {
   useSessionTimeout();
   useEffect(() => {
     installGlobalErrorLogging();
+    installStaleChunkReload();
   }, []);
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
