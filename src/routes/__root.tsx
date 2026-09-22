@@ -19,6 +19,7 @@ import { AndroidBackHandler } from "@/components/AndroidBackHandler";
 import { useSessionTimeout } from "@/hooks/use-session-timeout";
 import { supabase } from "@/integrations/supabase/client";
 import { AUTH_QUERY_KEY } from "@/hooks/use-auth";
+import { installStaleChunkReload, reloadIfStaleChunk } from "@/lib/stale-chunk-reload";
 
 function NotFoundComponent() {
   return (
@@ -45,7 +46,11 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+  // A freshly published build removes the old hashed chunk files. Old tabs
+  // then fail to import them — reload once instead of showing a crash screen.
+  const staleChunk = typeof window !== "undefined" && reloadIfStaleChunk(error);
   useEffect(() => {
+    if (staleChunk) return;
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
     void logClientError(error, {
       boundary: "tanstack_root_error_component",
