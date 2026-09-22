@@ -78,6 +78,13 @@
       "when": 1790095508342,
       "tag": "0010_split_folio_bill_conserves_all_charges",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790097967439,
+      "tag": "0011_split_children_conserve_constraint_trigger",
+      "breakpoints": true
     }
   ]
 }
