@@ -71,6 +71,13 @@
       "when": 1789899715259,
       "tag": "0009_add_room_maintenance_note",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790095508342,
+      "tag": "0010_split_folio_bill_conserves_all_charges",
+      "breakpoints": true
     }
   ]
 }

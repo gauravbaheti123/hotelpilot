@@ -6446,6 +6446,10 @@ export type Database = {
       }
     }
     Functions: {
+      assert_split_conserves: {
+        Args: { _folio_id: string; _payload: Json }
+        Returns: undefined
+      }
       auto_cancel_incomplete_bookings: { Args: never; Returns: number }
       auto_cancel_no_show_bookings: {
         Args: { _grace_days?: number }
