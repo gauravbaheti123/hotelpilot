@@ -1,5 +1,5 @@
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
-import { ReactNode, Suspense, lazy, useEffect, useState } from "react";
+import { ReactNode, Suspense, useEffect, useState } from "react";
 import { Logo } from "./Logo";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { Button } from "@/components/ui/button";
@@ -79,9 +79,7 @@ import { useCurrentProperty } from "@/hooks/use-property";
 import { useRoomStatusColorOverrides } from "@/hooks/use-room-status-colors";
 import { RemindersBell } from "./Reminders";
 import { useSuperadminView } from "@/lib/superadmin-view";
-const QZStatusIndicator = lazy(() =>
-  import("./QZStatusIndicator").then((m) => ({ default: m.QZStatusIndicator })),
-);
+import { QZStatusIndicator } from "./QZStatusIndicator";
 import { ProfileDialog } from "./ProfileDialog";
 import { reportQueryError } from "@/lib/queryError";
 
