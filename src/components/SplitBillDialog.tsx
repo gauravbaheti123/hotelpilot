@@ -106,8 +106,34 @@ function round2(n: number) {
   return Math.round(Number(n || 0) * 100) / 100;
 }
 
-export function SplitBillDialog({ open, onOpenChange, folio, booking, charges, onDone }: Props) {
+export function SplitBillDialog({ open, onOpenChange, folio, booking, charges: chargesProp, onDone }: Props) {
   const { user, roles } = useAuth();
+  /**
+   * The bill can change between the moment the screen behind this dialog was
+   * loaded and the moment the split is confirmed (date change, late checkout,
+   * early-checkout re-pricing, a new restaurant charge). Splitting a stale
+   * snapshot is what used to drop room nights, so always re-read the live
+   * lines when the dialog opens and use those for assignment + payload.
+   */
+  const [liveCharges, setLiveCharges] = useState<any[] | null>(null);
+  useEffect(() => {
+    if (!open || !folio?.id) { setLiveCharges(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("folio_charges")
+        .select("*")
+        .eq("folio_id", folio.id)
+        .or("is_wiped.is.null,is_wiped.eq.false")
+        .order("charged_on", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (cancelled) return;
+      if (error) { reportQueryError("bill lines", error); return; }
+      setLiveCharges((data ?? []) as any[]);
+    })();
+    return () => { cancelled = true; };
+  }, [open, folio?.id]);
+  const charges = (liveCharges ?? chargesProp) as typeof chargesProp;
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [splitType, setSplitType] = useState<SplitType>("same");
   const [splitMode, setSplitMode] = useState<SplitMode>("item");
