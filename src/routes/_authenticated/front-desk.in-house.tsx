@@ -193,7 +193,7 @@ function InHousePage() {
                                   if (error) return toastError(error);
                                   const u = await supabase.auth.getUser();
                                   logActivity({
-                                    property_id: r.property_id ?? current?.id ?? "",
+                                    property_id: current.id,
                                     user_id: u.data.user?.id ?? "",
                                     user_name: userDisplayName(u.data.user as never),
                                     action_type: "BOOKING_CANCELLED",
