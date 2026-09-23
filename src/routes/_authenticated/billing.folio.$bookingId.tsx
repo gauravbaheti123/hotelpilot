@@ -938,22 +938,38 @@ function FolioPage() {
           return;
         }
         const profile = parseGstinProfile(res.body);
-        const { data: inserted, error } = await supabase
-          .from("billing_companies")
-          .insert({
-            property_id: folio.property_id,
+        // Front-desk staff have no master-data "create" right, so the direct
+        // insert was rejected by RLS. Go through the same security-definer RPC
+        // the booking wizard uses.
+        let newId: string | null = null;
+        try {
+          newId = await upsertBillingCompany(folio.property_id, {
+            enabled: true,
+            companyId: null,
             name: profile.name || `GSTIN ${gstin}`,
             gstin,
-            address: profile.address || null,
-            state: profile.state || null,
-            city: profile.city || null,
-            gst_status: profile.gstStatus || null,
-            is_active: true,
-          } as any)
+            gstStatus: profile.gstStatus || "",
+            address: profile.address || "",
+            email: "",
+            city: profile.city || "",
+            state: profile.state || "",
+            nation: "India",
+          } as never);
+        } catch (e) {
+          toastError(e);
+          return;
+        }
+        if (!newId) {
+          toastError(new Error("The billing company could not be created."));
+          return;
+        }
+        const { data: inserted, error } = await supabase
+          .from("billing_companies")
           .select("id,name,gstin,address,phone,email,city,state,state_code,nation")
+          .eq("id", newId)
           .single();
         if (error || !inserted) {
-          toastError(error ?? new Error("insert failed"));
+          toastError(error ?? new Error("The billing company could not be loaded."));
           return;
         }
         co = inserted as unknown as (typeof billingCompanies)[number];
