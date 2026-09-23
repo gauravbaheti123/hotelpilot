@@ -550,6 +550,17 @@ function BookingDetailPage() {
       cancelled_reason: cancelReason || null,
     }).eq("id", bookingId);
     if (error) return toastError(error);
+    // Attribution for the Cancelled Bookings report.
+    logActivity({
+      property_id: b.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as never),
+      action_type: "BOOKING_CANCELLED",
+      module: "Front Desk",
+      reference_id: bookingId,
+      reference_label: b.booking_number,
+      details: { booking_id: bookingId, reason: cancelReason || null },
+    });
     setCancelOpen(false);
     toastWithUndo(
       "Booking cancelled",
