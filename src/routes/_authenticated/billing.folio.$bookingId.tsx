@@ -47,6 +47,7 @@ import { verifyManagerPassword } from "@/lib/manager-verify";
 import { isValidGSTIN, isValidOrEmptyGSTIN, GSTIN_ERROR } from "@/lib/gstin";
 import { gstinLookup } from "@/lib/gstinLookup.functions";
 import { parseGstinProfile } from "@/lib/gstinProfile";
+import { upsertBillingCompany } from "@/lib/bookingWizardSubmit";
 import { resolveGstRate, resolveStateCode, resolveTaxType, splitGst } from "@/lib/gst";
 import { useDiscountLimit } from "@/hooks/use-discount-limit";
 import { canApplyDiscount, describeLimit } from "@/lib/discountLimit";

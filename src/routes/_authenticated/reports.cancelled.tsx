@@ -75,7 +75,6 @@ function Page() {
         const logs = await pagedIn<any>("activity log", ids, (chunk, f, t) => supabase
           .from("activity_log")
           .select("reference_id,user_name,action_type,created_at")
-          .eq("module", "bookings")
           .ilike("action_type", "%CANCEL%")
           .in("reference_id", chunk)
           .order("created_at", { ascending: false })

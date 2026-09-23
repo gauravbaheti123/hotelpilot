@@ -191,6 +191,17 @@ function InHousePage() {
                                     .update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancelled_reason: "Manual cancel — incomplete booking" } as any)
                                     .eq("id", r.id);
                                   if (error) return toastError(error);
+                                  const u = await supabase.auth.getUser();
+                                  logActivity({
+                                    property_id: current.id,
+                                    user_id: u.data.user?.id ?? "",
+                                    user_name: userDisplayName(u.data.user as never),
+                                    action_type: "BOOKING_CANCELLED",
+                                    module: "Front Desk",
+                                    reference_id: r.id,
+                                    reference_label: r.booking_number ?? null,
+                                    details: { booking_id: r.id, reason: "Manual cancel — incomplete booking" },
+                                  });
                                   toast.success("Booking cancelled");
                                   load();
                                 }}
