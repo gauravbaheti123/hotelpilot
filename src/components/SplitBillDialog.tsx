@@ -542,9 +542,12 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges: c
         notes: spans
           ? `${p.notes ? `${p.notes} · ` : ""}Split from ${billNo(folio.invoice_number)} (₹${p.amount.toFixed(2)})`
           : p.notes,
+        // Refunds are stored as NEGATIVE payment rows. Keep them: dropping
+        // them stranded the refund on the voided parent and made every child
+        // bill look overpaid.
         allocations: alloc
           .map((amount, child_index) => ({ child_index, amount: round2(amount) }))
-          .filter((a) => a.amount > 0),
+          .filter((a) => Math.abs(a.amount) > 0.001),
       };
     });
   }
