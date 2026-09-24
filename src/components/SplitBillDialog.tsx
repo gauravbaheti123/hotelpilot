@@ -995,20 +995,21 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges: c
       if (settleFailures.length > 0) {
         console.error("[SplitBillDialog] settle failures", settleFailures);
       }
-      // Mark booking checked-out.
+      // Mark booking checked-out through the SECURITY DEFINER RPC. Direct
+      // UPDATEs on bookings/booking_rooms/rooms are silently rejected by RLS
+      // for reception roles, which left the split checkout half-finished
+      // (bills settled, room still occupied). The RPC settles every live
+      // folio, stamps the booking + rooms, and rolls back on any failure.
       if (booking.status !== "checked_out" && booking.status !== "cancelled") {
-        const now = new Date().toISOString();
-        await supabase.from("bookings").update({
-          status: "checked_out", checked_out_at: now, checked_out_by: user?.id ?? null,
-        } as any).eq("id", booking.id);
-        const { data: brs, error: __qe5 } = await supabase.from("booking_rooms").select("id,room_id").eq("booking_id", booking.id);
-        if (__qe5) reportQueryError("booking rooms", __qe5);
-        const roomIds = ((brs ?? []) as any[]).map((x) => x.room_id).filter(Boolean);
-        for (const br of (brs ?? []) as any[]) {
-          await supabase.from("booking_rooms").update({ actual_check_out: now } as any).eq("id", br.id);
-        }
-        if (roomIds.length > 0) {
-          await supabase.from("rooms").update({ status: "vacant", housekeeping_status: "dirty" } as any).in("id", roomIds);
+        const { error: coErr } = await supabase.rpc("complete_checkout" as any, {
+          _booking_id: booking.id,
+          _mark_due: false,
+          _due_reason: null,
+        } as any);
+        if (coErr) {
+          setBusy(false);
+          console.error("[SplitBillDialog] complete_checkout failed", coErr);
+          return toastError(coErr, "Checkout stopped — nothing was saved");
         }
       }
       toast.success("Split checkout complete");
