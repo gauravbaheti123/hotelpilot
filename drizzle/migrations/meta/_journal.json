@@ -113,6 +113,13 @@
       "when": 1790225229940,
       "tag": "0015_clear_checked_out_at_when_not_checked_out",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790400628873,
+      "tag": "0016_dupe_room_charge_night_aware",
+      "breakpoints": true
     }
   ]
 }
