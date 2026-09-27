@@ -122,9 +122,11 @@ export function CrudPage<T extends { id: string }>({
   searchFields,
   flagRow,
   validate,
+  allowAllStaffManage,
 }: CrudPageProps<T>) {
   const { roles } = useAuth();
   const canManage =
+    !!allowAllStaffManage ||
     roles.includes("superadmin") ||
     roles.includes("owner") ||
     roles.includes("manager");
