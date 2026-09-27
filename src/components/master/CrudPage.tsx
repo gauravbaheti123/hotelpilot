@@ -99,6 +99,13 @@ export interface CrudPageProps<T extends { id: string }> {
    * or null/undefined to proceed. `editing` includes an `id` when updating.
    */
   validate?: (payload: Record<string, any>, rows: T[]) => Promise<string | null | undefined> | string | null | undefined;
+  /**
+   * Opens Add/Edit/Delete to every signed-in staff member instead of the
+   * default superadmin/owner/manager gate. Used by master lists that reception
+   * maintains day to day (e.g. Bill-To billing companies). Row-level security
+   * still has the final say server-side.
+   */
+  allowAllStaffManage?: boolean;
 }
 
 export function CrudPage<T extends { id: string }>({
@@ -115,9 +122,11 @@ export function CrudPage<T extends { id: string }>({
   searchFields,
   flagRow,
   validate,
+  allowAllStaffManage,
 }: CrudPageProps<T>) {
   const { roles } = useAuth();
   const canManage =
+    !!allowAllStaffManage ||
     roles.includes("superadmin") ||
     roles.includes("owner") ||
     roles.includes("manager");

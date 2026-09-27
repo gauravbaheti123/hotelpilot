@@ -60,7 +60,7 @@ function Page() {
     // Live data source: segment_bills / segment_bill_items (kot_orders is retired).
     const kotData = await pagedSelect<any>("food bills", (f, t) => supabase.from("segment_bills").select(`
       id,bill_number,created_at,total_amount,status,booking_id,segment,guest_name,
-      rooms(room_number),bookings(guests(name)),
+      rooms(room_number),bookings!segment_bills_booking_id_fkey(guests(name)),
       segment_bill_items(id,description,qty,rate,amount)
     `).eq("property_id", propertyId)
       .in("segment", ["food", "laundry"])

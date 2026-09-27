@@ -133,6 +133,7 @@ function BillingCompaniesPage() {
           />
         ) : null
       }
+      allowAllStaffManage
       validate={(payload) => {
         // Warn-only on invalid GSTIN — do not block save (per spec).
         const g = (payload.gstin ?? "").trim();
