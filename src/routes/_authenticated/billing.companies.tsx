@@ -133,6 +133,9 @@ function BillingCompaniesPage() {
           />
         ) : null
       }
+      // Reception raises and corrects Bill-To companies while taking a booking,
+      // so Add / Edit / Delete is open to every property login here (RLS mirrors this).
+      allowAllStaffManage
       validate={(payload) => {
         // Warn-only on invalid GSTIN — do not block save (per spec).
         const g = (payload.gstin ?? "").trim();
