@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { billNo } from "@/lib/billNumber";
+import { payableFolios } from "@/lib/folioSelect";
 import { toast } from "sonner";
 import {
   inr, inrRound, recomputeFolio, computeBillDiscountAmount,
@@ -1014,7 +1015,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges: c
         );
         if (!ok) {
           toast.info("Payments saved. Room is still checked in — collect the balance to check out.");
-          onDone?.();
+          onDone?.(createdBills.map((b) => b.folio_id).filter(Boolean) as string[]);
           return;
         }
       }
@@ -1028,12 +1029,12 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges: c
         } as any);
         if (coErr) {
           console.error("[SplitBillDialog] complete_checkout failed", coErr);
-          onDone?.();
+          onDone?.(createdBills.map((b) => b.folio_id).filter(Boolean) as string[]);
           return toastError(coErr, "Payments were saved, but checkout could not finish");
         }
       }
       toast.success(markDue ? "Checked out — unpaid bill(s) marked as due" : "Split checkout complete");
-      onDone?.();
+      onDone?.(createdBills.map((b) => b.folio_id).filter(Boolean) as string[]);
       onOpenChange(false);
     } catch (e: any) {
       toastError(e, "Could not complete checkout");
