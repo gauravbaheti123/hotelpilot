@@ -995,24 +995,45 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges: c
       if (settleFailures.length > 0) {
         console.error("[SplitBillDialog] settle failures", settleFailures);
       }
-      // Mark booking checked-out through the SECURITY DEFINER RPC. Direct
-      // UPDATEs on bookings/booking_rooms/rooms are silently rejected by RLS
-      // for reception roles, which left the split checkout half-finished
-      // (bills settled, room still occupied). The RPC settles every live
-      // folio, stamps the booking + rooms, and rolls back on any failure.
+      // Any portion left unpaid (pay-later / company / partial) is checked out
+      // as DUE instead of aborting the whole checkout.
+      let pending = 0;
+      {
+        const { data: fs } = await supabase
+          .from("folios")
+          .select("id,parent_folio_id,status,is_deleted,balance_amount")
+          .eq("booking_id", booking.id);
+        for (const f of payableFolios((fs ?? []) as any[])) {
+          pending += Math.max(0, Number((f as any).balance_amount ?? 0));
+        }
+      }
+      const markDue = pending > 0.01;
+      if (markDue && booking.status !== "checked_out" && booking.status !== "cancelled") {
+        const ok = window.confirm(
+          `Payments saved. ${inr(pending)} is still unpaid on the split bills.\n\nCheck out and mark the unpaid bill(s) as DUE?`,
+        );
+        if (!ok) {
+          toast.info("Payments saved. Room is still checked in — collect the balance to check out.");
+          onDone?.();
+          return;
+        }
+      }
+      // Mark booking checked-out through the SECURITY DEFINER RPC (RLS blocks
+      // direct updates for reception roles).
       if (booking.status !== "checked_out" && booking.status !== "cancelled") {
         const { error: coErr } = await supabase.rpc("complete_checkout" as any, {
           _booking_id: booking.id,
-          _mark_due: false,
-          _due_reason: null,
+          _mark_due: markDue,
+          _due_reason: markDue ? "Split bill — portion to be paid later" : null,
         } as any);
         if (coErr) {
-          setBusy(false);
           console.error("[SplitBillDialog] complete_checkout failed", coErr);
-          return toastError(coErr, "Checkout stopped — nothing was saved");
+          onDone?.();
+          return toastError(coErr, "Payments were saved, but checkout could not finish");
         }
       }
-      toast.success("Split checkout complete");
+      toast.success(markDue ? "Checked out — unpaid bill(s) marked as due" : "Split checkout complete");
+      onDone?.();
       onOpenChange(false);
     } catch (e: any) {
       toastError(e, "Could not complete checkout");
