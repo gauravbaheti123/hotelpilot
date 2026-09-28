@@ -1137,6 +1137,20 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     </div>
   ) : null;
 
+  /** Closing the dialog without a completed checkout must never leave the stay
+   *  shortened — that is how nights silently vanished from open bills. */
+  function handleOpenChange(next: boolean) {
+    if (!next && !checkoutCompletedRef.current && earlyShortenedRef.current) {
+      const restoring = restoreBookedStay();
+      setEarlyChoice(null);
+      toast.message("Early-checkout selection cancelled — full booked stay kept on the bill.");
+      void restoring.then(() => onDone?.());
+    }
+    onOpenChange(next);
+  }
+
+
+
 
 
   return (
