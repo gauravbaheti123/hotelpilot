@@ -830,6 +830,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       console.error("[CheckoutDialog] complete_checkout failed", coErr);
       return toastError(coErr, "Checkout stopped — nothing was saved");
     }
+    // Checkout went through: the early-checkout shortening (if any) is now final.
+    checkoutCompletedRef.current = true;
+
+
 
     if (liveBalance > 0.01) {
       logActivity({
