@@ -150,6 +150,22 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
   // Phase 48b — early checkout choice (actual stay vs full booked stay).
   const [earlyChoice, setEarlyChoice] = useState<"actual_stay" | "full_booked" | null>(null);
   const [earlyBusy, setEarlyBusy] = useState(false);
+  // Phase 71 — night-loss protection. Picking "actual stay" shortens the stay in
+  // the DB straight away (so the amount on screen is the amount collected). That
+  // write used to be irreversible: closing the dialog, or switching back to
+  // "full booked stay", left the booking permanently one or more nights short
+  // and the guest's already-collected money stranded as a negative balance.
+  // We snapshot the booked dates on open and restore them whenever the choice is
+  // undone or the dialog is abandoned without a completed checkout.
+  const earlyOriginalRef = useRef<{
+    bookingCheckout: string;
+    rooms: Array<{ id: string; check_out: string }>;
+  } | null>(null);
+  /** True once the stay has actually been shortened in the database. */
+  const earlyShortenedRef = useRef(false);
+  /** True once checkout completed — the shortening is then intentional & final. */
+  const checkoutCompletedRef = useRef(false);
+
   const [property, setProperty] = useState<{ checkout_grace_time: string | null } | null>(null);
   const { methods: payMethods } = usePaymentMethods(booking?.property_id ?? null);
   // Bill-To confirmation gate (Phase 13.3).
@@ -203,6 +219,20 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       return;
     }
     setBooking(b);
+
+    // Snapshot the stay exactly as booked, once per dialog-open, BEFORE any
+    // early-checkout re-pricing can touch it. This is what a cancelled or
+    // switched-back early-checkout choice is restored to.
+    if (!earlyOriginalRef.current) {
+      earlyOriginalRef.current = {
+        bookingCheckout: String((b as any).check_out).slice(0, 10),
+        rooms: ((b as any).booking_rooms ?? []).map((br: any) => ({
+          id: String(br.id),
+          check_out: String(br.check_out).slice(0, 10),
+        })),
+      };
+    }
+
 
     // Load linked billing company (if any) for the Bill-To gate.
     if ((b as any)?.billing_company_id) {
@@ -333,7 +363,11 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       setLateBusy(false);
       didSeedRoomCharges.current = false;
       didLateChargeCheck.current = false;
+      earlyOriginalRef.current = null;
+      earlyShortenedRef.current = false;
+      checkoutCompletedRef.current = false;
       load();
+
     }
   }, [open, bookingId, load]);
 
@@ -796,6 +830,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       console.error("[CheckoutDialog] complete_checkout failed", coErr);
       return toastError(coErr, "Checkout stopped — nothing was saved");
     }
+    // Checkout went through: the early-checkout shortening (if any) is now final.
+    checkoutCompletedRef.current = true;
+
+
 
     if (liveBalance > 0.01) {
       logActivity({
@@ -927,6 +965,43 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     .filter((c: any) => c.charge_type === "room")
     .reduce((s: number, c: any) => s + Number(c.amount || 0) + Number(c.gst_amount || 0), 0);
 
+  /** Puts the stay back exactly as it was booked when the dialog opened.
+   *  Safe to call at any time: it is a no-op unless we actually shortened it. */
+  const restoreBookedStay = useCallback(async (): Promise<boolean> => {
+    const orig = earlyOriginalRef.current;
+    if (!orig || !earlyShortenedRef.current || !bookingId) return true;
+    for (const r of orig.rooms) {
+      const { error } = await supabase
+        .from("booking_rooms")
+        .update({ check_out: r.check_out } as any)
+        .eq("id", r.id);
+      if (error) {
+        reportQueryError("booking rooms", error);
+        return false;
+      }
+    }
+    const { error: bkErr } = await supabase
+      .from("bookings")
+      .update({ check_out: orig.bookingCheckout } as any)
+      .eq("id", bookingId);
+    if (bkErr) {
+      reportQueryError("bookings", bkErr);
+      return false;
+    }
+    // Re-seed every live segment so any night whose charge was dropped while the
+    // stay was short comes straight back onto the bill.
+    const { data: liveRooms } = await supabase
+      .from("booking_rooms")
+      .select("id,status")
+      .eq("booking_id", bookingId);
+    for (const r of (liveRooms ?? []) as any[]) {
+      if (!["active", "reserved", "checked_in"].includes(String(r.status ?? "active"))) continue;
+      await supabase.rpc("seed_room_charge_for_booking_room" as any, { _booking_room_id: r.id });
+    }
+    earlyShortenedRef.current = false;
+    return true;
+  }, [bookingId]);
+
   async function applyEarlyChoice(choice: "actual_stay" | "full_booked") {
     if (!early || !booking) return;
     setEarlyChoice(choice);
@@ -955,12 +1030,27 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         setEarlyChoice(null);
         return toastError(bkErr, "Could not shorten stay");
       }
+      earlyShortenedRef.current = true;
       // Reload so folio totals / balance reflect the reduced amount before payment.
       await load();
       setSingleAmount("");
       setEarlyBusy(false);
       toast.success(`Re-priced to ${early.actualNights} night(s) at the original locked rate.`);
+    } else if (earlyShortenedRef.current) {
+      // Switching back to the full booked stay must UNDO the shortening —
+      // otherwise the removed nights stay off the bill for good.
+      setEarlyBusy(true);
+      const ok = await restoreBookedStay();
+      await load();
+      setSingleAmount("");
+      setEarlyBusy(false);
+      if (!ok) {
+        setEarlyChoice(null);
+        return toast.error("Could not restore the full booked stay. Refresh and try again.");
+      }
+      toast.success("Full booked stay restored on the bill.");
     }
+
     const { data: freshCharges, error: __qe9 } = await supabase
       .from("folio_charges")
       .select("charge_type,amount,gst_amount,is_wiped")
@@ -1047,10 +1137,24 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     </div>
   ) : null;
 
+  /** Closing the dialog without a completed checkout must never leave the stay
+   *  shortened — that is how nights silently vanished from open bills. */
+  function handleOpenChange(next: boolean) {
+    if (!next && !checkoutCompletedRef.current && earlyShortenedRef.current) {
+      const restoring = restoreBookedStay();
+      setEarlyChoice(null);
+      toast.message("Early-checkout selection cancelled — full booked stay kept on the bill.");
+      void restoring.then(() => onDone?.());
+    }
+    onOpenChange(next);
+  }
+
+
+
 
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Checkout Summary</DialogTitle>
@@ -1140,7 +1244,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
             </div>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
               {pendingKots.length > 0 && (
                 <Button onClick={addPendingToBill} disabled={busy}>
                   {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Add Food to Bill
@@ -1178,8 +1282,9 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
             {earlyCard}
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+              <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={busy}>
                 Cancel
+
               </Button>
               <Button onClick={collectAndCheckout} disabled={busy}>
                 {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
@@ -1437,7 +1542,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+              <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={busy}>
                 Cancel
               </Button>
               {canSplit && totals.grand > 0 && (
