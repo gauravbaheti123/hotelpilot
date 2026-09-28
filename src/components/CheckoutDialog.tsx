@@ -150,6 +150,22 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
   // Phase 48b — early checkout choice (actual stay vs full booked stay).
   const [earlyChoice, setEarlyChoice] = useState<"actual_stay" | "full_booked" | null>(null);
   const [earlyBusy, setEarlyBusy] = useState(false);
+  // Phase 71 — night-loss protection. Picking "actual stay" shortens the stay in
+  // the DB straight away (so the amount on screen is the amount collected). That
+  // write used to be irreversible: closing the dialog, or switching back to
+  // "full booked stay", left the booking permanently one or more nights short
+  // and the guest's already-collected money stranded as a negative balance.
+  // We snapshot the booked dates on open and restore them whenever the choice is
+  // undone or the dialog is abandoned without a completed checkout.
+  const earlyOriginalRef = useRef<{
+    bookingCheckout: string;
+    rooms: Array<{ id: string; check_out: string }>;
+  } | null>(null);
+  /** True once the stay has actually been shortened in the database. */
+  const earlyShortenedRef = useRef(false);
+  /** True once checkout completed — the shortening is then intentional & final. */
+  const checkoutCompletedRef = useRef(false);
+
   const [property, setProperty] = useState<{ checkout_grace_time: string | null } | null>(null);
   const { methods: payMethods } = usePaymentMethods(booking?.property_id ?? null);
   // Bill-To confirmation gate (Phase 13.3).
