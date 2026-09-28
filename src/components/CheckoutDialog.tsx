@@ -1140,7 +1140,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
 
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Checkout Summary</DialogTitle>
@@ -1230,7 +1230,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
             </div>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
               {pendingKots.length > 0 && (
                 <Button onClick={addPendingToBill} disabled={busy}>
                   {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />} Add Food to Bill
@@ -1268,7 +1268,8 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
             {earlyCard}
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+              <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={busy}>
+
                 Cancel
               </Button>
               <Button onClick={collectAndCheckout} disabled={busy}>
@@ -1527,7 +1528,7 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+              <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={busy}>
                 Cancel
               </Button>
               {canSplit && totals.grand > 0 && (
