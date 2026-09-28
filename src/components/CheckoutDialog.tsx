@@ -220,6 +220,20 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     }
     setBooking(b);
 
+    // Snapshot the stay exactly as booked, once per dialog-open, BEFORE any
+    // early-checkout re-pricing can touch it. This is what a cancelled or
+    // switched-back early-checkout choice is restored to.
+    if (!earlyOriginalRef.current) {
+      earlyOriginalRef.current = {
+        bookingCheckout: String((b as any).check_out).slice(0, 10),
+        rooms: ((b as any).booking_rooms ?? []).map((br: any) => ({
+          id: String(br.id),
+          check_out: String(br.check_out).slice(0, 10),
+        })),
+      };
+    }
+
+
     // Load linked billing company (if any) for the Bill-To gate.
     if ((b as any)?.billing_company_id) {
       const { data: co, error: __qe1 } = await supabase
