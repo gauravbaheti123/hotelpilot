@@ -961,6 +961,43 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
     .filter((c: any) => c.charge_type === "room")
     .reduce((s: number, c: any) => s + Number(c.amount || 0) + Number(c.gst_amount || 0), 0);
 
+  /** Puts the stay back exactly as it was booked when the dialog opened.
+   *  Safe to call at any time: it is a no-op unless we actually shortened it. */
+  const restoreBookedStay = useCallback(async (): Promise<boolean> => {
+    const orig = earlyOriginalRef.current;
+    if (!orig || !earlyShortenedRef.current || !bookingId) return true;
+    for (const r of orig.rooms) {
+      const { error } = await supabase
+        .from("booking_rooms")
+        .update({ check_out: r.check_out } as any)
+        .eq("id", r.id);
+      if (error) {
+        reportQueryError("booking rooms", error);
+        return false;
+      }
+    }
+    const { error: bkErr } = await supabase
+      .from("bookings")
+      .update({ check_out: orig.bookingCheckout } as any)
+      .eq("id", bookingId);
+    if (bkErr) {
+      reportQueryError("bookings", bkErr);
+      return false;
+    }
+    // Re-seed every live segment so any night whose charge was dropped while the
+    // stay was short comes straight back onto the bill.
+    const { data: liveRooms } = await supabase
+      .from("booking_rooms")
+      .select("id,status")
+      .eq("booking_id", bookingId);
+    for (const r of (liveRooms ?? []) as any[]) {
+      if (!["active", "reserved", "checked_in"].includes(String(r.status ?? "active"))) continue;
+      await supabase.rpc("seed_room_charge_for_booking_room" as any, { _booking_room_id: r.id });
+    }
+    earlyShortenedRef.current = false;
+    return true;
+  }, [bookingId]);
+
   async function applyEarlyChoice(choice: "actual_stay" | "full_booked") {
     if (!early || !booking) return;
     setEarlyChoice(choice);
@@ -989,12 +1026,27 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         setEarlyChoice(null);
         return toastError(bkErr, "Could not shorten stay");
       }
+      earlyShortenedRef.current = true;
       // Reload so folio totals / balance reflect the reduced amount before payment.
       await load();
       setSingleAmount("");
       setEarlyBusy(false);
       toast.success(`Re-priced to ${early.actualNights} night(s) at the original locked rate.`);
+    } else if (earlyShortenedRef.current) {
+      // Switching back to the full booked stay must UNDO the shortening —
+      // otherwise the removed nights stay off the bill for good.
+      setEarlyBusy(true);
+      const ok = await restoreBookedStay();
+      await load();
+      setSingleAmount("");
+      setEarlyBusy(false);
+      if (!ok) {
+        setEarlyChoice(null);
+        return toast.error("Could not restore the full booked stay. Refresh and try again.");
+      }
+      toast.success("Full booked stay restored on the bill.");
     }
+
     const { data: freshCharges, error: __qe9 } = await supabase
       .from("folio_charges")
       .select("charge_type,amount,gst_amount,is_wiped")
