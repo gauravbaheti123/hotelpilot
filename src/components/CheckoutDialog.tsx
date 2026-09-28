@@ -363,7 +363,11 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
       setLateBusy(false);
       didSeedRoomCharges.current = false;
       didLateChargeCheck.current = false;
+      earlyOriginalRef.current = null;
+      earlyShortenedRef.current = false;
+      checkoutCompletedRef.current = false;
       load();
+
     }
   }, [open, bookingId, load]);
 
