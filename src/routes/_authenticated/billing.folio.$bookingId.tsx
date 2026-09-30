@@ -407,8 +407,8 @@ function FolioPage() {
       user_name: userDisplayName(user as any),
       action_type: "BOOKING_PAX_UPDATED",
       module: "Billing",
-      reference_id: folio.id,
-      reference_label: billNo(folio.invoice_number),
+      reference_id: folio?.id ?? null,
+      reference_label: folio ? billNo(folio.invoice_number) : null,
       details: {
         booking_number: booking.booking_number,
         from: { adults: booking.adults ?? 1, children: booking.children ?? 0 },
