@@ -161,10 +161,13 @@ export function OwnerInlineEditCard({
         actualOut !== originActual.out),
     [stayRow, roomId, categoryId, checkIn, checkOut, origin, actualIn, actualOut, originActual],
   );
+  const cleanAdults = Math.max(1, Math.floor(Number(paxAdults) || 1));
+  const cleanChildren = Math.max(0, Math.floor(Number(paxChildren) || 0));
+  const dirtyPax = cleanAdults !== (adults ?? 1) || cleanChildren !== (children ?? 0);
   const dirtyHeader =
     (company ?? "").trim() !== (guestCompany ?? "").trim() ||
     (gstin ?? "").trim().toUpperCase() !== (guestGstin ?? "").trim().toUpperCase();
-  const dirty = dirtyName || dirtyStay || dirtyHeader;
+  const dirty = dirtyName || dirtyStay || dirtyHeader || dirtyPax;
 
   async function save() {
     if (!dirty) { toast.info("Nothing changed"); return; }
