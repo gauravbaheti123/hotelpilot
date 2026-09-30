@@ -69,7 +69,7 @@ export function OwnerInlineEditCard({
   const [company, setCompany] = useState(guestCompany ?? "");
   const [gstin, setGstin] = useState(guestGstin ?? "");
   const [paxAdults, setPaxAdults] = useState<string>(String(adults ?? 1));
-  const [paxChildren, setPaxChildren] = useState<string>(String(children ?? 0));
+  const [paxChildren, setPaxChildren] = useState<string>(String(childrenCount ?? 0));
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [rooms, setRooms] = useState<{ id: string; room_number: string; category_id: string | null }[]>([]);
@@ -90,8 +90,8 @@ export function OwnerInlineEditCard({
   // The parent rebuilds `stayRow` (and other props) on every render, so we read
   // them through a ref: otherwise the reset effect below re-runs on each parent
   // render and silently overwrites whatever the owner has typed.
-  const propsRef = useRef({ guestName, guestCompany, guestGstin, stayRow, adults, children });
-  propsRef.current = { guestName, guestCompany, guestGstin, stayRow, adults, children };
+  const propsRef = useRef({ guestName, guestCompany, guestGstin, stayRow, adults, children: childrenCount });
+  propsRef.current = { guestName, guestCompany, guestGstin, stayRow, adults, children: childrenCount };
 
   const resetFromProps = useCallback(async () => {
     const { guestName: gn, guestCompany: gc, guestGstin: gg, stayRow: row, adults: ad, children: ch } = propsRef.current;
