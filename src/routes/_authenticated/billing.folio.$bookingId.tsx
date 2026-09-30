@@ -394,7 +394,7 @@ function FolioPage() {
     const adults = Math.max(1, Math.floor(Number(paxAdults) || 1));
     const children = Math.max(0, Math.floor(Number(paxChildren) || 0));
     setPaxSaving(true);
-    const { error } = await supabase.rpc("update_booking_pax" as never, {
+    const { error } = await supabase.rpc("update_booking_pax", {
       _booking_id: booking.id,
       _adults: adults,
       _children: children,
