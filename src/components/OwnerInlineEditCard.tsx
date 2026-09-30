@@ -90,14 +90,16 @@ export function OwnerInlineEditCard({
   // The parent rebuilds `stayRow` (and other props) on every render, so we read
   // them through a ref: otherwise the reset effect below re-runs on each parent
   // render and silently overwrites whatever the owner has typed.
-  const propsRef = useRef({ guestName, guestCompany, guestGstin, stayRow });
-  propsRef.current = { guestName, guestCompany, guestGstin, stayRow };
+  const propsRef = useRef({ guestName, guestCompany, guestGstin, stayRow, adults, children });
+  propsRef.current = { guestName, guestCompany, guestGstin, stayRow, adults, children };
 
   const resetFromProps = useCallback(async () => {
-    const { guestName: gn, guestCompany: gc, guestGstin: gg, stayRow: row } = propsRef.current;
+    const { guestName: gn, guestCompany: gc, guestGstin: gg, stayRow: row, adults: ad, children: ch } = propsRef.current;
     setName(gn);
     setCompany(gc ?? "");
     setGstin(gg ?? "");
+    setPaxAdults(String(ad ?? 1));
+    setPaxChildren(String(ch ?? 0));
     setCheckIn(String(row?.check_in ?? "").slice(0, 10));
     setCheckOut(String(row?.check_out ?? "").slice(0, 10));
     setReason("");
