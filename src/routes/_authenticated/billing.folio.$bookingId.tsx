@@ -383,6 +383,42 @@ function FolioPage() {
   const [emailBody, setEmailBody] = useState("");
   // PDF download uses browser print dialog — no async state needed.
 
+  // Inline edit for the Adults/Children count on the invoice Stay Details.
+  const [paxEditing, setPaxEditing] = useState(false);
+  const [paxAdults, setPaxAdults] = useState("1");
+  const [paxChildren, setPaxChildren] = useState("0");
+  const [paxSaving, setPaxSaving] = useState(false);
+
+  async function savePax() {
+    if (!booking) return;
+    const adults = Math.max(1, Math.floor(Number(paxAdults) || 1));
+    const children = Math.max(0, Math.floor(Number(paxChildren) || 0));
+    setPaxSaving(true);
+    const { error } = await supabase.rpc("update_booking_pax" as never, {
+      _booking_id: booking.id,
+      _adults: adults,
+      _children: children,
+    });
+    setPaxSaving(false);
+    if (error) { toastError(error); return; }
+    logActivity({
+      property_id: booking.property_id,
+      user_id: user?.id ?? "",
+      user_name: userDisplayName(user as any),
+      action_type: "BOOKING_PAX_UPDATED",
+      module: "Billing",
+      reference_id: folio.id,
+      reference_label: billNo(folio.invoice_number),
+      details: {
+        booking_number: booking.booking_number,
+        from: { adults: booking.adults ?? 1, children: booking.children ?? 0 },
+        to: { adults, children },
+      },
+    });
+    setBooking({ ...booking, adults, children });
+    setPaxEditing(false);
+  }
+
   const load = useCallback(async () => {
     setLoading(true);
     const { data: b, error: be } = await supabase
