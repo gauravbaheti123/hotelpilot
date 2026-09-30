@@ -127,6 +127,13 @@
       "when": 1790499474331,
       "tag": "0017_allow_staff_override_log_and_company_edit",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790745571906,
+      "tag": "0018_update_booking_pax_for_all_staff",
+      "breakpoints": true
     }
   ]
 }

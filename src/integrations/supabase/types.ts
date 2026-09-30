@@ -6883,6 +6883,10 @@ export type Database = {
         Returns: undefined
       }
       undo_checkout: { Args: { _booking_id: string }; Returns: Json }
+      update_booking_pax: {
+        Args: { _adults: number; _booking_id: string; _children: number }
+        Returns: undefined
+      }
       update_booking_safe_fields: { Args: { payload: Json }; Returns: Json }
       user_discount_limit: {
         Args: { _property_id: string; _user_id: string }
