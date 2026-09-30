@@ -29,8 +29,11 @@ export interface OwnerEditStayRow {
  */
 export function OwnerInlineEditCard({
   propertyId,
+  bookingId,
   guestId,
   guestName,
+  adults,
+  childrenCount,
   stayRow,
   folioId,
   guestCompany,
@@ -39,8 +42,11 @@ export function OwnerInlineEditCard({
   onSaved,
 }: {
   propertyId: string;
+  bookingId: string;
   guestId: string | null;
   guestName: string;
+  adults: number | null;
+  childrenCount: number | null;
   stayRow: OwnerEditStayRow | null;
   folioId: string;
   guestCompany: string | null;
@@ -62,6 +68,8 @@ export function OwnerInlineEditCard({
   const [actualOut, setActualOut] = useState<string>("");
   const [company, setCompany] = useState(guestCompany ?? "");
   const [gstin, setGstin] = useState(guestGstin ?? "");
+  const [paxAdults, setPaxAdults] = useState<string>(String(adults ?? 1));
+  const [paxChildren, setPaxChildren] = useState<string>(String(childrenCount ?? 0));
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [rooms, setRooms] = useState<{ id: string; room_number: string; category_id: string | null }[]>([]);
@@ -82,14 +90,16 @@ export function OwnerInlineEditCard({
   // The parent rebuilds `stayRow` (and other props) on every render, so we read
   // them through a ref: otherwise the reset effect below re-runs on each parent
   // render and silently overwrites whatever the owner has typed.
-  const propsRef = useRef({ guestName, guestCompany, guestGstin, stayRow });
-  propsRef.current = { guestName, guestCompany, guestGstin, stayRow };
+  const propsRef = useRef({ guestName, guestCompany, guestGstin, stayRow, adults, children: childrenCount });
+  propsRef.current = { guestName, guestCompany, guestGstin, stayRow, adults, children: childrenCount };
 
   const resetFromProps = useCallback(async () => {
-    const { guestName: gn, guestCompany: gc, guestGstin: gg, stayRow: row } = propsRef.current;
+    const { guestName: gn, guestCompany: gc, guestGstin: gg, stayRow: row, adults: ad, children: ch } = propsRef.current;
     setName(gn);
     setCompany(gc ?? "");
     setGstin(gg ?? "");
+    setPaxAdults(String(ad ?? 1));
+    setPaxChildren(String(ch ?? 0));
     setCheckIn(String(row?.check_in ?? "").slice(0, 10));
     setCheckOut(String(row?.check_out ?? "").slice(0, 10));
     setReason("");
@@ -151,10 +161,13 @@ export function OwnerInlineEditCard({
         actualOut !== originActual.out),
     [stayRow, roomId, categoryId, checkIn, checkOut, origin, actualIn, actualOut, originActual],
   );
+  const cleanAdults = Math.max(1, Math.floor(Number(paxAdults) || 1));
+  const cleanChildren = Math.max(0, Math.floor(Number(paxChildren) || 0));
+  const dirtyPax = cleanAdults !== (adults ?? 1) || cleanChildren !== (childrenCount ?? 0);
   const dirtyHeader =
     (company ?? "").trim() !== (guestCompany ?? "").trim() ||
     (gstin ?? "").trim().toUpperCase() !== (guestGstin ?? "").trim().toUpperCase();
-  const dirty = dirtyName || dirtyStay || dirtyHeader;
+  const dirty = dirtyName || dirtyStay || dirtyHeader || dirtyPax;
 
   async function save() {
     if (!dirty) { toast.info("Nothing changed"); return; }
@@ -208,6 +221,13 @@ export function OwnerInlineEditCard({
         if ((isoIn && savedIn !== isoIn) || (isoOut && savedOut !== isoOut)) {
           throw new Error("The stay time was not saved as entered. Please retry; no success was reported.");
         }
+      }
+
+      if (dirtyPax) {
+        const { error } = await supabase.rpc("update_booking_pax", {
+          _booking_id: bookingId, _adults: cleanAdults, _children: cleanChildren,
+        });
+        if (error) throw error;
       }
 
       if (dirtyHeader) {
@@ -347,6 +367,30 @@ export function OwnerInlineEditCard({
                 </p>
               </div>
             )}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Adults</Label>
+              <Input
+                className="h-9"
+                type="number"
+                min={1}
+                max={30}
+                value={paxAdults}
+                onChange={(e) => setPaxAdults(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Children</Label>
+              <Input
+                className="h-9"
+                type="number"
+                min={0}
+                max={30}
+                value={paxChildren}
+                onChange={(e) => setPaxChildren(e.target.value)}
+              />
+            </div>
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Bill-To company</Label>
