@@ -55,7 +55,7 @@ interface Props {
   folio: any;
   booking: any;
   charges: Charge[];
-  onDone?: (newFolioIds: string[]) => void;
+  onDone?: (newFolioIds: string[], checkoutCompleted?: boolean) => void;
 }
 
 type SplitType = "same" | "different";
@@ -1034,7 +1034,7 @@ export function SplitBillDialog({ open, onOpenChange, folio, booking, charges: c
         }
       }
       toast.success(markDue ? "Checked out — unpaid bill(s) marked as due" : "Split checkout complete");
-      onDone?.(createdBills.map((b) => b.folio_id).filter(Boolean) as string[]);
+      onDone?.(createdBills.map((b) => b.folio_id).filter(Boolean) as string[], true);
       onOpenChange(false);
     } catch (e: any) {
       toastError(e, "Could not complete checkout");

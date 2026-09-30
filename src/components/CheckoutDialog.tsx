@@ -1567,9 +1567,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         folio={folio}
         booking={booking}
         charges={charges as any}
-        onDone={() => {
+        onDone={(_newFolioIds, splitCheckoutCompleted) => {
           setSplitOpen(false);
-          onOpenChange(false);
+          if (splitCheckoutCompleted) checkoutCompletedRef.current = true;
+          handleOpenChange(false);
           onDone?.();
         }}
       />
