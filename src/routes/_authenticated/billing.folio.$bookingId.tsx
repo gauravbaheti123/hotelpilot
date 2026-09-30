@@ -2926,8 +2926,11 @@ function FolioPage() {
         {canOwnerInlineEdit && (
           <OwnerInlineEditCard
             propertyId={booking.property_id}
+            bookingId={booking.id}
             guestId={booking.guests?.id ?? null}
             guestName={booking.guests?.name ?? ""}
+            adults={booking.adults ?? 1}
+            children={booking.children ?? 0}
             stayRow={ownerStayRow}
             folioId={folio.id}
             guestCompany={folio.guest_company}
