@@ -223,6 +223,13 @@ export function OwnerInlineEditCard({
         }
       }
 
+      if (dirtyPax) {
+        const { error } = await supabase.rpc("update_booking_pax", {
+          _booking_id: bookingId, _adults: cleanAdults, _children: cleanChildren,
+        });
+        if (error) throw error;
+      }
+
       if (dirtyHeader) {
         const { error } = await supabase.rpc("owner_update_folio_header" as any, {
           _folio_id: folioId,
