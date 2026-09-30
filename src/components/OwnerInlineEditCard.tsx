@@ -33,7 +33,7 @@ export function OwnerInlineEditCard({
   guestId,
   guestName,
   adults,
-  children,
+  childrenCount,
   stayRow,
   folioId,
   guestCompany,
@@ -46,7 +46,7 @@ export function OwnerInlineEditCard({
   guestId: string | null;
   guestName: string;
   adults: number | null;
-  children: number | null;
+  childrenCount: number | null;
   stayRow: OwnerEditStayRow | null;
   folioId: string;
   guestCompany: string | null;
