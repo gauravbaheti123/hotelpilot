@@ -163,7 +163,7 @@ export function OwnerInlineEditCard({
   );
   const cleanAdults = Math.max(1, Math.floor(Number(paxAdults) || 1));
   const cleanChildren = Math.max(0, Math.floor(Number(paxChildren) || 0));
-  const dirtyPax = cleanAdults !== (adults ?? 1) || cleanChildren !== (children ?? 0);
+  const dirtyPax = cleanAdults !== (adults ?? 1) || cleanChildren !== (childrenCount ?? 0);
   const dirtyHeader =
     (company ?? "").trim() !== (guestCompany ?? "").trim() ||
     (gstin ?? "").trim().toUpperCase() !== (guestGstin ?? "").trim().toUpperCase();
