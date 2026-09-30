@@ -3349,7 +3349,38 @@ function FolioPage() {
                   </>
                 );
               })()}
-              <div className="text-xs">Duration: <span className="font-semibold">{nights} Night{nights > 1 ? "s" : ""}</span> · {booking.adults ?? 1} Adult{(booking.adults ?? 1) > 1 ? "s" : ""}{booking.children ? ` · ${booking.children} Child` : ""}</div>
+              {paxEditing ? (
+                <div className="print:hidden mt-1 flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="font-semibold">Pax:</span>
+                  <label className="flex items-center gap-1">Adults
+                    <input type="number" min={1} max={20} value={paxAdults}
+                      onChange={(e) => setPaxAdults(e.target.value)}
+                      className="w-14 rounded border border-gray-300 px-1.5 py-0.5 text-xs" />
+                  </label>
+                  <label className="flex items-center gap-1">Children
+                    <input type="number" min={0} max={20} value={paxChildren}
+                      onChange={(e) => setPaxChildren(e.target.value)}
+                      className="w-14 rounded border border-gray-300 px-1.5 py-0.5 text-xs" />
+                  </label>
+                  <button type="button" disabled={paxSaving} onClick={savePax}
+                    className="rounded bg-emerald-700 px-2 py-0.5 font-semibold text-white disabled:opacity-50">
+                    Save
+                  </button>
+                  <button type="button" disabled={paxSaving} onClick={() => setPaxEditing(false)}
+                    className="rounded border border-gray-300 px-2 py-0.5">
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="text-xs">
+                  Duration: <span className="font-semibold">{nights} Night{nights > 1 ? "s" : ""}</span> · {booking.adults ?? 1} Adult{(booking.adults ?? 1) > 1 ? "s" : ""}{booking.children ? ` · ${booking.children} Child` : ""}
+                  <button type="button" title="Edit adults / children"
+                    onClick={() => { setPaxAdults(String(booking.adults ?? 1)); setPaxChildren(String(booking.children ?? 0)); setPaxEditing(true); }}
+                    className="print:hidden ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded border border-gray-300 align-middle hover:bg-gray-100">
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
