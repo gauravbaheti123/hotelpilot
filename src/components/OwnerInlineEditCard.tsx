@@ -368,6 +368,30 @@ export function OwnerInlineEditCard({
               </div>
             )}
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Adults</Label>
+              <Input
+                className="h-9"
+                type="number"
+                min={1}
+                max={30}
+                value={paxAdults}
+                onChange={(e) => setPaxAdults(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Children</Label>
+              <Input
+                className="h-9"
+                type="number"
+                min={0}
+                max={30}
+                value={paxChildren}
+                onChange={(e) => setPaxChildren(e.target.value)}
+              />
+            </div>
+          </div>
           <div className="space-y-1">
             <Label className="text-xs">Bill-To company</Label>
             <Input className="h-9" value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company name" />
