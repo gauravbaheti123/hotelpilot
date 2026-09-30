@@ -1569,9 +1569,10 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         charges={charges as any}
         onDone={(_newFolioIds, splitCheckoutCompleted) => {
           setSplitOpen(false);
+          const needsRestore = !splitCheckoutCompleted && earlyShortenedRef.current;
           if (splitCheckoutCompleted) checkoutCompletedRef.current = true;
           handleOpenChange(false);
-          onDone?.();
+          if (!needsRestore) onDone?.();
         }}
       />
       <Dialog open={!!latePrompt} onOpenChange={(o) => { if (!o && !lateBusy) setLatePrompt(null); }}>
