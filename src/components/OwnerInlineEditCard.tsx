@@ -29,8 +29,11 @@ export interface OwnerEditStayRow {
  */
 export function OwnerInlineEditCard({
   propertyId,
+  bookingId,
   guestId,
   guestName,
+  adults,
+  children,
   stayRow,
   folioId,
   guestCompany,
@@ -39,8 +42,11 @@ export function OwnerInlineEditCard({
   onSaved,
 }: {
   propertyId: string;
+  bookingId: string;
   guestId: string | null;
   guestName: string;
+  adults: number | null;
+  children: number | null;
   stayRow: OwnerEditStayRow | null;
   folioId: string;
   guestCompany: string | null;
