@@ -2931,7 +2931,7 @@ function FolioPage() {
             propertyId={booking.property_id}
             bookingId={booking.id}
             guestId={booking.guests?.id ?? null}
-            guestName={booking.guests?.name ?? ""}
+            guestName={invoiceGuestName ?? ""}
             adults={booking.adults ?? 1}
             childrenCount={booking.children ?? 0}
             stayRow={ownerStayRow}
