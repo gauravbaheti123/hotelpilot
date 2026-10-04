@@ -1887,6 +1887,7 @@ export type Database = {
           gst_mode: string
           guest_company: string | null
           guest_gstin: string | null
+          guest_name: string | null
           id: string
           invoice_number: string | null
           is_deleted: boolean
@@ -1922,6 +1923,7 @@ export type Database = {
           gst_mode?: string
           guest_company?: string | null
           guest_gstin?: string | null
+          guest_name?: string | null
           id?: string
           invoice_number?: string | null
           is_deleted?: boolean
@@ -1957,6 +1959,7 @@ export type Database = {
           gst_mode?: string
           guest_company?: string | null
           guest_gstin?: string | null
+          guest_name?: string | null
           id?: string
           invoice_number?: string | null
           is_deleted?: boolean
@@ -6811,6 +6814,10 @@ export type Database = {
       seed_room_charge_for_booking_room: {
         Args: { _booking_room_id: string }
         Returns: string
+      }
+      set_folio_guest_name: {
+        Args: { _folio_id: string; _name: string }
+        Returns: undefined
       }
       settle_folio_at_checkout: {
         Args: { _folio_id: string; _settled_at?: string }

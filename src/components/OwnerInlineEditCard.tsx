@@ -180,6 +180,11 @@ export function OwnerInlineEditCard({
           _guest_id: guestId, _name: name.trim(), _reason: reason.trim(),
         } as any);
         if (error) throw error;
+        // Keep this bill's frozen name in step with the correction (only this bill).
+        const { error: fnErr } = await supabase.rpc("set_folio_guest_name" as any, {
+          _folio_id: folioId, _name: name.trim(),
+        } as any);
+        if (fnErr) throw fnErr;
       }
       if (dirtyStay && stayRow) {
         // Read the live input values at submit time. This avoids relying on a
