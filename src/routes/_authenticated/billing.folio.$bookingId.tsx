@@ -200,6 +200,9 @@ function FolioPage() {
   const [property, setProperty] = useState<PropertyInfo | null>(null);
   const [gstSlabs, setGstSlabs] = useState<GstSlab[]>([]);
   const [folio, setFolio] = useState<Folio | null>(null);
+  // Closed bills print the guest name frozen at settlement, so later guest-profile edits never rewrite old invoices.
+  const invoiceGuestName: string | undefined =
+    (folio && folio.status !== "open" && (folio as any).guest_name) || booking?.guests?.name || undefined;
   const [charges, setCharges] = useState<Charge[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [missingNights, setMissingNights] = useState<string[]>([]);
@@ -2437,7 +2440,7 @@ function FolioPage() {
     const lines = [
       `*${property?.name ?? "Hotel"}*`,
       `${isGst ? "Tax Invoice" : "Cash Bill"}: ${billNo(folio.invoice_number)}`,
-      `Guest: ${booking.guests?.name ?? "—"}`,
+      `Guest: ${(invoiceGuestName || null) ?? "—"}`,
       `Stay: ${booking.check_in} → ${booking.check_out}`,
       ``,
       `Room charges: ${inr(subRoom)}`,
@@ -2579,7 +2582,7 @@ function FolioPage() {
       chargeCount: charges.length,
     });
     const prevTitle = document.title;
-    const safeName = (booking.guests?.name ?? "guest").replace(/[^\w]+/g, "");
+    const safeName = ((invoiceGuestName || null) ?? "guest").replace(/[^\w]+/g, "");
     document.title = `INV-${billNo(folio.invoice_number)}-${safeName}`;
     // Invoice/Bill uses the browser's native print dialog — QZ Tray's
     // HTML-to-pixel pipeline caused persistent A4 table cutoff issues.
@@ -2606,7 +2609,7 @@ function FolioPage() {
     setEmailTo("");
     setEmailSubject(`${isGst ? "Tax Invoice" : "Receipt"} from ${property?.name ?? "Hotel"} - ${billNo(folio.invoice_number)}`);
     setEmailBody(
-      `Dear ${booking.guests?.name ?? "Guest"},\n\n` +
+      `Dear ${(invoiceGuestName || null) ?? "Guest"},\n\n` +
       `Please find your ${isGst ? "tax invoice" : "receipt"} ${billNo(folio.invoice_number)} for ` +
       `your stay from ${booking.check_in} to ${booking.check_out}.\n\n` +
       `Grand Total: ${inrRound(folio.total_amount)}\n` +
@@ -2747,7 +2750,7 @@ function FolioPage() {
             <Badge style={{ background: TEAL, color: "#fff" }} className="border-0">PAID</Badge>
           )}
           <div className="text-sm text-muted-foreground">
-            Booking {booking.booking_number} · {booking.guests?.name ?? "—"}
+            Booking {booking.booking_number} · {(invoiceGuestName || null) ?? "—"}
           </div>
           <div className="ml-auto flex flex-wrap gap-2 no-print">
             <Button variant="outline" size="sm" onClick={printDraft}>
@@ -3295,7 +3298,7 @@ function FolioPage() {
                 }
                 return (
                   <>
-                    <div className="text-base font-semibold">{booking.guests?.name ?? "—"}</div>
+                    <div className="text-base font-semibold">{(invoiceGuestName || null) ?? "—"}</div>
                     {booking.guests?.mobile && <div className="text-xs text-gray-700">Mobile: {booking.guests.mobile}</div>}
                     {booking.guests?.address && <div className="text-xs text-gray-700">{booking.guests.address}</div>}
                     {otaName && (
@@ -3346,7 +3349,7 @@ function FolioPage() {
                       </>
                     )}
                     {/* Who actually stayed — always shown, regardless of who the bill is addressed to. */}
-                    <div className="text-xs">Guest: <span className="font-semibold">{booking.guests?.name ?? "—"}</span>{booking.guests?.mobile ? ` · ${booking.guests.mobile}` : ""}</div>
+                    <div className="text-xs">Guest: <span className="font-semibold">{(invoiceGuestName || null) ?? "—"}</span>{booking.guests?.mobile ? ` · ${booking.guests.mobile}` : ""}</div>
                     <div className="text-xs">Check-in: <span className="font-semibold">{fmtDateTime(displayRoom?.actual_check_in ?? booking.check_in, property?.default_checkin_time)}</span></div>
                     <div className="text-xs">Check-out: <span className="font-semibold">{fmtDateTime(displayRoom?.actual_check_out ?? booking.check_out, property?.default_checkout_time)}</span></div>
                   </>
