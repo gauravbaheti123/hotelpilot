@@ -1567,10 +1567,15 @@ export function CheckoutDialog({ bookingId, open, onOpenChange, onDone, skipInvo
         folio={folio}
         booking={booking}
         charges={charges as any}
-        onDone={(_newFolioIds, splitCheckoutCompleted) => {
+        onDone={(newFolioIds, splitCheckoutCompleted) => {
           setSplitOpen(false);
-          const needsRestore = !splitCheckoutCompleted && earlyShortenedRef.current;
           if (splitCheckoutCompleted) checkoutCompletedRef.current = true;
+          // Once split bills exist they were built from the shortened stay
+          // (and may already carry payments). Restoring the booked dates now
+          // would re-seed the removed nights and desync stay vs. bills, so the
+          // early-checkout shortening is treated as committed.
+          if ((newFolioIds?.length ?? 0) > 0) earlyShortenedRef.current = false;
+          const needsRestore = !checkoutCompletedRef.current && earlyShortenedRef.current;
           handleOpenChange(false);
           if (!needsRestore) onDone?.();
         }}
