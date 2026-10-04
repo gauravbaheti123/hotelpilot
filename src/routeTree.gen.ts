@@ -9,174 +9,128 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TotpChallengeRouteImport } from './routes/totp-challenge'
-import { Route as TermsOfServiceRouteImport } from './routes/terms-of-service'
-import { Route as SlaRouteImport } from './routes/sla'
-import { Route as SecurityPolicyRouteImport } from './routes/security-policy'
-import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
-import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
-import { Route as DataProcessingAgreementRouteImport } from './routes/data-processing-agreement'
-import { Route as CookiePolicyRouteImport } from './routes/cookie-policy'
-import { Route as AccessDeniedRouteImport } from './routes/access-denied'
-import { Route as AcceptableUsePolicyRouteImport } from './routes/acceptable-use-policy'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedSuperadminRouteImport } from './routes/_authenticated/superadmin'
-import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
-import { Route as AuthenticatedPettyCashRouteImport } from './routes/_authenticated/petty-cash'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AcceptableUsePolicyRouteImport } from './routes/acceptable-use-policy'
+import { Route as AccessDeniedRouteImport } from './routes/access-denied'
+import { Route as CookiePolicyRouteImport } from './routes/cookie-policy'
+import { Route as DataProcessingAgreementRouteImport } from './routes/data-processing-agreement'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
+import { Route as RefundPolicyRouteImport } from './routes/refund-policy'
+import { Route as SecurityPolicyRouteImport } from './routes/security-policy'
+import { Route as SlaRouteImport } from './routes/sla'
+import { Route as TermsOfServiceRouteImport } from './routes/terms-of-service'
+import { Route as TotpChallengeRouteImport } from './routes/totp-challenge'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedWhatsappIndexRouteImport } from './routes/_authenticated/whatsapp.index'
-import { Route as AuthenticatedStaffIndexRouteImport } from './routes/_authenticated/staff.index'
-import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
-import { Route as AuthenticatedSecurityIndexRouteImport } from './routes/_authenticated/security.index'
-import { Route as AuthenticatedRestaurantIndexRouteImport } from './routes/_authenticated/restaurant.index'
-import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports.index'
-import { Route as AuthenticatedMastersIndexRouteImport } from './routes/_authenticated/masters.index'
-import { Route as AuthenticatedLabelPrintingIndexRouteImport } from './routes/_authenticated/label-printing.index'
-import { Route as AuthenticatedInventoryIndexRouteImport } from './routes/_authenticated/inventory.index'
-import { Route as AuthenticatedGuestsIndexRouteImport } from './routes/_authenticated/guests.index'
-import { Route as AuthenticatedFeedbackIndexRouteImport } from './routes/_authenticated/feedback.index'
-import { Route as AuthenticatedExpensesIndexRouteImport } from './routes/_authenticated/expenses.index'
-import { Route as AuthenticatedCommsIndexRouteImport } from './routes/_authenticated/comms.index'
-import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels.index'
-import { Route as AuthenticatedSuperadminUsersRouteImport } from './routes/_authenticated/superadmin.users'
-import { Route as AuthenticatedSuperadminDashboardRouteImport } from './routes/_authenticated/superadmin.dashboard'
-import { Route as AuthenticatedStaffPayrollRouteImport } from './routes/_authenticated/staff.payroll'
-import { Route as AuthenticatedStaffAttendanceHistoryRouteImport } from './routes/_authenticated/staff.attendance-history'
-import { Route as AuthenticatedStaffAttendanceRouteImport } from './routes/_authenticated/staff.attendance'
-import { Route as AuthenticatedSettingsWhatsappRouteImport } from './routes/_authenticated/settings.whatsapp'
-import { Route as AuthenticatedSettingsHotelRouteImport } from './routes/_authenticated/settings.hotel'
-import { Route as AuthenticatedRoomsRoomNumberRouteImport } from './routes/_authenticated/rooms.$roomNumber'
-import { Route as AuthenticatedReportsSalesRouteImport } from './routes/_authenticated/reports.sales'
-import { Route as AuthenticatedReportsRoomWiseRouteImport } from './routes/_authenticated/reports.room-wise'
-import { Route as AuthenticatedReportsRoomShiftRouteImport } from './routes/_authenticated/reports.room-shift'
-import { Route as AuthenticatedReportsPlanWiseRouteImport } from './routes/_authenticated/reports.plan-wise'
-import { Route as AuthenticatedReportsNightAuditRouteImport } from './routes/_authenticated/reports.night-audit'
-import { Route as AuthenticatedReportsMorningRouteImport } from './routes/_authenticated/reports.morning'
-import { Route as AuthenticatedReportsKotActivityRouteImport } from './routes/_authenticated/reports.kot-activity'
-import { Route as AuthenticatedReportsItemSalesRouteImport } from './routes/_authenticated/reports.item-sales'
-import { Route as AuthenticatedReportsGuestWiseRouteImport } from './routes/_authenticated/reports.guest-wise'
-import { Route as AuthenticatedReportsGstRouteImport } from './routes/_authenticated/reports.gst'
-import { Route as AuthenticatedReportsFoodKotRouteImport } from './routes/_authenticated/reports.food-kot'
-import { Route as AuthenticatedReportsExpensesRouteImport } from './routes/_authenticated/reports.expenses'
-import { Route as AuthenticatedReportsDuesRouteImport } from './routes/_authenticated/reports.dues'
-import { Route as AuthenticatedReportsDateWiseRevenueRouteImport } from './routes/_authenticated/reports.date-wise-revenue'
-import { Route as AuthenticatedReportsDailyRouteImport } from './routes/_authenticated/reports.daily'
-import { Route as AuthenticatedReportsCashHandoverRouteImport } from './routes/_authenticated/reports.cash-handover'
-import { Route as AuthenticatedReportsCashCollectionRouteImport } from './routes/_authenticated/reports.cash-collection'
-import { Route as AuthenticatedReportsCancelledRouteImport } from './routes/_authenticated/reports.cancelled'
-import { Route as AuthenticatedReportsBillWiseRouteImport } from './routes/_authenticated/reports.bill-wise'
-import { Route as AuthenticatedReportsBanquetBillingRouteImport } from './routes/_authenticated/reports.banquet-billing'
-import { Route as AuthenticatedReportsBanquetRouteImport } from './routes/_authenticated/reports.banquet'
-import { Route as AuthenticatedReportsAnalyticsRouteImport } from './routes/_authenticated/reports.analytics'
-import { Route as AuthenticatedReportsActivityRouteImport } from './routes/_authenticated/reports.activity'
-import { Route as AuthenticatedMastersTariffRouteImport } from './routes/_authenticated/masters.tariff'
-import { Route as AuthenticatedMastersTablesRouteImport } from './routes/_authenticated/masters.tables'
-import { Route as AuthenticatedMastersSundryItemsRouteImport } from './routes/_authenticated/masters.sundry-items'
-import { Route as AuthenticatedMastersStaffRouteImport } from './routes/_authenticated/masters.staff'
-import { Route as AuthenticatedMastersRoomsRouteImport } from './routes/_authenticated/masters.rooms'
-import { Route as AuthenticatedMastersRoomStatusColorsRouteImport } from './routes/_authenticated/masters.room-status-colors'
-import { Route as AuthenticatedMastersRestaurantOutletsRouteImport } from './routes/_authenticated/masters.restaurant-outlets'
-import { Route as AuthenticatedMastersRateSeasonsRouteImport } from './routes/_authenticated/masters.rate-seasons'
-import { Route as AuthenticatedMastersPrintersRouteImport } from './routes/_authenticated/masters.printers'
-import { Route as AuthenticatedMastersPosCategoriesRouteImport } from './routes/_authenticated/masters.pos-categories'
-import { Route as AuthenticatedMastersPaymentMethodsRouteImport } from './routes/_authenticated/masters.payment-methods'
-import { Route as AuthenticatedMastersMessageTemplatesRouteImport } from './routes/_authenticated/masters.message-templates'
-import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenticated/masters.menu'
-import { Route as AuthenticatedMastersHallsRouteImport } from './routes/_authenticated/masters.halls'
-import { Route as AuthenticatedMastersExpenseCategoriesRouteImport } from './routes/_authenticated/masters.expense-categories'
-import { Route as AuthenticatedMastersEarlyCheckinSlabsRouteImport } from './routes/_authenticated/masters.early-checkin-slabs'
-import { Route as AuthenticatedMastersChannelsRouteImport } from './routes/_authenticated/masters.channels'
-import { Route as AuthenticatedInventoryVendorsRouteImport } from './routes/_authenticated/inventory.vendors'
-import { Route as AuthenticatedInventoryStockRouteImport } from './routes/_authenticated/inventory.stock'
-import { Route as AuthenticatedInventoryMovementsRouteImport } from './routes/_authenticated/inventory.movements'
-import { Route as AuthenticatedInventoryItemsRouteImport } from './routes/_authenticated/inventory.items'
-import { Route as AuthenticatedHousekeepingTasksRouteImport } from './routes/_authenticated/housekeeping.tasks'
-import { Route as AuthenticatedHousekeepingNewRouteImport } from './routes/_authenticated/housekeeping.new'
-import { Route as AuthenticatedHousekeepingBoardRouteImport } from './routes/_authenticated/housekeeping.board'
-import { Route as AuthenticatedHandoverNewRouteImport } from './routes/_authenticated/handover.new'
-import { Route as AuthenticatedGuestsNewRouteImport } from './routes/_authenticated/guests.new'
-import { Route as AuthenticatedGuestsIdRouteImport } from './routes/_authenticated/guests.$id'
-import { Route as AuthenticatedFrontDeskRateCalendarRouteImport } from './routes/_authenticated/front-desk.rate-calendar'
-import { Route as AuthenticatedFrontDeskNewLegacyRouteImport } from './routes/_authenticated/front-desk.new-legacy'
-import { Route as AuthenticatedFrontDeskNewRouteImport } from './routes/_authenticated/front-desk.new'
-import { Route as AuthenticatedFrontDeskInHouseRouteImport } from './routes/_authenticated/front-desk.in-house'
-import { Route as AuthenticatedFrontDeskCalendarRouteImport } from './routes/_authenticated/front-desk.calendar'
-import { Route as AuthenticatedFrontDeskBookingsRouteImport } from './routes/_authenticated/front-desk.bookings'
-import { Route as AuthenticatedFeedbackNewRouteImport } from './routes/_authenticated/feedback.new'
-import { Route as AuthenticatedExpensesNewRouteImport } from './routes/_authenticated/expenses.new'
-import { Route as AuthenticatedCommsNewRouteImport } from './routes/_authenticated/comms.new'
-import { Route as AuthenticatedBillingInvoicesRouteImport } from './routes/_authenticated/billing.invoices'
-import { Route as AuthenticatedBillingCompaniesRouteImport } from './routes/_authenticated/billing.companies'
-import { Route as AuthenticatedBanquetNewRouteImport } from './routes/_authenticated/banquet.new'
+import { Route as AuthenticatedPettyCashRouteImport } from './routes/_authenticated/petty-cash'
+import { Route as AuthenticatedPropertiesRouteImport } from './routes/_authenticated/properties'
+import { Route as AuthenticatedSuperadminRouteImport } from './routes/_authenticated/superadmin'
 import { Route as AuthenticatedBanquetBookingsRouteImport } from './routes/_authenticated/banquet.bookings'
+import { Route as AuthenticatedBanquetNewRouteImport } from './routes/_authenticated/banquet.new'
+import { Route as AuthenticatedBillingCompaniesRouteImport } from './routes/_authenticated/billing.companies'
+import { Route as AuthenticatedBillingInvoicesRouteImport } from './routes/_authenticated/billing.invoices'
+import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels.index'
+import { Route as AuthenticatedCommsIndexRouteImport } from './routes/_authenticated/comms.index'
+import { Route as AuthenticatedCommsNewRouteImport } from './routes/_authenticated/comms.new'
+import { Route as AuthenticatedExpensesIndexRouteImport } from './routes/_authenticated/expenses.index'
+import { Route as AuthenticatedExpensesNewRouteImport } from './routes/_authenticated/expenses.new'
+import { Route as AuthenticatedFeedbackIndexRouteImport } from './routes/_authenticated/feedback.index'
+import { Route as AuthenticatedFeedbackNewRouteImport } from './routes/_authenticated/feedback.new'
+import { Route as AuthenticatedFrontDeskBookingsRouteImport } from './routes/_authenticated/front-desk.bookings'
+import { Route as AuthenticatedFrontDeskCalendarRouteImport } from './routes/_authenticated/front-desk.calendar'
+import { Route as AuthenticatedFrontDeskInHouseRouteImport } from './routes/_authenticated/front-desk.in-house'
+import { Route as AuthenticatedFrontDeskNewRouteImport } from './routes/_authenticated/front-desk.new'
+import { Route as AuthenticatedFrontDeskNewLegacyRouteImport } from './routes/_authenticated/front-desk.new-legacy'
+import { Route as AuthenticatedFrontDeskRateCalendarRouteImport } from './routes/_authenticated/front-desk.rate-calendar'
+import { Route as AuthenticatedGuestsIndexRouteImport } from './routes/_authenticated/guests.index'
+import { Route as AuthenticatedGuestsIdRouteImport } from './routes/_authenticated/guests.$id'
+import { Route as AuthenticatedGuestsNewRouteImport } from './routes/_authenticated/guests.new'
+import { Route as AuthenticatedHandoverNewRouteImport } from './routes/_authenticated/handover.new'
+import { Route as AuthenticatedHousekeepingBoardRouteImport } from './routes/_authenticated/housekeeping.board'
+import { Route as AuthenticatedHousekeepingNewRouteImport } from './routes/_authenticated/housekeeping.new'
+import { Route as AuthenticatedHousekeepingTasksRouteImport } from './routes/_authenticated/housekeeping.tasks'
+import { Route as AuthenticatedInventoryIndexRouteImport } from './routes/_authenticated/inventory.index'
+import { Route as AuthenticatedInventoryItemsRouteImport } from './routes/_authenticated/inventory.items'
+import { Route as AuthenticatedInventoryMovementsRouteImport } from './routes/_authenticated/inventory.movements'
+import { Route as AuthenticatedInventoryStockRouteImport } from './routes/_authenticated/inventory.stock'
+import { Route as AuthenticatedInventoryVendorsRouteImport } from './routes/_authenticated/inventory.vendors'
+import { Route as AuthenticatedLabelPrintingIndexRouteImport } from './routes/_authenticated/label-printing.index'
+import { Route as AuthenticatedMastersIndexRouteImport } from './routes/_authenticated/masters.index'
+import { Route as AuthenticatedMastersChannelsRouteImport } from './routes/_authenticated/masters.channels'
+import { Route as AuthenticatedMastersEarlyCheckinSlabsRouteImport } from './routes/_authenticated/masters.early-checkin-slabs'
+import { Route as AuthenticatedMastersExpenseCategoriesRouteImport } from './routes/_authenticated/masters.expense-categories'
+import { Route as AuthenticatedMastersHallsRouteImport } from './routes/_authenticated/masters.halls'
+import { Route as AuthenticatedMastersMenuRouteImport } from './routes/_authenticated/masters.menu'
+import { Route as AuthenticatedMastersMessageTemplatesRouteImport } from './routes/_authenticated/masters.message-templates'
+import { Route as AuthenticatedMastersPaymentMethodsRouteImport } from './routes/_authenticated/masters.payment-methods'
+import { Route as AuthenticatedMastersPosCategoriesRouteImport } from './routes/_authenticated/masters.pos-categories'
+import { Route as AuthenticatedMastersPrintersRouteImport } from './routes/_authenticated/masters.printers'
+import { Route as AuthenticatedMastersRateSeasonsRouteImport } from './routes/_authenticated/masters.rate-seasons'
+import { Route as AuthenticatedMastersRestaurantOutletsRouteImport } from './routes/_authenticated/masters.restaurant-outlets'
+import { Route as AuthenticatedMastersRoomStatusColorsRouteImport } from './routes/_authenticated/masters.room-status-colors'
+import { Route as AuthenticatedMastersRoomsRouteImport } from './routes/_authenticated/masters.rooms'
+import { Route as AuthenticatedMastersStaffRouteImport } from './routes/_authenticated/masters.staff'
+import { Route as AuthenticatedMastersSundryItemsRouteImport } from './routes/_authenticated/masters.sundry-items'
+import { Route as AuthenticatedMastersTablesRouteImport } from './routes/_authenticated/masters.tables'
+import { Route as AuthenticatedMastersTariffRouteImport } from './routes/_authenticated/masters.tariff'
+import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports.index'
+import { Route as AuthenticatedReportsActivityRouteImport } from './routes/_authenticated/reports.activity'
+import { Route as AuthenticatedReportsAnalyticsRouteImport } from './routes/_authenticated/reports.analytics'
+import { Route as AuthenticatedReportsBanquetRouteImport } from './routes/_authenticated/reports.banquet'
+import { Route as AuthenticatedReportsBanquetBillingRouteImport } from './routes/_authenticated/reports.banquet-billing'
+import { Route as AuthenticatedReportsBillWiseRouteImport } from './routes/_authenticated/reports.bill-wise'
+import { Route as AuthenticatedReportsCancelledRouteImport } from './routes/_authenticated/reports.cancelled'
+import { Route as AuthenticatedReportsCashCollectionRouteImport } from './routes/_authenticated/reports.cash-collection'
+import { Route as AuthenticatedReportsCashHandoverRouteImport } from './routes/_authenticated/reports.cash-handover'
+import { Route as AuthenticatedReportsDailyRouteImport } from './routes/_authenticated/reports.daily'
+import { Route as AuthenticatedReportsDateWiseRevenueRouteImport } from './routes/_authenticated/reports.date-wise-revenue'
+import { Route as AuthenticatedReportsDuesRouteImport } from './routes/_authenticated/reports.dues'
+import { Route as AuthenticatedReportsExpensesRouteImport } from './routes/_authenticated/reports.expenses'
+import { Route as AuthenticatedReportsFoodKotRouteImport } from './routes/_authenticated/reports.food-kot'
+import { Route as AuthenticatedReportsGstRouteImport } from './routes/_authenticated/reports.gst'
+import { Route as AuthenticatedReportsGuestWiseRouteImport } from './routes/_authenticated/reports.guest-wise'
+import { Route as AuthenticatedReportsItemSalesRouteImport } from './routes/_authenticated/reports.item-sales'
+import { Route as AuthenticatedReportsKotActivityRouteImport } from './routes/_authenticated/reports.kot-activity'
+import { Route as AuthenticatedReportsMorningRouteImport } from './routes/_authenticated/reports.morning'
+import { Route as AuthenticatedReportsNightAuditRouteImport } from './routes/_authenticated/reports.night-audit'
+import { Route as AuthenticatedReportsPlanWiseRouteImport } from './routes/_authenticated/reports.plan-wise'
+import { Route as AuthenticatedReportsRoomShiftRouteImport } from './routes/_authenticated/reports.room-shift'
+import { Route as AuthenticatedReportsRoomWiseRouteImport } from './routes/_authenticated/reports.room-wise'
+import { Route as AuthenticatedReportsSalesRouteImport } from './routes/_authenticated/reports.sales'
+import { Route as AuthenticatedRestaurantIndexRouteImport } from './routes/_authenticated/restaurant.index'
+import { Route as AuthenticatedRoomsRoomNumberRouteImport } from './routes/_authenticated/rooms.$roomNumber'
+import { Route as AuthenticatedSecurityIndexRouteImport } from './routes/_authenticated/security.index'
+import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings.index'
+import { Route as AuthenticatedSettingsHotelRouteImport } from './routes/_authenticated/settings.hotel'
+import { Route as AuthenticatedSettingsWhatsappRouteImport } from './routes/_authenticated/settings.whatsapp'
+import { Route as AuthenticatedStaffIndexRouteImport } from './routes/_authenticated/staff.index'
+import { Route as AuthenticatedStaffAttendanceRouteImport } from './routes/_authenticated/staff.attendance'
+import { Route as AuthenticatedStaffAttendanceHistoryRouteImport } from './routes/_authenticated/staff.attendance-history'
+import { Route as AuthenticatedStaffPayrollRouteImport } from './routes/_authenticated/staff.payroll'
+import { Route as AuthenticatedSuperadminDashboardRouteImport } from './routes/_authenticated/superadmin.dashboard'
+import { Route as AuthenticatedSuperadminUsersRouteImport } from './routes/_authenticated/superadmin.users'
+import { Route as AuthenticatedWhatsappIndexRouteImport } from './routes/_authenticated/whatsapp.index'
+import { Route as AuthenticatedBanquetBillIdRouteImport } from './routes/_authenticated/banquet.bill.$id'
+import { Route as AuthenticatedBanquetEventIdRouteImport } from './routes/_authenticated/banquet.event.$id'
+import { Route as AuthenticatedBanquetMasterBillIdRouteImport } from './routes/_authenticated/banquet.master-bill.$id'
+import { Route as AuthenticatedBillingFolioBookingIdRouteImport } from './routes/_authenticated/billing.folio.$bookingId'
+import { Route as AuthenticatedBookingsBookingIdGrcRouteImport } from './routes/_authenticated/bookings.$bookingId.grc'
+import { Route as AuthenticatedFoodKotIdRouteImport } from './routes/_authenticated/food.kot.$id'
+import { Route as AuthenticatedFrontDeskBookingLegacyIdRouteImport } from './routes/_authenticated/front-desk.booking-legacy.$id'
+import { Route as AuthenticatedFrontDeskBookingIdRouteImport } from './routes/_authenticated/front-desk.booking.$id'
 import { Route as AuthenticatedSuperadminRolesIndexRouteImport } from './routes/_authenticated/superadmin.roles.index'
 import { Route as AuthenticatedSuperadminRolesIdRouteImport } from './routes/_authenticated/superadmin.roles.$id'
-import { Route as AuthenticatedFrontDeskBookingIdRouteImport } from './routes/_authenticated/front-desk.booking.$id'
-import { Route as AuthenticatedFrontDeskBookingLegacyIdRouteImport } from './routes/_authenticated/front-desk.booking-legacy.$id'
-import { Route as AuthenticatedFoodKotIdRouteImport } from './routes/_authenticated/food.kot.$id'
-import { Route as AuthenticatedBookingsBookingIdGrcRouteImport } from './routes/_authenticated/bookings.$bookingId.grc'
-import { Route as AuthenticatedBillingFolioBookingIdRouteImport } from './routes/_authenticated/billing.folio.$bookingId'
-import { Route as AuthenticatedBanquetMasterBillIdRouteImport } from './routes/_authenticated/banquet.master-bill.$id'
-import { Route as AuthenticatedBanquetEventIdRouteImport } from './routes/_authenticated/banquet.event.$id'
-import { Route as AuthenticatedBanquetBillIdRouteImport } from './routes/_authenticated/banquet.bill.$id'
 import { Route as AuthenticatedFrontDeskBookingIdEditRouteImport } from './routes/_authenticated/front-desk.booking.$id.edit'
 
-const TotpChallengeRoute = TotpChallengeRouteImport.update({
-  id: '/totp-challenge',
-  path: '/totp-challenge',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TermsOfServiceRoute = TermsOfServiceRouteImport.update({
-  id: '/terms-of-service',
-  path: '/terms-of-service',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SlaRoute = SlaRouteImport.update({
-  id: '/sla',
-  path: '/sla',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SecurityPolicyRoute = SecurityPolicyRouteImport.update({
-  id: '/security-policy',
-  path: '/security-policy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RefundPolicyRoute = RefundPolicyRouteImport.update({
-  id: '/refund-policy',
-  path: '/refund-policy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
-  id: '/privacy-policy',
-  path: '/privacy-policy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DataProcessingAgreementRoute = DataProcessingAgreementRouteImport.update({
-  id: '/data-processing-agreement',
-  path: '/data-processing-agreement',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CookiePolicyRoute = CookiePolicyRouteImport.update({
-  id: '/cookie-policy',
-  path: '/cookie-policy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccessDeniedRoute = AccessDeniedRouteImport.update({
-  id: '/access-denied',
-  path: '/access-denied',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AcceptableUsePolicyRoute = AcceptableUsePolicyRouteImport.update({
@@ -184,23 +138,64 @@ const AcceptableUsePolicyRoute = AcceptableUsePolicyRouteImport.update({
   path: '/acceptable-use-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
+const AccessDeniedRoute = AccessDeniedRouteImport.update({
+  id: '/access-denied',
+  path: '/access-denied',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const CookiePolicyRoute = CookiePolicyRouteImport.update({
+  id: '/cookie-policy',
+  path: '/cookie-policy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSuperadminRoute = AuthenticatedSuperadminRouteImport.update({
-  id: '/superadmin',
-  path: '/superadmin',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const DataProcessingAgreementRoute = DataProcessingAgreementRouteImport.update({
+  id: '/data-processing-agreement',
+  path: '/data-processing-agreement',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedPropertiesRoute = AuthenticatedPropertiesRouteImport.update({
-  id: '/properties',
-  path: '/properties',
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
+  id: '/privacy-policy',
+  path: '/privacy-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RefundPolicyRoute = RefundPolicyRouteImport.update({
+  id: '/refund-policy',
+  path: '/refund-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecurityPolicyRoute = SecurityPolicyRouteImport.update({
+  id: '/security-policy',
+  path: '/security-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SlaRoute = SlaRouteImport.update({
+  id: '/sla',
+  path: '/sla',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsOfServiceRoute = TermsOfServiceRouteImport.update({
+  id: '/terms-of-service',
+  path: '/terms-of-service',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TotpChallengeRoute = TotpChallengeRouteImport.update({
+  id: '/totp-challenge',
+  path: '/totp-challenge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPettyCashRoute = AuthenticatedPettyCashRouteImport.update({
@@ -208,80 +203,43 @@ const AuthenticatedPettyCashRoute = AuthenticatedPettyCashRouteImport.update({
   path: '/petty-cash',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const AuthenticatedPropertiesRoute = AuthenticatedPropertiesRouteImport.update({
+  id: '/properties',
+  path: '/properties',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedWhatsappIndexRoute =
-  AuthenticatedWhatsappIndexRouteImport.update({
-    id: '/whatsapp/',
-    path: '/whatsapp/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedStaffIndexRoute = AuthenticatedStaffIndexRouteImport.update({
-  id: '/staff/',
-  path: '/staff/',
+const AuthenticatedSuperadminRoute = AuthenticatedSuperadminRouteImport.update({
+  id: '/superadmin',
+  path: '/superadmin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedSettingsIndexRoute =
-  AuthenticatedSettingsIndexRouteImport.update({
-    id: '/settings/',
-    path: '/settings/',
+const AuthenticatedBanquetBookingsRoute =
+  AuthenticatedBanquetBookingsRouteImport.update({
+    id: '/banquet/bookings',
+    path: '/banquet/bookings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedSecurityIndexRoute =
-  AuthenticatedSecurityIndexRouteImport.update({
-    id: '/security/',
-    path: '/security/',
+const AuthenticatedBanquetNewRoute = AuthenticatedBanquetNewRouteImport.update({
+  id: '/banquet/new',
+  path: '/banquet/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBillingCompaniesRoute =
+  AuthenticatedBillingCompaniesRouteImport.update({
+    id: '/billing/companies',
+    path: '/billing/companies',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedRestaurantIndexRoute =
-  AuthenticatedRestaurantIndexRouteImport.update({
-    id: '/restaurant/',
-    path: '/restaurant/',
+const AuthenticatedBillingInvoicesRoute =
+  AuthenticatedBillingInvoicesRouteImport.update({
+    id: '/billing/invoices',
+    path: '/billing/invoices',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedReportsIndexRoute =
-  AuthenticatedReportsIndexRouteImport.update({
-    id: '/reports/',
-    path: '/reports/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersIndexRoute =
-  AuthenticatedMastersIndexRouteImport.update({
-    id: '/masters/',
-    path: '/masters/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedLabelPrintingIndexRoute =
-  AuthenticatedLabelPrintingIndexRouteImport.update({
-    id: '/label-printing/',
-    path: '/label-printing/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedInventoryIndexRoute =
-  AuthenticatedInventoryIndexRouteImport.update({
-    id: '/inventory/',
-    path: '/inventory/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedGuestsIndexRoute =
-  AuthenticatedGuestsIndexRouteImport.update({
-    id: '/guests/',
-    path: '/guests/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFeedbackIndexRoute =
-  AuthenticatedFeedbackIndexRouteImport.update({
-    id: '/feedback/',
-    path: '/feedback/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedExpensesIndexRoute =
-  AuthenticatedExpensesIndexRouteImport.update({
-    id: '/expenses/',
-    path: '/expenses/',
+const AuthenticatedChannelsIndexRoute =
+  AuthenticatedChannelsIndexRouteImport.update({
+    id: '/channels/',
+    path: '/channels/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedCommsIndexRoute = AuthenticatedCommsIndexRouteImport.update({
@@ -289,397 +247,15 @@ const AuthenticatedCommsIndexRoute = AuthenticatedCommsIndexRouteImport.update({
   path: '/comms/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedChannelsIndexRoute =
-  AuthenticatedChannelsIndexRouteImport.update({
-    id: '/channels/',
-    path: '/channels/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedSuperadminUsersRoute =
-  AuthenticatedSuperadminUsersRouteImport.update({
-    id: '/users',
-    path: '/users',
-    getParentRoute: () => AuthenticatedSuperadminRoute,
-  } as any)
-const AuthenticatedSuperadminDashboardRoute =
-  AuthenticatedSuperadminDashboardRouteImport.update({
-    id: '/dashboard',
-    path: '/dashboard',
-    getParentRoute: () => AuthenticatedSuperadminRoute,
-  } as any)
-const AuthenticatedStaffPayrollRoute =
-  AuthenticatedStaffPayrollRouteImport.update({
-    id: '/staff/payroll',
-    path: '/staff/payroll',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedStaffAttendanceHistoryRoute =
-  AuthenticatedStaffAttendanceHistoryRouteImport.update({
-    id: '/staff/attendance-history',
-    path: '/staff/attendance-history',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedStaffAttendanceRoute =
-  AuthenticatedStaffAttendanceRouteImport.update({
-    id: '/staff/attendance',
-    path: '/staff/attendance',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedSettingsWhatsappRoute =
-  AuthenticatedSettingsWhatsappRouteImport.update({
-    id: '/settings/whatsapp',
-    path: '/settings/whatsapp',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedSettingsHotelRoute =
-  AuthenticatedSettingsHotelRouteImport.update({
-    id: '/settings/hotel',
-    path: '/settings/hotel',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedRoomsRoomNumberRoute =
-  AuthenticatedRoomsRoomNumberRouteImport.update({
-    id: '/rooms/$roomNumber',
-    path: '/rooms/$roomNumber',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsSalesRoute =
-  AuthenticatedReportsSalesRouteImport.update({
-    id: '/reports/sales',
-    path: '/reports/sales',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsRoomWiseRoute =
-  AuthenticatedReportsRoomWiseRouteImport.update({
-    id: '/reports/room-wise',
-    path: '/reports/room-wise',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsRoomShiftRoute =
-  AuthenticatedReportsRoomShiftRouteImport.update({
-    id: '/reports/room-shift',
-    path: '/reports/room-shift',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsPlanWiseRoute =
-  AuthenticatedReportsPlanWiseRouteImport.update({
-    id: '/reports/plan-wise',
-    path: '/reports/plan-wise',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsNightAuditRoute =
-  AuthenticatedReportsNightAuditRouteImport.update({
-    id: '/reports/night-audit',
-    path: '/reports/night-audit',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsMorningRoute =
-  AuthenticatedReportsMorningRouteImport.update({
-    id: '/reports/morning',
-    path: '/reports/morning',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsKotActivityRoute =
-  AuthenticatedReportsKotActivityRouteImport.update({
-    id: '/reports/kot-activity',
-    path: '/reports/kot-activity',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsItemSalesRoute =
-  AuthenticatedReportsItemSalesRouteImport.update({
-    id: '/reports/item-sales',
-    path: '/reports/item-sales',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsGuestWiseRoute =
-  AuthenticatedReportsGuestWiseRouteImport.update({
-    id: '/reports/guest-wise',
-    path: '/reports/guest-wise',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsGstRoute = AuthenticatedReportsGstRouteImport.update({
-  id: '/reports/gst',
-  path: '/reports/gst',
+const AuthenticatedCommsNewRoute = AuthenticatedCommsNewRouteImport.update({
+  id: '/comms/new',
+  path: '/comms/new',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedReportsFoodKotRoute =
-  AuthenticatedReportsFoodKotRouteImport.update({
-    id: '/reports/food-kot',
-    path: '/reports/food-kot',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsExpensesRoute =
-  AuthenticatedReportsExpensesRouteImport.update({
-    id: '/reports/expenses',
-    path: '/reports/expenses',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsDuesRoute =
-  AuthenticatedReportsDuesRouteImport.update({
-    id: '/reports/dues',
-    path: '/reports/dues',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsDateWiseRevenueRoute =
-  AuthenticatedReportsDateWiseRevenueRouteImport.update({
-    id: '/reports/date-wise-revenue',
-    path: '/reports/date-wise-revenue',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsDailyRoute =
-  AuthenticatedReportsDailyRouteImport.update({
-    id: '/reports/daily',
-    path: '/reports/daily',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsCashHandoverRoute =
-  AuthenticatedReportsCashHandoverRouteImport.update({
-    id: '/reports/cash-handover',
-    path: '/reports/cash-handover',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsCashCollectionRoute =
-  AuthenticatedReportsCashCollectionRouteImport.update({
-    id: '/reports/cash-collection',
-    path: '/reports/cash-collection',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsCancelledRoute =
-  AuthenticatedReportsCancelledRouteImport.update({
-    id: '/reports/cancelled',
-    path: '/reports/cancelled',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsBillWiseRoute =
-  AuthenticatedReportsBillWiseRouteImport.update({
-    id: '/reports/bill-wise',
-    path: '/reports/bill-wise',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsBanquetBillingRoute =
-  AuthenticatedReportsBanquetBillingRouteImport.update({
-    id: '/reports/banquet-billing',
-    path: '/reports/banquet-billing',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsBanquetRoute =
-  AuthenticatedReportsBanquetRouteImport.update({
-    id: '/reports/banquet',
-    path: '/reports/banquet',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsAnalyticsRoute =
-  AuthenticatedReportsAnalyticsRouteImport.update({
-    id: '/reports/analytics',
-    path: '/reports/analytics',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedReportsActivityRoute =
-  AuthenticatedReportsActivityRouteImport.update({
-    id: '/reports/activity',
-    path: '/reports/activity',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersTariffRoute =
-  AuthenticatedMastersTariffRouteImport.update({
-    id: '/masters/tariff',
-    path: '/masters/tariff',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersTablesRoute =
-  AuthenticatedMastersTablesRouteImport.update({
-    id: '/masters/tables',
-    path: '/masters/tables',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersSundryItemsRoute =
-  AuthenticatedMastersSundryItemsRouteImport.update({
-    id: '/masters/sundry-items',
-    path: '/masters/sundry-items',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersStaffRoute =
-  AuthenticatedMastersStaffRouteImport.update({
-    id: '/masters/staff',
-    path: '/masters/staff',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersRoomsRoute =
-  AuthenticatedMastersRoomsRouteImport.update({
-    id: '/masters/rooms',
-    path: '/masters/rooms',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersRoomStatusColorsRoute =
-  AuthenticatedMastersRoomStatusColorsRouteImport.update({
-    id: '/masters/room-status-colors',
-    path: '/masters/room-status-colors',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersRestaurantOutletsRoute =
-  AuthenticatedMastersRestaurantOutletsRouteImport.update({
-    id: '/masters/restaurant-outlets',
-    path: '/masters/restaurant-outlets',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersRateSeasonsRoute =
-  AuthenticatedMastersRateSeasonsRouteImport.update({
-    id: '/masters/rate-seasons',
-    path: '/masters/rate-seasons',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersPrintersRoute =
-  AuthenticatedMastersPrintersRouteImport.update({
-    id: '/masters/printers',
-    path: '/masters/printers',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersPosCategoriesRoute =
-  AuthenticatedMastersPosCategoriesRouteImport.update({
-    id: '/masters/pos-categories',
-    path: '/masters/pos-categories',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersPaymentMethodsRoute =
-  AuthenticatedMastersPaymentMethodsRouteImport.update({
-    id: '/masters/payment-methods',
-    path: '/masters/payment-methods',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersMessageTemplatesRoute =
-  AuthenticatedMastersMessageTemplatesRouteImport.update({
-    id: '/masters/message-templates',
-    path: '/masters/message-templates',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersMenuRoute =
-  AuthenticatedMastersMenuRouteImport.update({
-    id: '/masters/menu',
-    path: '/masters/menu',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersHallsRoute =
-  AuthenticatedMastersHallsRouteImport.update({
-    id: '/masters/halls',
-    path: '/masters/halls',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersExpenseCategoriesRoute =
-  AuthenticatedMastersExpenseCategoriesRouteImport.update({
-    id: '/masters/expense-categories',
-    path: '/masters/expense-categories',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersEarlyCheckinSlabsRoute =
-  AuthenticatedMastersEarlyCheckinSlabsRouteImport.update({
-    id: '/masters/early-checkin-slabs',
-    path: '/masters/early-checkin-slabs',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedMastersChannelsRoute =
-  AuthenticatedMastersChannelsRouteImport.update({
-    id: '/masters/channels',
-    path: '/masters/channels',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedInventoryVendorsRoute =
-  AuthenticatedInventoryVendorsRouteImport.update({
-    id: '/inventory/vendors',
-    path: '/inventory/vendors',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedInventoryStockRoute =
-  AuthenticatedInventoryStockRouteImport.update({
-    id: '/inventory/stock',
-    path: '/inventory/stock',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedInventoryMovementsRoute =
-  AuthenticatedInventoryMovementsRouteImport.update({
-    id: '/inventory/movements',
-    path: '/inventory/movements',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedInventoryItemsRoute =
-  AuthenticatedInventoryItemsRouteImport.update({
-    id: '/inventory/items',
-    path: '/inventory/items',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedHousekeepingTasksRoute =
-  AuthenticatedHousekeepingTasksRouteImport.update({
-    id: '/housekeeping/tasks',
-    path: '/housekeeping/tasks',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedHousekeepingNewRoute =
-  AuthenticatedHousekeepingNewRouteImport.update({
-    id: '/housekeeping/new',
-    path: '/housekeeping/new',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedHousekeepingBoardRoute =
-  AuthenticatedHousekeepingBoardRouteImport.update({
-    id: '/housekeeping/board',
-    path: '/housekeeping/board',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedHandoverNewRoute =
-  AuthenticatedHandoverNewRouteImport.update({
-    id: '/handover/new',
-    path: '/handover/new',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedGuestsNewRoute = AuthenticatedGuestsNewRouteImport.update({
-  id: '/guests/new',
-  path: '/guests/new',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedGuestsIdRoute = AuthenticatedGuestsIdRouteImport.update({
-  id: '/guests/$id',
-  path: '/guests/$id',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedFrontDeskRateCalendarRoute =
-  AuthenticatedFrontDeskRateCalendarRouteImport.update({
-    id: '/front-desk/rate-calendar',
-    path: '/front-desk/rate-calendar',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFrontDeskNewLegacyRoute =
-  AuthenticatedFrontDeskNewLegacyRouteImport.update({
-    id: '/front-desk/new-legacy',
-    path: '/front-desk/new-legacy',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFrontDeskNewRoute =
-  AuthenticatedFrontDeskNewRouteImport.update({
-    id: '/front-desk/new',
-    path: '/front-desk/new',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFrontDeskInHouseRoute =
-  AuthenticatedFrontDeskInHouseRouteImport.update({
-    id: '/front-desk/in-house',
-    path: '/front-desk/in-house',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFrontDeskCalendarRoute =
-  AuthenticatedFrontDeskCalendarRouteImport.update({
-    id: '/front-desk/calendar',
-    path: '/front-desk/calendar',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFrontDeskBookingsRoute =
-  AuthenticatedFrontDeskBookingsRouteImport.update({
-    id: '/front-desk/bookings',
-    path: '/front-desk/bookings',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFeedbackNewRoute =
-  AuthenticatedFeedbackNewRouteImport.update({
-    id: '/feedback/new',
-    path: '/feedback/new',
+const AuthenticatedExpensesIndexRoute =
+  AuthenticatedExpensesIndexRouteImport.update({
+    id: '/expenses/',
+    path: '/expenses/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedExpensesNewRoute =
@@ -688,32 +264,503 @@ const AuthenticatedExpensesNewRoute =
     path: '/expenses/new',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedCommsNewRoute = AuthenticatedCommsNewRouteImport.update({
-  id: '/comms/new',
-  path: '/comms/new',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedBillingInvoicesRoute =
-  AuthenticatedBillingInvoicesRouteImport.update({
-    id: '/billing/invoices',
-    path: '/billing/invoices',
+const AuthenticatedFeedbackIndexRoute =
+  AuthenticatedFeedbackIndexRouteImport.update({
+    id: '/feedback/',
+    path: '/feedback/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedBillingCompaniesRoute =
-  AuthenticatedBillingCompaniesRouteImport.update({
-    id: '/billing/companies',
-    path: '/billing/companies',
+const AuthenticatedFeedbackNewRoute =
+  AuthenticatedFeedbackNewRouteImport.update({
+    id: '/feedback/new',
+    path: '/feedback/new',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedBanquetNewRoute = AuthenticatedBanquetNewRouteImport.update({
-  id: '/banquet/new',
-  path: '/banquet/new',
+const AuthenticatedFrontDeskBookingsRoute =
+  AuthenticatedFrontDeskBookingsRouteImport.update({
+    id: '/front-desk/bookings',
+    path: '/front-desk/bookings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFrontDeskCalendarRoute =
+  AuthenticatedFrontDeskCalendarRouteImport.update({
+    id: '/front-desk/calendar',
+    path: '/front-desk/calendar',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFrontDeskInHouseRoute =
+  AuthenticatedFrontDeskInHouseRouteImport.update({
+    id: '/front-desk/in-house',
+    path: '/front-desk/in-house',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFrontDeskNewRoute =
+  AuthenticatedFrontDeskNewRouteImport.update({
+    id: '/front-desk/new',
+    path: '/front-desk/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFrontDeskNewLegacyRoute =
+  AuthenticatedFrontDeskNewLegacyRouteImport.update({
+    id: '/front-desk/new-legacy',
+    path: '/front-desk/new-legacy',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFrontDeskRateCalendarRoute =
+  AuthenticatedFrontDeskRateCalendarRouteImport.update({
+    id: '/front-desk/rate-calendar',
+    path: '/front-desk/rate-calendar',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedGuestsIndexRoute =
+  AuthenticatedGuestsIndexRouteImport.update({
+    id: '/guests/',
+    path: '/guests/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedGuestsIdRoute = AuthenticatedGuestsIdRouteImport.update({
+  id: '/guests/$id',
+  path: '/guests/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedBanquetBookingsRoute =
-  AuthenticatedBanquetBookingsRouteImport.update({
-    id: '/banquet/bookings',
-    path: '/banquet/bookings',
+const AuthenticatedGuestsNewRoute = AuthenticatedGuestsNewRouteImport.update({
+  id: '/guests/new',
+  path: '/guests/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHandoverNewRoute =
+  AuthenticatedHandoverNewRouteImport.update({
+    id: '/handover/new',
+    path: '/handover/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedHousekeepingBoardRoute =
+  AuthenticatedHousekeepingBoardRouteImport.update({
+    id: '/housekeeping/board',
+    path: '/housekeeping/board',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedHousekeepingNewRoute =
+  AuthenticatedHousekeepingNewRouteImport.update({
+    id: '/housekeeping/new',
+    path: '/housekeeping/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedHousekeepingTasksRoute =
+  AuthenticatedHousekeepingTasksRouteImport.update({
+    id: '/housekeeping/tasks',
+    path: '/housekeeping/tasks',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInventoryIndexRoute =
+  AuthenticatedInventoryIndexRouteImport.update({
+    id: '/inventory/',
+    path: '/inventory/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInventoryItemsRoute =
+  AuthenticatedInventoryItemsRouteImport.update({
+    id: '/inventory/items',
+    path: '/inventory/items',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInventoryMovementsRoute =
+  AuthenticatedInventoryMovementsRouteImport.update({
+    id: '/inventory/movements',
+    path: '/inventory/movements',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInventoryStockRoute =
+  AuthenticatedInventoryStockRouteImport.update({
+    id: '/inventory/stock',
+    path: '/inventory/stock',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedInventoryVendorsRoute =
+  AuthenticatedInventoryVendorsRouteImport.update({
+    id: '/inventory/vendors',
+    path: '/inventory/vendors',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedLabelPrintingIndexRoute =
+  AuthenticatedLabelPrintingIndexRouteImport.update({
+    id: '/label-printing/',
+    path: '/label-printing/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersIndexRoute =
+  AuthenticatedMastersIndexRouteImport.update({
+    id: '/masters/',
+    path: '/masters/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersChannelsRoute =
+  AuthenticatedMastersChannelsRouteImport.update({
+    id: '/masters/channels',
+    path: '/masters/channels',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersEarlyCheckinSlabsRoute =
+  AuthenticatedMastersEarlyCheckinSlabsRouteImport.update({
+    id: '/masters/early-checkin-slabs',
+    path: '/masters/early-checkin-slabs',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersExpenseCategoriesRoute =
+  AuthenticatedMastersExpenseCategoriesRouteImport.update({
+    id: '/masters/expense-categories',
+    path: '/masters/expense-categories',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersHallsRoute =
+  AuthenticatedMastersHallsRouteImport.update({
+    id: '/masters/halls',
+    path: '/masters/halls',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersMenuRoute =
+  AuthenticatedMastersMenuRouteImport.update({
+    id: '/masters/menu',
+    path: '/masters/menu',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersMessageTemplatesRoute =
+  AuthenticatedMastersMessageTemplatesRouteImport.update({
+    id: '/masters/message-templates',
+    path: '/masters/message-templates',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersPaymentMethodsRoute =
+  AuthenticatedMastersPaymentMethodsRouteImport.update({
+    id: '/masters/payment-methods',
+    path: '/masters/payment-methods',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersPosCategoriesRoute =
+  AuthenticatedMastersPosCategoriesRouteImport.update({
+    id: '/masters/pos-categories',
+    path: '/masters/pos-categories',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersPrintersRoute =
+  AuthenticatedMastersPrintersRouteImport.update({
+    id: '/masters/printers',
+    path: '/masters/printers',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersRateSeasonsRoute =
+  AuthenticatedMastersRateSeasonsRouteImport.update({
+    id: '/masters/rate-seasons',
+    path: '/masters/rate-seasons',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersRestaurantOutletsRoute =
+  AuthenticatedMastersRestaurantOutletsRouteImport.update({
+    id: '/masters/restaurant-outlets',
+    path: '/masters/restaurant-outlets',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersRoomStatusColorsRoute =
+  AuthenticatedMastersRoomStatusColorsRouteImport.update({
+    id: '/masters/room-status-colors',
+    path: '/masters/room-status-colors',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersRoomsRoute =
+  AuthenticatedMastersRoomsRouteImport.update({
+    id: '/masters/rooms',
+    path: '/masters/rooms',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersStaffRoute =
+  AuthenticatedMastersStaffRouteImport.update({
+    id: '/masters/staff',
+    path: '/masters/staff',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersSundryItemsRoute =
+  AuthenticatedMastersSundryItemsRouteImport.update({
+    id: '/masters/sundry-items',
+    path: '/masters/sundry-items',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersTablesRoute =
+  AuthenticatedMastersTablesRouteImport.update({
+    id: '/masters/tables',
+    path: '/masters/tables',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedMastersTariffRoute =
+  AuthenticatedMastersTariffRouteImport.update({
+    id: '/masters/tariff',
+    path: '/masters/tariff',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsIndexRoute =
+  AuthenticatedReportsIndexRouteImport.update({
+    id: '/reports/',
+    path: '/reports/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsActivityRoute =
+  AuthenticatedReportsActivityRouteImport.update({
+    id: '/reports/activity',
+    path: '/reports/activity',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsAnalyticsRoute =
+  AuthenticatedReportsAnalyticsRouteImport.update({
+    id: '/reports/analytics',
+    path: '/reports/analytics',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsBanquetRoute =
+  AuthenticatedReportsBanquetRouteImport.update({
+    id: '/reports/banquet',
+    path: '/reports/banquet',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsBanquetBillingRoute =
+  AuthenticatedReportsBanquetBillingRouteImport.update({
+    id: '/reports/banquet-billing',
+    path: '/reports/banquet-billing',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsBillWiseRoute =
+  AuthenticatedReportsBillWiseRouteImport.update({
+    id: '/reports/bill-wise',
+    path: '/reports/bill-wise',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsCancelledRoute =
+  AuthenticatedReportsCancelledRouteImport.update({
+    id: '/reports/cancelled',
+    path: '/reports/cancelled',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsCashCollectionRoute =
+  AuthenticatedReportsCashCollectionRouteImport.update({
+    id: '/reports/cash-collection',
+    path: '/reports/cash-collection',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsCashHandoverRoute =
+  AuthenticatedReportsCashHandoverRouteImport.update({
+    id: '/reports/cash-handover',
+    path: '/reports/cash-handover',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsDailyRoute =
+  AuthenticatedReportsDailyRouteImport.update({
+    id: '/reports/daily',
+    path: '/reports/daily',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsDateWiseRevenueRoute =
+  AuthenticatedReportsDateWiseRevenueRouteImport.update({
+    id: '/reports/date-wise-revenue',
+    path: '/reports/date-wise-revenue',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsDuesRoute =
+  AuthenticatedReportsDuesRouteImport.update({
+    id: '/reports/dues',
+    path: '/reports/dues',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsExpensesRoute =
+  AuthenticatedReportsExpensesRouteImport.update({
+    id: '/reports/expenses',
+    path: '/reports/expenses',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsFoodKotRoute =
+  AuthenticatedReportsFoodKotRouteImport.update({
+    id: '/reports/food-kot',
+    path: '/reports/food-kot',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsGstRoute = AuthenticatedReportsGstRouteImport.update({
+  id: '/reports/gst',
+  path: '/reports/gst',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedReportsGuestWiseRoute =
+  AuthenticatedReportsGuestWiseRouteImport.update({
+    id: '/reports/guest-wise',
+    path: '/reports/guest-wise',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsItemSalesRoute =
+  AuthenticatedReportsItemSalesRouteImport.update({
+    id: '/reports/item-sales',
+    path: '/reports/item-sales',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsKotActivityRoute =
+  AuthenticatedReportsKotActivityRouteImport.update({
+    id: '/reports/kot-activity',
+    path: '/reports/kot-activity',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsMorningRoute =
+  AuthenticatedReportsMorningRouteImport.update({
+    id: '/reports/morning',
+    path: '/reports/morning',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsNightAuditRoute =
+  AuthenticatedReportsNightAuditRouteImport.update({
+    id: '/reports/night-audit',
+    path: '/reports/night-audit',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsPlanWiseRoute =
+  AuthenticatedReportsPlanWiseRouteImport.update({
+    id: '/reports/plan-wise',
+    path: '/reports/plan-wise',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsRoomShiftRoute =
+  AuthenticatedReportsRoomShiftRouteImport.update({
+    id: '/reports/room-shift',
+    path: '/reports/room-shift',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsRoomWiseRoute =
+  AuthenticatedReportsRoomWiseRouteImport.update({
+    id: '/reports/room-wise',
+    path: '/reports/room-wise',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsSalesRoute =
+  AuthenticatedReportsSalesRouteImport.update({
+    id: '/reports/sales',
+    path: '/reports/sales',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedRestaurantIndexRoute =
+  AuthenticatedRestaurantIndexRouteImport.update({
+    id: '/restaurant/',
+    path: '/restaurant/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedRoomsRoomNumberRoute =
+  AuthenticatedRoomsRoomNumberRouteImport.update({
+    id: '/rooms/$roomNumber',
+    path: '/rooms/$roomNumber',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSecurityIndexRoute =
+  AuthenticatedSecurityIndexRouteImport.update({
+    id: '/security/',
+    path: '/security/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSettingsIndexRoute =
+  AuthenticatedSettingsIndexRouteImport.update({
+    id: '/settings/',
+    path: '/settings/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSettingsHotelRoute =
+  AuthenticatedSettingsHotelRouteImport.update({
+    id: '/settings/hotel',
+    path: '/settings/hotel',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSettingsWhatsappRoute =
+  AuthenticatedSettingsWhatsappRouteImport.update({
+    id: '/settings/whatsapp',
+    path: '/settings/whatsapp',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedStaffIndexRoute = AuthenticatedStaffIndexRouteImport.update({
+  id: '/staff/',
+  path: '/staff/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedStaffAttendanceRoute =
+  AuthenticatedStaffAttendanceRouteImport.update({
+    id: '/staff/attendance',
+    path: '/staff/attendance',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedStaffAttendanceHistoryRoute =
+  AuthenticatedStaffAttendanceHistoryRouteImport.update({
+    id: '/staff/attendance-history',
+    path: '/staff/attendance-history',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedStaffPayrollRoute =
+  AuthenticatedStaffPayrollRouteImport.update({
+    id: '/staff/payroll',
+    path: '/staff/payroll',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSuperadminDashboardRoute =
+  AuthenticatedSuperadminDashboardRouteImport.update({
+    id: '/dashboard',
+    path: '/dashboard',
+    getParentRoute: () => AuthenticatedSuperadminRoute,
+  } as any)
+const AuthenticatedSuperadminUsersRoute =
+  AuthenticatedSuperadminUsersRouteImport.update({
+    id: '/users',
+    path: '/users',
+    getParentRoute: () => AuthenticatedSuperadminRoute,
+  } as any)
+const AuthenticatedWhatsappIndexRoute =
+  AuthenticatedWhatsappIndexRouteImport.update({
+    id: '/whatsapp/',
+    path: '/whatsapp/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedBanquetBillIdRoute =
+  AuthenticatedBanquetBillIdRouteImport.update({
+    id: '/banquet/bill/$id',
+    path: '/banquet/bill/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedBanquetEventIdRoute =
+  AuthenticatedBanquetEventIdRouteImport.update({
+    id: '/banquet/event/$id',
+    path: '/banquet/event/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedBanquetMasterBillIdRoute =
+  AuthenticatedBanquetMasterBillIdRouteImport.update({
+    id: '/banquet/master-bill/$id',
+    path: '/banquet/master-bill/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedBillingFolioBookingIdRoute =
+  AuthenticatedBillingFolioBookingIdRouteImport.update({
+    id: '/billing/folio/$bookingId',
+    path: '/billing/folio/$bookingId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedBookingsBookingIdGrcRoute =
+  AuthenticatedBookingsBookingIdGrcRouteImport.update({
+    id: '/bookings/$bookingId/grc',
+    path: '/bookings/$bookingId/grc',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFoodKotIdRoute = AuthenticatedFoodKotIdRouteImport.update({
+  id: '/food/kot/$id',
+  path: '/food/kot/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFrontDeskBookingLegacyIdRoute =
+  AuthenticatedFrontDeskBookingLegacyIdRouteImport.update({
+    id: '/front-desk/booking-legacy/$id',
+    path: '/front-desk/booking-legacy/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFrontDeskBookingIdRoute =
+  AuthenticatedFrontDeskBookingIdRouteImport.update({
+    id: '/front-desk/booking/$id',
+    path: '/front-desk/booking/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedSuperadminRolesIndexRoute =
@@ -727,53 +774,6 @@ const AuthenticatedSuperadminRolesIdRoute =
     id: '/roles/$id',
     path: '/roles/$id',
     getParentRoute: () => AuthenticatedSuperadminRoute,
-  } as any)
-const AuthenticatedFrontDeskBookingIdRoute =
-  AuthenticatedFrontDeskBookingIdRouteImport.update({
-    id: '/front-desk/booking/$id',
-    path: '/front-desk/booking/$id',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFrontDeskBookingLegacyIdRoute =
-  AuthenticatedFrontDeskBookingLegacyIdRouteImport.update({
-    id: '/front-desk/booking-legacy/$id',
-    path: '/front-desk/booking-legacy/$id',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFoodKotIdRoute = AuthenticatedFoodKotIdRouteImport.update({
-  id: '/food/kot/$id',
-  path: '/food/kot/$id',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedBookingsBookingIdGrcRoute =
-  AuthenticatedBookingsBookingIdGrcRouteImport.update({
-    id: '/bookings/$bookingId/grc',
-    path: '/bookings/$bookingId/grc',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedBillingFolioBookingIdRoute =
-  AuthenticatedBillingFolioBookingIdRouteImport.update({
-    id: '/billing/folio/$bookingId',
-    path: '/billing/folio/$bookingId',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedBanquetMasterBillIdRoute =
-  AuthenticatedBanquetMasterBillIdRouteImport.update({
-    id: '/banquet/master-bill/$id',
-    path: '/banquet/master-bill/$id',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedBanquetEventIdRoute =
-  AuthenticatedBanquetEventIdRouteImport.update({
-    id: '/banquet/event/$id',
-    path: '/banquet/event/$id',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedBanquetBillIdRoute =
-  AuthenticatedBanquetBillIdRouteImport.update({
-    id: '/banquet/bill/$id',
-    path: '/banquet/bill/$id',
-    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedFrontDeskBookingIdEditRoute =
   AuthenticatedFrontDeskBookingIdEditRouteImport.update({
@@ -1497,88 +1497,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/totp-challenge': {
-      id: '/totp-challenge'
-      path: '/totp-challenge'
-      fullPath: '/totp-challenge'
-      preLoaderRoute: typeof TotpChallengeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/terms-of-service': {
-      id: '/terms-of-service'
-      path: '/terms-of-service'
-      fullPath: '/terms-of-service'
-      preLoaderRoute: typeof TermsOfServiceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sla': {
-      id: '/sla'
-      path: '/sla'
-      fullPath: '/sla'
-      preLoaderRoute: typeof SlaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/security-policy': {
-      id: '/security-policy'
-      path: '/security-policy'
-      fullPath: '/security-policy'
-      preLoaderRoute: typeof SecurityPolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/refund-policy': {
-      id: '/refund-policy'
-      path: '/refund-policy'
-      fullPath: '/refund-policy'
-      preLoaderRoute: typeof RefundPolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/privacy-policy': {
-      id: '/privacy-policy'
-      path: '/privacy-policy'
-      fullPath: '/privacy-policy'
-      preLoaderRoute: typeof PrivacyPolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot-password': {
-      id: '/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof ForgotPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/data-processing-agreement': {
-      id: '/data-processing-agreement'
-      path: '/data-processing-agreement'
-      fullPath: '/data-processing-agreement'
-      preLoaderRoute: typeof DataProcessingAgreementRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cookie-policy': {
-      id: '/cookie-policy'
-      path: '/cookie-policy'
-      fullPath: '/cookie-policy'
-      preLoaderRoute: typeof CookiePolicyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/access-denied': {
-      id: '/access-denied'
-      path: '/access-denied'
-      fullPath: '/access-denied'
-      preLoaderRoute: typeof AccessDeniedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/acceptable-use-policy': {
-      id: '/acceptable-use-policy'
-      path: '/acceptable-use-policy'
-      fullPath: '/acceptable-use-policy'
-      preLoaderRoute: typeof AcceptableUsePolicyRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -1588,25 +1511,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/acceptable-use-policy': {
+      id: '/acceptable-use-policy'
+      path: '/acceptable-use-policy'
+      fullPath: '/acceptable-use-policy'
+      preLoaderRoute: typeof AcceptableUsePolicyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/superadmin': {
-      id: '/_authenticated/superadmin'
-      path: '/superadmin'
-      fullPath: '/superadmin'
-      preLoaderRoute: typeof AuthenticatedSuperadminRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/access-denied': {
+      id: '/access-denied'
+      path: '/access-denied'
+      fullPath: '/access-denied'
+      preLoaderRoute: typeof AccessDeniedRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/properties': {
-      id: '/_authenticated/properties'
-      path: '/properties'
-      fullPath: '/properties'
-      preLoaderRoute: typeof AuthenticatedPropertiesRouteImport
+    '/cookie-policy': {
+      id: '/cookie-policy'
+      path: '/cookie-policy'
+      fullPath: '/cookie-policy'
+      preLoaderRoute: typeof CookiePolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/data-processing-agreement': {
+      id: '/data-processing-agreement'
+      path: '/data-processing-agreement'
+      fullPath: '/data-processing-agreement'
+      preLoaderRoute: typeof DataProcessingAgreementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy-policy': {
+      id: '/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PrivacyPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/refund-policy': {
+      id: '/refund-policy'
+      path: '/refund-policy'
+      fullPath: '/refund-policy'
+      preLoaderRoute: typeof RefundPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/security-policy': {
+      id: '/security-policy'
+      path: '/security-policy'
+      fullPath: '/security-policy'
+      preLoaderRoute: typeof SecurityPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sla': {
+      id: '/sla'
+      path: '/sla'
+      fullPath: '/sla'
+      preLoaderRoute: typeof SlaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms-of-service': {
+      id: '/terms-of-service'
+      path: '/terms-of-service'
+      fullPath: '/terms-of-service'
+      preLoaderRoute: typeof TermsOfServiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/totp-challenge': {
+      id: '/totp-challenge'
+      path: '/totp-challenge'
+      fullPath: '/totp-challenge'
+      preLoaderRoute: typeof TotpChallengeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/petty-cash': {
@@ -1616,592 +1609,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPettyCashRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/whatsapp/': {
-      id: '/_authenticated/whatsapp/'
-      path: '/whatsapp'
-      fullPath: '/whatsapp/'
-      preLoaderRoute: typeof AuthenticatedWhatsappIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/staff/': {
-      id: '/_authenticated/staff/'
-      path: '/staff'
-      fullPath: '/staff/'
-      preLoaderRoute: typeof AuthenticatedStaffIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/settings/': {
-      id: '/_authenticated/settings/'
-      path: '/settings'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/security/': {
-      id: '/_authenticated/security/'
-      path: '/security'
-      fullPath: '/security/'
-      preLoaderRoute: typeof AuthenticatedSecurityIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/restaurant/': {
-      id: '/_authenticated/restaurant/'
-      path: '/restaurant'
-      fullPath: '/restaurant/'
-      preLoaderRoute: typeof AuthenticatedRestaurantIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/': {
-      id: '/_authenticated/reports/'
-      path: '/reports'
-      fullPath: '/reports/'
-      preLoaderRoute: typeof AuthenticatedReportsIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/': {
-      id: '/_authenticated/masters/'
-      path: '/masters'
-      fullPath: '/masters/'
-      preLoaderRoute: typeof AuthenticatedMastersIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/label-printing/': {
-      id: '/_authenticated/label-printing/'
-      path: '/label-printing'
-      fullPath: '/label-printing/'
-      preLoaderRoute: typeof AuthenticatedLabelPrintingIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/inventory/': {
-      id: '/_authenticated/inventory/'
-      path: '/inventory'
-      fullPath: '/inventory/'
-      preLoaderRoute: typeof AuthenticatedInventoryIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/guests/': {
-      id: '/_authenticated/guests/'
-      path: '/guests'
-      fullPath: '/guests/'
-      preLoaderRoute: typeof AuthenticatedGuestsIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/feedback/': {
-      id: '/_authenticated/feedback/'
-      path: '/feedback'
-      fullPath: '/feedback/'
-      preLoaderRoute: typeof AuthenticatedFeedbackIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/expenses/': {
-      id: '/_authenticated/expenses/'
-      path: '/expenses'
-      fullPath: '/expenses/'
-      preLoaderRoute: typeof AuthenticatedExpensesIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/comms/': {
-      id: '/_authenticated/comms/'
-      path: '/comms'
-      fullPath: '/comms/'
-      preLoaderRoute: typeof AuthenticatedCommsIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/channels/': {
-      id: '/_authenticated/channels/'
-      path: '/channels'
-      fullPath: '/channels/'
-      preLoaderRoute: typeof AuthenticatedChannelsIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/superadmin/users': {
-      id: '/_authenticated/superadmin/users'
-      path: '/users'
-      fullPath: '/superadmin/users'
-      preLoaderRoute: typeof AuthenticatedSuperadminUsersRouteImport
-      parentRoute: typeof AuthenticatedSuperadminRoute
-    }
-    '/_authenticated/superadmin/dashboard': {
-      id: '/_authenticated/superadmin/dashboard'
-      path: '/dashboard'
-      fullPath: '/superadmin/dashboard'
-      preLoaderRoute: typeof AuthenticatedSuperadminDashboardRouteImport
-      parentRoute: typeof AuthenticatedSuperadminRoute
-    }
-    '/_authenticated/staff/payroll': {
-      id: '/_authenticated/staff/payroll'
-      path: '/staff/payroll'
-      fullPath: '/staff/payroll'
-      preLoaderRoute: typeof AuthenticatedStaffPayrollRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/staff/attendance-history': {
-      id: '/_authenticated/staff/attendance-history'
-      path: '/staff/attendance-history'
-      fullPath: '/staff/attendance-history'
-      preLoaderRoute: typeof AuthenticatedStaffAttendanceHistoryRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/staff/attendance': {
-      id: '/_authenticated/staff/attendance'
-      path: '/staff/attendance'
-      fullPath: '/staff/attendance'
-      preLoaderRoute: typeof AuthenticatedStaffAttendanceRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/settings/whatsapp': {
-      id: '/_authenticated/settings/whatsapp'
-      path: '/settings/whatsapp'
-      fullPath: '/settings/whatsapp'
-      preLoaderRoute: typeof AuthenticatedSettingsWhatsappRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/settings/hotel': {
-      id: '/_authenticated/settings/hotel'
-      path: '/settings/hotel'
-      fullPath: '/settings/hotel'
-      preLoaderRoute: typeof AuthenticatedSettingsHotelRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/rooms/$roomNumber': {
-      id: '/_authenticated/rooms/$roomNumber'
-      path: '/rooms/$roomNumber'
-      fullPath: '/rooms/$roomNumber'
-      preLoaderRoute: typeof AuthenticatedRoomsRoomNumberRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/sales': {
-      id: '/_authenticated/reports/sales'
-      path: '/reports/sales'
-      fullPath: '/reports/sales'
-      preLoaderRoute: typeof AuthenticatedReportsSalesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/room-wise': {
-      id: '/_authenticated/reports/room-wise'
-      path: '/reports/room-wise'
-      fullPath: '/reports/room-wise'
-      preLoaderRoute: typeof AuthenticatedReportsRoomWiseRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/room-shift': {
-      id: '/_authenticated/reports/room-shift'
-      path: '/reports/room-shift'
-      fullPath: '/reports/room-shift'
-      preLoaderRoute: typeof AuthenticatedReportsRoomShiftRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/plan-wise': {
-      id: '/_authenticated/reports/plan-wise'
-      path: '/reports/plan-wise'
-      fullPath: '/reports/plan-wise'
-      preLoaderRoute: typeof AuthenticatedReportsPlanWiseRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/night-audit': {
-      id: '/_authenticated/reports/night-audit'
-      path: '/reports/night-audit'
-      fullPath: '/reports/night-audit'
-      preLoaderRoute: typeof AuthenticatedReportsNightAuditRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/morning': {
-      id: '/_authenticated/reports/morning'
-      path: '/reports/morning'
-      fullPath: '/reports/morning'
-      preLoaderRoute: typeof AuthenticatedReportsMorningRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/kot-activity': {
-      id: '/_authenticated/reports/kot-activity'
-      path: '/reports/kot-activity'
-      fullPath: '/reports/kot-activity'
-      preLoaderRoute: typeof AuthenticatedReportsKotActivityRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/item-sales': {
-      id: '/_authenticated/reports/item-sales'
-      path: '/reports/item-sales'
-      fullPath: '/reports/item-sales'
-      preLoaderRoute: typeof AuthenticatedReportsItemSalesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/guest-wise': {
-      id: '/_authenticated/reports/guest-wise'
-      path: '/reports/guest-wise'
-      fullPath: '/reports/guest-wise'
-      preLoaderRoute: typeof AuthenticatedReportsGuestWiseRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/gst': {
-      id: '/_authenticated/reports/gst'
-      path: '/reports/gst'
-      fullPath: '/reports/gst'
-      preLoaderRoute: typeof AuthenticatedReportsGstRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/food-kot': {
-      id: '/_authenticated/reports/food-kot'
-      path: '/reports/food-kot'
-      fullPath: '/reports/food-kot'
-      preLoaderRoute: typeof AuthenticatedReportsFoodKotRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/expenses': {
-      id: '/_authenticated/reports/expenses'
-      path: '/reports/expenses'
-      fullPath: '/reports/expenses'
-      preLoaderRoute: typeof AuthenticatedReportsExpensesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/dues': {
-      id: '/_authenticated/reports/dues'
-      path: '/reports/dues'
-      fullPath: '/reports/dues'
-      preLoaderRoute: typeof AuthenticatedReportsDuesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/date-wise-revenue': {
-      id: '/_authenticated/reports/date-wise-revenue'
-      path: '/reports/date-wise-revenue'
-      fullPath: '/reports/date-wise-revenue'
-      preLoaderRoute: typeof AuthenticatedReportsDateWiseRevenueRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/daily': {
-      id: '/_authenticated/reports/daily'
-      path: '/reports/daily'
-      fullPath: '/reports/daily'
-      preLoaderRoute: typeof AuthenticatedReportsDailyRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/cash-handover': {
-      id: '/_authenticated/reports/cash-handover'
-      path: '/reports/cash-handover'
-      fullPath: '/reports/cash-handover'
-      preLoaderRoute: typeof AuthenticatedReportsCashHandoverRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/cash-collection': {
-      id: '/_authenticated/reports/cash-collection'
-      path: '/reports/cash-collection'
-      fullPath: '/reports/cash-collection'
-      preLoaderRoute: typeof AuthenticatedReportsCashCollectionRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/cancelled': {
-      id: '/_authenticated/reports/cancelled'
-      path: '/reports/cancelled'
-      fullPath: '/reports/cancelled'
-      preLoaderRoute: typeof AuthenticatedReportsCancelledRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/bill-wise': {
-      id: '/_authenticated/reports/bill-wise'
-      path: '/reports/bill-wise'
-      fullPath: '/reports/bill-wise'
-      preLoaderRoute: typeof AuthenticatedReportsBillWiseRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/banquet-billing': {
-      id: '/_authenticated/reports/banquet-billing'
-      path: '/reports/banquet-billing'
-      fullPath: '/reports/banquet-billing'
-      preLoaderRoute: typeof AuthenticatedReportsBanquetBillingRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/banquet': {
-      id: '/_authenticated/reports/banquet'
-      path: '/reports/banquet'
-      fullPath: '/reports/banquet'
-      preLoaderRoute: typeof AuthenticatedReportsBanquetRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/analytics': {
-      id: '/_authenticated/reports/analytics'
-      path: '/reports/analytics'
-      fullPath: '/reports/analytics'
-      preLoaderRoute: typeof AuthenticatedReportsAnalyticsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/reports/activity': {
-      id: '/_authenticated/reports/activity'
-      path: '/reports/activity'
-      fullPath: '/reports/activity'
-      preLoaderRoute: typeof AuthenticatedReportsActivityRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/tariff': {
-      id: '/_authenticated/masters/tariff'
-      path: '/masters/tariff'
-      fullPath: '/masters/tariff'
-      preLoaderRoute: typeof AuthenticatedMastersTariffRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/tables': {
-      id: '/_authenticated/masters/tables'
-      path: '/masters/tables'
-      fullPath: '/masters/tables'
-      preLoaderRoute: typeof AuthenticatedMastersTablesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/sundry-items': {
-      id: '/_authenticated/masters/sundry-items'
-      path: '/masters/sundry-items'
-      fullPath: '/masters/sundry-items'
-      preLoaderRoute: typeof AuthenticatedMastersSundryItemsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/staff': {
-      id: '/_authenticated/masters/staff'
-      path: '/masters/staff'
-      fullPath: '/masters/staff'
-      preLoaderRoute: typeof AuthenticatedMastersStaffRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/rooms': {
-      id: '/_authenticated/masters/rooms'
-      path: '/masters/rooms'
-      fullPath: '/masters/rooms'
-      preLoaderRoute: typeof AuthenticatedMastersRoomsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/room-status-colors': {
-      id: '/_authenticated/masters/room-status-colors'
-      path: '/masters/room-status-colors'
-      fullPath: '/masters/room-status-colors'
-      preLoaderRoute: typeof AuthenticatedMastersRoomStatusColorsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/restaurant-outlets': {
-      id: '/_authenticated/masters/restaurant-outlets'
-      path: '/masters/restaurant-outlets'
-      fullPath: '/masters/restaurant-outlets'
-      preLoaderRoute: typeof AuthenticatedMastersRestaurantOutletsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/rate-seasons': {
-      id: '/_authenticated/masters/rate-seasons'
-      path: '/masters/rate-seasons'
-      fullPath: '/masters/rate-seasons'
-      preLoaderRoute: typeof AuthenticatedMastersRateSeasonsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/printers': {
-      id: '/_authenticated/masters/printers'
-      path: '/masters/printers'
-      fullPath: '/masters/printers'
-      preLoaderRoute: typeof AuthenticatedMastersPrintersRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/pos-categories': {
-      id: '/_authenticated/masters/pos-categories'
-      path: '/masters/pos-categories'
-      fullPath: '/masters/pos-categories'
-      preLoaderRoute: typeof AuthenticatedMastersPosCategoriesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/payment-methods': {
-      id: '/_authenticated/masters/payment-methods'
-      path: '/masters/payment-methods'
-      fullPath: '/masters/payment-methods'
-      preLoaderRoute: typeof AuthenticatedMastersPaymentMethodsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/message-templates': {
-      id: '/_authenticated/masters/message-templates'
-      path: '/masters/message-templates'
-      fullPath: '/masters/message-templates'
-      preLoaderRoute: typeof AuthenticatedMastersMessageTemplatesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/menu': {
-      id: '/_authenticated/masters/menu'
-      path: '/masters/menu'
-      fullPath: '/masters/menu'
-      preLoaderRoute: typeof AuthenticatedMastersMenuRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/halls': {
-      id: '/_authenticated/masters/halls'
-      path: '/masters/halls'
-      fullPath: '/masters/halls'
-      preLoaderRoute: typeof AuthenticatedMastersHallsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/expense-categories': {
-      id: '/_authenticated/masters/expense-categories'
-      path: '/masters/expense-categories'
-      fullPath: '/masters/expense-categories'
-      preLoaderRoute: typeof AuthenticatedMastersExpenseCategoriesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/early-checkin-slabs': {
-      id: '/_authenticated/masters/early-checkin-slabs'
-      path: '/masters/early-checkin-slabs'
-      fullPath: '/masters/early-checkin-slabs'
-      preLoaderRoute: typeof AuthenticatedMastersEarlyCheckinSlabsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/masters/channels': {
-      id: '/_authenticated/masters/channels'
-      path: '/masters/channels'
-      fullPath: '/masters/channels'
-      preLoaderRoute: typeof AuthenticatedMastersChannelsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/inventory/vendors': {
-      id: '/_authenticated/inventory/vendors'
-      path: '/inventory/vendors'
-      fullPath: '/inventory/vendors'
-      preLoaderRoute: typeof AuthenticatedInventoryVendorsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/inventory/stock': {
-      id: '/_authenticated/inventory/stock'
-      path: '/inventory/stock'
-      fullPath: '/inventory/stock'
-      preLoaderRoute: typeof AuthenticatedInventoryStockRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/inventory/movements': {
-      id: '/_authenticated/inventory/movements'
-      path: '/inventory/movements'
-      fullPath: '/inventory/movements'
-      preLoaderRoute: typeof AuthenticatedInventoryMovementsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/inventory/items': {
-      id: '/_authenticated/inventory/items'
-      path: '/inventory/items'
-      fullPath: '/inventory/items'
-      preLoaderRoute: typeof AuthenticatedInventoryItemsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/housekeeping/tasks': {
-      id: '/_authenticated/housekeeping/tasks'
-      path: '/housekeeping/tasks'
-      fullPath: '/housekeeping/tasks'
-      preLoaderRoute: typeof AuthenticatedHousekeepingTasksRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/housekeeping/new': {
-      id: '/_authenticated/housekeeping/new'
-      path: '/housekeeping/new'
-      fullPath: '/housekeeping/new'
-      preLoaderRoute: typeof AuthenticatedHousekeepingNewRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/housekeeping/board': {
-      id: '/_authenticated/housekeeping/board'
-      path: '/housekeeping/board'
-      fullPath: '/housekeeping/board'
-      preLoaderRoute: typeof AuthenticatedHousekeepingBoardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/handover/new': {
-      id: '/_authenticated/handover/new'
-      path: '/handover/new'
-      fullPath: '/handover/new'
-      preLoaderRoute: typeof AuthenticatedHandoverNewRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/guests/new': {
-      id: '/_authenticated/guests/new'
-      path: '/guests/new'
-      fullPath: '/guests/new'
-      preLoaderRoute: typeof AuthenticatedGuestsNewRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/guests/$id': {
-      id: '/_authenticated/guests/$id'
-      path: '/guests/$id'
-      fullPath: '/guests/$id'
-      preLoaderRoute: typeof AuthenticatedGuestsIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/front-desk/rate-calendar': {
-      id: '/_authenticated/front-desk/rate-calendar'
-      path: '/front-desk/rate-calendar'
-      fullPath: '/front-desk/rate-calendar'
-      preLoaderRoute: typeof AuthenticatedFrontDeskRateCalendarRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/front-desk/new-legacy': {
-      id: '/_authenticated/front-desk/new-legacy'
-      path: '/front-desk/new-legacy'
-      fullPath: '/front-desk/new-legacy'
-      preLoaderRoute: typeof AuthenticatedFrontDeskNewLegacyRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/front-desk/new': {
-      id: '/_authenticated/front-desk/new'
-      path: '/front-desk/new'
-      fullPath: '/front-desk/new'
-      preLoaderRoute: typeof AuthenticatedFrontDeskNewRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/front-desk/in-house': {
-      id: '/_authenticated/front-desk/in-house'
-      path: '/front-desk/in-house'
-      fullPath: '/front-desk/in-house'
-      preLoaderRoute: typeof AuthenticatedFrontDeskInHouseRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/front-desk/calendar': {
-      id: '/_authenticated/front-desk/calendar'
-      path: '/front-desk/calendar'
-      fullPath: '/front-desk/calendar'
-      preLoaderRoute: typeof AuthenticatedFrontDeskCalendarRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/front-desk/bookings': {
-      id: '/_authenticated/front-desk/bookings'
-      path: '/front-desk/bookings'
-      fullPath: '/front-desk/bookings'
-      preLoaderRoute: typeof AuthenticatedFrontDeskBookingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/feedback/new': {
-      id: '/_authenticated/feedback/new'
-      path: '/feedback/new'
-      fullPath: '/feedback/new'
-      preLoaderRoute: typeof AuthenticatedFeedbackNewRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/expenses/new': {
-      id: '/_authenticated/expenses/new'
-      path: '/expenses/new'
-      fullPath: '/expenses/new'
-      preLoaderRoute: typeof AuthenticatedExpensesNewRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/comms/new': {
-      id: '/_authenticated/comms/new'
-      path: '/comms/new'
-      fullPath: '/comms/new'
-      preLoaderRoute: typeof AuthenticatedCommsNewRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/billing/invoices': {
-      id: '/_authenticated/billing/invoices'
-      path: '/billing/invoices'
-      fullPath: '/billing/invoices'
-      preLoaderRoute: typeof AuthenticatedBillingInvoicesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/billing/companies': {
-      id: '/_authenticated/billing/companies'
-      path: '/billing/companies'
-      fullPath: '/billing/companies'
-      preLoaderRoute: typeof AuthenticatedBillingCompaniesRouteImport
+    '/_authenticated/properties': {
+      id: '/_authenticated/properties'
+      path: '/properties'
+      fullPath: '/properties'
+      preLoaderRoute: typeof AuthenticatedPropertiesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/superadmin': {
+      id: '/_authenticated/superadmin'
+      path: '/superadmin'
+      fullPath: '/superadmin'
+      preLoaderRoute: typeof AuthenticatedSuperadminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/banquet/bookings': {
+      id: '/_authenticated/banquet/bookings'
+      path: '/banquet/bookings'
+      fullPath: '/banquet/bookings'
+      preLoaderRoute: typeof AuthenticatedBanquetBookingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/banquet/new': {
@@ -2211,11 +1637,641 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBanquetNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/banquet/bookings': {
-      id: '/_authenticated/banquet/bookings'
-      path: '/banquet/bookings'
-      fullPath: '/banquet/bookings'
-      preLoaderRoute: typeof AuthenticatedBanquetBookingsRouteImport
+    '/_authenticated/billing/companies': {
+      id: '/_authenticated/billing/companies'
+      path: '/billing/companies'
+      fullPath: '/billing/companies'
+      preLoaderRoute: typeof AuthenticatedBillingCompaniesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/billing/invoices': {
+      id: '/_authenticated/billing/invoices'
+      path: '/billing/invoices'
+      fullPath: '/billing/invoices'
+      preLoaderRoute: typeof AuthenticatedBillingInvoicesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/channels/': {
+      id: '/_authenticated/channels/'
+      path: '/channels'
+      fullPath: '/channels/'
+      preLoaderRoute: typeof AuthenticatedChannelsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/comms/': {
+      id: '/_authenticated/comms/'
+      path: '/comms'
+      fullPath: '/comms/'
+      preLoaderRoute: typeof AuthenticatedCommsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/comms/new': {
+      id: '/_authenticated/comms/new'
+      path: '/comms/new'
+      fullPath: '/comms/new'
+      preLoaderRoute: typeof AuthenticatedCommsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/expenses/': {
+      id: '/_authenticated/expenses/'
+      path: '/expenses'
+      fullPath: '/expenses/'
+      preLoaderRoute: typeof AuthenticatedExpensesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/expenses/new': {
+      id: '/_authenticated/expenses/new'
+      path: '/expenses/new'
+      fullPath: '/expenses/new'
+      preLoaderRoute: typeof AuthenticatedExpensesNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/feedback/': {
+      id: '/_authenticated/feedback/'
+      path: '/feedback'
+      fullPath: '/feedback/'
+      preLoaderRoute: typeof AuthenticatedFeedbackIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/feedback/new': {
+      id: '/_authenticated/feedback/new'
+      path: '/feedback/new'
+      fullPath: '/feedback/new'
+      preLoaderRoute: typeof AuthenticatedFeedbackNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/front-desk/bookings': {
+      id: '/_authenticated/front-desk/bookings'
+      path: '/front-desk/bookings'
+      fullPath: '/front-desk/bookings'
+      preLoaderRoute: typeof AuthenticatedFrontDeskBookingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/front-desk/calendar': {
+      id: '/_authenticated/front-desk/calendar'
+      path: '/front-desk/calendar'
+      fullPath: '/front-desk/calendar'
+      preLoaderRoute: typeof AuthenticatedFrontDeskCalendarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/front-desk/in-house': {
+      id: '/_authenticated/front-desk/in-house'
+      path: '/front-desk/in-house'
+      fullPath: '/front-desk/in-house'
+      preLoaderRoute: typeof AuthenticatedFrontDeskInHouseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/front-desk/new': {
+      id: '/_authenticated/front-desk/new'
+      path: '/front-desk/new'
+      fullPath: '/front-desk/new'
+      preLoaderRoute: typeof AuthenticatedFrontDeskNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/front-desk/new-legacy': {
+      id: '/_authenticated/front-desk/new-legacy'
+      path: '/front-desk/new-legacy'
+      fullPath: '/front-desk/new-legacy'
+      preLoaderRoute: typeof AuthenticatedFrontDeskNewLegacyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/front-desk/rate-calendar': {
+      id: '/_authenticated/front-desk/rate-calendar'
+      path: '/front-desk/rate-calendar'
+      fullPath: '/front-desk/rate-calendar'
+      preLoaderRoute: typeof AuthenticatedFrontDeskRateCalendarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/guests/': {
+      id: '/_authenticated/guests/'
+      path: '/guests'
+      fullPath: '/guests/'
+      preLoaderRoute: typeof AuthenticatedGuestsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/guests/$id': {
+      id: '/_authenticated/guests/$id'
+      path: '/guests/$id'
+      fullPath: '/guests/$id'
+      preLoaderRoute: typeof AuthenticatedGuestsIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/guests/new': {
+      id: '/_authenticated/guests/new'
+      path: '/guests/new'
+      fullPath: '/guests/new'
+      preLoaderRoute: typeof AuthenticatedGuestsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/handover/new': {
+      id: '/_authenticated/handover/new'
+      path: '/handover/new'
+      fullPath: '/handover/new'
+      preLoaderRoute: typeof AuthenticatedHandoverNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/housekeeping/board': {
+      id: '/_authenticated/housekeeping/board'
+      path: '/housekeeping/board'
+      fullPath: '/housekeeping/board'
+      preLoaderRoute: typeof AuthenticatedHousekeepingBoardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/housekeeping/new': {
+      id: '/_authenticated/housekeeping/new'
+      path: '/housekeeping/new'
+      fullPath: '/housekeeping/new'
+      preLoaderRoute: typeof AuthenticatedHousekeepingNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/housekeeping/tasks': {
+      id: '/_authenticated/housekeeping/tasks'
+      path: '/housekeeping/tasks'
+      fullPath: '/housekeeping/tasks'
+      preLoaderRoute: typeof AuthenticatedHousekeepingTasksRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/inventory/': {
+      id: '/_authenticated/inventory/'
+      path: '/inventory'
+      fullPath: '/inventory/'
+      preLoaderRoute: typeof AuthenticatedInventoryIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/inventory/items': {
+      id: '/_authenticated/inventory/items'
+      path: '/inventory/items'
+      fullPath: '/inventory/items'
+      preLoaderRoute: typeof AuthenticatedInventoryItemsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/inventory/movements': {
+      id: '/_authenticated/inventory/movements'
+      path: '/inventory/movements'
+      fullPath: '/inventory/movements'
+      preLoaderRoute: typeof AuthenticatedInventoryMovementsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/inventory/stock': {
+      id: '/_authenticated/inventory/stock'
+      path: '/inventory/stock'
+      fullPath: '/inventory/stock'
+      preLoaderRoute: typeof AuthenticatedInventoryStockRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/inventory/vendors': {
+      id: '/_authenticated/inventory/vendors'
+      path: '/inventory/vendors'
+      fullPath: '/inventory/vendors'
+      preLoaderRoute: typeof AuthenticatedInventoryVendorsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/label-printing/': {
+      id: '/_authenticated/label-printing/'
+      path: '/label-printing'
+      fullPath: '/label-printing/'
+      preLoaderRoute: typeof AuthenticatedLabelPrintingIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/': {
+      id: '/_authenticated/masters/'
+      path: '/masters'
+      fullPath: '/masters/'
+      preLoaderRoute: typeof AuthenticatedMastersIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/channels': {
+      id: '/_authenticated/masters/channels'
+      path: '/masters/channels'
+      fullPath: '/masters/channels'
+      preLoaderRoute: typeof AuthenticatedMastersChannelsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/early-checkin-slabs': {
+      id: '/_authenticated/masters/early-checkin-slabs'
+      path: '/masters/early-checkin-slabs'
+      fullPath: '/masters/early-checkin-slabs'
+      preLoaderRoute: typeof AuthenticatedMastersEarlyCheckinSlabsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/expense-categories': {
+      id: '/_authenticated/masters/expense-categories'
+      path: '/masters/expense-categories'
+      fullPath: '/masters/expense-categories'
+      preLoaderRoute: typeof AuthenticatedMastersExpenseCategoriesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/halls': {
+      id: '/_authenticated/masters/halls'
+      path: '/masters/halls'
+      fullPath: '/masters/halls'
+      preLoaderRoute: typeof AuthenticatedMastersHallsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/menu': {
+      id: '/_authenticated/masters/menu'
+      path: '/masters/menu'
+      fullPath: '/masters/menu'
+      preLoaderRoute: typeof AuthenticatedMastersMenuRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/message-templates': {
+      id: '/_authenticated/masters/message-templates'
+      path: '/masters/message-templates'
+      fullPath: '/masters/message-templates'
+      preLoaderRoute: typeof AuthenticatedMastersMessageTemplatesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/payment-methods': {
+      id: '/_authenticated/masters/payment-methods'
+      path: '/masters/payment-methods'
+      fullPath: '/masters/payment-methods'
+      preLoaderRoute: typeof AuthenticatedMastersPaymentMethodsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/pos-categories': {
+      id: '/_authenticated/masters/pos-categories'
+      path: '/masters/pos-categories'
+      fullPath: '/masters/pos-categories'
+      preLoaderRoute: typeof AuthenticatedMastersPosCategoriesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/printers': {
+      id: '/_authenticated/masters/printers'
+      path: '/masters/printers'
+      fullPath: '/masters/printers'
+      preLoaderRoute: typeof AuthenticatedMastersPrintersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/rate-seasons': {
+      id: '/_authenticated/masters/rate-seasons'
+      path: '/masters/rate-seasons'
+      fullPath: '/masters/rate-seasons'
+      preLoaderRoute: typeof AuthenticatedMastersRateSeasonsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/restaurant-outlets': {
+      id: '/_authenticated/masters/restaurant-outlets'
+      path: '/masters/restaurant-outlets'
+      fullPath: '/masters/restaurant-outlets'
+      preLoaderRoute: typeof AuthenticatedMastersRestaurantOutletsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/room-status-colors': {
+      id: '/_authenticated/masters/room-status-colors'
+      path: '/masters/room-status-colors'
+      fullPath: '/masters/room-status-colors'
+      preLoaderRoute: typeof AuthenticatedMastersRoomStatusColorsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/rooms': {
+      id: '/_authenticated/masters/rooms'
+      path: '/masters/rooms'
+      fullPath: '/masters/rooms'
+      preLoaderRoute: typeof AuthenticatedMastersRoomsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/staff': {
+      id: '/_authenticated/masters/staff'
+      path: '/masters/staff'
+      fullPath: '/masters/staff'
+      preLoaderRoute: typeof AuthenticatedMastersStaffRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/sundry-items': {
+      id: '/_authenticated/masters/sundry-items'
+      path: '/masters/sundry-items'
+      fullPath: '/masters/sundry-items'
+      preLoaderRoute: typeof AuthenticatedMastersSundryItemsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/tables': {
+      id: '/_authenticated/masters/tables'
+      path: '/masters/tables'
+      fullPath: '/masters/tables'
+      preLoaderRoute: typeof AuthenticatedMastersTablesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/masters/tariff': {
+      id: '/_authenticated/masters/tariff'
+      path: '/masters/tariff'
+      fullPath: '/masters/tariff'
+      preLoaderRoute: typeof AuthenticatedMastersTariffRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/': {
+      id: '/_authenticated/reports/'
+      path: '/reports'
+      fullPath: '/reports/'
+      preLoaderRoute: typeof AuthenticatedReportsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/activity': {
+      id: '/_authenticated/reports/activity'
+      path: '/reports/activity'
+      fullPath: '/reports/activity'
+      preLoaderRoute: typeof AuthenticatedReportsActivityRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/analytics': {
+      id: '/_authenticated/reports/analytics'
+      path: '/reports/analytics'
+      fullPath: '/reports/analytics'
+      preLoaderRoute: typeof AuthenticatedReportsAnalyticsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/banquet': {
+      id: '/_authenticated/reports/banquet'
+      path: '/reports/banquet'
+      fullPath: '/reports/banquet'
+      preLoaderRoute: typeof AuthenticatedReportsBanquetRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/banquet-billing': {
+      id: '/_authenticated/reports/banquet-billing'
+      path: '/reports/banquet-billing'
+      fullPath: '/reports/banquet-billing'
+      preLoaderRoute: typeof AuthenticatedReportsBanquetBillingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/bill-wise': {
+      id: '/_authenticated/reports/bill-wise'
+      path: '/reports/bill-wise'
+      fullPath: '/reports/bill-wise'
+      preLoaderRoute: typeof AuthenticatedReportsBillWiseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/cancelled': {
+      id: '/_authenticated/reports/cancelled'
+      path: '/reports/cancelled'
+      fullPath: '/reports/cancelled'
+      preLoaderRoute: typeof AuthenticatedReportsCancelledRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/cash-collection': {
+      id: '/_authenticated/reports/cash-collection'
+      path: '/reports/cash-collection'
+      fullPath: '/reports/cash-collection'
+      preLoaderRoute: typeof AuthenticatedReportsCashCollectionRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/cash-handover': {
+      id: '/_authenticated/reports/cash-handover'
+      path: '/reports/cash-handover'
+      fullPath: '/reports/cash-handover'
+      preLoaderRoute: typeof AuthenticatedReportsCashHandoverRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/daily': {
+      id: '/_authenticated/reports/daily'
+      path: '/reports/daily'
+      fullPath: '/reports/daily'
+      preLoaderRoute: typeof AuthenticatedReportsDailyRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/date-wise-revenue': {
+      id: '/_authenticated/reports/date-wise-revenue'
+      path: '/reports/date-wise-revenue'
+      fullPath: '/reports/date-wise-revenue'
+      preLoaderRoute: typeof AuthenticatedReportsDateWiseRevenueRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/dues': {
+      id: '/_authenticated/reports/dues'
+      path: '/reports/dues'
+      fullPath: '/reports/dues'
+      preLoaderRoute: typeof AuthenticatedReportsDuesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/expenses': {
+      id: '/_authenticated/reports/expenses'
+      path: '/reports/expenses'
+      fullPath: '/reports/expenses'
+      preLoaderRoute: typeof AuthenticatedReportsExpensesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/food-kot': {
+      id: '/_authenticated/reports/food-kot'
+      path: '/reports/food-kot'
+      fullPath: '/reports/food-kot'
+      preLoaderRoute: typeof AuthenticatedReportsFoodKotRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/gst': {
+      id: '/_authenticated/reports/gst'
+      path: '/reports/gst'
+      fullPath: '/reports/gst'
+      preLoaderRoute: typeof AuthenticatedReportsGstRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/guest-wise': {
+      id: '/_authenticated/reports/guest-wise'
+      path: '/reports/guest-wise'
+      fullPath: '/reports/guest-wise'
+      preLoaderRoute: typeof AuthenticatedReportsGuestWiseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/item-sales': {
+      id: '/_authenticated/reports/item-sales'
+      path: '/reports/item-sales'
+      fullPath: '/reports/item-sales'
+      preLoaderRoute: typeof AuthenticatedReportsItemSalesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/kot-activity': {
+      id: '/_authenticated/reports/kot-activity'
+      path: '/reports/kot-activity'
+      fullPath: '/reports/kot-activity'
+      preLoaderRoute: typeof AuthenticatedReportsKotActivityRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/morning': {
+      id: '/_authenticated/reports/morning'
+      path: '/reports/morning'
+      fullPath: '/reports/morning'
+      preLoaderRoute: typeof AuthenticatedReportsMorningRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/night-audit': {
+      id: '/_authenticated/reports/night-audit'
+      path: '/reports/night-audit'
+      fullPath: '/reports/night-audit'
+      preLoaderRoute: typeof AuthenticatedReportsNightAuditRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/plan-wise': {
+      id: '/_authenticated/reports/plan-wise'
+      path: '/reports/plan-wise'
+      fullPath: '/reports/plan-wise'
+      preLoaderRoute: typeof AuthenticatedReportsPlanWiseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/room-shift': {
+      id: '/_authenticated/reports/room-shift'
+      path: '/reports/room-shift'
+      fullPath: '/reports/room-shift'
+      preLoaderRoute: typeof AuthenticatedReportsRoomShiftRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/room-wise': {
+      id: '/_authenticated/reports/room-wise'
+      path: '/reports/room-wise'
+      fullPath: '/reports/room-wise'
+      preLoaderRoute: typeof AuthenticatedReportsRoomWiseRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/sales': {
+      id: '/_authenticated/reports/sales'
+      path: '/reports/sales'
+      fullPath: '/reports/sales'
+      preLoaderRoute: typeof AuthenticatedReportsSalesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/restaurant/': {
+      id: '/_authenticated/restaurant/'
+      path: '/restaurant'
+      fullPath: '/restaurant/'
+      preLoaderRoute: typeof AuthenticatedRestaurantIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/rooms/$roomNumber': {
+      id: '/_authenticated/rooms/$roomNumber'
+      path: '/rooms/$roomNumber'
+      fullPath: '/rooms/$roomNumber'
+      preLoaderRoute: typeof AuthenticatedRoomsRoomNumberRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/security/': {
+      id: '/_authenticated/security/'
+      path: '/security'
+      fullPath: '/security/'
+      preLoaderRoute: typeof AuthenticatedSecurityIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings/': {
+      id: '/_authenticated/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings/hotel': {
+      id: '/_authenticated/settings/hotel'
+      path: '/settings/hotel'
+      fullPath: '/settings/hotel'
+      preLoaderRoute: typeof AuthenticatedSettingsHotelRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings/whatsapp': {
+      id: '/_authenticated/settings/whatsapp'
+      path: '/settings/whatsapp'
+      fullPath: '/settings/whatsapp'
+      preLoaderRoute: typeof AuthenticatedSettingsWhatsappRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/staff/': {
+      id: '/_authenticated/staff/'
+      path: '/staff'
+      fullPath: '/staff/'
+      preLoaderRoute: typeof AuthenticatedStaffIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/staff/attendance': {
+      id: '/_authenticated/staff/attendance'
+      path: '/staff/attendance'
+      fullPath: '/staff/attendance'
+      preLoaderRoute: typeof AuthenticatedStaffAttendanceRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/staff/attendance-history': {
+      id: '/_authenticated/staff/attendance-history'
+      path: '/staff/attendance-history'
+      fullPath: '/staff/attendance-history'
+      preLoaderRoute: typeof AuthenticatedStaffAttendanceHistoryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/staff/payroll': {
+      id: '/_authenticated/staff/payroll'
+      path: '/staff/payroll'
+      fullPath: '/staff/payroll'
+      preLoaderRoute: typeof AuthenticatedStaffPayrollRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/superadmin/dashboard': {
+      id: '/_authenticated/superadmin/dashboard'
+      path: '/dashboard'
+      fullPath: '/superadmin/dashboard'
+      preLoaderRoute: typeof AuthenticatedSuperadminDashboardRouteImport
+      parentRoute: typeof AuthenticatedSuperadminRoute
+    }
+    '/_authenticated/superadmin/users': {
+      id: '/_authenticated/superadmin/users'
+      path: '/users'
+      fullPath: '/superadmin/users'
+      preLoaderRoute: typeof AuthenticatedSuperadminUsersRouteImport
+      parentRoute: typeof AuthenticatedSuperadminRoute
+    }
+    '/_authenticated/whatsapp/': {
+      id: '/_authenticated/whatsapp/'
+      path: '/whatsapp'
+      fullPath: '/whatsapp/'
+      preLoaderRoute: typeof AuthenticatedWhatsappIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/banquet/bill/$id': {
+      id: '/_authenticated/banquet/bill/$id'
+      path: '/banquet/bill/$id'
+      fullPath: '/banquet/bill/$id'
+      preLoaderRoute: typeof AuthenticatedBanquetBillIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/banquet/event/$id': {
+      id: '/_authenticated/banquet/event/$id'
+      path: '/banquet/event/$id'
+      fullPath: '/banquet/event/$id'
+      preLoaderRoute: typeof AuthenticatedBanquetEventIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/banquet/master-bill/$id': {
+      id: '/_authenticated/banquet/master-bill/$id'
+      path: '/banquet/master-bill/$id'
+      fullPath: '/banquet/master-bill/$id'
+      preLoaderRoute: typeof AuthenticatedBanquetMasterBillIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/billing/folio/$bookingId': {
+      id: '/_authenticated/billing/folio/$bookingId'
+      path: '/billing/folio/$bookingId'
+      fullPath: '/billing/folio/$bookingId'
+      preLoaderRoute: typeof AuthenticatedBillingFolioBookingIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/bookings/$bookingId/grc': {
+      id: '/_authenticated/bookings/$bookingId/grc'
+      path: '/bookings/$bookingId/grc'
+      fullPath: '/bookings/$bookingId/grc'
+      preLoaderRoute: typeof AuthenticatedBookingsBookingIdGrcRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/food/kot/$id': {
+      id: '/_authenticated/food/kot/$id'
+      path: '/food/kot/$id'
+      fullPath: '/food/kot/$id'
+      preLoaderRoute: typeof AuthenticatedFoodKotIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/front-desk/booking-legacy/$id': {
+      id: '/_authenticated/front-desk/booking-legacy/$id'
+      path: '/front-desk/booking-legacy/$id'
+      fullPath: '/front-desk/booking-legacy/$id'
+      preLoaderRoute: typeof AuthenticatedFrontDeskBookingLegacyIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/front-desk/booking/$id': {
+      id: '/_authenticated/front-desk/booking/$id'
+      path: '/front-desk/booking/$id'
+      fullPath: '/front-desk/booking/$id'
+      preLoaderRoute: typeof AuthenticatedFrontDeskBookingIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/superadmin/roles/': {
@@ -2231,62 +2287,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/superadmin/roles/$id'
       preLoaderRoute: typeof AuthenticatedSuperadminRolesIdRouteImport
       parentRoute: typeof AuthenticatedSuperadminRoute
-    }
-    '/_authenticated/front-desk/booking/$id': {
-      id: '/_authenticated/front-desk/booking/$id'
-      path: '/front-desk/booking/$id'
-      fullPath: '/front-desk/booking/$id'
-      preLoaderRoute: typeof AuthenticatedFrontDeskBookingIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/front-desk/booking-legacy/$id': {
-      id: '/_authenticated/front-desk/booking-legacy/$id'
-      path: '/front-desk/booking-legacy/$id'
-      fullPath: '/front-desk/booking-legacy/$id'
-      preLoaderRoute: typeof AuthenticatedFrontDeskBookingLegacyIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/food/kot/$id': {
-      id: '/_authenticated/food/kot/$id'
-      path: '/food/kot/$id'
-      fullPath: '/food/kot/$id'
-      preLoaderRoute: typeof AuthenticatedFoodKotIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/bookings/$bookingId/grc': {
-      id: '/_authenticated/bookings/$bookingId/grc'
-      path: '/bookings/$bookingId/grc'
-      fullPath: '/bookings/$bookingId/grc'
-      preLoaderRoute: typeof AuthenticatedBookingsBookingIdGrcRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/billing/folio/$bookingId': {
-      id: '/_authenticated/billing/folio/$bookingId'
-      path: '/billing/folio/$bookingId'
-      fullPath: '/billing/folio/$bookingId'
-      preLoaderRoute: typeof AuthenticatedBillingFolioBookingIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/banquet/master-bill/$id': {
-      id: '/_authenticated/banquet/master-bill/$id'
-      path: '/banquet/master-bill/$id'
-      fullPath: '/banquet/master-bill/$id'
-      preLoaderRoute: typeof AuthenticatedBanquetMasterBillIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/banquet/event/$id': {
-      id: '/_authenticated/banquet/event/$id'
-      path: '/banquet/event/$id'
-      fullPath: '/banquet/event/$id'
-      preLoaderRoute: typeof AuthenticatedBanquetEventIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/banquet/bill/$id': {
-      id: '/_authenticated/banquet/bill/$id'
-      path: '/banquet/bill/$id'
-      fullPath: '/banquet/bill/$id'
-      preLoaderRoute: typeof AuthenticatedBanquetBillIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/front-desk/booking/$id/edit': {
       id: '/_authenticated/front-desk/booking/$id/edit'
