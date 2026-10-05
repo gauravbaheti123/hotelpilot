@@ -162,6 +162,13 @@
       "when": 1791193390254,
       "tag": "0022_restore_missing_room_nights",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791221893887,
+      "tag": "0023_dup_night_guard_skip_preexisting",
+      "breakpoints": true
     }
   ]
 }
