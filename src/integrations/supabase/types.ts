@@ -6697,6 +6697,15 @@ export type Database = {
         }[]
       }
       my_property_ids: { Args: { _uid: string }; Returns: string[] }
+      owner_edit_settled_night_tariff: {
+        Args: {
+          _booking_id: string
+          _new_rate: number
+          _night: string
+          _source_id: string
+        }
+        Returns: string
+      }
       owner_update_bill_item: {
         Args: {
           _description: string
