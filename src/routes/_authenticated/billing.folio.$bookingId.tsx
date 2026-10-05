@@ -1162,15 +1162,15 @@ function FolioPage() {
    *  re-seeds after a date change, or a bill split can leave a hole). */
   async function restoreMissingNights() {
     if (!booking) return;
-    const { data: rows, error } = await supabase
-      .from("booking_rooms").select("id,status").eq("booking_id", booking.id);
+    const { data: restored, error } = await supabase.rpc("restore_missing_room_nights" as any, { _booking_id: booking.id });
     if (error) return toastError(error);
-    const live = (rows ?? []).filter((r: any) => ["active", "reserved", "checked_in"].includes(String(r.status ?? "active")));
-    for (const r of live) {
-      const { error: sErr } = await supabase.rpc("seed_room_charge_for_booking_room" as any, { _booking_room_id: (r as any).id });
-      if (sErr) return toastError(sErr);
+    const n = Number(restored ?? 0);
+    if (n <= 0) {
+      toast.error("No night could be restored automatically — please add the room charge manually.");
+      load();
+      return;
     }
-    toast.success("Missing nights restored");
+    toast.success(`${n} night${n === 1 ? "" : "s"} restored to the bill`);
     load();
   }
 
