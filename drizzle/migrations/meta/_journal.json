@@ -148,6 +148,13 @@
       "when": 1791192153219,
       "tag": "0020_owner_tariff_edit_on_settled_bill",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791192635962,
+      "tag": "0021_owner_tariff_edit_booking_range",
+      "breakpoints": true
     }
   ]
 }
