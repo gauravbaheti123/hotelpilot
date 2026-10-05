@@ -155,6 +155,13 @@
       "when": 1791192635962,
       "tag": "0021_owner_tariff_edit_booking_range",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791193390254,
+      "tag": "0022_restore_missing_room_nights",
+      "breakpoints": true
     }
   ]
 }

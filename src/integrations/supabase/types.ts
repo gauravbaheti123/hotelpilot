@@ -6804,6 +6804,10 @@ export type Database = {
         Returns: Json
       }
       resolve_event_ids: { Args: { _id: string }; Returns: Json }
+      restore_missing_room_nights: {
+        Args: { _booking_id: string }
+        Returns: number
+      }
       resync_finalised_folio: { Args: { _folio_id: string }; Returns: Json }
       room_gst_rate_for_tariff: { Args: { _rate: number }; Returns: number }
       save_property_secrets: {
