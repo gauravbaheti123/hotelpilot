@@ -183,6 +183,13 @@
       "when": 1791551728703,
       "tag": "0025_room_shift_and_split_segment_cleanup",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791551771507,
+      "tag": "0026_room_shift_backfill_close_prior_slices",
+      "breakpoints": true
     }
   ]
 }
