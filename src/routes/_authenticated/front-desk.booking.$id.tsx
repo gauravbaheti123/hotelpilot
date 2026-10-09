@@ -625,8 +625,8 @@ function BookingDetailPage() {
               )}
               {canCheckIn && <Button onClick={checkIn}><LogIn className="h-4 w-4 mr-1" /> Check-in</Button>}
               {canCheckOut && <Button onClick={() => setCheckoutOpen(true)}><LogOut className="h-4 w-4 mr-1" /> Check-out</Button>}
-              {canShift && b.booking_rooms[0] && (
-                <Button variant="outline" onClick={() => openShift(b.booking_rooms[0].id)}>
+              {canShift && (b.booking_rooms.filter((x: any) => x.room_id && !x.actual_check_out && x.status !== "shifted").sort((a: any, c: any) => String(c.check_in).localeCompare(String(a.check_in)))[0] ?? b.booking_rooms[0]) && (
+                <Button variant="outline" onClick={() => openShift((b.booking_rooms.filter((x: any) => x.room_id && !x.actual_check_out && x.status !== "shifted").sort((a: any, c: any) => String(c.check_in).localeCompare(String(a.check_in)))[0] ?? b.booking_rooms[0]).id)}>
                   <ArrowLeftRight className="h-4 w-4 mr-1" /> Shift room
                 </Button>
               )}
@@ -675,8 +675,8 @@ function BookingDetailPage() {
                       {mode === "edit" ? "Back to overview" : "Edit details"}
                     </DropdownMenuItem>
                   )}
-                  {canShift && b.booking_rooms[0] && (
-                    <DropdownMenuItem onClick={() => openShift(b.booking_rooms[0].id)}>
+                  {canShift && (b.booking_rooms.filter((x: any) => x.room_id && !x.actual_check_out && x.status !== "shifted").sort((a: any, c: any) => String(c.check_in).localeCompare(String(a.check_in)))[0] ?? b.booking_rooms[0]) && (
+                    <DropdownMenuItem onClick={() => openShift((b.booking_rooms.filter((x: any) => x.room_id && !x.actual_check_out && x.status !== "shifted").sort((a: any, c: any) => String(c.check_in).localeCompare(String(a.check_in)))[0] ?? b.booking_rooms[0]).id)}>
                       <ArrowLeftRight className="h-4 w-4 mr-2" /> Shift room
                     </DropdownMenuItem>
                   )}
@@ -771,7 +771,7 @@ function BookingDetailPage() {
                       <BedDouble className="h-3.5 w-3.5 mr-1" /> Assign Room
                     </Button>
                   )}
-                  {canAct && canShift && br.room_id && (
+                  {canAct && canShift && br.room_id && !br.actual_check_out && br.status !== "shifted" && (
                     <Button size="sm" variant="ghost" onClick={() => openShift(br.id)}>
                       <ArrowLeftRight className="h-3.5 w-3.5 mr-1" /> Shift
                     </Button>
